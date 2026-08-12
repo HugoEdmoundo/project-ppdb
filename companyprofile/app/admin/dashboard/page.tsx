@@ -1374,9 +1374,15 @@ function SettingsEditor({ settings, canCrud }: { settings: api.SiteSetting[]; ca
   async function handleSave(key: string) {
     if (!canCrud) return
     const value = values[key] ?? ''
-    if ((key === 'favicon' || key === 'logo') && value && value.startsWith(api.API_BASE)) {
-      toast('error', `URL ${key === 'favicon' ? 'favicon' : 'logo'} tidak valid — gunakan URL gambar langsung, bukan URL API`)
-      return
+    if (key === 'favicon' || key === 'logo') {
+      if (value && value.startsWith(api.API_BASE)) {
+        toast('error', `URL ${key === 'favicon' ? 'favicon' : 'logo'} tidak valid — gunakan URL gambar langsung, bukan URL API`)
+        return
+      }
+      if (value && !/^https?:\/\//i.test(value)) {
+        toast('error', `URL ${key === 'favicon' ? 'favicon' : 'logo'} harus URL absolut (http/https)`)
+        return
+      }
     }
     setSaving(key)
     try {
@@ -1398,7 +1404,10 @@ function SettingsEditor({ settings, canCrud }: { settings: api.SiteSetting[]; ca
       const file = input.files?.[0]
       if (!file) return
       try {
-        const url = await api.uploadImage(file)
+        let url = await api.uploadImage(file)
+        if (url && !/^https?:\/\//i.test(url)) {
+          url = `${api.API_BASE}${url.startsWith('/') ? '' : '/'}${url}`
+        }
         setValues(p => ({ ...p, [key]: url }))
         await api.updateSetting(key, url)
         toast('success', `${SETTING_FIELDS.find(f => f.key === key)?.label} berhasil diupload`)

@@ -14,10 +14,16 @@ import * as api from './api/client'
 export default function App() {
   useEffect(() => {
     const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
-    fetch(`${api.API_BASE}/companyprofile/settings/favicon`)
-      .then(res => res.json())
-      .then(data => { if (data?.value && link) link.href = data.value; else if (link) link.href = '/download.png' })
-      .catch(() => { if (link) link.href = '/download.png' })
+    const loadFavicon = () => {
+      fetch(`${api.API_BASE}/companyprofile/settings/favicon`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => { if (data?.value && link) { link.href = data.value; link.type = '' } else if (link) link.href = '/download.png' })
+        .catch(() => { if (link) link.href = '/download.png' })
+    }
+    loadFavicon()
+    const es = new EventSource(`${api.API_BASE}/companyprofile/events`)
+    es.addEventListener('change', loadFavicon)
+    return () => es.close()
   }, [])
 
   return (

@@ -40,7 +40,8 @@ async def cp_events(request: Request):
                     break
                 try:
                     msg = await asyncio.wait_for(queue.get(), timeout=15)
-                    yield f"data: {json.dumps(msg)}\n\n"
+                    event = msg.get("type", "message")
+                    yield f"event: {event}\ndata: {json.dumps(msg)}\n\n"
                 except asyncio.TimeoutError:
                     yield "data: {\"type\": \"ping\"}\n\n"
         except asyncio.CancelledError:
@@ -338,6 +339,7 @@ async def cp_entity_get(entity: str, slug: str):
 async def cp_entity_create(entity: str, request: Request, user: Dict[str, Any] = Depends(require_cp_crud())):
     body = await request.json()
     r = create_record(get_table(entity), body)
+    broadcast_companyprofile_change()
     return r
 
 @router.put("/{entity}/{id}")
@@ -348,6 +350,7 @@ async def cp_entity_update(entity: str, id: str, request: Request, user: Dict[st
         raise HTTPException(status_code=404, detail=f"{entity} not found")
     body = await request.json()
     r = update_record(table, id, body)
+    broadcast_companyprofile_change()
     return r
 
 @router.delete("/{entity}/{id}")
@@ -357,4 +360,5 @@ async def cp_entity_delete(entity: str, id: str, user: Dict[str, Any] = Depends(
     if not old:
         raise HTTPException(status_code=404, detail=f"{entity} not found")
     delete_record(table, id)
+    broadcast_companyprofile_change()
     return {"message": "Deleted"}

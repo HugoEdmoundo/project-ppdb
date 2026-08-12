@@ -27,7 +27,7 @@ export default function PeriodsPage() {
   // Waves Sheet
   const [selectedPeriod, setSelectedPeriod] = useState<any>(null)
 
-  const [formData, setFormData] = useState({ name: '', start_date: '', end_date: '' })
+  const [formData, setFormData] = useState({ name: '', academic_year: '', description: '' })
 
   const fetchPeriods = async () => {
     setLoading(true)
@@ -105,7 +105,7 @@ export default function PeriodsPage() {
           <p className="text-sm text-muted-foreground mt-1">Kelola data periode dan gelombang pendaftaran.</p>
         </div>
         {canCrud && (
-          <Button onClick={() => { setEditingPeriod(null); setFormData({ name: '', start_date: '', end_date: '' }); setShowForm(true) }} className="gap-2">
+          <Button onClick={() => { setEditingPeriod(null); setFormData({ name: '', academic_year: '', description: '' }); setShowForm(true) }} className="gap-2">
             <Plus className="h-4 w-4" /> Tambah Periode
           </Button>
         )}
@@ -117,8 +117,8 @@ export default function PeriodsPage() {
             <TableHeader className="bg-primary/5">
               <TableRow>
                 <TableHead>Nama Periode</TableHead>
-                <TableHead>Tanggal Mulai</TableHead>
-                <TableHead>Tanggal Selesai</TableHead>
+                <TableHead>Tahun Ajaran</TableHead>
+                <TableHead>Deskripsi</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Gelombang</TableHead>
                 <TableHead className="text-right">Aksi</TableHead>
@@ -133,8 +133,8 @@ export default function PeriodsPage() {
                 periods.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>{new Date(p.start_date).toLocaleDateString('id-ID')}</TableCell>
-                    <TableCell>{new Date(p.end_date).toLocaleDateString('id-ID')}</TableCell>
+                    <TableCell>{p.academic_year}</TableCell>
+                    <TableCell className="max-w-[200px] truncate" title={p.description}>{p.description || '-'}</TableCell>
                     <TableCell>
                       <Badge variant={p.status === 'active' ? 'success' : 'secondary'} className={p.status === 'active' ? 'bg-emerald-bright text-white' : ''}>
                         {p.status === 'active' ? 'Aktif' : 'Nonaktif'}
@@ -158,7 +158,7 @@ export default function PeriodsPage() {
                               <CheckCircle className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button variant="outline" size="icon" onClick={() => { setEditingPeriod(p); setFormData({ name: p.name, start_date: p.start_date.split('T')[0], end_date: p.end_date.split('T')[0] }); setShowForm(true) }} title="Edit">
+                          <Button variant="outline" size="icon" onClick={() => { setEditingPeriod(p); setFormData({ name: p.name, academic_year: p.academic_year || '', description: p.description || '' }); setShowForm(true) }} title="Edit">
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button variant="outline" size="icon" onClick={() => setDeletingId(p.id)} title="Hapus" className="text-rose-danger hover:text-rose-danger hover:bg-rose-light">
@@ -189,16 +189,14 @@ export default function PeriodsPage() {
               <Label>Nama Periode</Label>
               <Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Contoh: PPDB 2024/2025" disabled={!canCrud} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Tanggal Mulai</Label>
-                <Input type="date" required value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} disabled={!canCrud} />
+                <Label>Tahun Ajaran</Label>
+                <Input required value={formData.academic_year} onChange={e => setFormData({ ...formData, academic_year: e.target.value })} placeholder="Contoh: 2024/2025" disabled={!canCrud} />
               </div>
               <div className="space-y-2">
-                <Label>Tanggal Selesai</Label>
-                <Input type="date" required value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} disabled={!canCrud} />
+                <Label>Deskripsi (Opsional)</Label>
+                <Input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Keterangan singkat" disabled={!canCrud} />
               </div>
-            </div>
             {canCrud && (
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Batal</Button>
@@ -243,7 +241,7 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [actionId, setActionId] = useState<{ id: string, type: 'activate' | 'deactivate' } | null>(null)
 
-  const [formData, setFormData] = useState({ name: '', start_date: '', end_date: '' })
+  const [formData, setFormData] = useState({ name: '', registration_start_date: '', registration_end_date: '', document_upload_end_date: '', selection_date: '', quota: 0 })
 
   useEffect(() => {
     if (period?.id) {
@@ -325,7 +323,7 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
           <div className="flex justify-between items-center">
             <h3 className="font-semibold text-foreground">Daftar Gelombang</h3>
             {canCrud && (
-              <Button size="sm" onClick={() => { setEditingWave(null); setFormData({ name: '', start_date: '', end_date: '' }); setShowForm(true) }} className="gap-1">
+              <Button size="sm" onClick={() => { setEditingWave(null); setFormData({ name: '', registration_start_date: '', registration_end_date: '', document_upload_end_date: '', selection_date: '', quota: 0 }); setShowForm(true) }} className="gap-1">
                 <Plus className="h-4 w-4" /> Tambah
               </Button>
             )}
@@ -337,7 +335,9 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
                 <TableRow>
                   <TableHead className="w-12">Gel.</TableHead>
                   <TableHead>Nama</TableHead>
-                  <TableHead>Waktu</TableHead>
+                  <TableHead>Waktu Daftar</TableHead>
+                  <TableHead>Waktu Lainnya</TableHead>
+                  <TableHead>Kuota</TableHead>
                   <TableHead>Status</TableHead>
                   {canCrud && <TableHead className="text-right">Aksi</TableHead>}
                 </TableRow>
@@ -353,10 +353,15 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
                       <TableCell className="font-semibold text-center">{w.wave_number}</TableCell>
                       <TableCell className="font-medium">{w.name}</TableCell>
                       <TableCell className="text-xs whitespace-nowrap">
-                        {new Date(w.start_date).toLocaleDateString('id-ID')} <br/> 
+                        {new Date(w.registration_start_date).toLocaleDateString('id-ID')} <br/> 
                         <span className="text-muted-foreground">s/d</span> <br/>
-                        {new Date(w.end_date).toLocaleDateString('id-ID')}
+                        {new Date(w.registration_end_date).toLocaleDateString('id-ID')}
                       </TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        Upload: {new Date(w.document_upload_end_date).toLocaleDateString('id-ID')} <br/> 
+                        Seleksi: {new Date(w.selection_date).toLocaleDateString('id-ID')}
+                      </TableCell>
+                      <TableCell>{w.quota}</TableCell>
                       <TableCell>
                         <Badge variant={w.status === 'active' ? 'success' : 'secondary'} className={w.status === 'active' ? 'bg-emerald-bright text-white' : ''}>
                           {w.status === 'active' ? 'Aktif' : 'Nonaktif'}
@@ -374,7 +379,7 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
                                 <CheckCircle className="h-4 w-4" />
                               </Button>
                             )}
-                            <Button variant="ghost" size="icon" onClick={() => { setEditingWave(w); setFormData({ name: w.name, start_date: w.start_date.split('T')[0], end_date: w.end_date.split('T')[0] }); setShowForm(true) }} title="Edit" className="h-8 w-8">
+                            <Button variant="ghost" size="icon" onClick={() => { setEditingWave(w); setFormData({ name: w.name, registration_start_date: w.registration_start_date.split('T')[0], registration_end_date: w.registration_end_date.split('T')[0], document_upload_end_date: w.document_upload_end_date.split('T')[0], selection_date: w.selection_date.split('T')[0], quota: w.quota }); setShowForm(true) }} title="Edit" className="h-8 w-8">
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => setDeletingId(w.id)} title="Hapus" className="h-8 w-8 text-rose-danger hover:text-rose-danger hover:bg-rose-light">
@@ -404,12 +409,24 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Tanggal Mulai</Label>
-                <Input type="date" required value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} />
+                <Label>Tanggal Mulai Daftar</Label>
+                <Input type="date" required value={formData.registration_start_date} onChange={e => setFormData({ ...formData, registration_start_date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Tanggal Selesai</Label>
-                <Input type="date" required value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} />
+                <Label>Tanggal Akhir Daftar</Label>
+                <Input type="date" required value={formData.registration_end_date} onChange={e => setFormData({ ...formData, registration_end_date: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Batas Upload Dokumen</Label>
+                <Input type="date" required value={formData.document_upload_end_date} onChange={e => setFormData({ ...formData, document_upload_end_date: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Jadwal Seleksi</Label>
+                <Input type="date" required value={formData.selection_date} onChange={e => setFormData({ ...formData, selection_date: e.target.value })} />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label>Kuota</Label>
+                <Input type="number" required value={formData.quota} onChange={e => setFormData({ ...formData, quota: parseInt(e.target.value) || 0 })} placeholder="Contoh: 100" />
               </div>
             </div>
             <DialogFooter>

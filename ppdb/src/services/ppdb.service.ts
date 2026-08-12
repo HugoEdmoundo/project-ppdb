@@ -28,4 +28,5 @@ export const ppdbService = {
   createWaveConfig: (body: any) => apiFetch<any>('/ppdb/wave-configs', { method: 'POST', body: JSON.stringify(body) }),
   updateWaveConfig: (id: string, body: any) => apiFetch<any>(`/ppdb/wave-configs/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteWaveConfig: (id: string) => apiFetch<void>(`/ppdb/wave-configs/${id}`, { method: 'DELETE' }),
+  registerApplicant: (body: any) => apiFetch<any>('/ppdb/register', { method: 'POST', body: JSON.stringify(body) }),
 }

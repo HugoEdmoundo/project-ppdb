@@ -44,16 +44,29 @@ def get_user(id: str, user: Dict[str, Any] = Depends(require_superadmin)):
 
 @router.post("/", status_code=201)
 def create_user(body: UserCreate, user: Dict[str, Any] = Depends(require_superadmin)):
+    import random
+    import string
+    
+    raw_password = body.password
+    generated = False
+    if not raw_password:
+        characters = string.ascii_letters + string.digits
+        raw_password = ''.join(random.choice(characters) for i in range(8))
+        generated = True
+        
     data = {
         "username": body.username,
-        "password_hash": hash_password(body.password)
+        "password_hash": hash_password(raw_password)
     }
     if body.email: data["email"] = body.email
     if body.full_name: data["full_name"] = body.full_name
     if body.role_id: data["role_id"] = body.role_id
     if body.user_type: data["user_type"] = body.user_type
     
-    return create_record("users", data)
+    created = create_record("users", data)
+    if generated:
+        created["_generated_password"] = raw_password
+    return created
 
 @router.put("/{id}")
 def update_user(id: str, body: UserUpdate, user: Dict[str, Any] = Depends(require_superadmin)):

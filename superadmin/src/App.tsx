@@ -11,6 +11,7 @@ import UserFormPage from './pages/UserFormPage'
 import RolesPage from './pages/RolesPage'
 import RoleFormPage from './pages/RoleFormPage'
 import ProfilePage from './pages/ProfilePage'
+import ApplicantsPage from './pages/ApplicantsPage'
 import * as api from './api/client'
 
 export default function App() {
@@ -59,6 +60,7 @@ export default function App() {
                     <Route path="/roles/new" element={<RoleFormPage />} />
                     <Route path="/roles/:id" element={<RoleFormPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/applicants" element={<ApplicantsPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Layout>

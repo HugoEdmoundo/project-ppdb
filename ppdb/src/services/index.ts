@@ -17,6 +17,7 @@ export const ppdbService = {
   deleteWave: (id: string) => apiFetch<void>(`/ppdb/waves/${id}`, { method: 'DELETE' }),
   activateWave: (id: string) => apiFetch<void>(`/ppdb/waves/${id}/activate`, { method: 'PUT' }),
   deactivateWave: (id: string) => apiFetch<void>(`/ppdb/waves/${id}/deactivate`, { method: 'PUT' }),
+  registerApplicant: (body: any) => apiFetch<any>('/ppdb/register', { method: 'POST', body: JSON.stringify(body) }),
 }
 
 export const applicantService = {
@@ -133,7 +134,7 @@ export const notifService = {
 }
 
 export const dashboardService = {
-  getStats: () => apiFetch<any>('/dashboard/stats'),
+  getStats: () => apiFetch<any>('/ppdb/dashboard/stats'),
   getAuditLogs: (params?: any) => apiFetch<any>(`/dashboard/audit-logs${params ? '?' + new URLSearchParams(params) : ''}`),
   getReportsSummary: () => apiFetch<any>('/dashboard/reports/summary'),
   exportReport: (type: string) => `/dashboard/reports/export/${type}`,

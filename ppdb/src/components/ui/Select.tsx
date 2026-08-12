@@ -182,6 +182,7 @@ const SelectField = React.forwardRef<HTMLButtonElement, SelectProps>(
 SelectField.displayName = 'SelectField'
 
 export {
+  Select,
   SelectField,
   SelectGroup,
   SelectValue,

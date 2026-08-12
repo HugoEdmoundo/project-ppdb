@@ -1,11 +1,14 @@
 import uuid
+import random
+import string
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import text
 
-from src.core.database import get_raw_pool, create_record, update_record, delete_record, audit_log
+from src.core.database import get_raw_pool, create_record, update_record, delete_record, audit_log, execute_raw
+from src.core.security import hash_password
 from src.modules.ppdb.dependencies import require_ppdb_read, require_ppdb_admin
-from src.modules.ppdb.schemas import PeriodCreate, PeriodUpdate, WaveCreate, WaveUpdate
+from src.modules.ppdb.schemas import PeriodCreate, PeriodUpdate, WaveCreate, WaveUpdate, ApplicantRegister, ApplicantUpdate
 
 router = APIRouter()
 
@@ -28,7 +31,7 @@ def get_periods(
         count_sql += ' WHERE p.name LIKE :search'
         params['search'] = f'%{search}%'
         
-    sql += ' ORDER BY p.start_date DESC LIMIT :limit OFFSET :offset'
+    sql += ' ORDER BY p.created_at DESC LIMIT :limit OFFSET :offset'
     params['limit'] = perPage
     params['offset'] = offset
     
@@ -41,7 +44,7 @@ def get_periods(
 @router.get("/periods/all")
 def get_all_periods(user: dict = Depends(require_ppdb_read)):
     pool = get_raw_pool()
-    sql = 'SELECT id, name, status, start_date, end_date FROM ppdb_periods ORDER BY start_date DESC'
+    sql = 'SELECT id, name, status, academic_year FROM ppdb_periods ORDER BY created_at DESC'
     with pool.connect() as conn:
         rows = conn.execute(text(sql)).mappings().all()
     return [dict(r) for r in rows]
@@ -63,8 +66,8 @@ def create_period(body: PeriodCreate, user: dict = Depends(require_ppdb_admin)):
     data = {
         "id": f"period-{uuid.uuid4()}",
         "name": body.name,
-        "start_date": body.start_date,
-        "end_date": body.end_date,
+        "academic_year": body.academic_year,
+        "description": body.description,
         "status": "inactive"
     }
     created = create_record("ppdb_periods", data)
@@ -74,8 +77,8 @@ def create_period(body: PeriodCreate, user: dict = Depends(require_ppdb_admin)):
 def update_period(id: str, body: PeriodUpdate, user: dict = Depends(require_ppdb_admin)):
     data = {
         "name": body.name,
-        "start_date": body.start_date,
-        "end_date": body.end_date
+        "academic_year": body.academic_year,
+        "description": body.description
     }
     updated = update_record("ppdb_periods", id, data)
     return updated
@@ -132,7 +135,7 @@ def get_waves(period_id: Optional[str] = Query(None), user: dict = Depends(requi
     if period_id:
         sql += ' WHERE period_id = :period_id'
         params['period_id'] = period_id
-    sql += ' ORDER BY start_date ASC'
+    sql += ' ORDER BY registration_start_date ASC'
     
     with pool.connect() as conn:
         rows = conn.execute(text(sql), params).mappings().all()
@@ -141,7 +144,7 @@ def get_waves(period_id: Optional[str] = Query(None), user: dict = Depends(requi
 @router.get("/waves/all")
 def get_all_waves(user: dict = Depends(require_ppdb_read)):
     pool = get_raw_pool()
-    sql = 'SELECT * FROM ppdb_waves ORDER BY start_date ASC'
+    sql = 'SELECT * FROM ppdb_waves ORDER BY registration_start_date ASC'
     with pool.connect() as conn:
         rows = conn.execute(text(sql)).mappings().all()
     return [dict(r) for r in rows]
@@ -172,8 +175,11 @@ def create_wave(body: WaveCreate, user: dict = Depends(require_ppdb_admin)):
         "period_id": body.period_id,
         "wave_number": wave_number,
         "name": body.name,
-        "start_date": body.start_date,
-        "end_date": body.end_date,
+        "registration_start_date": body.registration_start_date,
+        "registration_end_date": body.registration_end_date,
+        "document_upload_end_date": body.document_upload_end_date,
+        "selection_date": body.selection_date,
+        "quota": body.quota,
         "status": "inactive"
     }
     created = create_record("ppdb_waves", data)
@@ -183,8 +189,11 @@ def create_wave(body: WaveCreate, user: dict = Depends(require_ppdb_admin)):
 def update_wave(id: str, body: WaveUpdate, user: dict = Depends(require_ppdb_admin)):
     data = {
         "name": body.name,
-        "start_date": body.start_date,
-        "end_date": body.end_date
+        "registration_start_date": body.registration_start_date,
+        "registration_end_date": body.registration_end_date,
+        "document_upload_end_date": body.document_upload_end_date,
+        "selection_date": body.selection_date,
+        "quota": body.quota
     }
     updated = update_record("ppdb_waves", id, data)
     return updated
@@ -237,3 +246,122 @@ def deactivate_wave(id: str, user: dict = Depends(require_ppdb_admin)):
 def delete_wave_endpoint(id: str, user: dict = Depends(require_ppdb_admin)):
     delete_record("ppdb_waves", id)
     return {"success": True}
+
+def generate_random_password(length=8):
+    characters = string.ascii_letters + string.digits
+    return ''.join(random.choice(characters) for i in range(length))
+
+def generate_username(full_name: str):
+    base = full_name.split(' ')[0].lower()
+    base = "".join(c for c in base if c.isalnum())
+    suffix = ''.join(random.choice(string.digits) for _ in range(4))
+    return f"{base}{suffix}"
+
+@router.post("/register", status_code=201)
+def register_applicant(body: ApplicantRegister):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        # Auto-find active wave
+        wave_rows = conn.execute(text('SELECT id FROM ppdb_waves WHERE status = "active" LIMIT 1')).mappings().all()
+        if not wave_rows:
+            raise HTTPException(status_code=400, detail="Pendaftaran saat ini sedang ditutup atau belum dibuka.")
+            
+        active_wave_id = wave_rows[0]['id']
+            
+        # Check if email is already registered (and not expired)
+        existing = conn.execute(text('SELECT id FROM ppdb_applicants WHERE email = :email AND status != "expired" LIMIT 1'), {"email": body.email}).mappings().all()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email sudah terdaftar. Silakan login atau gunakan email lain.")
+
+    raw_password = generate_random_password()
+    username = generate_username(body.full_name)
+    
+    # Create user
+    user_data = {
+        "id": str(uuid.uuid4()),
+        "username": username,
+        "password_hash": hash_password(raw_password),
+        "email": body.email,
+        "full_name": body.full_name,
+        "user_type": "applicant"
+    }
+    created_user = create_record("users", user_data)
+    
+    # Create applicant
+    applicant_data = {
+        "id": f"applicant-{uuid.uuid4()}",
+        "wave_id": active_wave_id,
+        "user_id": created_user["id"],
+        "full_name": body.full_name,
+        "email": body.email,
+        "phone": body.phone,
+        "registration_path": body.registration_path,
+        "registration_level": body.registration_level,
+        "status": "pending_payment"
+    }
+    created_applicant = create_record("ppdb_applicants", applicant_data)
+    
+    return {
+        "success": True,
+        "message": "Pendaftaran berhasil",
+        "applicant_id": created_applicant["id"],
+        "credentials": {
+            "username": username,
+            "password": raw_password
+        }
+    }
+
+@router.get("/applicants")
+def get_applicants(
+    page: int = Query(1),
+    perPage: int = Query(20),
+    search: str = Query(""),
+    wave_id: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    user: dict = Depends(require_ppdb_read)
+):
+    pool = get_raw_pool()
+    offset = (page - 1) * perPage
+    
+    sql = 'SELECT a.*, w.name as wave_name FROM ppdb_applicants a LEFT JOIN ppdb_waves w ON a.wave_id = w.id WHERE 1=1'
+    count_sql = 'SELECT COUNT(*) as cnt FROM ppdb_applicants a WHERE 1=1'
+    params = {}
+    
+    if search:
+        sql += ' AND (a.full_name LIKE :search OR a.email LIKE :search)'
+        count_sql += ' AND (a.full_name LIKE :search OR a.email LIKE :search)'
+        params['search'] = f'%{search}%'
+        
+    if wave_id:
+        sql += ' AND a.wave_id = :wave_id'
+        count_sql += ' AND a.wave_id = :wave_id'
+        params['wave_id'] = wave_id
+        
+    if status:
+        sql += ' AND a.status = :status'
+        count_sql += ' AND a.status = :status'
+        params['status'] = status
+        
+    sql += ' ORDER BY a.created_at DESC LIMIT :limit OFFSET :offset'
+    params['limit'] = perPage
+    params['offset'] = offset
+    
+    with pool.connect() as conn:
+        rows = conn.execute(text(sql), params).mappings().all()
+        count_rows = conn.execute(text(count_sql), params).mappings().all()
+        
+    return {"data": [dict(r) for r in rows], "total": count_rows[0]['cnt']}
+
+@router.get("/dashboard/stats")
+def get_ppdb_dashboard(user: dict = Depends(require_ppdb_read)):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        periods_count = conn.execute(text('SELECT COUNT(*) as cnt FROM ppdb_periods')).scalar() or 0
+        waves_count = conn.execute(text('SELECT COUNT(*) as cnt FROM ppdb_waves')).scalar() or 0
+        active_period = conn.execute(text('SELECT name FROM ppdb_periods WHERE status = "active" LIMIT 1')).scalar()
+        
+    return {
+        "total_periods": periods_count,
+        "total_waves": waves_count,
+        "active_period_name": active_period
+    }

@@ -9,6 +9,8 @@ import NotFoundPage from './pages/errors/NotFoundPage'
 import ForbiddenPage from './pages/errors/ForbiddenPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import PeriodsPage from './pages/admin/ppdb/PeriodsPage'
+import LandingPage from './pages/public/LandingPage'
+import RegisterPage from './pages/public/RegisterPage'
 import * as api from './api/client'
 
 export default function App() {
@@ -31,6 +33,8 @@ export default function App() {
       <AuthProvider>
         <ToastProvider>
           <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/register" element={<RegisterPage />} />
             <Route path="/auth/login" element={<LoginPage />} />
 
             <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout><Outlet /></AdminLayout></ProtectedRoute>}>

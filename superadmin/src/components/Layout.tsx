@@ -2,7 +2,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Users, Shield, LogOut, User as UserIcon,
-  ChevronLeft, Menu,
+  ChevronLeft, Menu, GraduationCap
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { getSettings, API_BASE } from '../api/client'
@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/applicants', icon: GraduationCap, label: 'Pendaftar' },
   { to: '/users', icon: Users, label: 'Users' },
   { to: '/roles', icon: Shield, label: 'Roles' },
 ]

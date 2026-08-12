@@ -256,11 +256,16 @@ export async function getUserPagePermissions(userId: string): Promise<UserPagePe
   return apiFetch(`/users/${userId}/page-permissions`)
 }
 
-export async function updateUserPagePermissions(userId: string, pageIds: string[]): Promise<UserPagePermissions> {
-  return apiFetch(`/users/${userId}/page-permissions`, {
+export async function updateUserPagePermissions(id: string, page_ids: string[]) {
+  return await apiFetch(`/users/${id}/page-permissions`, {
     method: 'PUT',
-    body: JSON.stringify({ page_ids: pageIds }),
+    body: JSON.stringify({ page_ids }),
   })
+}
+
+export async function getApplicants(params?: any) {
+  const query = params ? '?' + new URLSearchParams(params) : ''
+  return await apiFetch(`/ppdb/applicants${query}`)
 }
 
 // ── Helpers ───────────────────────────────────────────────

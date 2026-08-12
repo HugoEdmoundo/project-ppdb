@@ -228,14 +228,29 @@ export default function UserFormPage() {
               <Label htmlFor="password" className="text-xs font-semibold text-foreground">
                 Password {isEdit ? '(kosongkan jika tidak ingin mengubah)' : '*'}
               </Label>
-              <Input
-                id="password"
-                type="password"
-                value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
-                placeholder={isEdit ? '••••••••' : 'Masukkan password'}
-                required={!isEdit}
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="password"
+                  type="text"
+                  value={form.password}
+                  onChange={e => setForm({ ...form, password: e.target.value })}
+                  placeholder={isEdit ? '••••••••' : 'Masukkan atau generate password'}
+                  required={!isEdit}
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+                    let pass = ''
+                    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length))
+                    setForm(prev => ({ ...prev, password: pass }))
+                  }}
+                  title="Generate Password"
+                >
+                  Generate
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">

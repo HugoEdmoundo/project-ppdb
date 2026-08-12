@@ -3,7 +3,7 @@ from typing import Optional, List, Union
 
 class UserCreate(BaseModel):
     username: str
-    password: str
+    password: Optional[str] = None
     email: Optional[str] = None
     full_name: Optional[str] = None
     role_id: Optional[str] = None

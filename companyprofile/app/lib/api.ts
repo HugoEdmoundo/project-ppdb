@@ -11,7 +11,7 @@ import type {
   Testimonial,
 } from './types'
 
-export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://backend-ptdarrahman.vercel.app').replace(/\/$/, '')
+export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://project-ppdb-murex.vercel.app').replace(/\/$/, '')
 const TOKEN_KEY = 'admin_token'
 const REFRESH_KEY = 'admin_refresh'
 const USER_KEY = 'admin_user'

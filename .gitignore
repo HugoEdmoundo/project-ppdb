@@ -42,3 +42,4 @@ venv/
 *.pem
 .vercel
 .eslintcache
+.wrangler/

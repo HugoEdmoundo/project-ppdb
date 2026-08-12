@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import os
 import shutil
 import asyncio
+import json
 
 from src.core.database import (
     list_all, get_by_column, get_by_id, get_by_slug, get_first,
@@ -15,18 +16,38 @@ from src.core.dependencies import get_current_user, require_cp_crud
 
 router = APIRouter()
 
+_event_queues: set[asyncio.Queue] = set()
+
+
+def broadcast_companyprofile_change():
+    """Kirim event 'change' ke semua klien SSE yang sedang terhubung."""
+    for q in list(_event_queues):
+        try:
+            q.put_nowait({"type": "change"})
+        except asyncio.QueueFull:
+            pass
+
+
 @router.get("/events")
 async def cp_events(request: Request):
+    queue: asyncio.Queue = asyncio.Queue()
+
     async def event_generator():
+        _event_queues.add(queue)
         try:
             while True:
                 if await request.is_disconnected():
                     break
-                yield "data: {\"type\": \"ping\"}\n\n"
-                await asyncio.sleep(15)
+                try:
+                    msg = await asyncio.wait_for(queue.get(), timeout=15)
+                    yield f"data: {json.dumps(msg)}\n\n"
+                except asyncio.TimeoutError:
+                    yield "data: {\"type\": \"ping\"}\n\n"
         except asyncio.CancelledError:
             pass
-            
+        finally:
+            _event_queues.discard(queue)
+
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
@@ -266,8 +287,10 @@ async def cp_settings_update(key: str, body: SettingUpdateReq, user: Dict[str, A
     existing = get_by_column("site_settings", "key", key)
     if existing:
         r = update_record("site_settings", existing["key"], {"value": body.value})
+        broadcast_companyprofile_change()
         return r
     r = create_record("site_settings", {"key": key, "value": body.value})
+    broadcast_companyprofile_change()
     return r
 
 class ContactInfoUpdateReq(BaseModel):

@@ -11,7 +11,7 @@ export function useSSE(module: string) {
     let es: EventSource | null = null
 
     function connect() {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://backend-ptdarrahman.vercel.app'
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://project-ppdb-murex.vercel.app'
       const url = `${API_BASE.replace(/\/$/, '')}/companyprofile/events`
 
       es = new EventSource(url)

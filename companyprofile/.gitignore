@@ -53,6 +53,11 @@ CLAUDE.md
 # opencode
 /.opencode
 
+# cloudflare (opennext / wrangler)
+/.open-next/
+/dev-dist/
+*.dev.vars
+
 # AI local plans & proxy
 /plan/
 proxy.ts

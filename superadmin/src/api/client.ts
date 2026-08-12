@@ -1,6 +1,6 @@
 import type { AuthUser, LoginResponse, User, Role, Module, UserPagePermissions } from '../types'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://backend-ptdarrahman.vercel.app'
+const API_BASE = import.meta.env.VITE_API_URL || 'https://project-ppdb-murex.vercel.app'
 
 const TOKEN_KEY = 'sa_token'
 const REFRESH_KEY = 'sa_refresh'

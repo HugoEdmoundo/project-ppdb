@@ -20,7 +20,9 @@ npm run lint    # ESLint
 npm run build   # Static build
 ```
 
-## Deploy
+## Deploy (Cloudflare Workers via OpenNext)
 ```bash
-vercel --prod
+npm install
+npm run deploy   # opennextjs-cloudflare build && deploy
 ```
+Env vars (build time): set `NEXT_PUBLIC_API_URL` & `NEXT_PUBLIC_PORTAL_URL` in the Cloudflare Worker/CI build env. See `DEPLOY.md` at repo root.

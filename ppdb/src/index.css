@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 43 30% 95%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 153 66% 26%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 43 30% 93%;
+    --secondary-foreground: 153 66% 20%;
+    --muted: 43 25% 92%;
+    --muted-foreground: 0 0% 42%;
+    --accent: 40 60% 58%;
+    --accent-foreground: 0 0% 10%;
+    --destructive: 3 100% 59%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 20% 88%;
+    --input: 40 20% 86%;
+    --ring: 153 66% 26%;
+    --radius: 0.75rem;
+
+    --font-heading: 'DM Sans', system-ui, sans-serif;
+    --font-display: 'Inter', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
+    font-family: 'Inter', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow-x: hidden;
+  }
+
+  button, a, input[type="submit"], input[type="reset"], input[type="button"] {
+    @apply select-none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.25);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary));
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-2xl border border-white/80 shadow-[0_8px_32px_0_rgba(26,107,71,0.06)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.9)] transition-all duration-300 rounded-2xl sm:rounded-3xl;
+  }
+
+  .glass-card-interactive {
+    @apply glass-card hover:bg-white/85 hover:shadow-[0_16px_40px_0_rgba(26,107,71,0.12)] hover:-translate-y-1 active:translate-y-0 active:scale-[0.99] cursor-pointer;
+  }
+
+  .glass-panel {
+    @apply bg-white/75 backdrop-blur-2xl border border-white/80 shadow-[0_12px_40px_0_rgba(0,0,0,0.06)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.85)] rounded-2xl sm:rounded-3xl;
+  }
+
+  .glass-navbar {
+    @apply bg-white/80 backdrop-blur-2xl border-b border-white/80 shadow-[0_4px_24px_rgba(26,107,71,0.04)] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)];
+  }
+
+  .glass-sidebar {
+    @apply bg-white/80 md:bg-white/70 backdrop-blur-2xl border-r border-white/80 shadow-[6px_0_24px_rgba(26,107,71,0.03)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)];
+  }
+
+  .glass-modal {
+    @apply bg-white/90 backdrop-blur-2xl border border-white/90 shadow-[0_24px_64px_rgba(0,0,0,0.25)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.9)] rounded-2xl sm:rounded-3xl;
+  }
+
+  .glass-input {
+    @apply bg-white/60 backdrop-blur-md border border-white/70 focus:bg-white/90 focus:border-primary focus:ring-4 focus:ring-primary/15 transition-all rounded-xl shadow-inner text-sm sm:text-base;
+  }
+
+  .sidebar-item-active {
+    @apply bg-primary/10 text-primary font-bold shadow-sm border-l-4 border-primary;
+  }
+
+  .glow-emerald {
+    box-shadow: 0 0 25px rgba(34, 197, 94, 0.25);
+  }
+
+  .glow-gold {
+    box-shadow: 0 0 25px rgba(212, 168, 83, 0.25);
+  }
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 1rem);
+}
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0.5rem);
+}
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0.5rem);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Modal scroll overrides (hide scrollbars) */
+[role="dialog"],
+[role="dialog"] * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+[role="dialog"]::-webkit-scrollbar,
+[role="dialog"] *::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+.animate-shake {
+  animation: shake 0.45s ease-in-out;
+}

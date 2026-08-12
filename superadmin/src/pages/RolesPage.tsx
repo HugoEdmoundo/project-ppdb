@@ -1,0 +1,178 @@
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Edit, Trash2, ShieldCheck } from 'lucide-react'
+import * as api from '../api/client'
+import { useToast } from '../components/Toast'
+import { useConfirm } from '../components/ConfirmDialog'
+import type { Role } from '../types'
+import { useAuth } from '../contexts/AuthContext'
+import { Button } from '../components/ui/button'
+import { Card } from '../components/ui/card'
+import { Badge } from '../components/ui/badge'
+import { Skeleton } from '../components/ui/skeleton'
+
+export default function RolesPage() {
+  const navigate = useNavigate()
+  const { toast } = useToast()
+  const { confirm, dialog: confirmDialog } = useConfirm()
+  const { user: currentUser, loading: authLoading } = useAuth()
+
+  const canCrud = currentUser?.user_type === 'superadmin'
+  const canView = currentUser?.user_type === 'superadmin'
+
+  const [roles, setRoles] = useState<Role[]>([])
+  const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!authLoading && currentUser && !canView) {
+      navigate('/')
+    }
+  }, [currentUser, authLoading, canView, navigate])
+
+  const fetchData = useCallback(async () => {
+    if (!canView) return
+    setLoading(true)
+    try {
+      const data = await api.getRoles()
+      setRoles(data)
+    } catch { /* ignore */ } finally {
+      setLoading(false)
+    }
+  }, [canView])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  async function handleDelete(role: Role) {
+    if (!canCrud) return
+    if (role.is_superadmin) return
+    const ok = await confirm({
+      title: 'Hapus Role',
+      message: `Yakin ingin menghapus role "${role.name}"?`,
+      confirmLabel: 'Ya, hapus',
+      danger: true,
+    })
+    if (!ok) return
+    setDeleting(role.id)
+    try {
+      await api.deleteRole(role.id)
+      toast('success', 'Role berhasil dihapus')
+      fetchData()
+    } catch (e: any) {
+      toast('error', e.message || 'Gagal menghapus')
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  function getPermissionBadges(permissions: Record<string, string>) {
+    return Object.entries(permissions).map(([mod, level]) => (
+      <Badge key={mod} variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
+        {mod}: {level}
+      </Badge>
+    ))
+  }
+
+  if (authLoading || (!authLoading && !canView)) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {confirmDialog}
+      <div className="space-y-6 animate-fadeIn">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Roles</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Kelola role dan hak akses pengguna</p>
+        </div>
+        {canCrud && (
+          <Button onClick={() => navigate('/roles/new')}>
+            <Plus />
+            Buat Role
+          </Button>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="grid gap-4">
+          {[1, 2, 3].map(i => (
+            <Card key={i} className="p-5">
+              <div className="flex gap-4">
+                <Skeleton className="h-10 w-10 rounded-xl" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : roles.length === 0 ? (
+        <Card className="p-12 text-center">
+          <p className="text-sm text-muted-foreground">Belum ada role</p>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {roles.map((role) => (
+            <Card key={role.id} className="p-5 transition-shadow hover:shadow-md">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                    role.is_superadmin ? 'bg-purple-100' : 'bg-primary/10'
+                  }`}>
+                    <ShieldCheck className={`h-5 w-5 ${role.is_superadmin ? 'text-purple-600' : 'text-primary'}`} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-foreground">{role.name}</h3>
+                      {role.is_superadmin && (
+                        <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">SUPERADMIN</Badge>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{role.description || '—'}</p>
+                  </div>
+                </div>
+                {canCrud && !role.is_superadmin && (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/roles/${role.id}`)}
+                    >
+                      <Edit /> Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => handleDelete(role)}
+                      disabled={deleting === role.id}
+                    >
+                      <Trash2 /> Hapus
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Permissions */}
+              {!role.is_superadmin && Object.keys(role.permissions || {}).length > 0 && (
+                <div className="mt-3 border-t border-border pt-3">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Permissions:</span>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {getPermissionBadges(role.permissions)}
+                  </div>
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+    </>
+  )
+}

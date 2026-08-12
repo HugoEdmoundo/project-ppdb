@@ -1,0 +1,228 @@
+import json
+import logging
+import re
+from datetime import datetime
+from typing import Any, Optional
+from uuid import uuid4
+from zoneinfo import ZoneInfo
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
+
+from src.core.config import settings
+
+WIB = ZoneInfo("Asia/Jakarta")
+
+PK_TABLES = {"site_settings"}
+NO_UPDATED_AT = {"refresh_tokens", "audit_log"}
+
+_IDENT_RE = re.compile(r"^[A-Za-z0-9_]+$")
+
+_engine: Optional[Engine] = None
+
+def _require_ident(name: str) -> str:
+    if not _IDENT_RE.match(name):
+        raise ValueError(f"Invalid identifier: {name}")
+    return name
+
+def get_raw_pool() -> Engine:
+    global _engine
+    if _engine is None:
+        connect_args: dict[str, Any] = {"charset": "utf8mb4"}
+        if settings.mysql_ssl:
+            connect_args["ssl"] = {}
+        url = (
+            f"mysql+pymysql://{settings.mysql_user}:{settings.mysql_password}"
+            f"@{settings.mysql_host}:{settings.mysql_port}/{settings.mysql_database}"
+        )
+        _engine = create_engine(url, pool_pre_ping=True, pool_recycle=3600, connect_args=connect_args)
+    return _engine
+
+def _run(sql: str, params: Optional[list[Any]] = None) -> Any:
+    with get_raw_pool().connect() as conn:
+        result = conn.execute(text(sql), params or [])
+        conn.commit()
+        if result.returns_rows:
+            return [dict(r._mapping) for r in result]
+        return result.rowcount
+
+def execute_raw(sql: str, params: Optional[list[Any]] = None) -> Any:
+    return _run(sql, params)
+
+def utcnow() -> str:
+    return datetime.now(WIB).strftime("%Y-%m-%d %H:%M:%S")
+
+def _pk_col(table: str) -> str:
+    return "`key`" if table in PK_TABLES else "id"
+
+def _prepare_value(val: Any) -> Any:
+    if val is None:
+        return None
+    if isinstance(val, (dict, list, tuple)):
+        return json.dumps(val, ensure_ascii=False)
+    return val
+
+def list_all(table: str, order: Optional[str] = None, limit: int = 100, skip: int = 0) -> list[dict[str, Any]]:
+    sql = f"SELECT * FROM `{_require_ident(table)}`"
+    if order:
+        parts = order.split(".")
+        col = parts[0]
+        direction = "DESC" if len(parts) > 1 and parts[1] == "desc" else "ASC"
+        sql += f" ORDER BY `{_require_ident(col)}` {direction}"
+    sql += f" LIMIT {int(limit)} OFFSET {int(skip)}"
+    return _run(sql)
+
+def get_by_id(table: str, id: str) -> Optional[dict[str, Any]]:
+    if not id:
+        return None
+    col = _pk_col(table)
+    sql = f"SELECT * FROM `{_require_ident(table)}` WHERE {col} = :id LIMIT 1"
+    rows = _run(sql, [{"id": id}])
+    return rows[0] if rows else None
+
+def get_by_column(table: str, column: str, value: Any) -> Optional[dict[str, Any]]:
+    sql = f"SELECT * FROM `{_require_ident(table)}` WHERE `{_require_ident(column)}` = :value LIMIT 1"
+    rows = _run(sql, [{"value": value}])
+    return rows[0] if rows else None
+
+def get_by_slug(table: str, slug: str) -> Optional[dict[str, Any]]:
+    sql = f"SELECT * FROM `{_require_ident(table)}` WHERE slug = :slug LIMIT 1"
+    rows = _run(sql, [{"slug": slug}])
+    return rows[0] if rows else None
+
+def get_first(table: str) -> Optional[dict[str, Any]]:
+    sql = f"SELECT * FROM `{_require_ident(table)}` LIMIT 1"
+    rows = _run(sql)
+    return rows[0] if rows else None
+
+def create_record(table: str, data: dict[str, Any]) -> dict[str, Any]:
+    payload = dict(data)
+    if table not in PK_TABLES and "id" not in payload:
+        payload["id"] = str(uuid4())
+    if "created_at" not in payload:
+        payload["created_at"] = utcnow()
+    if table not in NO_UPDATED_AT and "updated_at" not in payload:
+        payload["updated_at"] = utcnow()
+
+    cleaned = {k: _prepare_value(v) for k, v in payload.items()}
+    keys = list(cleaned.keys())
+    
+    placeholders = ", ".join(f":{k}" for k in keys)
+    cols = ", ".join(f"`{_require_ident(k)}`" for k in keys)
+    sql = f"INSERT INTO `{_require_ident(table)}` ({cols}) VALUES ({placeholders})"
+    _run(sql, [cleaned])
+
+    if table in PK_TABLES:
+        return cleaned
+    return get_by_id(table, cleaned["id"])
+
+def update_record(table: str, id: str, data: dict[str, Any]) -> Optional[dict[str, Any]]:
+    if not id:
+        return None
+    payload = dict(data)
+    if table not in NO_UPDATED_AT:
+        payload["updated_at"] = utcnow()
+
+    cleaned = {k: _prepare_value(v) for k, v in payload.items()}
+    keys = list(cleaned.keys())
+    
+    set_clause = ", ".join(f"`{_require_ident(k)}` = :{k}" for k in keys)
+    
+    col = _pk_col(table)
+    sql = f"UPDATE `{_require_ident(table)}` SET {set_clause} WHERE {col} = :_row_id"
+    cleaned["_row_id"] = id
+    _run(sql, [cleaned])
+    return get_by_id(table, id)
+
+def delete_record(table: str, id: str) -> bool:
+    if not id:
+        return False
+    col = _pk_col(table)
+    sql = f"DELETE FROM `{_require_ident(table)}` WHERE {col} = :id"
+    return _run(sql, [{"id": id}]) > 0
+
+def search_paginated(
+    table: str,
+    search: str = "",
+    columns: Optional[list[str]] = None,
+    page: int = 1,
+    per_page: int = 20,
+    order: Optional[str] = None,
+    filters: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    offset = (page - 1) * per_page
+    where_clause = ""
+    params_dict = {}
+
+    if search and columns:
+        or_clauses = " OR ".join(f"`{_require_ident(c)}` LIKE :search_pattern" for c in columns)
+        where_clause = f"WHERE ({or_clauses})"
+        escaped_search = search.replace('%', '\\%').replace('_', '\\_')
+        params_dict["search_pattern"] = f"%{escaped_search}%"
+
+    if filters:
+        filter_clauses = []
+        for i, (col, val) in enumerate(filters.items()):
+            if val is not None:
+                if isinstance(val, (list, tuple)):
+                    if val:
+                        ph_list = []
+                        for j, item in enumerate(val):
+                            ph_key = f"in_{i}_{j}"
+                            ph_list.append(f":{ph_key}")
+                            params_dict[ph_key] = item
+                        placeholders = ", ".join(ph_list)
+                        filter_clauses.append(f"`{_require_ident(col)}` IN ({placeholders})")
+                    else:
+                        filter_clauses.append("1 = 0")
+                else:
+                    ph_key = f"eq_{i}"
+                    filter_clauses.append(f"`{_require_ident(col)}` = :{ph_key}")
+                    params_dict[ph_key] = val
+        if filter_clauses:
+            joined = " AND ".join(filter_clauses)
+            where_clause = f"{where_clause} AND {joined}" if where_clause else f"WHERE {joined}"
+
+    count_sql = f"SELECT COUNT(*) AS total FROM `{_require_ident(table)}` {where_clause}"
+    count_rows = _run(count_sql, [params_dict])
+    total = int(count_rows[0]["total"]) if count_rows else 0
+
+    data_sql = f"SELECT * FROM `{_require_ident(table)}` {where_clause}"
+    if order:
+        parts = order.split(".")
+        col = parts[0]
+        direction = "DESC" if len(parts) > 1 and parts[1] == "desc" else "ASC"
+        data_sql += f" ORDER BY `{_require_ident(col)}` {direction}"
+    data_sql += f" LIMIT {int(per_page)} OFFSET {int(offset)}"
+    data = _run(data_sql, [params_dict])
+
+    return {"data": data, "total": total}
+
+def audit_log(
+    user_id: Optional[str],
+    user_username: Optional[str],
+    action: str,
+    entity_type: str,
+    entity_id: Optional[str] = None,
+    changes: Optional[dict[str, Any]] = None,
+    ip_address: Optional[str] = None,
+) -> None:
+    try:
+        create_record(
+            "audit_log",
+            {
+                "user_id": user_id,
+                "user_username": user_username,
+                "action": action,
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "changes": json.dumps(changes, ensure_ascii=False) if changes is not None else None,
+                "ip_address": ip_address,
+            },
+        )
+    except Exception:
+        logging.exception("audit_log failed")
+
+def get_active_period_id() -> Optional[str]:
+    rows = _run("SELECT id FROM ppdb_periods WHERE status = 'active' LIMIT 1")
+    return rows[0]["id"] if rows else None

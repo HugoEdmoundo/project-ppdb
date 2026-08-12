@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": ".open-next/worker.js",
-  "name": "companyprofile-ptdarrahman",
+  "name": "companyprofile",
   "compatibility_date": "2026-08-12",
   "compatibility_flags": [
     // Enable Node.js API compatibility for Next.js
@@ -17,7 +17,7 @@
     {
       "binding": "WORKER_SELF_REFERENCE",
       // Must match the "name" of this worker
-      "service": "companyprofile-ptdarrahman"
+      "service": "companyprofile"
     }
   ]
   // Optional: enable Next.js image optimization via Cloudflare Images:

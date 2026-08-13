@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   AlertTriangle, SearchX, Lock, KeyRound,
   FileX, Gauge, Server, CloudOff, Clock,
-  Home, RefreshCw, ArrowRight,
+  Home, RefreshCw, ArrowRight, Undo2,
 } from 'lucide-react'
 
 interface ErrorConfig {
@@ -14,6 +14,7 @@ interface ErrorConfig {
   titleEn: string
   description: string
   descriptionEn: string
+  hint: string
   actions: 'retry-home' | 'home-contact' | 'home-signin' | 'home'
 }
 
@@ -24,6 +25,7 @@ const errors: Record<number, ErrorConfig> = {
     titleEn: 'Bad Request',
     description: 'Maaf, permintaan tidak dapat diproses karena data yang dikirim tidak sesuai. Silakan periksa kembali input Anda.',
     descriptionEn: 'The request could not be processed due to invalid data. Please check your input.',
+    hint: 'Periksa kembali formulir atau URL yang Anda masukkan.',
     actions: 'home-contact',
   },
   401: {
@@ -32,6 +34,7 @@ const errors: Record<number, ErrorConfig> = {
     titleEn: 'Unauthorized',
     description: 'Anda perlu masuk terlebih dahulu untuk mengakses halaman ini.',
     descriptionEn: 'You need to sign in to access this page.',
+    hint: 'Silakan masuk menggunakan akun Anda untuk melanjutkan.',
     actions: 'home-signin',
   },
   403: {
@@ -40,6 +43,7 @@ const errors: Record<number, ErrorConfig> = {
     titleEn: 'Forbidden',
     description: 'Maaf, Anda tidak memiliki izin untuk mengakses halaman ini.',
     descriptionEn: 'You do not have permission to access this page.',
+    hint: 'Hubungi kami bila Anda merasa ini sebuah kesalahan.',
     actions: 'home-contact',
   },
   404: {
@@ -48,6 +52,7 @@ const errors: Record<number, ErrorConfig> = {
     titleEn: 'Page Not Found',
     description: 'Halaman yang Anda cari tidak ditemukan atau telah dipindahkan. Coba periksa kembali URL-nya.',
     descriptionEn: 'The page you are looking for could not be found or has been moved.',
+    hint: 'Anda dapat kembali ke halaman sebelumnya atau menjelajah menu di atas.',
     actions: 'home-contact',
   },
   429: {
@@ -56,6 +61,7 @@ const errors: Record<number, ErrorConfig> = {
     titleEn: 'Too Many Requests',
     description: 'Anda telah melampaui batas permintaan. Silakan tunggu beberapa saat sebelum mencoba lagi.',
     descriptionEn: 'You have exceeded the request limit. Please wait before trying again.',
+    hint: 'Mohon tunggu sebentar, lalu coba kembali.',
     actions: 'retry-home',
   },
   500: {
@@ -64,6 +70,7 @@ const errors: Record<number, ErrorConfig> = {
     titleEn: 'Server Error',
     description: 'Maaf, terjadi kesalahan yang tidak terduga. Tim teknis kami telah diberitahu dan akan segera memperbaikinya.',
     descriptionEn: 'An unexpected error occurred. Our team has been notified and will fix it soon.',
+    hint: 'Bila masalah berlanjut, silakan hubungi kami.',
     actions: 'retry-home',
   },
   502: {
@@ -72,6 +79,7 @@ const errors: Record<number, ErrorConfig> = {
     titleEn: 'Bad Gateway',
     description: 'Server menerima respons yang tidak valid dari server upstream. Silakan coba lagi nanti.',
     descriptionEn: 'The server received an invalid response from an upstream server. Please try again later.',
+    hint: 'Coba muat ulang halaman setelah beberapa saat.',
     actions: 'retry-home',
   },
   503: {
@@ -80,6 +88,7 @@ const errors: Record<number, ErrorConfig> = {
     titleEn: 'Service Unavailable',
     description: 'Server sedang tidak tersedia karena pemeliharaan atau kelebihan beban. Silakan coba lagi nanti.',
     descriptionEn: 'The server is temporarily unavailable due to maintenance or overload. Please try again later.',
+    hint: 'Kami sedang dalam pemeliharaan. Mohon kembali beberapa saat lagi.',
     actions: 'retry-home',
   },
   504: {
@@ -88,6 +97,7 @@ const errors: Record<number, ErrorConfig> = {
     titleEn: 'Gateway Timeout',
     description: 'Server terlalu lama merespons. Silakan coba lagi.',
     descriptionEn: 'The server took too long to respond. Please try again.',
+    hint: 'Koneksi Anda mungkin lambat. Coba muat ulang halaman.',
     actions: 'retry-home',
   },
 }
@@ -95,6 +105,7 @@ const errors: Record<number, ErrorConfig> = {
 interface ErrorDisplayProps {
   status?: number
   retry?: () => void
+  digest?: string
 }
 
 function useMounted() {
@@ -106,7 +117,12 @@ function useMounted() {
   return mounted
 }
 
-export default function ErrorDisplay({ status = 500, retry }: ErrorDisplayProps) {
+const btnPrimary =
+  'inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-white'
+const btnOutline =
+  'inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border border-[var(--border)] text-[var(--text)] hover:bg-[var(--accent-subtle)] hover:border-[var(--accent)]/30 hover:text-[var(--accent)] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-white'
+
+export default function ErrorDisplay({ status = 500, retry, digest }: ErrorDisplayProps) {
   const config = errors[status] || errors[500]
   const Icon = config.icon
   const mounted = useMounted()
@@ -115,6 +131,9 @@ export default function ErrorDisplay({ status = 500, retry }: ErrorDisplayProps)
     <div className="relative min-h-dvh flex items-center justify-center overflow-hidden bg-[var(--bg)] px-4 py-8 md:py-12">
       {/* Gradient base */}
       <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-subtle)] via-transparent to-[var(--color-gold-subtle)] opacity-60" />
+
+      {/* Decorative pattern */}
+      <div className="absolute inset-0 bg-pattern-dots-gold opacity-[0.05]" />
 
       {/* Decorative orbs — smaller on mobile, larger on desktop */}
       <div className="absolute -top-24 -right-24 md:-top-32 md:-right-32 w-[300px] h-[300px] md:w-[500px] md:h-[500px] rounded-full bg-[var(--accent-subtle)] opacity-20 md:opacity-30 blur-3xl" />
@@ -128,7 +147,10 @@ export default function ErrorDisplay({ status = 500, retry }: ErrorDisplayProps)
 
       {/* Main card */}
       <div
-        className="relative z-10 w-full max-w-sm sm:max-w-md"
+        role="alert"
+        aria-live="assertive"
+        aria-atomic="true"
+        className="relative z-10 w-full max-w-sm sm:max-w-md animate-empty-in"
         style={{
           opacity: mounted ? 1 : 0,
           transform: mounted ? 'translateY(0)' : 'translateY(16px)',
@@ -145,11 +167,15 @@ export default function ErrorDisplay({ status = 500, retry }: ErrorDisplayProps)
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--accent)]/30 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[var(--accent-gold)]/20 to-transparent" />
 
-            {/* Icon */}
-            <div className="relative mx-auto mb-5 md:mb-6 w-14 h-14 md:w-16 md:h-16">
-              <div className="absolute inset-0 rounded-2xl bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/10" />
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[var(--accent)]/5 to-[var(--accent-gold)]/5" />
-              <Icon className="relative w-7 h-7 md:w-8 md:h-8 text-[var(--accent)] mx-auto mt-3.5 md:mt-4" />
+            {/* Icon with pulsing ring + float */}
+            <div className="relative mx-auto mb-5 md:mb-6 w-16 h-16 md:w-18 md:h-18">
+              <div
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 md:w-28 md:h-28 rounded-full"
+                style={{ background: 'radial-gradient(circle, var(--accent-gold) 0%, transparent 70%)', animation: 'ringPulse 2.5s ease-in-out infinite' }}
+              />
+              <div className="animate-icon-float relative w-16 h-16 md:w-18 md:h-18 rounded-2xl bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/10 flex items-center justify-center shadow-sm">
+                <Icon className="w-8 h-8 md:w-9 md:h-9 text-[var(--accent)]" />
+              </div>
             </div>
 
             {/* Status */}
@@ -169,14 +195,36 @@ export default function ErrorDisplay({ status = 500, retry }: ErrorDisplayProps)
             </p>
 
             {/* Description */}
-            <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed mb-6 md:mb-8 max-w-xs mx-auto px-2">
+            <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed mb-3 md:mb-4 max-w-xs mx-auto px-2">
               {config.description}
             </p>
+
+            {/* Contextual hint */}
+            <p className="text-[11px] sm:text-xs text-[var(--text-muted)]/80 italic mb-3 md:mb-4 max-w-xs mx-auto px-2">
+              {config.hint}
+            </p>
+
+            {digest && (
+              <p className="text-[11px] md:text-xs text-[var(--text-muted)] font-mono mb-6 md:mb-8 bg-[var(--accent-subtle)] rounded-lg px-2.5 md:px-3 py-1.5 inline-block">
+                Error ID: {digest}
+              </p>
+            )}
 
             {/* Actions — full-width buttons on mobile */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 md:gap-3 px-2">
               {renderActions(config.actions, retry)}
             </div>
+
+            {/* Back link for navigation errors */}
+            {status === 404 && (
+              <button
+                onClick={() => window.history.length > 1 ? window.history.back() : window.location.assign('/')}
+                className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-md"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+                Kembali ke halaman sebelumnya
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -185,8 +233,6 @@ export default function ErrorDisplay({ status = 500, retry }: ErrorDisplayProps)
 }
 
 function renderActions(type: ErrorConfig['actions'], retry?: () => void) {
-  const base = 'inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200'
-
   switch (type) {
     case 'retry-home':
       return (
@@ -194,7 +240,7 @@ function renderActions(type: ErrorConfig['actions'], retry?: () => void) {
           {retry && (
             <button
               onClick={retry}
-              className={`${base} bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0`}
+              className={btnPrimary}
             >
               <RefreshCw className="w-4 h-4" />
               Coba Lagi
@@ -202,7 +248,7 @@ function renderActions(type: ErrorConfig['actions'], retry?: () => void) {
           )}
           <Link
             href="/"
-            className={`${base} border border-[var(--border)] text-[var(--text)] hover:bg-[var(--accent-subtle)] hover:border-[var(--accent)]/30 hover:text-[var(--accent)] active:scale-[0.98]`}
+            className={btnOutline}
           >
             <Home className="w-4 h-4" />
             Ke Beranda
@@ -214,14 +260,14 @@ function renderActions(type: ErrorConfig['actions'], retry?: () => void) {
         <>
           <Link
             href="/"
-            className={`${base} bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0`}
+            className={btnPrimary}
           >
             <Home className="w-4 h-4" />
             Ke Beranda
           </Link>
           <Link
             href="/contact"
-            className={`${base} border border-[var(--border)] text-[var(--text)] hover:bg-[var(--accent-subtle)] hover:border-[var(--accent)]/30 hover:text-[var(--accent)] active:scale-[0.98]`}
+            className={btnOutline}
           >
             <ArrowRight className="w-4 h-4" />
             Hubungi Kami
@@ -233,14 +279,14 @@ function renderActions(type: ErrorConfig['actions'], retry?: () => void) {
         <>
           <Link
             href="/auth"
-            className={`${base} bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0`}
+            className={btnPrimary}
           >
             <ArrowRight className="w-4 h-4" />
             Masuk
           </Link>
           <Link
             href="/"
-            className={`${base} border border-[var(--border)] text-[var(--text)] hover:bg-[var(--accent-subtle)] hover:border-[var(--accent)]/30 hover:text-[var(--accent)] active:scale-[0.98]`}
+            className={btnOutline}
           >
             <Home className="w-4 h-4" />
             Ke Beranda
@@ -251,7 +297,7 @@ function renderActions(type: ErrorConfig['actions'], retry?: () => void) {
       return (
         <Link
           href="/"
-          className={`${base} bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0`}
+          className={btnPrimary}
         >
           <Home className="w-4 h-4" />
           Ke Beranda

@@ -11,5 +11,5 @@ export default function ErrorPage({
 }) {
   const status = (error as Error & { status?: number })?.status || 500
 
-  return <ErrorDisplay status={status} retry={reset} />
+  return <ErrorDisplay status={status} retry={reset} digest={error.digest} />
 }

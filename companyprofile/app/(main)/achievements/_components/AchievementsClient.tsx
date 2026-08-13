@@ -94,7 +94,18 @@ export default function AchievementsClient({ achievements }: { achievements: Ach
             <EmptyState
               icon={Award}
               title="Belum Ada Prestasi"
-              description="Belum ada prestasi yang tercatat untuk tahun ini."
+              description={yearFilter === 'all'
+                ? 'Belum ada prestasi yang tercatat.'
+                : `Tidak ada prestasi yang tercatat pada tahun ${yearFilter}.`}
+              action={yearFilter !== 'all' ? (
+                <button
+                  onClick={() => setYearFilter('all')}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:bg-[var(--accent)]/90 shadow-md transition-all"
+                >
+                  <Award className="w-4 h-4" />
+                  Lihat Semua Tahun
+                </button>
+              ) : undefined}
             />
           )}
         </div>

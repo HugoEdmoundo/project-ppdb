@@ -141,6 +141,15 @@ export default function NewsClient({ news }: { news: NewsArticle[] }) {
               icon={SearchX}
               title="Artikel Tidak Ditemukan"
               description="Tidak ada artikel yang cocok dengan pencarian Anda. Coba gunakan kata kunci lain."
+              action={searchQuery ? (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:bg-[var(--accent)]/90 shadow-md transition-all"
+                >
+                  <SearchX className="w-4 h-4" />
+                  Reset Pencarian
+                </button>
+              ) : undefined}
             />
           )}
         </div>

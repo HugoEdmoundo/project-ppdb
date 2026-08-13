@@ -301,6 +301,7 @@ def register_applicant(body: ApplicantRegister):
         "birth_place": body.birth_place,
         "birth_date": body.birth_date,
         "nisn": body.nisn,
+        "nik": body.nik,
         "parent_name": body.parent_name,
         "previous_school": body.previous_school,
         "major_choice": body.major_choice,

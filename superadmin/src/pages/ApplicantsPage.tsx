@@ -165,8 +165,12 @@ export default function ApplicantsPage() {
                 </div>
 
                 <div>
-                  <p className="text-muted-foreground text-xs">NISN / NIK</p>
+                  <p className="text-muted-foreground text-xs">NISN</p>
                   <p className="font-medium">{selectedApplicant.nisn || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">NIK</p>
+                  <p className="font-medium">{selectedApplicant.nik || '-'}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs">Nama Orang Tua/Wali</p>

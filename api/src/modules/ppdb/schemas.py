@@ -39,6 +39,7 @@ class ApplicantRegister(BaseModel):
     birth_place: Optional[str] = None
     birth_date: Optional[str] = None
     nisn: Optional[str] = None
+    nik: Optional[str] = None
     parent_name: Optional[str] = None
     previous_school: Optional[str] = None
     major_choice: Optional[str] = None

@@ -22,6 +22,7 @@ export default function RegisterPage() {
     birth_place: '',
     birth_date: '',
     nisn: '',
+    nik: '',
     email: '',
     phone: '',
     parent_name: '',
@@ -181,11 +182,20 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="nisn">NISN / NIK *</Label>
+                    <Label htmlFor="nisn">NISN *</Label>
                     <Input 
                       id="nisn" required 
                       value={formData.nisn}
                       onChange={(e) => setFormData({...formData, nisn: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="nik">NIK *</Label>
+                    <Input 
+                      id="nik" required 
+                      value={formData.nik}
+                      onChange={(e) => setFormData({...formData, nik: e.target.value})}
                     />
                   </div>
 

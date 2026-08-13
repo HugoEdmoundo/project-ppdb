@@ -2,27 +2,22 @@
 
 Aplikasi Penerimaan Peserta Didik Baru (Vite + React + TypeScript + Tailwind) untuk Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.
 
-> ⚠️ **BACA DOKUMENTASI BARU DULU** — project PPDB sedang **rebuild dari nol** (model Periode → Gelombang).
-> Dokumentasi terbaru (source of truth): `README.md`, `PRD.md`, `FLOW.md`, `ERD.md`, `plan/PLAN.md`.
-> Semua dokumen lama sudah dipindah ke `archive/` dan **OBSOLETE** — jangan dibaca untuk kebutuhan teknis.
-
 ## Stack
-- Vite + React 18 + TypeScript
+- Vite + React + TypeScript
 - Tailwind CSS, lucide-react, shadcn-style UI components (`src/components/ui`)
+- Deploy: Cloudflare Pages (static)
 - API: `src/api/client.ts` (fetch wrapper + JWT auto-refresh), services di `src/services`
 
-## Routes (saat ini)
+## Backend
+- Backend = FastAPI monolitik di `../api/` (bukan folder `backend/`, bukan Hono).
+- PPDB API di `/ppdb/*` (`/ppdb/periods`, `/ppdb/waves`, `/ppdb/applicants`, `/ppdb/dashboard/stats`, `/ppdb/register` publik).
+- Auth (login calon murid & admin): `/auth/*`.
+- Skema PPDB v2: lihat `../api/alembic/versions/0002_ppdb_v2.py` (kolom `academic_year`/`description` di periode; `registration_start_date`/`registration_end_date`/`document_upload_end_date`/`selection_date`/`quota` di wave).
+
+## Routes
 - `/auth/login`, `/auth/register`
 - `/admin` — dashboard admin PPDB (AdminLayout + AdminDashboardPage)
 - `/403`, `*` — error pages
-
-> Catatan: halaman CRUD (Periods, Waves, Applicants, Documents, Payments, Selection, dll.) belum dibangun. Route yang dipakai tombol quick action di dashboard (`/admin/applicants`, `/admin/payments`, dst.) masih 404.
-
-## Status backend & iterasi saat ini
-
-- Backend PPDB lama **dihapus total** dan dibangun ulang. Iterasi pertama = **modul Periode & Gelombang** (config) di `backend/`.
-- Model & aturan aktivasi: lihat `PRD.md` (ID) & `FLOW.md`. Skema DB: `ERD.md` (EN). Rencana implementasi: `plan/PLAN.md` (EN).
-- Backend stack aktual: **Hono (Bun/TypeScript) + MySQL** di folder `backend/` (bukan Python FastAPI).
 
 ## ATURAN WAJIB: Tombol CRUD mengikuti permission
 
@@ -34,7 +29,7 @@ Semua tombol CRUD (Tambah/Buat/Edit/Ubah/Hapus/Simpan, kolom "Aksi") HANYA diren
 - Level modul yang berlaku: `none < dashboard < read < crud`
 - Modul keys: `ppdb`, `payment`, `selection`, `notification`, `dashboard`, `applicant_dashboard`, `companyprofile`
 - `is_superadmin` selalu bypass.
-- Enforce keamanan ada di backend (`requireModuleAccess`); jangan andalkan frontend saja.
+- Enforce keamanan ada di backend (`require_ppdb_admin` di `src/core/dependencies.py`); jangan andalkan frontend saja.
 
 ## Permission plumbing
 - `usePermission()` di `src/contexts/AuthContext.tsx` → `hasModuleAccess(module, level)`, `isAdmin()`, `hasApplicantAccess()`, `pagePermissions`, `permissions`, `isSuperadmin`.

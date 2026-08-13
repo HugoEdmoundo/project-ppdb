@@ -121,9 +121,13 @@ def require_cp_crud() -> Callable:
     return require_module_access(Module.COMPANYPROFILE, AccessLevel.CRUD)
 
 
-def require_ppdb_read() -> Callable:
-    return require_module_access(Module.PPDB, AccessLevel.READ)
+async def require_ppdb_read(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+    if not await has_module_access(user, Module.PPDB, AccessLevel.READ):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return user
 
 
-def require_ppdb_admin() -> Callable:
-    return require_module_access(Module.PPDB, AccessLevel.CRUD)
+async def require_ppdb_admin(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+    if not await has_module_access(user, Module.PPDB, AccessLevel.CRUD):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return user

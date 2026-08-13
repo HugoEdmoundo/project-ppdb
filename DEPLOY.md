@@ -20,7 +20,9 @@ Sudah ter-deploy di https://project-ppdb-murex.vercel.app. Untuk update, deploy 
 - **Dokumentasi API**: `/scalar` (Swagger `/docs` & `/redoc` sengaja dimatikan).
 - **Favicon**: route `/favicon.ico` dibalikin SVG, tidak 404 lagi.
 - **Config file**: `vercel.json` (maxDuration 60s, exclude `__pycache__`), `.python-version` (3.12), `.vercelignore`.
-- **CORS**: **belum ditutup** — masih default list localhost. Nanti dibatasi via env `CORS_ORIGINS` (koma-koma) di Vercel setelah domain Cloudflare final.
+- **CORS**: dibaca dari env `CORS_ORIGINS` (koma-koma). Default `*` bila kosong; tutup dengan domain Cloudflare final.
+- **Migrasi DB**: jalankan sekali sebelum/tiap deploy — `cd api && .venv\Scripts\alembic.exe upgrade head` (migrations idempotent/add-only, aman untuk live DB).
+- **Seeder**: `cd api && .venv\Scripts\python.exe -m scripts.seed` (idempotent; membuat modules/pages/roles, dan memastikan superadmin sesuai `SEED_SUPERADMIN_*`).
 
 ### Env vars (Vercel dashboard → Settings → Environment Variables)
 ```
@@ -32,10 +34,22 @@ MYSQL_DATABASE=ptdarrahman
 MYSQL_SSL=true|false
 JWT_SECRET=...
 JWT_EXPIRY_HOURS=24
-UPLOAD_DIR=uploads
+CORS_ORIGINS=https://ptdarrahman.sch.id,https://ppdb.ptdarrahman.sch.id,...
+
+# Uploads (file upload -> Cloudinary, bukan disk lokal)
+UPLOAD_PROVIDER=cloudinary
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+CLOUDINARY_FOLDER=ptdarrahman
+
+# Seeder superadmin bootstrap
+SEED_SUPERADMIN_USERNAME=superadmin
+SEED_SUPERADMIN_PASSWORD=...
+SEED_SUPERADMIN_EMAIL=...
 ```
 
-> ⚠️ `UPLOAD_DIR` menulis ke disk lokal yang **ephemeral** di serverless Vercel. File upload (`/companyprofile/upload`, `/auth/upload`) perlu dipindah ke object storage (S3/Cloudflare R2) nanti.
+> Provider upload `local` (`UPLOAD_PROVIDER=local`, `UPLOAD_DIR=uploads`) hanya untuk dev — Vercel serverless punya disk ephemeral, jangan dipakai produksi.
 
 ---
 

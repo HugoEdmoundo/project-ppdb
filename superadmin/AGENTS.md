@@ -5,6 +5,7 @@ Panel manajemen users & roles (Vite + React + TypeScript + Tailwind) untuk Pesan
 ## Stack
 - Vite + React 18 + TypeScript
 - Tailwind CSS, lucide-react
+- Deploy: Cloudflare Pages (static)
 - API: `src/api/client.ts` (fetch wrapper + JWT auto-refresh)
 
 ## Akses: KHUSUS superadmin
@@ -25,6 +26,10 @@ Panel manajemen users & roles (Vite + React + TypeScript + Tailwind) untuk Pesan
 - Daftar modul yang bisa diberi permission per role: hanya **Company Profile** dan **PPDB**.
 - Group PPDB menulis semua key sub-modul sekaligus: `ppdb`, `payment`, `selection`, `notification`, `dashboard`, `applicant_dashboard`.
 - MODULE_LABELS di `src/types/index.ts` hanya berisi `companyprofile` & `ppdb`.
+
+## Backend
+- Backend = FastAPI monolitik di `../api/`; endpoints superadmin: `/users/*`, `/roles/*`, `/modules/*`, `/superadmin/*` (semua guard `require_superadmin`).
+- API base default: `https://project-ppdb-murex.vercel.app`.
 
 ## Build
 - `npm run dev` — dev server (Vite)

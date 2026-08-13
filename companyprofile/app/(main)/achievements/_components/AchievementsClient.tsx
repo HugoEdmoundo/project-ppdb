@@ -6,6 +6,7 @@ import PageHeader from '@/app/components/layout/PageHeader'
 import { useScrollReveal } from '@/app/hooks/useScrollAnimations'
 import type { Achievement } from '@/app/lib/types'
 import { Award } from 'lucide-react'
+import EmptyState from '@/app/components/ui/EmptyState'
 
 export default function AchievementsClient({ achievements }: { achievements: Achievement[] }) {
   const sectionRef = useRef<HTMLElement>(null)
@@ -90,10 +91,11 @@ export default function AchievementsClient({ achievements }: { achievements: Ach
             })}
           </div>
           ) : (
-            <div className="text-center py-16">
-              <Award className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4" />
-              <p className="text-[var(--text-muted)]">Belum ada prestasi untuk tahun ini.</p>
-            </div>
+            <EmptyState
+              icon={Award}
+              title="Belum Ada Prestasi"
+              description="Belum ada prestasi yang tercatat untuk tahun ini."
+            />
           )}
         </div>
       </section>

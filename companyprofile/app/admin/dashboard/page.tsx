@@ -18,6 +18,7 @@ import {
 import ProfileDropdown from '@/app/components/ProfileDropdown'
 import ProfileModal from '@/app/components/ProfileModal'
 import CrossTabSync from '@/app/components/CrossTabSync'
+import EmptyState from '@/app/components/ui/EmptyState'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -1162,35 +1163,25 @@ export default function AdminDashboard() {
 
           {/* Empty state */}
           {activeTab === 'settings' && !loading && items.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/10 flex items-center justify-center mb-4">
-                <Settings className="w-6 h-6 text-[var(--accent)]" />
-              </div>
-              <h3 className="font-[var(--font-heading)] text-base font-semibold text-[var(--text)] mb-1">
-                Belum Ada Pengaturan
-              </h3>
-              <p className="text-sm text-[var(--text-muted)] mb-5 max-w-xs">
-                Tidak ada pengaturan yang tersedia.
-              </p>
-            </div>
+            <EmptyState
+              icon={Settings}
+              title="Belum Ada Pengaturan"
+              description="Tidak ada pengaturan yang tersedia."
+            />
           )}
 
           {activeTab !== 'settings' && !loading && !error && items.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/10 flex items-center justify-center mb-4">
-                <LayoutDashboard className="w-6 h-6 text-[var(--accent)]" />
-              </div>
-              <h3 className="font-[var(--font-heading)] text-base font-semibold text-[var(--text)] mb-1">
-                Belum Ada Data
-              </h3>
-              <p className="text-sm text-[var(--text-muted)] mb-5 max-w-xs">
-                {activeTab === 'contact'
+            <EmptyState
+              icon={LayoutDashboard}
+              title="Belum Ada Data"
+              description={
+                activeTab === 'contact'
                   ? 'Info kontak belum diatur.'
                   : canCrud
                     ? 'Belum ada item di sini. Klik "Buat Baru" untuk memulai.'
-                    : 'Belum ada item di sini.'}
-              </p>
-              {canCrud && activeTab !== 'contact' && (
+                    : 'Belum ada item di sini.'
+              }
+              action={canCrud && activeTab !== 'contact' ? (
                 <button
                   onClick={openCreate}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:bg-[var(--accent)]/90 shadow-md transition-all"
@@ -1198,8 +1189,8 @@ export default function AdminDashboard() {
                   <Plus className="w-4 h-4" />
                   Buat Baru
                 </button>
-              )}
-            </div>
+              ) : undefined}
+            />
           )}
 
           {/* Settings tab */}

@@ -7,7 +7,8 @@ import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog'
-import { Eye, Search, GraduationCap } from 'lucide-react'
+import { EmptyState } from '../components/ui/EmptyState'
+import { Eye, Search, GraduationCap, UserRoundSearch } from 'lucide-react'
 
 export default function ApplicantsPage() {
   const { toast } = useToast()
@@ -82,7 +83,16 @@ export default function ApplicantsPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-8">Memuat data...</TableCell></TableRow>
               ) : applicants.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Belum ada pendaftar.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={6} className="py-8">
+                    <EmptyState
+                      icon={UserRoundSearch}
+                      title="Belum Ada Pendaftar"
+                      description="Belum ada akun pendaftar PPDB yang dibuat oleh sistem. Data akan muncul otomatis saat calon siswa mendaftar."
+                      className="bg-transparent border-transparent"
+                    />
+                  </TableCell>
+                </TableRow>
               ) : (
                 applicants.map((a) => (
                   <TableRow key={a.id}>
@@ -147,6 +157,29 @@ export default function ApplicantsPage() {
                 <div>
                   <p className="text-muted-foreground text-xs">Jenjang Tujuan</p>
                   <p className="font-medium">{selectedApplicant.registration_level}</p>
+                </div>
+                
+                <div>
+                  <p className="text-muted-foreground text-xs">Tempat, Tgl Lahir</p>
+                  <p className="font-medium">{selectedApplicant.birth_place || '-'}, {selectedApplicant.birth_date || '-'}</p>
+                </div>
+
+                <div>
+                  <p className="text-muted-foreground text-xs">NISN / NIK</p>
+                  <p className="font-medium">{selectedApplicant.nisn || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Nama Orang Tua/Wali</p>
+                  <p className="font-medium">{selectedApplicant.parent_name || '-'}</p>
+                </div>
+
+                <div>
+                  <p className="text-muted-foreground text-xs">Asal Sekolah</p>
+                  <p className="font-medium">{selectedApplicant.previous_school || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Pilihan Jurusan</p>
+                  <p className="font-medium">{selectedApplicant.major_choice || '-'}</p>
                 </div>
 
                 <div>

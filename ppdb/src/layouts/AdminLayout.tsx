@@ -131,7 +131,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 object-contain shrink-0" />
               <div className="min-w-0">
                 <div className="font-heading text-sm font-bold text-foreground truncate">PTDARRAHMAN</div>
-                <div className="text-[11px] font-bold text-emerald-primary uppercase tracking-wide">PPDB Admin</div>
+                <div className="text-[11px] text-muted-foreground">PPDB Admin</div>
               </div>
             </div>
           )}
@@ -230,7 +230,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   </Avatar>
                   <div className="hidden sm:block text-left">
                     <div className="text-sm font-semibold text-foreground leading-tight">{user?.full_name || user?.username}</div>
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-emerald-primary">{user?.role_name || user?.user_type}</div>
+                    <div className="text-[11px] text-muted-foreground">{user?.role_name || user?.user_type}</div>
                   </div>
                 </Button>
               </DropdownMenuTrigger>

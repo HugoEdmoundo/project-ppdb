@@ -78,7 +78,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed md:sticky top-0 left-0 z-40 flex h-dvh flex-col border-r border-border bg-background/80 backdrop-blur-xl transition-all duration-300 ${
+        className={`fixed md:sticky top-0 left-0 z-40 flex h-dvh flex-col border-r border-border bg-white/80 backdrop-blur-xl transition-all duration-300 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         } ${collapsed ? 'w-16' : 'w-60'}`}
       >
@@ -100,7 +100,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             variant="outline"
             size="icon"
             onClick={toggleCollapse}
-            className="absolute -right-3 top-1/2 hidden h-6 w-6 -translate-y-1/2 rounded-lg md:flex"
+            className="absolute -right-3 top-1/2 hidden h-6 w-6 -translate-y-1/2 rounded-xl md:flex"
           >
             <ChevronLeft className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
           </Button>
@@ -116,7 +116,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors',
+                  'flex items-center gap-3 rounded-xl text-sm font-medium transition-colors',
                   collapsed ? 'justify-center p-2' : 'px-3 py-2.5',
                   isActive
                     ? 'bg-primary/10 text-primary shadow-sm'
@@ -135,7 +135,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* ── Main Area ── */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-20 border-b border-border bg-background/70 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-border bg-white/70 backdrop-blur-xl">
           <div className="flex h-14 items-center justify-between px-4 md:px-6">
             <div className="flex items-center gap-3">
               <Button
@@ -146,7 +146,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <h1 className="hidden text-base font-bold text-foreground sm:block">
+              <h1 className="hidden text-base font-bold text-foreground sm:block font-heading">
                 Superadmin Panel
               </h1>
             </div>

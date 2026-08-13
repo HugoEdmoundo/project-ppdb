@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './components/Toast'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -12,6 +12,7 @@ import RolesPage from './pages/RolesPage'
 import RoleFormPage from './pages/RoleFormPage'
 import ProfilePage from './pages/ProfilePage'
 import ApplicantsPage from './pages/ApplicantsPage'
+import NotFoundPage from './pages/NotFoundPage'
 import * as api from './api/client'
 
 export default function App() {
@@ -61,7 +62,7 @@ export default function App() {
                     <Route path="/roles/:id" element={<RoleFormPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/applicants" element={<ApplicantsPage />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </Layout>
               </ProtectedRoute>

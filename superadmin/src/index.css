@@ -4,7 +4,8 @@
 
 @layer base {
   :root {
-    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-heading: 'DM Sans', system-ui, sans-serif;
 
     /* Brand colors (ivory/obsidian/emerald/gold) */
     --background: 43 30% 95%;
@@ -19,14 +20,14 @@
     --primary: 153 61% 26%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 43 18% 92%;
+    --secondary: 43 20% 92%;
     --secondary-foreground: 0 0% 10%;
 
-    --muted: 43 18% 92%;
+    --muted: 43 20% 92%;
     --muted-foreground: 0 0% 42%;
 
-    --accent: 153 61% 95%;
-    --accent-foreground: 153 61% 26%;
+    --accent: 40 60% 58%;
+    --accent-foreground: 0 0% 10%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
@@ -37,8 +38,8 @@
     --warning: 32 95% 44%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 44 16% 87%;
-    --input: 44 16% 87%;
+    --border: 43 16% 87%;
+    --input: 43 16% 87%;
     --ring: 153 61% 26%;
 
     --radius: 0.75rem;

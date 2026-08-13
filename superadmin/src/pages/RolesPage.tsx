@@ -10,6 +10,7 @@ import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
+import { EmptyState } from '../components/ui/EmptyState'
 
 export default function RolesPage() {
   const navigate = useNavigate()
@@ -113,9 +114,16 @@ export default function RolesPage() {
           ))}
         </div>
       ) : roles.length === 0 ? (
-        <Card className="p-12 text-center">
-          <p className="text-sm text-muted-foreground">Belum ada role</p>
-        </Card>
+        <EmptyState
+          icon={ShieldCheck}
+          title="Belum Ada Role"
+          description="Belum ada role yang terdaftar. Buat role untuk mengatur hak akses pengguna."
+          action={canCrud ? (
+            <Button onClick={() => navigate('/roles/new')}>
+              <Plus /> Buat Role
+            </Button>
+          ) : undefined}
+        />
       ) : (
         <div className="grid gap-4">
           {roles.map((role) => (

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Edit, Trash2, UserCheck, UserX } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, UserCheck, UserX, UserRound } from 'lucide-react'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
 import { useConfirm } from '../components/ConfirmDialog'
@@ -15,6 +15,7 @@ import {
 } from '../components/ui/table'
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar'
 import { Skeleton } from '../components/ui/skeleton'
+import { EmptyState } from '../components/ui/EmptyState'
 
 export default function UsersPage() {
   const navigate = useNavigate()
@@ -145,9 +146,16 @@ export default function UsersPage() {
           </div>
         </Card>
       ) : users.length === 0 ? (
-        <Card className="p-12 text-center">
-          <p className="text-sm text-muted-foreground">Belum ada user</p>
-        </Card>
+        <EmptyState
+          icon={UserRound}
+          title="Belum Ada User"
+          description="Belum ada pengguna yang terdaftar. Buat user pertama untuk mulai mengelola akses sistem."
+          action={canCrud ? (
+            <Button onClick={() => navigate('/users/new')}>
+              <Plus /> Buat User
+            </Button>
+          ) : undefined}
+        />
       ) : (
         <div className="space-y-4">
           {/* Desktop Table */}

@@ -2,7 +2,7 @@ import * as React from 'react'
 import { FolderOpen } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from './Button'
+import { Button } from './button'
 
 export interface EmptyStateProps {
   icon?: LucideIcon
@@ -14,7 +14,7 @@ export interface EmptyStateProps {
   className?: string
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({
+export function EmptyState({
   icon: Icon = FolderOpen,
   title,
   description,
@@ -22,7 +22,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   onAction,
   action,
   className,
-}) => {
+}: EmptyStateProps) {
   return (
     <div
       className={cn(
@@ -31,19 +31,19 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       )}
     >
       {/* Soft decorative glow */}
-      <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-emerald-primary/20 to-transparent" />
+      <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
 
-      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-light ring-1 ring-emerald-primary/10 text-emerald-primary shadow-sm mb-4">
+      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/10 text-primary shadow-sm mb-4">
         <Icon className="h-8 w-8" />
       </div>
 
-      <h3 className="font-heading text-lg font-bold text-foreground mb-1">{title}</h3>
+      <h3 className="text-lg font-bold text-foreground mb-1">{title}</h3>
       {description && (
         <p className="text-sm text-muted-foreground leading-relaxed max-w-md mb-6">{description}</p>
       )}
 
       {action ? action : actionLabel && onAction ? (
-        <Button variant="outline" size="sm" onClick={onAction} className="min-h-[36px]">
+        <Button variant="outline" size="sm" onClick={onAction}>
           {actionLabel}
         </Button>
       ) : null}

@@ -5,21 +5,28 @@ import { useToast } from '@/components/Toast'
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
   Button, Input, Label,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
 } from '@/components/ui'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
-import { ArrowLeft, CheckCircle2, Copy } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCircle2, Copy, BookOpen, GraduationCap } from 'lucide-react'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
 
+  const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
+    registration_path: '',
+    registration_level: '',
     full_name: '',
+    birth_place: '',
+    birth_date: '',
+    nisn: '',
     email: '',
     phone: '',
-    registration_path: '',
-    registration_level: ''
+    parent_name: '',
+    previous_school: '',
+    major_choice: ''
   })
   
   const [loading, setLoading] = useState(false)
@@ -34,6 +41,27 @@ export default function RegisterPage() {
     }
     return []
   }, [formData.registration_path])
+
+  const showMajor = useMemo(() => {
+    return formData.registration_level.includes('SMA')
+  }, [formData.registration_level])
+
+  const handleNext = () => {
+    if (step === 1 && !formData.registration_path) {
+      toast('error', 'Pilih jalur pendaftaran terlebih dahulu')
+      return
+    }
+    if (step === 2 && !formData.registration_level) {
+      toast('error', 'Pilih jenjang tujuan terlebih dahulu')
+      return
+    }
+    setStep(s => s + 1)
+  }
+
+  const handleBack = () => {
+    if (step === 1) navigate('/')
+    else setStep(s => s - 1)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,98 +87,187 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
-      <div className="max-w-md w-full space-y-8 animate-fade-in">
-        <Button variant="ghost" onClick={() => navigate('/')} className="mb-4">
+    <div className="min-h-screen bg-muted/30 py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center">
+      <div className="max-w-2xl w-full">
+        <Button variant="ghost" onClick={handleBack} className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" /> Kembali
         </Button>
-        
-        <Card className="glass-card shadow-xl border-primary/10">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold font-heading text-center">Formulir Pendaftaran</CardTitle>
-            <CardDescription className="text-center">
-              Lengkapi data diri Anda untuk mendaftar PPDB.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="full_name">Nama Lengkap *</Label>
-                <Input 
-                  id="full_name" 
-                  required 
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  placeholder="Sesuai ijazah / akte kelahiran"
-                />
+
+        {step === 1 && (
+          <Card className="glass-card shadow-xl border-primary/10 animate-in fade-in slide-in-from-right-4 duration-300">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold font-heading">Jalur Pendaftaran</CardTitle>
+              <CardDescription>Pilih jalur pendaftaran yang sesuai dengan kondisi Anda.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div 
+                className={`p-4 border-2 rounded-xl cursor-pointer transition-all hover:border-primary/50 ${formData.registration_path === 'reguler' ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}
+                onClick={() => setFormData({...formData, registration_path: 'reguler', registration_level: ''})}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-100 text-blue-600 rounded-lg"><BookOpen className="h-6 w-6" /></div>
+                  <div>
+                    <h3 className="font-bold text-lg">Reguler (Peserta Didik Baru)</h3>
+                    <p className="text-sm text-muted-foreground mt-1">Pendaftaran untuk lulusan jenjang sebelumnya (SD ke SMP, atau SMP ke SMA) yang ingin masuk pada tahun ajaran baru tingkat awal.</p>
+                  </div>
+                </div>
+              </div>
+              <div 
+                className={`p-4 border-2 rounded-xl cursor-pointer transition-all hover:border-primary/50 ${formData.registration_path === 'pindahan' ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}
+                onClick={() => setFormData({...formData, registration_path: 'pindahan', registration_level: ''})}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-amber-100 text-amber-600 rounded-lg"><ArrowRight className="h-6 w-6" /></div>
+                  <div>
+                    <h3 className="font-bold text-lg">Pindahan (Mutasi Masuk)</h3>
+                    <p className="text-sm text-muted-foreground mt-1">Pendaftaran untuk siswa yang pindah sekolah di pertengahan tahun ajaran atau naik kelas namun pindah sekolah.</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  required 
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  placeholder="email@example.com"
-                />
+              <div className="flex justify-end pt-4">
+                <Button onClick={handleNext} disabled={!formData.registration_path}>Lanjut <ArrowRight className="ml-2 h-4 w-4" /></Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === 2 && (
+          <Card className="glass-card shadow-xl border-primary/10 animate-in fade-in slide-in-from-right-4 duration-300">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold font-heading">Jenjang Pendidikan</CardTitle>
+              <CardDescription>Pilih jenjang dan kelas tujuan pendaftaran.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {levelOptions.map(lvl => (
+                  <div 
+                    key={lvl}
+                    className={`p-4 border-2 rounded-xl cursor-pointer text-center transition-all hover:border-primary/50 ${formData.registration_level === lvl ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}
+                    onClick={() => setFormData({...formData, registration_level: lvl})}
+                  >
+                    <GraduationCap className={`h-8 w-8 mx-auto mb-2 ${formData.registration_level === lvl ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <h3 className="font-bold text-lg">{lvl}</h3>
+                  </div>
+                ))}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone">No. WhatsApp *</Label>
-                <Input 
-                  id="phone" 
-                  type="tel" 
-                  required 
-                  value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  placeholder="081234567890"
-                />
+              <div className="flex justify-between pt-4">
+                <Button variant="outline" onClick={handleBack}>Kembali</Button>
+                <Button onClick={handleNext} disabled={!formData.registration_level}>Lanjut <ArrowRight className="ml-2 h-4 w-4" /></Button>
               </div>
+            </CardContent>
+          </Card>
+        )}
 
-              <div className="space-y-2">
-                <Label>Jalur Pendaftaran *</Label>
-                <Select 
-                  required 
-                  value={formData.registration_path} 
-                  onValueChange={(v: string) => setFormData({...formData, registration_path: v, registration_level: ''})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih jalur..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="reguler">Reguler</SelectItem>
-                    <SelectItem value="pindahan">Pindahan (Mutasi)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        {step === 3 && (
+          <Card className="glass-card shadow-xl border-primary/10 animate-in fade-in slide-in-from-right-4 duration-300">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold font-heading">Formulir Biodata</CardTitle>
+              <CardDescription>
+                Lengkapi data calon siswa dengan benar sesuai dokumen resmi.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="full_name">Nama Lengkap (Sesuai Ijazah/Akta) *</Label>
+                    <Input 
+                      id="full_name" required 
+                      value={formData.full_name}
+                      onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label>Jenjang Tujuan *</Label>
-                <Select 
-                  required 
-                  disabled={!formData.registration_path}
-                  value={formData.registration_level} 
-                  onValueChange={(v: string) => setFormData({...formData, registration_level: v})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih jenjang..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {levelOptions.map(lvl => (
-                      <SelectItem key={lvl} value={lvl}>{lvl}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nisn">NISN / NIK *</Label>
+                    <Input 
+                      id="nisn" required 
+                      value={formData.nisn}
+                      onChange={(e) => setFormData({...formData, nisn: e.target.value})}
+                    />
+                  </div>
 
-              <Button type="submit" className="w-full mt-6" disabled={loading}>
-                {loading ? 'Memproses...' : 'Daftar Sekarang'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="birth_place">Tempat Lahir *</Label>
+                    <Input 
+                      id="birth_place" required 
+                      value={formData.birth_place}
+                      onChange={(e) => setFormData({...formData, birth_place: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="birth_date">Tanggal Lahir *</Label>
+                    <Input 
+                      id="birth_date" type="date" required 
+                      value={formData.birth_date}
+                      onChange={(e) => setFormData({...formData, birth_date: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Aktif *</Label>
+                    <Input 
+                      id="email" type="email" required 
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Nomor HP/WhatsApp *</Label>
+                    <Input 
+                      id="phone" type="tel" required 
+                      value={formData.phone}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="parent_name">Nama Orang Tua / Wali *</Label>
+                    <Input 
+                      id="parent_name" required 
+                      value={formData.parent_name}
+                      onChange={(e) => setFormData({...formData, parent_name: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="previous_school">Asal Sekolah (TK/SD/SMP) *</Label>
+                    <Input 
+                      id="previous_school" required 
+                      value={formData.previous_school}
+                      onChange={(e) => setFormData({...formData, previous_school: e.target.value})}
+                    />
+                  </div>
+
+                  {showMajor && (
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="major_choice">Pilihan Jurusan/Program *</Label>
+                      <Select required value={formData.major_choice} onValueChange={(v: string) => setFormData({...formData, major_choice: v})}>
+                        <SelectTrigger><SelectValue placeholder="Pilih jurusan..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="MIPA">MIPA (Matematika & Ilmu Pengetahuan Alam)</SelectItem>
+                          <SelectItem value="IPS">IPS (Ilmu Pengetahuan Sosial)</SelectItem>
+                          <SelectItem value="BAHASA">Bahasa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-between pt-4 border-t border-border">
+                  <Button type="button" variant="outline" onClick={handleBack}>Kembali</Button>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? 'Memproses...' : 'Selesaikan Pendaftaran'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <Dialog open={!!successData} onOpenChange={(open) => !open && handleFinish()}>

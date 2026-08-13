@@ -10,19 +10,19 @@
     --card-foreground: 0 0% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
-    --primary: 153 66% 26%;
+    --primary: 153 61% 26%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 43 30% 93%;
-    --secondary-foreground: 153 66% 20%;
-    --muted: 43 25% 92%;
+    --secondary: 43 20% 92%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 43 20% 92%;
     --muted-foreground: 0 0% 42%;
     --accent: 40 60% 58%;
     --accent-foreground: 0 0% 10%;
     --destructive: 3 100% 59%;
     --destructive-foreground: 0 0% 100%;
-    --border: 40 20% 88%;
-    --input: 40 20% 86%;
-    --ring: 153 66% 26%;
+    --border: 43 16% 87%;
+    --input: 43 16% 87%;
+    --ring: 153 61% 26%;
     --radius: 0.75rem;
 
     --font-heading: 'DM Sans', system-ui, sans-serif;
@@ -53,11 +53,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary) / 0.25);
+    background: hsl(var(--border));
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary));
+    background: hsl(var(--muted-foreground));
   }
 }
 
@@ -75,11 +75,11 @@
   }
 
   .glass-navbar {
-    @apply bg-white/80 backdrop-blur-2xl border-b border-white/80 shadow-[0_4px_24px_rgba(26,107,71,0.04)] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)];
+    @apply bg-white/70 backdrop-blur-xl border-b border-border;
   }
 
   .glass-sidebar {
-    @apply bg-white/80 md:bg-white/70 backdrop-blur-2xl border-r border-white/80 shadow-[6px_0_24px_rgba(26,107,71,0.03)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)];
+    @apply bg-white/80 backdrop-blur-xl border-r border-border;
   }
 
   .glass-modal {
@@ -91,7 +91,7 @@
   }
 
   .sidebar-item-active {
-    @apply bg-primary/10 text-primary font-bold shadow-sm border-l-4 border-primary;
+    @apply bg-primary/10 text-primary shadow-sm;
   }
 
   .glow-emerald {

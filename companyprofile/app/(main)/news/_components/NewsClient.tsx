@@ -6,7 +6,8 @@ import Link from 'next/link'
 import PageHeader from '@/app/components/layout/PageHeader'
 import { useScrollReveal } from '@/app/hooks/useScrollAnimations'
 import type { NewsArticle } from '@/app/lib/types'
-import { ArrowRight, Calendar } from 'lucide-react'
+import { ArrowRight, Calendar, SearchX } from 'lucide-react'
+import EmptyState from '@/app/components/ui/EmptyState'
 
 export default function NewsClient({ news }: { news: NewsArticle[] }) {
   const sectionRef = useRef<HTMLElement>(null)
@@ -136,9 +137,11 @@ export default function NewsClient({ news }: { news: NewsArticle[] }) {
             })}
           </div>
           ) : (
-            <p className="text-center text-[var(--text-muted)] py-12">
-              Tidak ada artikel yang cocok dengan pencarian Anda.
-            </p>
+            <EmptyState
+              icon={SearchX}
+              title="Artikel Tidak Ditemukan"
+              description="Tidak ada artikel yang cocok dengan pencarian Anda. Coba gunakan kata kunci lain."
+            />
           )}
         </div>
       </section>

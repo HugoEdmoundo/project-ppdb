@@ -6,9 +6,9 @@ import {
   Card, CardContent,
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell,
   Badge, Button, Input, Label, Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogFooter, ConfirmDialog, Sheet, SheetContent, SheetHeader, SheetTitle
+  DialogFooter, ConfirmDialog, Sheet, SheetContent, SheetHeader, SheetTitle, EmptyState
 } from '@/components/ui'
-import { Plus, Edit, Trash2, CalendarDays, CheckCircle, XCircle, Layers } from 'lucide-react'
+import { Plus, Edit, Trash2, CalendarDays, CheckCircle, XCircle, Layers, CalendarX2, Waves } from 'lucide-react'
 
 export default function PeriodsPage() {
   const { toast } = useToast()
@@ -128,7 +128,16 @@ export default function PeriodsPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-8">Memuat data...</TableCell></TableRow>
               ) : periods.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Belum ada data periode.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={6} className="py-8">
+                    <EmptyState
+                      icon={CalendarX2}
+                      title="Belum Ada Periode"
+                      description="Mulai tambahkan periode pendaftaran PPDB agar gelombang dapat dibuat."
+                      className="bg-transparent border-transparent"
+                    />
+                  </TableCell>
+                </TableRow>
               ) : (
                 periods.map((p) => (
                   <TableRow key={p.id}>
@@ -346,7 +355,16 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
                 {loading ? (
                   <TableRow><TableCell colSpan={5} className="text-center py-6">Memuat...</TableCell></TableRow>
                 ) : waves.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">Belum ada gelombang.</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-8">
+                      <EmptyState
+                        icon={Waves}
+                        title="Belum Ada Gelombang"
+                        description="Tambahkan gelombang pendaftaran untuk periode ini."
+                        className="bg-transparent border-transparent"
+                      />
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   waves.map((w) => (
                     <TableRow key={w.id}>

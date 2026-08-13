@@ -121,6 +121,10 @@ ppdb_periods 1 ──── 0..* ppdb_waves  (period_id, CASCADE)
 | `birth_place` | VARCHAR(100) | YES | NULL | |
 | `birth_date` | DATE | YES | NULL | |
 | `gender` | VARCHAR(10) | YES | NULL | `L` or `P` |
+| `nisn` | VARCHAR(50) | YES | NULL | |
+| `parent_name` | VARCHAR(255) | YES | NULL | |
+| `previous_school` | VARCHAR(255) | YES | NULL | |
+| `major_choice` | VARCHAR(100) | YES | NULL | |
 | `address` | TEXT | YES | NULL | |
 | `status` | VARCHAR(20) | NO | `'pending_payment'` | `pending_payment, paid, document_upload, document_verified, selection, passed, failed, expired` |
 | `created_at` | DATETIME(3) | NO | | |
@@ -139,6 +143,10 @@ CREATE TABLE IF NOT EXISTS ppdb_applicants (
     birth_place VARCHAR(100) NULL,
     birth_date DATE NULL,
     gender VARCHAR(10) NULL,
+    nisn VARCHAR(50) NULL,
+    parent_name VARCHAR(255) NULL,
+    previous_school VARCHAR(255) NULL,
+    major_choice VARCHAR(100) NULL,
     address TEXT NULL,
     status VARCHAR(50) DEFAULT 'pending_payment',
     created_at DATETIME(3) NOT NULL,

@@ -297,6 +297,13 @@ def register_applicant(body: ApplicantRegister):
         "phone": body.phone,
         "registration_path": body.registration_path,
         "registration_level": body.registration_level,
+        "gender": body.gender,
+        "birth_place": body.birth_place,
+        "birth_date": body.birth_date,
+        "nisn": body.nisn,
+        "parent_name": body.parent_name,
+        "previous_school": body.previous_school,
+        "major_choice": body.major_choice,
         "status": "pending_payment"
     }
     created_applicant = create_record("ppdb_applicants", applicant_data)

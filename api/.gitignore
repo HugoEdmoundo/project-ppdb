@@ -1,0 +1,22 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Uploads (local fallback storage)
+uploads/
+public/uploads/
+
+# Test / tooling
+.pytest_cache/
+.coverage
+schema_dump.*
+
+# Vercel
+.vercel/

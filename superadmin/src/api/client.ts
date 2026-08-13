@@ -1,6 +1,35 @@
 import type { AuthUser, LoginResponse, User, Role, Module, UserPagePermissions } from '../types'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://project-ppdb-murex.vercel.app'
+const PRIMARY_API = (import.meta.env.VITE_API_URL || 'https://project-ppdb-murex.vercel.app').replace(/\/+$/, '')
+const FALLBACK_API = 'https://project-ppdb-murex.vercel.app'
+const API_BASE = PRIMARY_API
+
+function isRetryableStatus(status: number): boolean {
+  return status === 404 || status >= 500
+}
+
+async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Response> {
+  if (API_BASE === FALLBACK_API) return fetch(url, opts)
+
+  const fallbackUrl = url.replace(PRIMARY_API, FALLBACK_API)
+
+  let res: Response
+  try {
+    res = await fetch(url, opts)
+  } catch {
+    // API lokal tidak terjangkau -> coba API produksi
+    return fetch(fallbackUrl, opts)
+  }
+
+  if (isRetryableStatus(res.status)) {
+    try {
+      return await fetch(fallbackUrl, opts)
+    } catch {
+      return res
+    }
+  }
+  return res
+}
 
 const TOKEN_KEY = 'sa_token'
 const REFRESH_KEY = 'sa_refresh'
@@ -49,7 +78,7 @@ async function tryRefresh(): Promise<string | null> {
     const rt = getRefreshToken()
     if (!rt) return null
     try {
-      const res = await fetch(`${API_BASE}/companyprofile/auth/refresh`, {
+      const res = await fetchWithFallback(`${API_BASE}/companyprofile/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: rt }),
@@ -76,13 +105,13 @@ async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Promise<T>
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  let res = await fetch(`${API_BASE}${endpoint}`, { ...opts, headers })
+  let res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers })
 
   if (res.status === 401 && token) {
     const newToken = await tryRefresh()
     if (newToken) {
       headers['Authorization'] = `Bearer ${newToken}`
-      res = await fetch(`${API_BASE}${endpoint}`, { ...opts, headers })
+      res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers })
     }
     if (res.status === 401) {
       clearAuth()
@@ -127,7 +156,7 @@ export async function logout() {
   const token = getToken()
   if (token) {
     try {
-      await fetch(`${API_BASE}/companyprofile/auth/logout`, {
+      await fetchWithFallback(`${API_BASE}/companyprofile/auth/logout`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })

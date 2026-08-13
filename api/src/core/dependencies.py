@@ -1,80 +1,81 @@
 import json
-from typing import Optional, Dict, Any, Callable
-from fastapi import Request, HTTPException, Security, Depends
+from typing import Any, Callable, Dict
+
+from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from src.core.security import verify_token
+
 from src.core.database import get_by_id
+from src.core.security import verify_token
 
 security = HTTPBearer()
 
+
 class AccessLevel:
-    NONE = 'none'
-    DASHBOARD = 'dashboard'
-    READ = 'read'
-    CRUD = 'crud'
+    NONE = "none"
+    DASHBOARD = "dashboard"
+    READ = "read"
+    CRUD = "crud"
+
 
 class Module:
-    COMPANYPROFILE = 'companyprofile'
-    PPDB = 'ppdb'
-    DASHBOARD = 'dashboard'
+    COMPANYPROFILE = "companyprofile"
+    PPDB = "ppdb"
+    DASHBOARD = "dashboard"
+
 
 LEVEL_ORDER = [AccessLevel.NONE, AccessLevel.DASHBOARD, AccessLevel.READ, AccessLevel.CRUD]
 
-async def has_module_access(
-    user: Dict[str, Any],
-    module: str,
-    required: str = AccessLevel.DASHBOARD
-) -> bool:
+
+def _parse_permissions(raw) -> dict:
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw) if raw else {}
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    if isinstance(raw, dict):
+        return raw
+    return {}
+
+
+def _has_level(actual: str, required: str) -> bool:
+    try:
+        return LEVEL_ORDER.index(actual) >= LEVEL_ORDER.index(required)
+    except ValueError:
+        return False
+
+
+async def has_module_access(user: Dict[str, Any], module: str, required: str = AccessLevel.DASHBOARD) -> bool:
     if user.get("user_type") == "superadmin":
         return True
 
+    role_id = user.get("role_id")
+    if role_id:
+        role = get_by_id("roles", role_id)
+        if role and role.get("is_superadmin"):
+            return True
+
+    # Per-user override stored in the `profile` JSON column.
     profile = user.get("profile") or {}
     if isinstance(profile, str):
         try:
             profile = json.loads(profile)
-        except:
+        except (json.JSONDecodeError, TypeError):
             profile = {}
-
-    overrides = profile.get("permissions_override", {})
-    if module in overrides:
-        try:
-            idx = LEVEL_ORDER.index(overrides[module])
-            if idx >= LEVEL_ORDER.index(required):
-                return True
-        except ValueError:
-            pass
-
-    role_id = user.get("role_id")
-    if not role_id:
-        return False
-
-    role = get_by_id("roles", role_id)
-    if not role:
-        return False
-    
-    if role.get("is_superadmin"):
+    overrides = (profile or {}).get("permissions_override", {}) if isinstance(profile, dict) else {}
+    if isinstance(overrides, dict) and module in overrides and _has_level(str(overrides[module]), required):
         return True
 
-    raw_permissions = role.get("permissions")
-    permissions = {}
-    if isinstance(raw_permissions, str):
-        try:
-            permissions = json.loads(raw_permissions)
-        except:
-            pass
-    elif isinstance(raw_permissions, dict):
-        permissions = raw_permissions
-        
-    level_str = permissions.get(module, AccessLevel.NONE)
-    try:
-        level = LEVEL_ORDER.index(level_str)
-        return level >= LEVEL_ORDER.index(required)
-    except ValueError:
-        return False
+    if role_id:
+        role = get_by_id("roles", role_id)
+        if role:
+            permissions = _parse_permissions(role.get("permissions"))
+            return _has_level(str(permissions.get(module, AccessLevel.NONE)), required)
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict[str, Any]:
-    token = credentials.credentials
-    payload = verify_token(token)
+    return False
+
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict[str, Any]:
+    payload = verify_token(credentials.credentials)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
@@ -85,36 +86,44 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(
     user = get_by_id("users", user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    if not user.get("is_active"):
+    if not user.get("is_active", True):
         raise HTTPException(status_code=403, detail="User is inactive")
 
     role_id = user.get("role_id")
     if role_id:
         role = get_by_id("roles", role_id)
-        if role and role.get("permissions"):
-            raw_perms = role["permissions"]
-            user["role_permissions"] = json.loads(raw_perms) if isinstance(raw_perms, str) else raw_perms
-
+        if role:
+            user["role_permissions"] = _parse_permissions(role.get("permissions"))
     return user
 
-async def require_superadmin(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+
+def require_superadmin(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
     if user.get("user_type") == "superadmin":
         return user
-    
     role_id = user.get("role_id")
     if role_id:
         role = get_by_id("roles", role_id)
         if role and role.get("is_superadmin"):
             return user
-            
     raise HTTPException(status_code=403, detail="Superadmin access required")
 
-def require_module_access(module: str, required: str = AccessLevel.READ):
+
+def require_module_access(module: str, required: str = AccessLevel.READ) -> Callable:
     async def _dependency(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
         if not await has_module_access(user, module, required):
             raise HTTPException(status_code=403, detail="Access denied")
         return user
+
     return _dependency
 
-def require_cp_crud():
+
+def require_cp_crud() -> Callable:
     return require_module_access(Module.COMPANYPROFILE, AccessLevel.CRUD)
+
+
+def require_ppdb_read() -> Callable:
+    return require_module_access(Module.PPDB, AccessLevel.READ)
+
+
+def require_ppdb_admin() -> Callable:
+    return require_module_access(Module.PPDB, AccessLevel.CRUD)

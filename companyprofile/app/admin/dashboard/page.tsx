@@ -358,7 +358,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const userId = adminUser?.id
     if (!userId) return
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://backend-ptdarrahman.vercel.app'
+    const API_BASE = api.API_BASE
     const token = localStorage.getItem('admin_token')
     if (!token) return
     const url = `${API_BASE.replace(/\/$/, '')}/users/${userId}/events?token=${encodeURIComponent(token)}`

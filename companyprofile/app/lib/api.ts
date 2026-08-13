@@ -11,10 +11,39 @@ import type {
   Testimonial,
 } from './types'
 
-export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://project-ppdb-murex.vercel.app').replace(/\/$/, '')
+export const PRIMARY_API = (process.env.NEXT_PUBLIC_API_URL || 'https://project-ppdb-murex.vercel.app').replace(/\/+$/, '')
+export const FALLBACK_API = 'https://project-ppdb-murex.vercel.app'
+export const API_BASE = PRIMARY_API
 const TOKEN_KEY = 'admin_token'
 const REFRESH_KEY = 'admin_refresh'
 const USER_KEY = 'admin_user'
+
+function isRetryableStatus(status: number): boolean {
+  return status === 404 || status >= 500
+}
+
+async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Response> {
+  if (API_BASE === FALLBACK_API) return fetch(url, opts)
+
+  const fallbackUrl = url.replace(PRIMARY_API, FALLBACK_API)
+
+  let res: Response
+  try {
+    res = await fetch(url, opts)
+  } catch {
+    // API lokal tidak terjangkau -> coba API produksi
+    return fetch(fallbackUrl, opts)
+  }
+
+  if (isRetryableStatus(res.status)) {
+    try {
+      return await fetch(fallbackUrl, opts)
+    } catch {
+      return res
+    }
+  }
+  return res
+}
 
 function _redirectLogin() {
   if (typeof window !== 'undefined') {
@@ -33,7 +62,7 @@ async function tryRefresh(): Promise<string | null> {
   if (!refreshToken) return null
   _pendingRefresh = (async () => {
     try {
-      const res = await fetch(`${API_BASE}/companyprofile/auth/refresh`, {
+      const res = await fetchWithFallback(`${API_BASE}/companyprofile/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refreshToken }),
@@ -53,7 +82,7 @@ async function tryRefresh(): Promise<string | null> {
 }
 
 async function fetchApi<T>(endpoint: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}/companyprofile${endpoint}`, {
+  const res = await fetchWithFallback(`${API_BASE}/companyprofile${endpoint}`, {
     cache: 'no-store',
     ...opts,
   })
@@ -114,7 +143,7 @@ export async function getStaff(): Promise<Staff[]> {
 // ── Auth ────────────────────────────────────────────────────
 
 export async function login(username: string, password: string) {
-  const res = await fetch(`${API_BASE}/companyprofile/auth/login`, {
+  const res = await fetchWithFallback(`${API_BASE}/companyprofile/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
@@ -131,7 +160,7 @@ export async function login(username: string, password: string) {
     localStorage.setItem(USER_KEY, JSON.stringify(data.user))
   } else {
     try {
-      const meRes = await fetch(`${API_BASE}/companyprofile/auth/me`, {
+      const meRes = await fetchWithFallback(`${API_BASE}/companyprofile/auth/me`, {
         headers: { Authorization: `Bearer ${data.access_token}` },
       })
       if (meRes.ok) {
@@ -151,7 +180,7 @@ export async function logout() {
   const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null
   if (token) {
     try {
-      await fetch(`${API_BASE}/companyprofile/auth/logout`, {
+      await fetchWithFallback(`${API_BASE}/companyprofile/auth/logout`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -170,7 +199,7 @@ export async function logout() {
 
 async function fetchApiWithAuth<T>(endpoint: string, opts: RequestInit): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null
-  let res = await fetch(`${API_BASE}/companyprofile${endpoint}`, {
+  let res = await fetchWithFallback(`${API_BASE}/companyprofile${endpoint}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
@@ -181,7 +210,7 @@ async function fetchApiWithAuth<T>(endpoint: string, opts: RequestInit): Promise
   if (res.status === 401) {
     const newToken = await tryRefresh()
     if (newToken) {
-      res = await fetch(`${API_BASE}/companyprofile${endpoint}`, {
+      res = await fetchWithFallback(`${API_BASE}/companyprofile${endpoint}`, {
         ...opts,
         headers: {
           'Content-Type': 'application/json',
@@ -254,7 +283,7 @@ export async function updateContactInfo(data: JsonValue) {
 
 async function fetchAuthApi<T>(endpoint: string, opts?: RequestInit): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null
-  let res = await fetch(`${API_BASE}${endpoint}`, {
+  let res = await fetchWithFallback(`${API_BASE}${endpoint}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
@@ -265,7 +294,7 @@ async function fetchAuthApi<T>(endpoint: string, opts?: RequestInit): Promise<T>
   if (res.status === 401) {
     const newToken = await tryRefresh()
     if (newToken) {
-      res = await fetch(`${API_BASE}${endpoint}`, {
+      res = await fetchWithFallback(`${API_BASE}${endpoint}`, {
         ...opts,
         headers: {
           'Content-Type': 'application/json',
@@ -310,7 +339,7 @@ export async function uploadImage(file: File) {
   const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null
   const form = new FormData()
   form.append('file', file)
-  let res = await fetch(`${API_BASE}/companyprofile/upload`, {
+  let res = await fetchWithFallback(`${API_BASE}/companyprofile/upload`, {
     method: 'POST',
     body: form,
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -318,7 +347,7 @@ export async function uploadImage(file: File) {
   if (res.status === 401) {
     const newToken = await tryRefresh()
     if (newToken) {
-      res = await fetch(`${API_BASE}/companyprofile/upload`, {
+      res = await fetchWithFallback(`${API_BASE}/companyprofile/upload`, {
         method: 'POST',
         body: form,
         headers: { Authorization: `Bearer ${newToken}` },

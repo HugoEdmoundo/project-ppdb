@@ -1,7 +1,36 @@
 const TOKEN_KEY = 'ppdb_token'
 const REFRESH_KEY = 'ppdb_refresh'
 const USER_KEY = 'ppdb_user'
-export const API_BASE = import.meta.env.VITE_API_URL || 'https://project-ppdb-murex.vercel.app'
+export const PRIMARY_API = (import.meta.env.VITE_API_URL || 'https://project-ppdb-murex.vercel.app').replace(/\/+$/, '')
+export const FALLBACK_API = 'https://project-ppdb-murex.vercel.app'
+export const API_BASE = PRIMARY_API
+
+function isRetryableStatus(status: number): boolean {
+  return status === 404 || status >= 500
+}
+
+async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Response> {
+  if (API_BASE === FALLBACK_API) return fetch(url, opts)
+
+  const fallbackUrl = url.replace(PRIMARY_API, FALLBACK_API)
+
+  let res: Response
+  try {
+    res = await fetch(url, opts)
+  } catch {
+    // API lokal tidak terjangkau -> coba API produksi
+    return fetch(fallbackUrl, opts)
+  }
+
+  if (isRetryableStatus(res.status)) {
+    try {
+      return await fetch(fallbackUrl, opts)
+    } catch {
+      return res
+    }
+  }
+  return res
+}
 
 let refreshPromise: Promise<string | null> | null = null
 
@@ -17,7 +46,7 @@ async function tryRefresh(): Promise<string | null> {
   refreshPromise = (async () => {
     const rt = localStorage.getItem(REFRESH_KEY); if (!rt) return null
     try {
-      const res = await fetch(`${API_BASE}/auth/refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: rt }) })
+      const res = await fetchWithFallback(`${API_BASE}/auth/refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: rt }) })
       if (!res.ok) return null
       const data = await res.json(); const { access_token, refresh_token } = data.data || data
       setTokens(access_token, refresh_token); return access_token
@@ -32,10 +61,10 @@ export async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Pro
   if (!(opts.body instanceof FormData)) headers['Content-Type'] = 'application/json'
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  let res = await fetch(`${API_BASE}${endpoint}`, { ...opts, headers })
+  let res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers })
   if (res.status === 401 && token) {
     const newToken = await tryRefresh()
-    if (newToken) { headers['Authorization'] = `Bearer ${newToken}`; res = await fetch(`${API_BASE}${endpoint}`, { ...opts, headers }) }
+    if (newToken) { headers['Authorization'] = `Bearer ${newToken}`; res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers }) }
     if (res.status === 401) { clearAuth(); window.location.href = '/auth/login'; throw new Error('Unauthorized') }
   }
   if (!res.ok) { const body = await res.json().catch(() => ({ detail: res.statusText })); throw new Error(body.detail || `API ${res.status}`) }

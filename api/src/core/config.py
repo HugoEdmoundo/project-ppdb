@@ -1,19 +1,75 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from functools import lru_cache
 from typing import Optional
 
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
 class Settings(BaseSettings):
+    # --- Database ---
     mysql_host: str = "127.0.0.1"
     mysql_port: int = 3306
     mysql_user: str = "root"
     mysql_password: str = ""
     mysql_database: str = "ptdarrahman"
     mysql_ssl: bool = False
-    
-    jwt_secret: str = "secret"
-    jwt_expiry_hours: int = 24
-    
-    upload_dir: str = "uploads"
-    
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-settings = Settings()
+    # --- JWT ---
+    jwt_secret: str = "dev-only-secret-change-me"
+    jwt_expiry_hours: int = 24
+
+    # --- CORS ---
+    cors_origins: str = "*"
+
+    # --- Uploads ---
+    upload_provider: str = "cloudinary"  # cloudinary | local
+    upload_dir: str = "uploads"
+
+    cloudinary_cloud_name: Optional[str] = None
+    cloudinary_api_key: Optional[str] = None
+    cloudinary_api_secret: Optional[str] = None
+    cloudinary_folder: str = "ptdarrahman"
+    cloudinary_secure: bool = True
+
+    # --- Seeding ---
+    seed_superadmin_username: Optional[str] = None
+    seed_superadmin_password: Optional[str] = None
+    seed_superadmin_email: Optional[str] = None
+
+    @field_validator("cors_origins")
+    @classmethod
+    def _split_origins(cls, v: str) -> str:
+        return v  # kept raw; parsed by cors_origin_list()
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        raw = self.cors_origins.strip()
+        if not raw or raw == "*":
+            return ["*"]
+        return [o.strip() for o in raw.split(",") if o.strip()]
+
+    @property
+    def jwt_refresh_expiry_days(self) -> int:
+        return 7
+
+    @property
+    def cloudinary_configured(self) -> bool:
+        return bool(
+            self.cloudinary_cloud_name
+            and self.cloudinary_api_key
+            and self.cloudinary_api_secret
+        )
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+settings = get_settings()

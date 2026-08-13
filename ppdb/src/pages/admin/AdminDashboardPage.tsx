@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BarChart3, Layers } from 'lucide-react'
-import { dashboardService } from '../../services/index'
+import { dashboardService, ppdbService } from '../../services/index'
 import { useToast } from '../../components/Toast'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
@@ -18,10 +18,37 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    dashboardService.getStats()
-      .then((s) => setStats(s as DashboardStats))
-      .catch(() => toast('error', 'Gagal memuat data'))
-      .finally(() => setLoading(false))
+    let cancelled = false
+
+    async function load() {
+      try {
+        const s = await dashboardService.getStats()
+        if (cancelled) return
+        setStats(s as DashboardStats)
+      } catch {
+        // /ppdb/dashboard/stats tidak tersedia di API produksi -> hitung dari data periode & gelombang
+        try {
+          const [periods, waves] = await Promise.all([
+            ppdbService.getAllPeriods(),
+            ppdbService.getAllWaves(),
+          ])
+          if (cancelled) return
+          const active = Array.isArray(periods) ? periods.find((p: any) => p.status === 'active') : undefined
+          setStats({
+            total_periods: Array.isArray(periods) ? periods.length : 0,
+            total_waves: Array.isArray(waves) ? waves.length : 0,
+            active_period_name: active?.name ?? null,
+          })
+        } catch {
+          if (!cancelled) toast('error', 'Gagal memuat data')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
   }, [toast])
 
   const statCards = [

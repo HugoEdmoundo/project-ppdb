@@ -2,11 +2,11 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from scalar_fastapi import get_scalar_api_reference
 
 from src.core.config import settings
+from src.core.cors import setup_cors
 from src.modules.auth.router import router as auth_router
 from src.modules.companyprofile.router import router as companyprofile_router
 from src.modules.modules.router import router as modules_router
@@ -44,14 +44,8 @@ app = FastAPI(
 )
 
 
-# --- CORS (from env, keep open only while origins are not finalized) ---
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# --- CORS (env-driven, centralized in src/core/cors.py) ---
+setup_cors(app, settings)
 
 
 # --- Global exception handler -> consistent JSON errors ---

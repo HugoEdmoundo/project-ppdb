@@ -1,7 +1,6 @@
 from functools import lru_cache
 from typing import Optional
 
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,7 +18,9 @@ class Settings(BaseSettings):
     jwt_expiry_hours: int = 24
 
     # --- CORS ---
-    cors_origins: str = "*"
+    # "*" = allow all (dev only). Empty = default allowlist + regex (see core/cors.py).
+    cors_origins: str = ""
+    cors_origin_regex: str = ""
 
     # --- Uploads ---
     upload_provider: str = "cloudinary"  # cloudinary | local
@@ -36,23 +37,11 @@ class Settings(BaseSettings):
     seed_superadmin_password: Optional[str] = None
     seed_superadmin_email: Optional[str] = None
 
-    @field_validator("cors_origins")
-    @classmethod
-    def _split_origins(cls, v: str) -> str:
-        return v  # kept raw; parsed by cors_origin_list()
-
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
-
-    @property
-    def cors_origin_list(self) -> list[str]:
-        raw = self.cors_origins.strip()
-        if not raw or raw == "*":
-            return ["*"]
-        return [o.strip() for o in raw.split(",") if o.strip()]
 
     @property
     def jwt_refresh_expiry_days(self) -> int:

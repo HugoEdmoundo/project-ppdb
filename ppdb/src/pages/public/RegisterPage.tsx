@@ -4,11 +4,12 @@ import { ppdbService } from '@/services'
 import { useToast } from '@/components/Toast'
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
-  Button, Input, Label,
+  Button, Input, Label, Alert,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
 } from '@/components/ui'
-import { ArrowLeft, ArrowRight, CheckCircle2, Copy, BookOpen, GraduationCap } from 'lucide-react'
+import { SuccessState } from '@/components/ui/SuccessState'
+import { CredentialsCard } from '@/components/CredentialsCard'
+import { ArrowLeft, ArrowRight, LogIn, BookOpen, GraduationCap } from 'lucide-react'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -31,6 +32,7 @@ export default function RegisterPage() {
   })
   
   const [loading, setLoading] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [successData, setSuccessData] = useState<{username: string, password: string} | null>(null)
 
   const levelOptions = useMemo(() => {
@@ -67,24 +69,40 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setSubmitError(null)
     try {
       const res = await ppdbService.registerApplicant(formData)
       setSuccessData(res.credentials)
       toast('success', 'Pendaftaran berhasil!')
     } catch (err: any) {
+      setSubmitError(err.message || 'Gagal mendaftar')
       toast('error', err.message || 'Gagal mendaftar')
     } finally {
       setLoading(false)
     }
   }
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    toast('success', 'Disalin ke clipboard')
-  }
-
   const handleFinish = () => {
     navigate('/auth/login')
+  }
+
+  if (successData) {
+    return (
+      <SuccessState
+        badge="Pendaftaran Sedang Diproses"
+        title="Pendaftaran Berhasil!"
+        titleEn="Registration Successful"
+        description="Terima kasih! Data pendaftaran Anda telah kami terima. Simpan akun di bawah ini untuk login, lalu tunggu pesan dari kami melalui email atau WhatsApp untuk langkah selanjutnya."
+        actions={
+          <Button onClick={handleFinish} size="lg" className="w-full sm:w-auto">
+            <LogIn className="h-4 w-4" />
+            Lanjut ke Login
+          </Button>
+        }
+      >
+        <CredentialsCard username={successData.username} password={successData.password} />
+      </SuccessState>
+    )
   }
 
   return (
@@ -274,59 +292,17 @@ export default function RegisterPage() {
                     {loading ? 'Memproses...' : 'Selesaikan Pendaftaran'}
                   </Button>
                 </div>
+
+                {submitError && (
+                  <Alert type="error" title="Pendaftaran gagal">
+                    {submitError}
+                  </Alert>
+                )}
               </form>
             </CardContent>
           </Card>
         )}
       </div>
-
-      <Dialog open={!!successData} onOpenChange={(open) => !open && handleFinish()}>
-        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 mb-4">
-              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-            </div>
-            <DialogTitle className="text-center text-xl">Pendaftaran Berhasil!</DialogTitle>
-            <DialogDescription className="text-center pt-2">
-              Akun Anda telah berhasil dibuat. Harap simpan Username dan Password di bawah ini untuk login ke dashboard pendaftar.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {successData && (
-            <div className="bg-muted p-4 rounded-lg space-y-4 my-4">
-              <div className="flex justify-between items-center bg-background border rounded-md p-3">
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium mb-1">Username</p>
-                  <p className="font-mono font-bold text-lg">{successData.username}</p>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => copyToClipboard(successData.username)}>
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              <div className="flex justify-between items-center bg-background border rounded-md p-3">
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium mb-1">Password</p>
-                  <p className="font-mono font-bold text-lg tracking-wider">{successData.password}</p>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => copyToClipboard(successData.password)}>
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              <p className="text-xs text-amber-600 font-medium text-center bg-amber-50 p-2 rounded">
-                Simpan informasi ini dengan baik. Anda akan membutuhkannya untuk masuk ke sistem.
-              </p>
-            </div>
-          )}
-          
-          <DialogFooter className="sm:justify-center">
-            <Button onClick={handleFinish} className="w-full">
-              Lanjut ke Login
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

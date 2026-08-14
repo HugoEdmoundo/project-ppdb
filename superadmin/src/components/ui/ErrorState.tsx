@@ -100,62 +100,47 @@ export function ErrorState({ status = 500, retry, fullscreen = false, className 
   return (
     <div
       className={cn(
-        'relative flex items-center justify-center overflow-hidden px-4 py-8 md:py-12',
+        'relative flex items-center justify-center px-4 py-12',
         fullscreen && 'min-h-dvh',
         className
       )}
     >
-      {/* Animated background pattern */}
-      <div className="absolute inset-0 bg-slate-50">
-        <div className="absolute inset-0 opacity-5" style={{
-          backgroundImage: 'radial-gradient(circle at 2px 2px, rgb(0 0 0 / 0.15) 1px, transparent 0)',
-          backgroundSize: '32px 32px'
-        }} />
-      </div>
-
-      {/* Floating gradient blobs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/30 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#D4A853]/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/20 to-[#D4A853]/20 rounded-full blur-3xl" />
-
-      {/* Main content */}
-      <div className="relative z-10 w-full max-w-lg animate-fadeIn">
-        {/* Large animated status number */}
-        <div className="relative mb-8">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary to-[#D4A853] blur-2xl opacity-30" />
-          <h1 className="relative text-[120px] md:text-[160px] lg:text-[180px] font-black bg-gradient-to-br from-primary via-[#D4A853] to-primary bg-clip-text text-transparent leading-none tracking-tighter">
-            {status}
-          </h1>
-        </div>
-
-        {/* Icon with animation */}
-        <div className="relative -mt-16 mb-8 flex justify-center">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary to-[#D4A853] rounded-full blur-xl animate-pulse" />
-            <div className="relative w-24 h-24 md:w-28 md:h-28 bg-gradient-to-br from-primary to-[#D4A853] rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/30 transform hover:scale-110 transition-transform duration-300">
-              <Icon className="w-12 h-12 md:w-14 md:h-14 text-white" />
+      {/* Subtle background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/50 via-transparent to-[#D4A853]/50" />
+      
+      {/* Main card */}
+      <div className="relative z-10 w-full max-w-md animate-fadeIn">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/40 p-8 md:p-12 text-center">
+          {/* Icon */}
+          <div className="relative mx-auto mb-6 w-16 h-16">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary to-[#D4A853] rounded-2xl blur-lg opacity-20 animate-pulse" />
+            <div className="relative w-16 h-16 bg-gradient-to-br from-primary to-[#D4A853] rounded-2xl flex items-center justify-center shadow-lg">
+              <Icon className="w-8 h-8 text-white" />
             </div>
           </div>
-        </div>
 
-        {/* Title and subtitle */}
-        <div className="text-center mb-8">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-3">
+          {/* Status code */}
+          <h1 className="text-6xl md:text-7xl font-bold bg-gradient-to-r from-primary to-[#D4A853] bg-clip-text text-transparent mb-4">
+            {status}
+          </h1>
+
+          {/* Title */}
+          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
             {config.title}
           </h2>
-          <p className="text-lg md:text-xl text-muted-foreground font-medium">
+          <p className="text-sm text-muted-foreground font-medium tracking-wide uppercase mb-6">
             {config.titleEn}
           </p>
-        </div>
 
-        {/* Description */}
-        <p className="text-base md:text-lg text-muted-foreground leading-relaxed mb-8 text-center max-w-md mx-auto">
-          {config.description}
-        </p>
+          {/* Description */}
+          <p className="text-base text-muted-foreground leading-relaxed mb-8">
+            {config.description}
+          </p>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <ErrorActions actions={config.actions} retry={retry} />
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <ErrorActions actions={config.actions} retry={retry} />
+          </div>
         </div>
       </div>
     </div>
@@ -168,14 +153,14 @@ function ErrorActions({ actions, retry }: { actions: ErrorActions; retry?: () =>
       return (
         <>
           {retry && (
-            <Button onClick={retry} className={`${btnBase} inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 bg-gradient-to-r from-primary to-[#D4A853] text-white shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:-translate-y-1 active:translate-y-0`}>
-              <RefreshCw className="h-5 w-5" />
+            <Button onClick={retry} className={`${btnBase} inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-primary to-[#D4A853] text-white shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0`}>
+              <RefreshCw className="h-4 w-4" />
               Coba Lagi
             </Button>
           )}
           <Link to="/" className="inline-flex w-full sm:w-auto">
-            <Button variant="outline" className={`${btnBase} inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 border-2 border-slate-200 text-slate-700 bg-white hover:border-primary hover:text-primary hover:bg-primary/10 active:scale-[0.98]`}>
-              <Home className="h-5 w-5" />
+            <Button variant="outline" className={`${btnBase} inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 border-2 border-slate-200 text-slate-700 bg-white hover:border-primary hover:text-primary hover:bg-primary/10 active:scale-[0.98]`}>
+              <Home className="h-4 w-4" />
               Ke Beranda
             </Button>
           </Link>
@@ -185,14 +170,14 @@ function ErrorActions({ actions, retry }: { actions: ErrorActions; retry?: () =>
       return (
         <>
           <Link to="/login" className="inline-flex w-full sm:w-auto">
-            <Button className={`${btnBase} inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 bg-gradient-to-r from-primary to-[#D4A853] text-white shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:-translate-y-1 active:translate-y-0`}>
-              <LogIn className="h-5 w-5" />
+            <Button className={`${btnBase} inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-primary to-[#D4A853] text-white shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0`}>
+              <LogIn className="h-4 w-4" />
               Masuk
             </Button>
           </Link>
           <Link to="/" className="inline-flex w-full sm:w-auto">
-            <Button variant="outline" className={`${btnBase} inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 border-2 border-slate-200 text-slate-700 bg-white hover:border-primary hover:text-primary hover:bg-primary/10 active:scale-[0.98]`}>
-              <Home className="h-5 w-5" />
+            <Button variant="outline" className={`${btnBase} inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 border-2 border-slate-200 text-slate-700 bg-white hover:border-primary hover:text-primary hover:bg-primary/10 active:scale-[0.98]`}>
+              <Home className="h-4 w-4" />
               Ke Beranda
             </Button>
           </Link>
@@ -201,8 +186,8 @@ function ErrorActions({ actions, retry }: { actions: ErrorActions; retry?: () =>
     default:
       return (
         <Link to="/" className="inline-flex w-full sm:w-auto">
-          <Button className={`${btnBase} inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 bg-gradient-to-r from-primary to-[#D4A853] text-white shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:-translate-y-1 active:translate-y-0`}>
-            <ArrowRight className="h-5 w-5" />
+          <Button className={`${btnBase} inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-primary to-[#D4A853] text-white shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0`}>
+            <ArrowRight className="h-4 w-4" />
             Ke Beranda
           </Button>
         </Link>

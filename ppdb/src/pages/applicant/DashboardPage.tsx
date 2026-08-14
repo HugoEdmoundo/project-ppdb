@@ -36,14 +36,14 @@ export default function ApplicantDashboardPage() {
   }, [])
 
   const requiredDocs = [
-    'Ijazah atau SKL',
-    'Akta Kelahiran',
-    'Kartu Keluarga (KK)',
-    'KTP Orang Tua/Wali',
-    'Buku Rapor',
-    'Pas Foto',
-    'Surat Pernyataan Orang Tua',
-    'Medical Checkup'
+    { name: 'Ijazah atau SKL', description: 'Bukti kelulusan dari sekolah sebelumnya.' },
+    { name: 'Akta Kelahiran', description: 'Bukti tanggal dan tempat lahir anak.' },
+    { name: 'Kartu Keluarga (KK)', description: 'Bukti alamat tempat tinggal dan susunan keluarga.' },
+    { name: 'KTP Orang Tua/Wali', description: 'Bukti identitas ayah, ibu, atau wali.' },
+    { name: 'Buku Rapor', description: 'Nilai rapor dari semester awal sampai akhir.' },
+    { name: 'Pas Foto', description: 'Foto terbaru calon siswa sesuai ukuran permintaan sekolah.' },
+    { name: 'Surat Pernyataan Orang Tua', description: 'Surat tanda keabsahan data bermeterai.' },
+    { name: 'Medical Checkup', description: 'Surat keterangan sehat atau hasil pemeriksaan medis dari Kemenkes atau klinik resmi.' }
   ]
 
   const toggleStep = (step: number) => {
@@ -106,8 +106,11 @@ export default function ApplicantDashboardPage() {
                     <FileText className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">{doc}</p>
-                    <p className="text-xs text-muted-foreground">Belum diunggah</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm">{doc.name}</p>
+                      <Badge variant="outline" className="text-[10px] font-normal px-1.5 py-0 h-4">Belum diunggah</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{doc.description}</p>
                   </div>
                 </div>
                 <Button size="sm" variant="outline" className="shrink-0 gap-2">
@@ -164,7 +167,7 @@ export default function ApplicantDashboardPage() {
         </p>
       </div>
 
-      <div className="space-y-4 relative before:absolute before:inset-0 before:ml-6 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-muted before:to-transparent">
+      <div className="space-y-4 relative before:absolute before:inset-0 before:ml-6 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-muted before:to-transparent">
         
         {steps.map((step) => {
           const isCompleted = step.status === 'completed'
@@ -177,15 +180,15 @@ export default function ApplicantDashboardPage() {
           if (isActive) iconBg = 'bg-blue-500 border-blue-600 text-white shadow-sm ring-4 ring-blue-500/20'
 
           return (
-            <div key={step.number} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+            <div key={step.number} className="relative flex items-center group is-active">
               
-              <div className="flex items-center justify-center w-12 h-12 rounded-full border-2 bg-background shrink-0 z-10 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 ml-0 md:ml-auto md:mr-auto">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full border-2 bg-background shrink-0 z-10 mr-4">
                 <div className={`flex items-center justify-center w-full h-full rounded-full transition-colors ${iconBg}`}>
                   {isCompleted ? <CheckCircle className="w-5 h-5" /> : <span className="font-bold">{step.number}</span>}
                 </div>
               </div>
 
-              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-3rem)] ml-4 md:ml-0">
+              <div className="w-[calc(100%-4rem)]">
                 <Card 
                   className={`transition-all duration-200 ${isActive ? 'border-blue-300 shadow-md ring-1 ring-blue-100' : isLocked ? 'opacity-70 grayscale-[50%]' : ''}`}
                 >

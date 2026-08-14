@@ -402,7 +402,7 @@ def get_applicants(
 ):
     offset = (page - 1) * perPage
 
-    sql = "SELECT a.*, w.name as wave_name FROM ppdb_applicants a LEFT JOIN ppdb_waves w ON a.wave_id = w.id WHERE 1=1"
+    sql = "SELECT a.*, w.name as wave_name, u.username FROM ppdb_applicants a LEFT JOIN ppdb_waves w ON a.wave_id = w.id LEFT JOIN users u ON a.user_id = u.id WHERE 1=1"
     count_sql = "SELECT COUNT(*) as cnt FROM ppdb_applicants a WHERE 1=1"
     params: dict = {}
 

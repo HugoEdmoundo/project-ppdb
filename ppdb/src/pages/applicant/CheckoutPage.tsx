@@ -58,11 +58,6 @@ export default function CheckoutPage() {
     }
   }
 
-  // Placeholder untuk simulasi pembayaran gateway (karena belum ada PG sungguhan)
-  const handleSimulatePayment = async () => {
-    // Di dunia nyata ini akan redirect ke Midtrans/Xendit
-    toast('info', 'Di environment nyata, ini akan membuka halaman Payment Gateway')
-  }
 
   return (
     <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
@@ -122,16 +117,13 @@ export default function CheckoutPage() {
             </div>
 
             <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg text-blue-800 text-sm">
-              <strong>Info:</strong> Jika Anda memilih metode pembayaran offline/transfer manual, silakan konfirmasi ke panitia PPDB agar status pembayaran Anda diaktifkan.
+              <strong>Info:</strong> Saat ini pembayaran hanya dapat dilakukan secara manual (cash atau transfer) ke Panitia PPDB. Hubungi panitia dan mereka akan mengonfirmasi pembayaran Anda pada sistem. Setelah dikonfirmasi, Anda otomatis masuk ke dashboard pendaftar.
             </div>
 
           </CardContent>
           <CardFooter className="flex flex-col sm:flex-row gap-3 pt-4 border-t bg-muted/20">
-            <Button className="w-full sm:w-auto" size="lg" onClick={handleSimulatePayment}>
-              Bayar Sekarang (Online)
-            </Button>
-            <Button variant="outline" className="w-full sm:w-auto" size="lg" onClick={handleRefresh} disabled={loading}>
-              {loading ? 'Memeriksa...' : 'Cek Status Pembayaran'}
+            <Button variant="outline" className="w-full" size="lg" onClick={handleRefresh} disabled={loading}>
+              {loading ? 'Memeriksa Status...' : 'Cek Status Pembayaran (Refresh)'}
             </Button>
           </CardFooter>
         </Card>

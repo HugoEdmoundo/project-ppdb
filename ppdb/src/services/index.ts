@@ -133,6 +133,11 @@ export const notifService = {
   deleteCalendarEvent: (id: string) => apiFetch<void>(`/notif/calendar/${id}`, { method: 'DELETE' }),
 }
 
+export const notificationService = {
+  getTemplates: () => apiFetch<any[]>('/notifications/templates'),
+  updateTemplate: (id: string, body: any) => apiFetch<any>(`/notifications/templates/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+}
+
 export const dashboardService = {
   getStats: () => apiFetch<any>('/ppdb/dashboard/stats'),
   getAuditLogs: (params?: any) => apiFetch<any>(`/dashboard/audit-logs${params ? '?' + new URLSearchParams(params) : ''}`),

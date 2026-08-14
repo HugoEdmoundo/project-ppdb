@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth, useFilteredNav } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, ChevronDown, ChevronLeft, Menu, LogOut, CalendarDays, CreditCard
+  LayoutDashboard, ChevronDown, ChevronLeft, Menu, LogOut, CalendarDays, CreditCard, Bell
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -24,6 +24,7 @@ const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/admin/dashboard', module: 'dashboard' },
   { label: 'Periode PPDB', icon: CalendarDays, href: '/admin/periods', module: 'ppdb', minLevel: 'read' },
   { label: 'Pembayaran', icon: CreditCard, href: '/admin/payments', module: 'payment', minLevel: 'read' },
+  { label: 'Notifikasi', icon: Bell, href: '/admin/notifications', module: 'notification', minLevel: 'read' },
 ]
 
 type NavChild = { label: string; href: string }

@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
-import * as api from '../api/client'
-import { useToast } from '../components/Toast'
-import { Card, CardContent } from '../components/ui/card'
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../components/ui/table'
-import { Badge } from '../components/ui/badge'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog'
-import { EmptyState } from '../components/ui/EmptyState'
-import { Search, GraduationCap, UserRoundSearch } from 'lucide-react'
+import * as api from '../../../api/client'
+import { useToast } from '@/components/Toast'
+import { Card, CardContent } from '@/components/ui/Card'
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Eye, Search, GraduationCap, UserRoundSearch } from 'lucide-react'
 
 export default function ApplicantsPage() {
   const { toast } = useToast()
@@ -21,8 +21,8 @@ export default function ApplicantsPage() {
   const fetchApplicants = async (q = search) => {
     setLoading(true)
     try {
-      const res = await api.getApplicants({ search: q })
-      setApplicants((res as any).data || [])
+      const res = await api.apiFetch<any>(`/ppdb/applicants?search=${encodeURIComponent(q)}`)
+      setApplicants(res.data || [])
     } catch (e: any) {
       toast('error', e.message || 'Gagal memuat pendaftar')
     } finally {
@@ -40,14 +40,14 @@ export default function ApplicantsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <GraduationCap className="h-6 w-6 text-emerald-primary" />
-          Akun Pendaftar (PPDB)
+          <GraduationCap className="h-6 w-6 text-emerald-600" />
+          Data Pendaftar
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Daftar akun pendaftar yang otomatis dibuat oleh sistem. Klik baris untuk melihat detail.
+          Kelola data calon santri yang telah mendaftar.
         </p>
       </div>
 
@@ -75,30 +75,28 @@ export default function ApplicantsPage() {
                 <TableHead>Email / No. WA</TableHead>
                 <TableHead>Gelombang</TableHead>
                 <TableHead>Jalur / Jenjang</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Status Pembayaran</TableHead>
+                <TableHead>Status Dokumen</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8">Memuat data...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8">Memuat data...</TableCell></TableRow>
               ) : applicants.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-8">
+                  <TableCell colSpan={7} className="py-8">
                     <EmptyState
                       icon={UserRoundSearch}
                       title="Belum Ada Pendaftar"
-                      description="Belum ada akun pendaftar PPDB yang dibuat oleh sistem. Data akan muncul otomatis saat calon siswa mendaftar."
+                      description="Belum ada pendaftar yang sesuai kriteria pencarian."
                       className="bg-transparent border-transparent"
                     />
                   </TableCell>
                 </TableRow>
               ) : (
                 applicants.map((a) => (
-                  <TableRow
-                    key={a.id}
-                    className="cursor-pointer"
-                    onClick={() => setSelectedApplicant(a)}
-                  >
+                  <TableRow key={a.id}>
                     <TableCell className="font-medium">{a.full_name}</TableCell>
                     <TableCell className="text-sm">
                       {a.email} <br/>
@@ -110,9 +108,19 @@ export default function ApplicantsPage() {
                       <span className="font-medium">{a.registration_level}</span>
                     </TableCell>
                     <TableCell>
+                      <Badge variant={a.payment_status === 'paid' ? 'success' : a.payment_status === 'expired' ? 'destructive' : 'warning'}>
+                        {a.payment_status?.toUpperCase() || 'PENDING'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
                       <Badge variant="secondary" className="uppercase text-[10px]">
                         {a.status.replace('_', ' ')}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => setSelectedApplicant(a)} title="Lihat Detail">
+                        <Eye className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -122,21 +130,23 @@ export default function ApplicantsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!selectedApplicant} onOpenChange={(v: boolean) => !v && setSelectedApplicant(null)}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={!!selectedApplicant} onOpenChange={(v) => !v && setSelectedApplicant(null)}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detail Pendaftar</DialogTitle>
           </DialogHeader>
           {selectedApplicant && (
-            <div className="space-y-4 pt-4">
+            <div className="space-y-6 pt-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground text-xs">Nama Lengkap</p>
                   <p className="font-medium">{selectedApplicant.full_name}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Status</p>
-                  <Badge variant="secondary" className="uppercase text-[10px] mt-1">{selectedApplicant.status.replace('_', ' ')}</Badge>
+                  <p className="text-muted-foreground text-xs">Status Pembayaran</p>
+                  <Badge variant={selectedApplicant.payment_status === 'paid' ? 'success' : 'warning'} className="mt-1">
+                    {selectedApplicant.payment_status?.toUpperCase() || 'PENDING'}
+                  </Badge>
                 </div>
                 
                 <div>
@@ -161,6 +171,10 @@ export default function ApplicantsPage() {
                   <p className="text-muted-foreground text-xs">Tempat, Tgl Lahir</p>
                   <p className="font-medium">{selectedApplicant.birth_place || '-'}, {selectedApplicant.birth_date || '-'}</p>
                 </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Jenis Kelamin</p>
+                  <p className="font-medium">{selectedApplicant.gender === 'L' ? 'Laki-laki' : selectedApplicant.gender === 'P' ? 'Perempuan' : '-'}</p>
+                </div>
 
                 <div>
                   <p className="text-muted-foreground text-xs">NISN</p>
@@ -170,18 +184,19 @@ export default function ApplicantsPage() {
                   <p className="text-muted-foreground text-xs">NIK</p>
                   <p className="font-medium">{selectedApplicant.nik || '-'}</p>
                 </div>
+
+                <div className="col-span-2">
+                  <p className="text-muted-foreground text-xs">Alamat</p>
+                  <p className="font-medium">{selectedApplicant.address || '-'}</p>
+                </div>
+
                 <div>
                   <p className="text-muted-foreground text-xs">Nama Orang Tua/Wali</p>
                   <p className="font-medium">{selectedApplicant.parent_name || '-'}</p>
                 </div>
-
                 <div>
                   <p className="text-muted-foreground text-xs">Asal Sekolah</p>
                   <p className="font-medium">{selectedApplicant.previous_school || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Pilihan Jurusan</p>
-                  <p className="font-medium">{selectedApplicant.major_choice || '-'}</p>
                 </div>
 
                 <div>
@@ -192,23 +207,6 @@ export default function ApplicantsPage() {
                   <p className="text-muted-foreground text-xs">Waktu Daftar</p>
                   <p className="font-medium">{new Date(selectedApplicant.created_at).toLocaleString('id-ID')}</p>
                 </div>
-              </div>
-
-              <div className="rounded-xl border border-border bg-muted/40 p-4">
-                <p className="text-xs font-semibold text-foreground mb-3">Kredensial Login</p>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground text-xs">Username</p>
-                    <p className="font-mono font-medium">{selectedApplicant.username || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Password</p>
-                    <p className="font-mono font-medium text-muted-foreground">••••••</p>
-                  </div>
-                </div>
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Password hanya muncul sekali saat pendaftaran (tersimpan terenkripsi, tidak bisa dilihat kembali). Bila pendaftar lupa password, reset lewat menu Users.
-                </p>
               </div>
             </div>
           )}

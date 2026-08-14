@@ -12,7 +12,6 @@ import RolesPage from './pages/RolesPage'
 import RoleFormPage from './pages/RoleFormPage'
 import ProfilePage from './pages/ProfilePage'
 import ApplicantsPage from './pages/ApplicantsPage'
-import NotificationsPage from './pages/NotificationsPage'
 import NotFoundPage from './pages/NotFoundPage'
 import * as api from './api/client'
 
@@ -63,7 +62,6 @@ export default function App() {
                     <Route path="/roles/:id" element={<RoleFormPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/applicants" element={<ApplicantsPage />} />
-                    <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </Layout>

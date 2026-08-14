@@ -118,9 +118,9 @@ function useMounted() {
 }
 
 const btnPrimary =
-  'inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-white'
+  'inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-6 py-3 sm:py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/90 text-white shadow-lg shadow-[var(--accent)]/25 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-white'
 const btnOutline =
-  'inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border border-[var(--border)] text-[var(--text)] hover:bg-[var(--accent-subtle)] hover:border-[var(--accent)]/30 hover:text-[var(--accent)] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-white'
+  'inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-6 py-3 sm:py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border-2 border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-white'
 
 export default function ErrorDisplay({ status = 500, retry, digest }: ErrorDisplayProps) {
   const config = errors[status] || errors[500]
@@ -162,45 +162,46 @@ export default function ErrorDisplay({ status = 500, retry, digest }: ErrorDispl
           <div className="absolute -inset-2 md:-inset-4 bg-gradient-to-b from-[var(--accent)]/5 via-transparent to-[var(--accent-gold)]/5 rounded-2xl md:rounded-3xl blur-xl" />
 
           {/* Glass card */}
-          <div className="relative bg-white/70 backdrop-blur-xl border border-white/40 rounded-2xl shadow-xl p-8 sm:p-10 md:p-14 text-center">
-            {/* Gradient border accent */}
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--accent)]/30 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[var(--accent-gold)]/20 to-transparent" />
+          <div className="relative bg-white/80 backdrop-blur-2xl border border-white/60 rounded-3xl shadow-2xl p-8 sm:p-10 md:p-14 text-center">
+            {/* Gradient border accents */}
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[var(--accent)]/40 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-[var(--accent-gold)]/30 to-transparent" />
 
-            {/* Icon with pulsing ring + float */}
-            <div className="relative mx-auto mb-5 md:mb-6 w-16 h-16 md:w-18 md:h-18">
-              <div
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 md:w-28 md:h-28 rounded-full"
-                style={{ background: 'radial-gradient(circle, var(--accent-gold) 0%, transparent 70%)', animation: 'ringPulse 2.5s ease-in-out infinite' }}
-              />
-              <div className="animate-icon-float relative w-16 h-16 md:w-18 md:h-18 rounded-2xl bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/10 flex items-center justify-center shadow-sm">
-                <Icon className="w-8 h-8 md:w-9 md:h-9 text-[var(--accent)]" />
+            {/* Icon container */}
+            <div className="relative mx-auto mb-6 md:mb-8">
+              <div className="relative w-20 h-20 md:w-24 md:h-24 flex items-center justify-center">
+                {/* Background glow */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[var(--accent)]/20 to-[var(--accent-gold)]/20 blur-xl" />
+                {/* Icon wrapper */}
+                <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent)]/80 flex items-center justify-center shadow-lg shadow-[var(--accent)]/20">
+                  <Icon className="w-8 h-8 md:w-10 md:h-10 text-white" />
+                </div>
               </div>
             </div>
 
             {/* Status */}
-            <h1 className="font-[var(--font-display)] text-6xl md:text-7xl lg:text-8xl font-bold bg-gradient-to-b from-[var(--accent)] to-[var(--accent)]/60 bg-clip-text text-transparent mb-1 leading-none">
+            <h1 className="font-[var(--font-display)] text-7xl md:text-8xl lg:text-9xl font-bold text-[var(--accent)] mb-2 leading-none tracking-tight">
               {status}
             </h1>
 
-            {/* Divider */}
-            <div className="mx-auto my-4 md:my-5 w-14 md:w-16 h-0.5 rounded-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent-gold)]" />
+            {/* Decorative line */}
+            <div className="mx-auto my-5 md:my-6 w-16 md:w-20 h-1 rounded-full bg-gradient-to-r from-[var(--accent)] via-[var(--accent-gold)] to-[var(--accent)]" />
 
             {/* Title */}
-            <h2 className="font-[var(--font-display)] text-xl md:text-2xl lg:text-3xl font-semibold text-[var(--text)] mb-1 px-2">
+            <h2 className="font-[var(--font-display)] text-2xl md:text-3xl lg:text-4xl font-bold text-[var(--text)] mb-2">
               {config.title}
             </h2>
-            <p className="text-[11px] md:text-xs text-[var(--text-muted)] mb-3 md:mb-4 font-medium tracking-wider uppercase">
+            <p className="text-sm md:text-base text-[var(--text-muted)] mb-6 md:mb-8 font-medium tracking-wide">
               {config.titleEn}
             </p>
 
             {/* Description */}
-            <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed mb-3 md:mb-4 max-w-xs mx-auto px-2">
+            <p className="text-sm md:text-base text-[var(--text-secondary)] leading-relaxed mb-8 md:mb-10 max-w-sm mx-auto px-4">
               {config.description}
             </p>
 
             {/* Contextual hint */}
-            <p className="text-[11px] sm:text-xs text-[var(--text-muted)]/80 italic mb-3 md:mb-4 max-w-xs mx-auto px-2">
+            <p className="text-xs md:text-sm text-[var(--text-muted)]/70 mb-8 md:mb-10 max-w-sm mx-auto px-4">
               {config.hint}
             </p>
 

@@ -120,39 +120,46 @@ export function ErrorState({ status = 500, retry, fullscreen = false, className 
           <div className="absolute -inset-2 md:-inset-4 bg-gradient-to-b from-primary/5 via-transparent to-[#D4A853]/5 rounded-2xl md:rounded-3xl blur-xl" />
 
           {/* Glass card */}
-          <div className="relative bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl p-8 sm:p-10 md:p-14 text-center">
+          <div className="relative bg-white/80 backdrop-blur-2xl border border-white/60 rounded-3xl shadow-2xl p-8 sm:p-10 md:p-14 text-center">
             {/* Gradient border accents */}
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#D4A853]/40 to-transparent" />
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-[#D4A853]/30 to-transparent" />
 
-            {/* Icon */}
-            <div className="relative mx-auto mb-5 md:mb-6 w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-primary/10 ring-1 ring-primary/10 flex items-center justify-center">
-              <Icon className="w-7 h-7 md:w-8 md:h-8 text-primary" />
+            {/* Icon container */}
+            <div className="relative mx-auto mb-6 md:mb-8">
+              <div className="relative w-20 h-20 md:w-24 md:h-24 flex items-center justify-center">
+                {/* Background glow */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-[#D4A853]/20 blur-xl" />
+                {/* Icon wrapper */}
+                <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
+                  <Icon className="w-8 h-8 md:w-10 md:h-10 text-white" />
+                </div>
+              </div>
             </div>
 
             {/* Status */}
-            <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold bg-gradient-to-b from-primary to-primary/50 bg-clip-text text-transparent mb-1 leading-none">
+            <h1 className="text-7xl md:text-8xl lg:text-9xl font-bold text-primary mb-2 leading-none tracking-tight">
               {status}
             </h1>
 
-            {/* Divider */}
-            <div className="mx-auto my-4 md:my-5 w-14 md:w-16 h-0.5 rounded-full bg-gradient-to-r from-primary to-[#D4A853]" />
+            {/* Decorative line */}
+            <div className="mx-auto my-5 md:my-6 w-16 md:w-20 h-1 rounded-full bg-gradient-to-r from-primary via-[#D4A853] to-primary" />
 
             {/* Title */}
-            <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-foreground mb-1 px-2">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-2 px-2">
               {config.title}
             </h2>
-            <p className="text-[11px] md:text-xs text-muted-foreground mb-3 md:mb-4 font-medium tracking-wider uppercase">
+            <p className="text-sm md:text-base text-muted-foreground mb-6 md:mb-8 font-medium tracking-wide">
               {config.titleEn}
             </p>
 
             {/* Description */}
-            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-6 md:mb-8 max-w-xs mx-auto px-2">
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed mb-8 md:mb-10 max-w-sm mx-auto px-4">
               {config.description}
             </p>
 
             {/* Actions */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 md:gap-3 px-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 md:gap-4 px-2">
               <ErrorActions actions={config.actions} retry={retry} />
             </div>
           </div>
@@ -168,13 +175,13 @@ function ErrorActions({ actions, retry }: { actions: ErrorActions; retry?: () =>
       return (
         <>
           {retry && (
-            <Button onClick={retry} className={`${btnBase} w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90`}>
+            <Button onClick={retry} size="lg" className={`${btnBase} w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90`}>
               <RefreshCw className="h-4 w-4" />
               Coba Lagi
             </Button>
           )}
           <Link to="/" className="inline-flex w-full sm:w-auto">
-            <Button variant="outline" className={`${btnBase} w-full sm:w-auto`}>
+            <Button variant="outline" size="lg" className={`${btnBase} w-full sm:w-auto`}>
               <Home className="h-4 w-4" />
               Ke Beranda
             </Button>
@@ -185,13 +192,13 @@ function ErrorActions({ actions, retry }: { actions: ErrorActions; retry?: () =>
       return (
         <>
           <Link to="/login" className="inline-flex w-full sm:w-auto">
-            <Button className={`${btnBase} w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90`}>
+            <Button size="lg" className={`${btnBase} w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90`}>
               <LogIn className="h-4 w-4" />
               Masuk
             </Button>
           </Link>
           <Link to="/" className="inline-flex w-full sm:w-auto">
-            <Button variant="outline" className={`${btnBase} w-full sm:w-auto`}>
+            <Button variant="outline" size="lg" className={`${btnBase} w-full sm:w-auto`}>
               <Home className="h-4 w-4" />
               Ke Beranda
             </Button>
@@ -201,7 +208,7 @@ function ErrorActions({ actions, retry }: { actions: ErrorActions; retry?: () =>
     default:
       return (
         <Link to="/" className="inline-flex w-full sm:w-auto">
-          <Button className={`${btnBase} w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90`}>
+          <Button size="lg" className={`${btnBase} w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90`}>
             <ArrowRight className="h-4 w-4" />
             Ke Beranda
           </Button>

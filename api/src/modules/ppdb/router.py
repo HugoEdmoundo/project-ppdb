@@ -16,7 +16,7 @@ from src.core.database import (
     get_raw_pool,
     update_record,
 )
-from src.core.notif_service import send_notification
+from src.core.notif_service import send_notifications
 from src.core.dependencies import require_ppdb_admin, require_ppdb_read
 from src.core.security import hash_password
 from src.modules.ppdb.schemas import (
@@ -319,6 +319,7 @@ def register_applicant(body: ApplicantRegister):
             "full_name": body.full_name,
             "user_type": "applicant",
         },
+        return_row=False,
     )
 
     created_applicant = create_record(
@@ -344,6 +345,7 @@ def register_applicant(body: ApplicantRegister):
             "payment_status": "pending",
             "payment_deadline": (datetime.now(ZoneInfo("Asia/Jakarta")) + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"),
         },
+        return_row=False,
     )
 
     # Buat transaksi pembayaran offline dengan status pending
@@ -355,21 +357,27 @@ def register_applicant(body: ApplicantRegister):
             "method": "offline",
             "amount": 0,  # Akan di-update sesuai nominal pendaftaran
             "status": "pending",
-        }
+        },
+        return_row=False,
     )
 
-    # Kirim notifikasi welcome
-    send_notification("welcome", created_user["id"], {
-        "password": raw_password,
-        "link_login": "https://ppdb.ptdarrahman.sch.id/auth/login", # TBD
-        "batas_waktu_bayar": created_applicant["payment_deadline"],
-    })
-
-    # Kirim notifikasi pengingat pembayaran formulir
-    send_notification("payment_reminder", created_user["id"], {
-        "link_pembayaran": "https://ppdb.ptdarrahman.sch.id/checkout", # TBD
-        "batas_waktu_bayar": created_applicant["payment_deadline"],
-    })
+    # Kirim notifikasi welcome + pengingat pembayaran (satu set lookup DB)
+    send_notifications(
+        [
+            ("welcome", {
+                "password": raw_password,
+                "link_login": "https://ppdb.ptdarrahman.sch.id/auth/login", # TBD
+                "batas_waktu_bayar": created_applicant["payment_deadline"],
+            }),
+            ("payment_reminder", {
+                "link_pembayaran": "https://ppdb.ptdarrahman.sch.id/checkout", # TBD
+                "batas_waktu_bayar": created_applicant["payment_deadline"],
+            }),
+        ],
+        created_user["id"],
+        user_row=created_user,
+        applicant_row=created_applicant,
+    )
 
     return {
         "success": True,
@@ -496,7 +504,7 @@ def soft_delete_expired_applicants():
         )
         
     for user_id in user_ids:
-        send_notification("payment_expired", user_id, {})
+        send_notifications([("payment_expired", {})], user_id)
         
     return {"deleted": len(applicant_ids), "applicant_ids": applicant_ids}
 

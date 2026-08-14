@@ -19,7 +19,7 @@ WIB = ZoneInfo("Asia/Jakarta")
 # Tables whose PK column is `key` instead of `id`.
 PK_TABLES = {"site_settings"}
 # Tables that have no `updated_at` column.
-NO_UPDATED_AT = {"refresh_tokens", "audit_log", "user_page_permissions", "file_uploads", "rate_limits"}
+NO_UPDATED_AT = {"refresh_tokens", "audit_log", "user_page_permissions", "file_uploads", "rate_limits", "notification_logs"}
 
 _IDENT_RE = re.compile(r"^[A-Za-z0-9_]+$")
 
@@ -52,8 +52,8 @@ def get_engine() -> Engine:
             url,
             pool_pre_ping=True,
             pool_recycle=3600,
-            pool_size=10,
-            max_overflow=20,
+            pool_size=5,
+            max_overflow=10,
             connect_args=connect_args,
         )
     return _engine
@@ -161,7 +161,7 @@ def get_first(table: str) -> Optional[dict[str, Any]]:
     return rows[0] if rows else None
 
 
-def create_record(table: str, data: dict[str, Any]) -> dict[str, Any]:
+def create_record(table: str, data: dict[str, Any], return_row: bool = True) -> dict[str, Any]:
     payload = dict(data)
     if table not in PK_TABLES and "id" not in payload:
         payload["id"] = str(uuid4())
@@ -179,7 +179,7 @@ def create_record(table: str, data: dict[str, Any]) -> dict[str, Any]:
     sql = f"INSERT INTO `{_require_ident(table)}` ({cols}) VALUES ({placeholders})"
     _run(sql, cleaned)
 
-    if table in PK_TABLES:
+    if table in PK_TABLES or not return_row:
         return cleaned
     return get_by_id(table, cleaned["id"])
 

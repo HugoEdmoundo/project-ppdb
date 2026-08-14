@@ -299,4 +299,4 @@ export async function getApplicants(params?: any) {
 
 // ── Helpers ───────────────────────────────────────────────
 
-export { getToken, getStoredUser, clearAuth, API_BASE }
+export { getToken, getStoredUser, clearAuth, API_BASE, apiFetch }

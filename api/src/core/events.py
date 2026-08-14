@@ -39,7 +39,15 @@ class EventHub:
             finally:
                 self._queues.discard(queue)
 
-        return StreamingResponse(event_generator(), media_type="text/event-stream")
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"
+            }
+        )
 
 
 companyprofile_hub = EventHub()

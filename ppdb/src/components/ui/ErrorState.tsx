@@ -97,69 +97,62 @@ export function ErrorState({ status = 500, retry, fullscreen = true, className }
   return (
     <div
       className={cn(
-        'relative flex items-center justify-center overflow-hidden px-4 py-10 md:py-16',
+        'relative flex items-center justify-center overflow-hidden px-4 py-8 md:py-12',
         fullscreen && 'min-h-dvh',
         className
       )}
     >
-      {/* Gradient base */}
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-light/70 via-transparent to-gold-bg/70" />
+      {/* Animated background pattern */}
+      <div className="absolute inset-0 bg-slate-50">
+        <div className="absolute inset-0 opacity-5" style={{
+          backgroundImage: 'radial-gradient(circle at 2px 2px, rgb(0 0 0 / 0.15) 1px, transparent 0)',
+          backgroundSize: '32px 32px'
+        }} />
+      </div>
 
-      {/* Decorative orbs */}
-      <div className="absolute -top-24 -right-24 md:-top-32 md:-right-32 w-[300px] h-[300px] md:w-[500px] md:h-[500px] rounded-full bg-emerald-light opacity-70 blur-3xl" />
-      <div className="absolute -bottom-28 -left-28 md:-bottom-40 md:-left-40 w-[350px] h-[350px] md:w-[600px] md:h-[600px] rounded-full bg-gold-bg opacity-70 blur-3xl" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] h-[250px] md:w-[400px] md:h-[400px] rounded-full bg-emerald-primary/5 blur-3xl" />
+      {/* Floating gradient blobs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-light/30 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gold-bg/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-emerald-light/20 to-gold-bg/20 rounded-full blur-3xl" />
 
-      {/* Main card */}
-      <div className="relative z-10 w-full max-w-sm sm:max-w-md animate-scale-in">
-        <div className="relative">
-          {/* Glow */}
-          <div className="absolute -inset-2 md:-inset-4 bg-gradient-to-b from-emerald-primary/5 via-transparent to-gold-accent/5 rounded-2xl md:rounded-3xl blur-xl" />
+      {/* Main content */}
+      <div className="relative z-10 w-full max-w-lg animate-scale-in">
+        {/* Large animated status number */}
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-primary to-gold-accent blur-2xl opacity-30" />
+          <h1 className="relative text-[120px] md:text-[160px] lg:text-[180px] font-black bg-gradient-to-br from-emerald-primary via-gold-accent to-emerald-primary bg-clip-text text-transparent leading-none tracking-tighter">
+            {status}
+          </h1>
+        </div>
 
-          {/* Glass card */}
-          <div className="glass-card relative p-8 sm:p-10 md:p-14 text-center">
-            {/* Gradient border accents */}
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-emerald-primary/40 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-gold-accent/30 to-transparent" />
-
-            {/* Icon container */}
-            <div className="relative mx-auto mb-6 md:mb-8">
-              <div className="relative w-20 h-20 md:w-24 md:h-24 flex items-center justify-center">
-                {/* Background glow */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-light/20 to-gold-bg/20 blur-xl" />
-                {/* Icon wrapper */}
-                <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-emerald-primary to-emerald-primary/80 flex items-center justify-center shadow-lg shadow-emerald-primary/20">
-                  <Icon className="w-8 h-8 md:w-10 md:h-10 text-white" />
-                </div>
-              </div>
-            </div>
-
-            {/* Status */}
-            <h1 className="font-heading text-7xl md:text-8xl lg:text-9xl font-bold text-emerald-primary mb-2 leading-none tracking-tight">
-              {status}
-            </h1>
-
-            {/* Decorative line */}
-            <div className="mx-auto my-5 md:my-6 w-16 md:w-20 h-1 rounded-full bg-gradient-to-r from-emerald-primary via-gold-accent to-emerald-primary" />
-
-            {/* Title */}
-            <h2 className="font-heading text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-2 px-2">
-              {config.title}
-            </h2>
-            <p className="text-sm md:text-base text-muted-foreground mb-6 md:mb-8 font-medium tracking-wide">
-              {config.titleEn}
-            </p>
-
-            {/* Description */}
-            <p className="text-sm md:text-base text-muted-foreground leading-relaxed mb-8 md:mb-10 max-w-sm mx-auto px-4">
-              {config.description}
-            </p>
-
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 md:gap-4 px-2">
-              <ErrorActions actions={config.actions} retry={retry} />
+        {/* Icon with animation */}
+        <div className="relative -mt-16 mb-8 flex justify-center">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-primary to-gold-accent rounded-full blur-xl animate-pulse" />
+            <div className="relative w-24 h-24 md:w-28 md:h-28 bg-gradient-to-br from-emerald-primary to-gold-accent rounded-2xl flex items-center justify-center shadow-2xl shadow-emerald-primary/30 transform hover:scale-110 transition-transform duration-300">
+              <Icon className="w-12 h-12 md:w-14 md:h-14 text-white" />
             </div>
           </div>
+        </div>
+
+        {/* Title and subtitle */}
+        <div className="text-center mb-8">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-3">
+            {config.title}
+          </h2>
+          <p className="text-lg md:text-xl text-muted-foreground font-medium">
+            {config.titleEn}
+          </p>
+        </div>
+
+        {/* Description */}
+        <p className="text-base md:text-lg text-muted-foreground leading-relaxed mb-8 text-center max-w-md mx-auto">
+          {config.description}
+        </p>
+
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <ErrorActions actions={config.actions} retry={retry} />
         </div>
       </div>
     </div>
@@ -172,14 +165,14 @@ function ErrorActions({ actions, retry }: { actions: ErrorActions; retry?: () =>
       return (
         <>
           {retry && (
-            <Button onClick={retry} size="lg" className="w-full sm:w-auto">
-              <RefreshCw className="h-4 w-4" />
+            <Button onClick={retry} className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 bg-gradient-to-r from-emerald-primary to-gold-accent text-white shadow-xl shadow-emerald-primary/30 hover:shadow-2xl hover:shadow-emerald-primary/40 hover:-translate-y-1 active:translate-y-0">
+              <RefreshCw className="h-5 w-5" />
               Coba Lagi
             </Button>
           )}
           <Link to="/" className="inline-flex w-full sm:w-auto">
-            <Button variant="outline" size="lg" className="w-full sm:w-auto">
-              <Home className="h-4 w-4" />
+            <Button variant="outline" className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 border-2 border-slate-200 text-slate-700 bg-white hover:border-emerald-primary hover:text-emerald-primary hover:bg-emerald-light/20 active:scale-[0.98]">
+              <Home className="h-5 w-5" />
               Ke Beranda
             </Button>
           </Link>
@@ -189,14 +182,14 @@ function ErrorActions({ actions, retry }: { actions: ErrorActions; retry?: () =>
       return (
         <>
           <Link to="/auth/login" className="inline-flex w-full sm:w-auto">
-            <Button size="lg" className="w-full sm:w-auto">
-              <LogIn className="h-4 w-4" />
+            <Button className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 bg-gradient-to-r from-emerald-primary to-gold-accent text-white shadow-xl shadow-emerald-primary/30 hover:shadow-2xl hover:shadow-emerald-primary/40 hover:-translate-y-1 active:translate-y-0">
+              <LogIn className="h-5 w-5" />
               Masuk
             </Button>
           </Link>
           <Link to="/" className="inline-flex w-full sm:w-auto">
-            <Button variant="outline" size="lg" className="w-full sm:w-auto">
-              <Home className="h-4 w-4" />
+            <Button variant="outline" className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 border-2 border-slate-200 text-slate-700 bg-white hover:border-emerald-primary hover:text-emerald-primary hover:bg-emerald-light/20 active:scale-[0.98]">
+              <Home className="h-5 w-5" />
               Ke Beranda
             </Button>
           </Link>
@@ -205,8 +198,8 @@ function ErrorActions({ actions, retry }: { actions: ErrorActions; retry?: () =>
     default:
       return (
         <Link to="/" className="inline-flex w-full sm:w-auto">
-          <Button size="lg" className="w-full sm:w-auto">
-            <ArrowRight className="h-4 w-4" />
+          <Button className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 bg-gradient-to-r from-emerald-primary to-gold-accent text-white shadow-xl shadow-emerald-primary/30 hover:shadow-2xl hover:shadow-emerald-primary/40 hover:-translate-y-1 active:translate-y-0">
+            <ArrowRight className="h-5 w-5" />
             Ke Beranda
           </Button>
         </Link>

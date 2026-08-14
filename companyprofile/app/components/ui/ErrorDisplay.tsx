@@ -118,9 +118,9 @@ function useMounted() {
 }
 
 const btnPrimary =
-  'inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-6 py-3 sm:py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/90 text-white shadow-lg shadow-[var(--accent)]/25 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-white'
+  'inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-gold)] text-white shadow-xl shadow-[var(--accent)]/30 hover:shadow-2xl hover:shadow-[var(--accent)]/40 hover:-translate-y-1 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-white'
 const btnOutline =
-  'inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-6 py-3 sm:py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border-2 border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-white'
+  'inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 border-2 border-[var(--border)] text-[var(--text)] bg-white hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-white'
 
 export default function ErrorDisplay({ status = 500, retry, digest }: ErrorDisplayProps) {
   const config = errors[status] || errors[500]
@@ -129,105 +129,92 @@ export default function ErrorDisplay({ status = 500, retry, digest }: ErrorDispl
 
   return (
     <div className="relative min-h-dvh flex items-center justify-center overflow-hidden bg-[var(--bg)] px-4 py-8 md:py-12">
-      {/* Gradient base */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-subtle)] via-transparent to-[var(--color-gold-subtle)] opacity-60" />
+      {/* Animated background pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'radial-gradient(circle at 2px 2px, rgb(0 0 0 / 0.15) 1px, transparent 0)',
+          backgroundSize: '32px 32px'
+        }} />
+      </div>
 
-      {/* Decorative pattern */}
-      <div className="absolute inset-0 bg-pattern-dots-gold opacity-[0.05]" />
+      {/* Floating gradient blobs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[var(--accent-subtle)]/30 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[var(--color-gold-subtle)]/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-[var(--accent-subtle)]/20 to-[var(--color-gold-subtle)]/20 rounded-full blur-3xl" />
 
-      {/* Decorative orbs — smaller on mobile, larger on desktop */}
-      <div className="absolute -top-24 -right-24 md:-top-32 md:-right-32 w-[300px] h-[300px] md:w-[500px] md:h-[500px] rounded-full bg-[var(--accent-subtle)] opacity-20 md:opacity-30 blur-3xl" />
-      <div className="absolute -bottom-28 -left-28 md:-bottom-40 md:-left-40 w-[350px] h-[350px] md:w-[600px] md:h-[600px] rounded-full bg-[var(--color-gold-subtle)] opacity-20 md:opacity-25 blur-3xl" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] h-[250px] md:w-[400px] md:h-[400px] rounded-full bg-[var(--accent)]/5 blur-3xl" />
-
-      {/* Floating particles — hidden on mobile */}
-      <div className="hidden md:block absolute top-1/4 right-1/4 w-2 h-2 rounded-full bg-[var(--accent)]/20 blur-sm" />
-      <div className="hidden md:block absolute bottom-1/3 left-1/3 w-3 h-3 rounded-full bg-[var(--accent-gold)]/15 blur-sm" />
-      <div className="hidden md:block absolute top-2/3 right-1/3 w-1.5 h-1.5 rounded-full bg-[var(--accent)]/10 blur-sm" />
-
-      {/* Main card */}
+      {/* Main content */}
       <div
         role="alert"
         aria-live="assertive"
         aria-atomic="true"
-        className="relative z-10 w-full max-w-sm sm:max-w-md animate-empty-in"
+        className="relative z-10 w-full max-w-lg"
         style={{
           opacity: mounted ? 1 : 0,
-          transform: mounted ? 'translateY(0)' : 'translateY(16px)',
-          transition: 'opacity 0.5s ease-out, transform 0.5s ease-out',
+          transform: mounted ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.95)',
+          transition: 'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
-        <div className="relative">
-          {/* Glow behind card */}
-          <div className="absolute -inset-2 md:-inset-4 bg-gradient-to-b from-[var(--accent)]/5 via-transparent to-[var(--accent-gold)]/5 rounded-2xl md:rounded-3xl blur-xl" />
+        {/* Large animated status number */}
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-gold)] blur-2xl opacity-30" />
+          <h1 className="relative text-[120px] md:text-[160px] lg:text-[180px] font-black bg-gradient-to-br from-[var(--accent)] via-[var(--accent-gold)] to-[var(--accent)] bg-clip-text text-transparent leading-none tracking-tighter">
+            {status}
+          </h1>
+        </div>
 
-          {/* Glass card */}
-          <div className="relative bg-white/80 backdrop-blur-2xl border border-white/60 rounded-3xl shadow-2xl p-8 sm:p-10 md:p-14 text-center">
-            {/* Gradient border accents */}
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[var(--accent)]/40 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-[var(--accent-gold)]/30 to-transparent" />
-
-            {/* Icon container */}
-            <div className="relative mx-auto mb-6 md:mb-8">
-              <div className="relative w-20 h-20 md:w-24 md:h-24 flex items-center justify-center">
-                {/* Background glow */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[var(--accent)]/20 to-[var(--accent-gold)]/20 blur-xl" />
-                {/* Icon wrapper */}
-                <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent)]/80 flex items-center justify-center shadow-lg shadow-[var(--accent)]/20">
-                  <Icon className="w-8 h-8 md:w-10 md:h-10 text-white" />
-                </div>
-              </div>
+        {/* Icon with animation */}
+        <div className="relative -mt-16 mb-8 flex justify-center">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-gold)] rounded-full blur-xl animate-pulse" />
+            <div className="relative w-24 h-24 md:w-28 md:h-28 bg-gradient-to-br from-[var(--accent)] to-[var(--accent-gold)] rounded-2xl flex items-center justify-center shadow-2xl shadow-[var(--accent)]/30 transform hover:scale-110 transition-transform duration-300">
+              <Icon className="w-12 h-12 md:w-14 md:h-14 text-white" />
             </div>
-
-            {/* Status */}
-            <h1 className="font-[var(--font-display)] text-7xl md:text-8xl lg:text-9xl font-bold text-[var(--accent)] mb-2 leading-none tracking-tight">
-              {status}
-            </h1>
-
-            {/* Decorative line */}
-            <div className="mx-auto my-5 md:my-6 w-16 md:w-20 h-1 rounded-full bg-gradient-to-r from-[var(--accent)] via-[var(--accent-gold)] to-[var(--accent)]" />
-
-            {/* Title */}
-            <h2 className="font-[var(--font-display)] text-2xl md:text-3xl lg:text-4xl font-bold text-[var(--text)] mb-2">
-              {config.title}
-            </h2>
-            <p className="text-sm md:text-base text-[var(--text-muted)] mb-6 md:mb-8 font-medium tracking-wide">
-              {config.titleEn}
-            </p>
-
-            {/* Description */}
-            <p className="text-sm md:text-base text-[var(--text-secondary)] leading-relaxed mb-8 md:mb-10 max-w-sm mx-auto px-4">
-              {config.description}
-            </p>
-
-            {/* Contextual hint */}
-            <p className="text-xs md:text-sm text-[var(--text-muted)]/70 mb-8 md:mb-10 max-w-sm mx-auto px-4">
-              {config.hint}
-            </p>
-
-            {digest && (
-              <p className="text-[11px] md:text-xs text-[var(--text-muted)] font-mono mb-6 md:mb-8 bg-[var(--accent-subtle)] rounded-lg px-2.5 md:px-3 py-1.5 inline-block">
-                Error ID: {digest}
-              </p>
-            )}
-
-            {/* Actions — full-width buttons on mobile */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 md:gap-3 px-2">
-              {renderActions(config.actions, retry)}
-            </div>
-
-            {/* Back link for navigation errors */}
-            {status === 404 && (
-              <button
-                onClick={() => window.history.length > 1 ? window.history.back() : window.location.assign('/')}
-                className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-md"
-              >
-                <Undo2 className="w-3.5 h-3.5" />
-                Kembali ke halaman sebelumnya
-              </button>
-            )}
           </div>
         </div>
+
+        {/* Title and subtitle */}
+        <div className="text-center mb-8">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[var(--text)] mb-3">
+            {config.title}
+          </h2>
+          <p className="text-lg md:text-xl text-[var(--text-muted)] font-medium">
+            {config.titleEn}
+          </p>
+        </div>
+
+        {/* Description */}
+        <p className="text-base md:text-lg text-[var(--text-secondary)] leading-relaxed mb-8 text-center max-w-md mx-auto">
+          {config.description}
+        </p>
+
+        {/* Hint */}
+        <p className="text-sm text-[var(--text-muted)]/70 mb-10 text-center max-w-md mx-auto">
+          {config.hint}
+        </p>
+
+        {digest && (
+          <div className="mb-10 text-center">
+            <span className="inline-block px-4 py-2 bg-[var(--accent-subtle)] rounded-lg text-xs font-mono text-[var(--text-muted)]">
+              Error ID: {digest}
+            </span>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          {renderActions(config.actions, retry)}
+        </div>
+
+        {/* Back link for 404 */}
+        {status === 404 && (
+          <button
+            onClick={() => window.history.length > 1 ? window.history.back() : window.location.assign('/')}
+            className="mt-8 mx-auto flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
+          >
+            <Undo2 className="w-4 h-4" />
+            Kembali ke halaman sebelumnya
+          </button>
+        )}
       </div>
     </div>
   )

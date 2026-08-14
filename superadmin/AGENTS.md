@@ -8,6 +8,16 @@ Panel manajemen users & roles (Vite + React + TypeScript + Tailwind) untuk Pesan
 - Deploy: Cloudflare Pages (static)
 - API: `src/api/client.ts` (fetch wrapper + JWT auto-refresh)
 
+## Routes
+- `/login` — login superadmin
+- `/` — dashboard ringkasan
+- `/users`, `/users/new`, `/users/:id` — manajemen users
+- `/roles`, `/roles/new`, `/roles/:id` — manajemen roles
+- `/applicants` — daftar calon murid
+- `/notifications` — notifikasi (logs/templates)
+- `/profile` — edit profil sendiri
+- `*` — not found
+
 ## Akses: KHUSUS superadmin
 - Panel ini **hanya bisa diakses oleh `user_type === 'superadmin'`** (atau `is_superadmin` dari role).
 - Tidak ada modul/permission `superadmin`. Jangan menambahkan tombol/menu/guard yang mengandalkan `permissions?.superadmin`.

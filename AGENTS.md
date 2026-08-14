@@ -12,7 +12,7 @@ Pesantren Tahfidz Qur'an dan Digital Ar-Rahman — website company profile, apli
 | `api/` | FastAPI (Python 3.12) + SQLAlchemy + Alembic + MySQL | Vercel (root dir `api/`) | semua hal di atas |
 
 - DB: MySQL di Hostinger. Akses lewat env di `api/.env` (gitignored; contoh: `api/.env.example`).
-- Production API base: `https://project-ppdb-murex.vercel.app` (fallback otomatis di `client.ts`/`api.ts` tiap FE ke `http://localhost:8000`).
+- Production API base: `https://project-ppdb-murex.vercel.app`. Tiap FE (`client.ts`/`api.ts`): `PRIMARY_API` dibaca dari env (`VITE_API_URL`/`NEXT_PUBLIC_API_URL`; saat dev = `http://localhost:8000`), otomatis fallback ke produksi bila primary gagal/5xx.
 - Detail deploy: `DEPLOY.md`.
 
 ## Backend (`api/`)
@@ -65,7 +65,7 @@ api/
 - `confirmed_by, confirmed_at` (untuk konfirmasi manual admin), `notes, created_at, updated_at`
 
 **`notification_templates`** — template notif customizable per event:
-- `event_key` (UNIQUE): `welcome | payment_reminder_d7 | payment_success | payment_failed | payment_expired | document_reminder_d3 | document_reminder_d1 | document_approved | document_rejected | selection_reminder_d5 | selection_reminder_d1 | selection_result`
+- `event_key` (UNIQUE): `welcome | payment_reminder | payment_reminder_d7 | payment_success | payment_failed | payment_expired | document_reminder_d3 | document_reminder_d1 | document_approved | document_rejected | selection_reminder_d5 | selection_reminder_d1 | selection_result`
 - `label, channel (email|whatsapp|both), email_subject, body (Text), is_active`
 - Body mendukung variabel: `{nama_peserta}`, `{username}`, `{password}`, `{link_login}`, `{batas_waktu_bayar}`, `{nama_gelombang}`, `{tanggal_seleksi}`, `{alasan_penolakan}`, `{link_pembayaran}`, `{nominal_bayar}`
 
@@ -76,7 +76,7 @@ api/
 
 ### Alur PPDB & Paywall Logic
 - Setelah register → `payment_status = pending`, `payment_deadline = NOW() + 7 days`.
-- Login guard: jika `payment_status != paid` **DAN** `deleted_at IS NULL` → redirect paksa ke `/ppdb/checkout` (paywall). Tidak ada navbar/menu lain.
+- Login guard: jika `payment_status != paid` **DAN** `deleted_at IS NULL` → redirect paksa ke `/checkout` (paywall). Tidak ada navbar/menu lain.
 - Hari ke-8 belum bayar → cron job: `deleted_at = NOW()`, `payment_status = expired`. User tidak bisa login. Admin tetap bisa lihat data di tab Expired.
 - Pembayaran berhasil (manual admin atau webhook PG) → `payment_status = paid`, `status = document_uploaded_pending` → unlock dashboard upload dokumen.
 - Webhook PG FAILED/DENIED/EXPIRED → `payment_status = failed` pada transaksi, kirim notif email+WA.

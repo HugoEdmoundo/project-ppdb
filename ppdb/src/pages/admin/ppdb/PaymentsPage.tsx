@@ -15,13 +15,11 @@ export default function PaymentsPage() {
   const [activeTab, setActiveTab] = useState('all')
   const [transactions, setTransactions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [page, setPage] = useState(1)
 
   const fetchTransactions = async (statusFilter = activeTab) => {
     setLoading(true)
     try {
       const q = new URLSearchParams()
-      q.append('page', String(page))
       if (statusFilter !== 'all') {
         q.append('status', statusFilter)
       }
@@ -29,7 +27,7 @@ export default function PaymentsPage() {
       const res = await apiFetch<any>(`/payment/transactions?${q.toString()}`)
       setTransactions(res.data || [])
     } catch (e: any) {
-      toast(e.message || 'Gagal memuat transaksi', 'error')
+      toast('error', e.message || 'Gagal memuat transaksi')
     } finally {
       setLoading(false)
     }
@@ -37,17 +35,17 @@ export default function PaymentsPage() {
 
   useEffect(() => {
     fetchTransactions(activeTab)
-  }, [activeTab, page])
+  }, [activeTab])
 
   const handleConfirm = async (id: string) => {
     if (!window.confirm('Apakah Anda yakin ingin memverifikasi pembayaran ini secara manual?')) return
     
     try {
       await apiFetch(`/payment/transactions/${id}/confirm`, { method: 'PUT' })
-      toast('Pembayaran berhasil diverifikasi', 'success')
+      toast('success', 'Pembayaran berhasil diverifikasi')
       fetchTransactions()
     } catch (e: any) {
-      toast(e.message || 'Gagal verifikasi', 'error')
+      toast('error', e.message || 'Gagal verifikasi')
     }
   }
 

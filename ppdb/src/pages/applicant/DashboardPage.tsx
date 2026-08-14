@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../contexts/AuthContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
-import { CheckCircle, Clock, FileText, Upload, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
+import { CheckCircle, Clock, FileText, Upload, ChevronDown, ChevronUp } from 'lucide-react'
 import * as api from '../../api/client'
 import { useToast } from '@/components/Toast'
 
 export default function ApplicantDashboardPage() {
-  const { user } = useAuth()
   const { toast } = useToast()
   
   const [applicant, setApplicant] = useState<any>(null)
@@ -169,7 +166,7 @@ export default function ApplicantDashboardPage() {
 
       <div className="space-y-4 relative before:absolute before:inset-0 before:ml-6 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-muted before:to-transparent">
         
-        {steps.map((step, index) => {
+        {steps.map((step) => {
           const isCompleted = step.status === 'completed'
           const isActive = step.status === 'active' || step.status === 'pending'
           const isLocked = step.status === 'locked'

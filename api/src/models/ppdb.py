@@ -229,6 +229,7 @@ class NotificationTemplate(Base):
 
     event_key adalah identifier unik per jenis notifikasi:
       welcome              → Selamat datang + kredensial login
+      payment_reminder     → Pengingat bayar formulir (langsung saat daftar)
       payment_reminder_d7  → Reminder bayar H-7 (hari ke-7 belum bayar)
       payment_success      → Pembayaran berhasil
       payment_failed       → Pembayaran gagal / ditolak PG

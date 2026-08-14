@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/Alert'
+import { Alert } from '@/components/ui/Alert'
 import { useToast } from '@/components/Toast'
 import * as api from '../../api/client'
 
@@ -50,9 +50,9 @@ export default function CheckoutPage() {
     setLoading(true)
     try {
       await refreshUser()
-      toast('Status diperbarui', 'success')
+      toast('success', 'Status diperbarui')
     } catch (err) {
-      toast('Gagal memperbarui status', 'error')
+      toast('error', 'Gagal memperbarui status')
     } finally {
       setLoading(false)
     }
@@ -61,7 +61,7 @@ export default function CheckoutPage() {
   // Placeholder untuk simulasi pembayaran gateway (karena belum ada PG sungguhan)
   const handleSimulatePayment = async () => {
     // Di dunia nyata ini akan redirect ke Midtrans/Xendit
-    toast('Di environment nyata, ini akan membuka halaman Payment Gateway', 'info')
+    toast('info', 'Di environment nyata, ini akan membuka halaman Payment Gateway')
   }
 
   return (
@@ -89,11 +89,10 @@ export default function CheckoutPage() {
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
             
-            <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800">
-              <AlertTitle>Batas Waktu Pembayaran</AlertTitle>
-              <AlertDescription className="font-semibold text-lg mt-1">
+            <Alert type="error" title="Batas Waktu Pembayaran">
+              <div className="font-semibold text-lg mt-1">
                 {timeLeft || 'Menghitung...'}
-              </AlertDescription>
+              </div>
             </Alert>
 
             <div className="bg-white rounded-lg border p-4">

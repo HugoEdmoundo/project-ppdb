@@ -15,7 +15,11 @@ Aplikasi Penerimaan Peserta Didik Baru (Vite + React + TypeScript + Tailwind) un
 - Skema PPDB v2: lihat `../api/alembic/versions/0002_ppdb_v2.py` (kolom `academic_year`/`description` di periode; `registration_start_date`/`registration_end_date`/`document_upload_end_date`/`selection_date`/`quota` di wave).
 
 ## Routes
-- `/auth/login`, `/auth/register`
+- `/` — landing page PPDB
+- `/register` — pendaftaran calon murid (sukses → inline success state + kredensial login via `SuccessState`/`CredentialsCard`, bukan route terpisah; gagal → alert validasi inline di form)
+- `/auth/login` — login
+- `/checkout` — paywall pembayaran formulir (redirect paksa saat `payment_status != paid`)
+- `/applicant` — dashboard pendaftar (wajib sudah bayar, `requirePaid`)
 - `/admin` — dashboard admin PPDB (AdminLayout + AdminDashboardPage)
 - `/403`, `*` — error pages
 

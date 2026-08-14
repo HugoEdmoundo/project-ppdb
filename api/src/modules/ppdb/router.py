@@ -361,7 +361,13 @@ def register_applicant(body: ApplicantRegister):
     # Kirim notifikasi welcome
     send_notification("welcome", created_user["id"], {
         "password": raw_password,
-        "link_login": "https://ptdarrahman.sch.id/auth/login", # TBD
+        "link_login": "https://ppdb.ptdarrahman.sch.id/auth/login", # TBD
+        "batas_waktu_bayar": created_applicant["payment_deadline"],
+    })
+
+    # Kirim notifikasi pengingat pembayaran formulir
+    send_notification("payment_reminder", created_user["id"], {
+        "link_pembayaran": "https://ppdb.ptdarrahman.sch.id/checkout", # TBD
         "batas_waktu_bayar": created_applicant["payment_deadline"],
     })
 

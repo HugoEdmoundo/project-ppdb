@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import BigInteger, Date, ForeignKey, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, Date, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.mysql import DATETIME
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -61,7 +61,16 @@ class PPDBApplicant(Base):
     previous_school: Mapped[Optional[str]] = mapped_column(String(255))
     major_choice: Mapped[Optional[str]] = mapped_column(String(100))
     address: Mapped[Optional[str]] = mapped_column(Text)
+    # status alur pendaftaran: pending_payment | paid | document_uploaded |
+    #   document_approved | document_rejected | selection | passed | failed | expired
     status: Mapped[str] = mapped_column(String(50), default="pending_payment")
+    # ── Payment tracking ──────────────────────────────────────────────────────
+    # payment_status: pending | paid | failed | expired
+    payment_status: Mapped[str] = mapped_column(String(20), default="pending")
+    # Batas waktu bayar = created_at + 7 hari (diisi saat register)
+    payment_deadline: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3))
+    # ── Soft Delete (Hari ke-8 belum bayar → cron job set deleted_at) ────────
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3), default=None)
     created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
 
@@ -167,3 +176,127 @@ class RateLimit(Base):
 
     key: Mapped[str] = mapped_column(String(255), primary_key=True)
     timestamp: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PPDB Payment Transactions (Formulir Pendaftaran)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PPDBPaymentTransaction(Base):
+    """Rekam jejak setiap transaksi pembayaran formulir PPDB.
+
+    Satu applicant bisa punya lebih dari 1 baris (misal bayar gagal lalu retry).
+    Status transaksi:
+      pending  → transaksi dibuat, belum ada konfirmasi
+      success  → dikonfirmasi (manual admin ATAU webhook PG)
+      failed   → PG callback FAILED / DENIED
+      expired  → PG callback EXPIRED / tidak dikonfirmasi admin dalam batas waktu
+      cancelled → dibatalkan oleh user / admin
+    """
+    __tablename__ = "ppdb_payment_transactions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    applicant_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("ppdb_applicants.id", ondelete="CASCADE")
+    )
+    # Metode: offline (cash ke panitia) | online (payment gateway / simulator)
+    method: Mapped[str] = mapped_column(String(20), default="offline")
+    amount: Mapped[int] = mapped_column(BigInteger, default=0)
+    # Status transaksi: pending | success | failed | expired | cancelled
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    # Referensi order/invoice dari PG (nullable untuk metode offline)
+    external_id: Mapped[Optional[str]] = mapped_column(String(100))
+    # Raw payload dari webhook PG (JSON string)
+    gateway_payload: Mapped[Optional[str]] = mapped_column(Text)
+    # Alasan gagal (untuk notif ke pendaftar)
+    failure_reason: Mapped[Optional[str]] = mapped_column(Text)
+    # URL bukti transfer / kwitansi (untuk metode offline)
+    proof_url: Mapped[Optional[str]] = mapped_column(Text)
+    # Admin yang mengkonfirmasi (untuk metode offline)
+    confirmed_by: Mapped[Optional[str]] = mapped_column(String(36))
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3))
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Notification Templates & Logs
+# ─────────────────────────────────────────────────────────────────────────────
+
+class NotificationTemplate(Base):
+    """Template pesan notifikasi yang bisa di-custom oleh admin.
+
+    event_key adalah identifier unik per jenis notifikasi:
+      welcome              → Selamat datang + kredensial login
+      payment_reminder_d7  → Reminder bayar H-7 (hari ke-7 belum bayar)
+      payment_success      → Pembayaran berhasil
+      payment_failed       → Pembayaran gagal / ditolak PG
+      payment_expired      → Akun expired (hari ke-8 belum bayar, soft delete)
+      document_reminder_d3 → Reminder upload dokumen H-3 batas gelombang
+      document_reminder_d1 → Reminder upload dokumen H-1 batas gelombang
+      document_approved    → Dokumen disetujui admin
+      document_rejected    → Dokumen ditolak admin (+ alasan)
+      selection_reminder_d5 → Reminder seleksi H-5
+      selection_reminder_d1 → Reminder seleksi H-1
+      selection_result     → Pengumuman hasil seleksi
+
+    channel: email | whatsapp | both
+
+    Body template mendukung variabel sistem:
+      {nama_peserta}, {username}, {password}, {link_login},
+      {batas_waktu_bayar}, {nama_gelombang}, {tanggal_seleksi},
+      {alasan_penolakan}, {link_pembayaran}, {nominal_bayar}
+    """
+    __tablename__ = "notification_templates"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    # Identifier unik event (lihat docstring)
+    event_key: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    # Label human-readable untuk tampilan admin
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    # Saluran pengiriman: email | whatsapp | both
+    channel: Mapped[str] = mapped_column(String(20), default="both")
+    # Subject email (khusus channel email/both)
+    email_subject: Mapped[Optional[str]] = mapped_column(String(255))
+    # Body pesan (mendukung variabel {placeholder})
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    # True = template ini diaktifkan / akan dikirim sistem
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+
+
+class NotificationLog(Base):
+    """Log setiap percobaan pengiriman notifikasi.
+
+    status: pending | sent | failed
+    """
+    __tablename__ = "notification_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    # Relasi ke template yang dipakai (nullable: bisa dikirim manual tanpa template)
+    template_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("notification_templates.id", ondelete="SET NULL")
+    )
+    # event_key snapshot (tidak berubah meski template diedit)
+    event_key: Mapped[str] = mapped_column(String(50), nullable=False)
+    # Penerima — bisa applicant atau user lain
+    recipient_user_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    recipient_name: Mapped[Optional[str]] = mapped_column(String(255))
+    recipient_email: Mapped[Optional[str]] = mapped_column(String(100))
+    recipient_phone: Mapped[Optional[str]] = mapped_column(String(20))
+    # Saluran yang dipakai: email | whatsapp
+    channel: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Snapshot subject & body yang benar-benar terkirim (setelah substitusi variabel)
+    subject_sent: Mapped[Optional[str]] = mapped_column(String(255))
+    body_sent: Mapped[Optional[str]] = mapped_column(Text)
+    # Status pengiriman: pending | sent | failed
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    # Pesan error jika gagal
+    error_message: Mapped[Optional[str]] = mapped_column(Text)
+    # Timestamp kirim / gagal
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3))
+    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)

@@ -1,7 +1,9 @@
 import random
 import string
 import uuid
+from datetime import datetime, timedelta
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
@@ -14,6 +16,7 @@ from src.core.database import (
     get_raw_pool,
     update_record,
 )
+from src.core.notif_service import send_notification
 from src.core.dependencies import require_ppdb_admin, require_ppdb_read
 from src.core.security import hash_password
 from src.modules.ppdb.schemas import (
@@ -338,8 +341,29 @@ def register_applicant(body: ApplicantRegister):
             "previous_school": body.previous_school,
             "major_choice": body.major_choice,
             "status": "pending_payment",
+            "payment_status": "pending",
+            "payment_deadline": (datetime.now(ZoneInfo("Asia/Jakarta")) + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"),
         },
     )
+
+    # Buat transaksi pembayaran offline dengan status pending
+    create_record(
+        "ppdb_payment_transactions",
+        {
+            "id": f"pay-{uuid.uuid4()}",
+            "applicant_id": created_applicant["id"],
+            "method": "offline",
+            "amount": 0,  # Akan di-update sesuai nominal pendaftaran
+            "status": "pending",
+        }
+    )
+
+    # Kirim notifikasi welcome
+    send_notification("welcome", created_user["id"], {
+        "password": raw_password,
+        "link_login": "https://ptdarrahman.sch.id/auth/login", # TBD
+        "batas_waktu_bayar": created_applicant["payment_deadline"],
+    })
 
     return {
         "success": True,
@@ -410,3 +434,63 @@ def get_ppdb_dashboard(user: dict = Depends(require_ppdb_read)):
         "total_waves": waves_count,
         "active_period_name": active_period,
     }
+
+
+@router.post("/cron/soft-delete-expired")
+def soft_delete_expired_applicants():
+    """
+    Cron job run daily to soft delete applicants who haven't paid past their deadline.
+    """
+    pool = get_raw_pool()
+    now_wib = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
+    
+    with pool.begin() as conn:
+        # Find all expired applicants
+        rows = conn.execute(
+            text("""
+                SELECT id, user_id FROM ppdb_applicants 
+                WHERE payment_status = 'pending' 
+                AND payment_deadline <= :now 
+                AND deleted_at IS NULL
+            """),
+            {"now": now_wib}
+        ).mappings().all()
+        
+        if not rows:
+            return {"deleted": 0}
+            
+        applicant_ids = [r["id"] for r in rows]
+        user_ids = [r["user_id"] for r in rows]
+        
+        # Soft delete applicants
+        conn.execute(
+            text("""
+                UPDATE ppdb_applicants 
+                SET deleted_at = :now, payment_status = 'expired', status = 'expired' 
+                WHERE id IN :ids
+            """),
+            {"now": now_wib, "ids": tuple(applicant_ids)}
+        )
+        
+        # Disable users so they cannot login
+        if user_ids:
+            conn.execute(
+                text("UPDATE users SET is_active = 0 WHERE id IN :user_ids"),
+                {"user_ids": tuple(user_ids)}
+            )
+            
+        # Update pending transactions to expired
+        conn.execute(
+            text("""
+                UPDATE ppdb_payment_transactions 
+                SET status = 'expired', updated_at = :now 
+                WHERE applicant_id IN :ids AND status = 'pending'
+            """),
+            {"now": now_wib, "ids": tuple(applicant_ids)}
+        )
+        
+    for user_id in user_ids:
+        send_notification("payment_expired", user_id, {})
+        
+    return {"deleted": len(applicant_ids), "applicant_ids": applicant_ids}
+

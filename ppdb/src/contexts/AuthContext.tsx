@@ -6,6 +6,8 @@ export interface AuthUser {
   permissions: Record<string, string>
   is_superadmin: boolean
   page_permissions: string[]
+  payment_status?: string
+  payment_deadline?: string
 }
 
 interface AuthContextType {

@@ -11,6 +11,9 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import PeriodsPage from './pages/admin/ppdb/PeriodsPage'
 import LandingPage from './pages/public/LandingPage'
 import RegisterPage from './pages/public/RegisterPage'
+import CheckoutPage from './pages/applicant/CheckoutPage'
+import ApplicantDashboardPage from './pages/applicant/DashboardPage'
+import PaymentsPage from './pages/admin/ppdb/PaymentsPage'
 import * as api from './api/client'
 
 export default function App() {
@@ -41,7 +44,13 @@ export default function App() {
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="periods" element={<PeriodsPage />} />
+              <Route path="payments" element={<PaymentsPage />} />
             </Route>
+
+            <Route path="/checkout" element={<ProtectedRoute role="applicant"><CheckoutPage /></ProtectedRoute>} />
+            
+            <Route path="/applicant" element={<ProtectedRoute role="applicant" requirePaid={true}><ApplicantDashboardPage /></ProtectedRoute>} />
+
 
             <Route path="/403" element={<ForbiddenPage />} />
             <Route path="*" element={<NotFoundPage />} />

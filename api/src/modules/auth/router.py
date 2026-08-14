@@ -75,6 +75,16 @@ def _serialize_user(user: dict) -> dict:
         "SELECT p.`key` FROM user_page_permissions up JOIN pages p ON up.page_id = p.id WHERE up.user_id = :user_id",
         {"user_id": user["id"]},
     )
+    
+    payment_status = None
+    payment_deadline = None
+    if user.get("user_type") == "calon_murid" or user.get("user_type") == "applicant":
+        applicant = get_by_column("ppdb_applicants", "user_id", user["id"])
+        if applicant:
+            payment_status = applicant.get("payment_status")
+            deadline = applicant.get("payment_deadline")
+            if deadline:
+                payment_deadline = deadline if isinstance(deadline, str) else deadline.strftime("%Y-%m-%d %H:%M:%S")
 
     return {
         "id": user["id"],
@@ -89,6 +99,8 @@ def _serialize_user(user: dict) -> dict:
         "user_type": user.get("user_type", "admin"),
         "is_superadmin": is_superadmin or user.get("user_type") == "superadmin",
         "is_active": user.get("is_active", True),
+        "payment_status": payment_status,
+        "payment_deadline": payment_deadline,
     }
 
 

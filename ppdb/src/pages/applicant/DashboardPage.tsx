@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { CheckCircle, Clock, FileText, Upload, ChevronDown, ChevronUp } from 'lucide-react'
 import * as api from '../../api/client'

@@ -168,17 +168,6 @@ export default function RolesPage() {
                     </Button>
                   </div>
                 )}
-                {canCrud && role.is_system && !role.is_superadmin && (
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/roles/${role.id}`)}
-                    >
-                      Lihat Detail
-                    </Button>
-                  </div>
-                )}
               </div>
 
               {/* Permissions */}
@@ -188,13 +177,6 @@ export default function RolesPage() {
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {getPermissionBadges(role.permissions)}
                   </div>
-                </div>
-              )}
-              {role.is_system && !role.is_superadmin && (
-                <div className="mt-3 border-t border-border pt-3">
-                  <p className="text-xs text-muted-foreground italic">
-                    Role sistem — akses diatur otomatis, tidak bisa diubah/dihapus.
-                  </p>
                 </div>
               )}
             </Card>

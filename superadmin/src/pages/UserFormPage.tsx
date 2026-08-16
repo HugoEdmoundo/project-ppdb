@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, KeyRound } from 'lucide-react'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
+import { useConfirm } from '../components/ConfirmDialog'
 import type { Role, Module } from '../types'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/button'
@@ -19,6 +20,7 @@ import { cn } from '@/lib/utils'
 export default function UserFormPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id)
   const { user: currentUser, loading: authLoading } = useAuth()
@@ -37,6 +39,7 @@ export default function UserFormPage() {
   const [form, setForm] = useState({
     username: '',
     email: '',
+    phone: '',
     full_name: '',
     password: '',
     role_id: '',
@@ -67,6 +70,7 @@ export default function UserFormPage() {
           setForm({
             username: user.username || '',
             email: user.email || '',
+            phone: user.phone || '',
             full_name: user.full_name || '',
             password: '',
             role_id: user.role_id || '',
@@ -101,14 +105,33 @@ export default function UserFormPage() {
     }
   }, [id, isEdit, navigate])
 
+  function generatePassword() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    let pass = ''
+    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length))
+    setForm(prev => ({ ...prev, password: pass }))
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    // Alert konfirmasi: email/phone akan dipakai sebagai tujuan notifikasi.
+    if (form.email || form.phone) {
+      const ok = await confirm({
+        title: 'Periksa Data Kontak',
+        message: `Pastikan Email dan No. WhatsApp sudah benar, karena sistem akan mengirim notifikasi kredensial ke alamat tersebut.\n\nEmail: ${form.email || '—'}\nWhatsApp: ${form.phone || '—'}`,
+        confirmLabel: 'Sudah Benar, Simpan',
+      })
+      if (!ok) return
+    }
+
     setLoading(true)
     try {
       if (isEdit && id) {
         const payload: any = {
           username: form.username,
           email: form.email || undefined,
+          phone: form.phone || undefined,
           full_name: form.full_name || undefined,
           role_id: form.role_id || undefined,
           user_type: form.user_type,
@@ -124,10 +147,11 @@ export default function UserFormPage() {
           await api.updateUserPagePermissions(id, [])
         }
       } else {
-        if (!form.password) throw new Error('Password wajib diisi')
+        if (!form.password) throw new Error('Klik Generate untuk membuat password terlebih dahulu')
         await api.createUser({
           username: form.username,
           email: form.email || undefined,
+          phone: form.phone || undefined,
           full_name: form.full_name || undefined,
           password: form.password,
           role_id: form.role_id || undefined,
@@ -171,6 +195,8 @@ export default function UserFormPage() {
   }
 
   return (
+    <>
+      {confirmDialog}
     <div className="mx-auto max-w-2xl space-y-6 animate-fadeIn">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate('/users')}>
@@ -211,6 +237,23 @@ export default function UserFormPage() {
                 onChange={e => setForm({ ...form, email: e.target.value })}
                 placeholder="email@example.com"
               />
+              <p className="text-[11px] text-muted-foreground">
+                Notifikasi kredensial akan dikirim ke alamat ini.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="text-xs font-semibold text-foreground">Nomor WhatsApp</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={form.phone}
+                onChange={e => setForm({ ...form, phone: e.target.value })}
+                placeholder="6281234567890"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Notifikasi kredensial akan dikirim ke nomor ini.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -234,23 +277,25 @@ export default function UserFormPage() {
                   type="text"
                   value={form.password}
                   onChange={e => setForm({ ...form, password: e.target.value })}
-                  placeholder={isEdit ? '••••••••' : 'Masukkan atau generate password'}
-                  required={!isEdit}
+                  placeholder={isEdit ? '••••••••' : 'Klik Generate untuk membuat password'}
+                  readOnly
+                  className="select-none"
+                  onKeyDown={(e) => e.preventDefault()}
                 />
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-                    let pass = ''
-                    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length))
-                    setForm(prev => ({ ...prev, password: pass }))
-                  }}
-                  title="Generate Password"
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={generatePassword}
+                  title="Generate Password (dibuat otomatis oleh sistem)"
                 >
+                  <KeyRound className="h-4 w-4 mr-1" />
                   Generate
                 </Button>
               </div>
+              <p className="text-[11px] text-amber-600 flex items-center gap-1">
+                <KeyRound className="h-3 w-3" />
+                Password dibuat otomatis oleh sistem — tidak bisa diisi manual.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -359,5 +404,6 @@ export default function UserFormPage() {
         </div>
       </form>
     </div>
+    </>
   )
 }

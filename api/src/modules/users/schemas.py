@@ -5,6 +5,7 @@ class UserCreate(BaseModel):
     username: str
     password: Optional[str] = None
     email: Optional[str] = None
+    phone: Optional[str] = None
     full_name: Optional[str] = None
     role_id: Optional[str] = None
     user_type: Optional[str] = None
@@ -13,6 +14,7 @@ class UserUpdate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     email: Optional[str] = None
+    phone: Optional[str] = None
     full_name: Optional[str] = None
     role_id: Optional[str] = None
     user_type: Optional[str] = None

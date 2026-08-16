@@ -239,8 +239,8 @@ def update_profile(body: ProfileUpdate, request: Request, user: Dict[str, Any] =
         validate_password(body.new_password)
         data["password_hash"] = hash_password(body.new_password)
 
-    if data.get("email"):
-        if user.get("user_type") != "superadmin":
+    if "email" in data and data["email"] != user.get("email", ""):
+        if user.get("user_type") != "superadmin" and not user.get("is_superadmin"):
             raise HTTPException(403, "Only superadmin can change email")
         existing = get_by_column("users", "email", data["email"])
         if existing and existing["id"] != user["id"]:

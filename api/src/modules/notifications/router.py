@@ -11,27 +11,15 @@ from src.core.database import (
     get_raw_pool,
     get_by_id
 )
-from src.core.dependencies import get_current_user
+from src.core.dependencies import (
+    get_current_user,
+    require_notification_admin,
+    require_notification_read,
+)
+from src.core.notif_service import send_custom_notifications
 
 router = APIRouter()
 
-def require_notification_admin(user: dict = Depends(get_current_user)):
-    if user.get("is_superadmin"):
-        return user
-    
-    perms = user.get("permissions", {})
-    if perms.get("notification") not in ["crud"]:
-        raise HTTPException(status_code=403, detail="Forbidden: Requires notification CRUD access")
-    return user
-
-def require_notification_read(user: dict = Depends(get_current_user)):
-    if user.get("is_superadmin"):
-        return user
-    
-    perms = user.get("permissions", {})
-    if perms.get("notification") not in ["read", "crud"]:
-        raise HTTPException(status_code=403, detail="Forbidden: Requires notification read access")
-    return user
 
 class TemplateUpdate(BaseModel):
     label: str
@@ -39,6 +27,12 @@ class TemplateUpdate(BaseModel):
     email_subject: Optional[str] = None
     body: str
     is_active: bool
+
+class CustomSend(BaseModel):
+    recipient_user_ids: list[str]
+    channel: str = "both"
+    subject: str = ""
+    body: str
 
 @router.get("/templates")
 def get_templates(user: dict = Depends(require_notification_read)):
@@ -65,6 +59,24 @@ def update_template(id: str, body: TemplateUpdate, user: dict = Depends(require_
     if not updated:
         raise HTTPException(status_code=404, detail="Template not found")
     return updated
+
+@router.post("/send")
+def send_custom(body: CustomSend, user: dict = Depends(require_notification_admin)):
+    if not body.body.strip():
+        raise HTTPException(status_code=400, detail="Body pesan tidak boleh kosong")
+    if not body.recipient_user_ids:
+        raise HTTPException(status_code=400, detail="Pilih minimal satu penerima")
+    if body.channel not in ("email", "whatsapp", "both"):
+        raise HTTPException(status_code=400, detail="Channel tidak valid")
+
+    result = send_custom_notifications(
+        recipient_user_ids=body.recipient_user_ids,
+        channel=body.channel,
+        subject=body.subject,
+        body=body.body,
+    )
+    return {"message": "Notifikasi terkirim (simulasi)", **result}
+
 
 @router.get("/logs")
 def get_logs(

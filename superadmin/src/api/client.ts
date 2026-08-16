@@ -99,10 +99,11 @@ async function tryRefresh(): Promise<string | null> {
 
 async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Promise<T> {
   const token = getToken()
+  const isFormData = opts.body instanceof FormData
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(opts.headers as Record<string, string>),
   }
+  if (!isFormData) headers['Content-Type'] = 'application/json'
   if (token) headers['Authorization'] = `Bearer ${token}`
 
   let res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers })
@@ -167,6 +168,7 @@ export async function logout() {
 
 export async function updateProfile(data: {
   username?: string
+  email?: string
   full_name?: string
   avatar_url?: string
   old_password?: string
@@ -176,6 +178,16 @@ export async function updateProfile(data: {
     method: 'PUT',
     body: JSON.stringify(data),
   })
+}
+
+export async function uploadAvatar(file: File): Promise<string> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const data = await apiFetch<{ url: string }>('/companyprofile/upload', {
+    method: 'POST',
+    body: fd,
+  })
+  return data.url
 }
 
 // ── Users ─────────────────────────────────────────────────
@@ -196,6 +208,7 @@ export async function getUser(id: string): Promise<User> {
 export async function createUser(data: {
   username: string
   email?: string
+  phone?: string
   full_name?: string
   password: string
   role_id?: string
@@ -207,6 +220,7 @@ export async function createUser(data: {
 export async function updateUser(id: string, data: {
   username?: string
   email?: string
+  phone?: string
   full_name?: string
   password?: string
   role_id?: string
@@ -292,9 +306,35 @@ export async function updateUserPagePermissions(id: string, page_ids: string[]) 
   })
 }
 
-export async function getApplicants(params?: any) {
+export async function getApplicants(params?: any): Promise<any> {
   const query = params ? '?' + new URLSearchParams(params) : ''
   return await apiFetch(`/ppdb/applicants${query}`)
+}
+
+// ── Notifications (custom send / logs) ─────────────────────
+
+export async function resetApplicantPassword(id: string, password: string): Promise<any> {
+  return await apiFetch(`/ppdb/applicants/${id}/password`, {
+    method: 'PUT',
+    body: JSON.stringify({ password }),
+  })
+}
+
+export async function sendCustomNotification(body: {
+  recipient_user_ids: string[]
+  channel: string
+  subject: string
+  body: string
+}): Promise<any> {
+  return await apiFetch('/notifications/send', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+export async function getNotificationLogs(params?: any): Promise<any> {
+  const query = params ? '?' + new URLSearchParams(params) : ''
+  return await apiFetch(`/notifications/logs${query}`)
 }
 
 // ── Helpers ───────────────────────────────────────────────

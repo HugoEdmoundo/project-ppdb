@@ -15,7 +15,7 @@ from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"}
 MAX_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 PUBLIC_ID_PREFIX = "uploads"
@@ -36,7 +36,7 @@ def _validate(file: UploadFile) -> None:
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
             status_code=400,
-            detail="File type not allowed. Accepted: JPEG, PNG, WebP, GIF",
+            detail="File type not allowed. Accepted: JPEG, PNG, WebP, GIF, PDF",
         )
 
 
@@ -63,14 +63,13 @@ def _upload_cloudinary(content: bytes, original_name: str, content_type: str) ->
 
     folder = f"{PUBLIC_ID_PREFIX}/{settings.cloudinary_folder.strip('/')}" if settings.cloudinary_folder else PUBLIC_ID_PREFIX
     public_id = f"{folder}/{uuid.uuid4().hex}"
-    resource_type = "image" if content_type.startswith("image/") else "raw"
-
     result = cloudinary.uploader.upload(
         content,
         public_id=public_id,
         folder=None,  # public_id already contains the folder path
-        resource_type=resource_type,
+        resource_type="auto",
         use_filename=False,
+
         overwrite=False,
     )
 

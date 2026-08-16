@@ -11,18 +11,24 @@ export default function ApplicantDashboardPage() {
   
   const [applicant, setApplicant] = useState<any>(null)
   const [transaction, setTransaction] = useState<any>(null)
+  const [documents, setDocuments] = useState<any[]>([])
   const [expandedStep, setExpandedStep] = useState<number>(1)
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchMyData = async () => {
       try {
-        const res = await api.apiFetch<any>('/payment/my-transaction')
+        const [res, docsRes] = await Promise.all([
+          api.apiFetch<any>('/payment/my-transaction'),
+          api.apiFetch<any>('/ppdb/documents')
+        ])
         setApplicant(res.applicant)
         setTransaction(res.transaction)
+        setDocuments(docsRes.data || [])
         
         // Auto expand step based on status
-        if (res.applicant?.status === 'document_uploaded_pending') {
+        if (['document_uploaded_pending', 'document_rejected'].includes(res.applicant?.status)) {
           setExpandedStep(2)
         } else if (res.applicant?.status === 'selection') {
           setExpandedStep(3)
@@ -35,6 +41,49 @@ export default function ApplicantDashboardPage() {
     }
     fetchMyData()
   }, [])
+
+  const handleUpload = async (docType: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      toast('error', 'Ukuran file maksimal 2MB')
+      e.target.value = ''
+      return
+    }
+    
+    setUploading(docType)
+    const formData = new FormData()
+    formData.append('doc_type', docType)
+    formData.append('file', file)
+    
+    try {
+      await api.apiFetch<any>('/ppdb/documents/upload', {
+        method: 'POST',
+        body: formData
+      })
+      toast('success', 'Dokumen berhasil diunggah')
+      const docsRes = await api.apiFetch<any>('/ppdb/documents')
+      setDocuments(docsRes.data || [])
+    } catch (err: any) {
+      toast('error', err.message || 'Gagal mengunggah dokumen')
+    } finally {
+      setUploading(null)
+      e.target.value = ''
+    }
+  }
+
+  const handleSubmitDocs = async () => {
+    if (!confirm('Apakah Anda yakin semua dokumen sudah benar? Dokumen yang sudah dikirim tidak bisa diubah kembali.')) return
+    try {
+      setLoading(true)
+      await api.apiFetch('/ppdb/documents/submit', { method: 'POST' })
+      toast('success', 'Dokumen berhasil dikirim untuk verifikasi')
+      window.location.reload()
+    } catch (err: any) {
+      toast('error', err.message || 'Gagal mengirim dokumen')
+      setLoading(false)
+    }
+  }
 
   const requiredDocs = [
     { name: 'Ijazah atau SKL', description: 'Bukti kelulusan dari sekolah sebelumnya.' },
@@ -96,32 +145,65 @@ export default function ApplicantDashboardPage() {
               applicant?.payment_status === 'paid' ? 'active' : 'locked',
       content: (
         <div className="space-y-4">
+          {applicant?.status === 'document_rejected' && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <p className="text-sm font-semibold text-red-800">Dokumen Anda ditolak</p>
+              <p className="text-sm text-red-700 mt-1">
+                {applicant.rejection_reason ? (
+                  <>Alasan: {applicant.rejection_reason}</>
+                ) : (
+                  'Silakan periksa kembali dan unggah ulang dokumen Anda, lalu kirim ulang untuk diverifikasi.'
+                )}
+              </p>
+            </div>
+          )}
           <p className="text-sm text-muted-foreground">
             Silakan lengkapi dokumen berikut. Format yang didukung: PDF, JPG, PNG (Maks 2MB per file).
           </p>
           <div className="grid gap-3">
-            {requiredDocs.map((doc, idx) => (
+            {requiredDocs.map((doc, idx) => {
+              const uploaded = documents.find(d => d.entity_type === `ppdb_document:${doc.name}`)
+              const isUploading = uploading === doc.name
+              
+              return (
               <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg bg-white shadow-sm gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    <FileText className="h-4 w-4" />
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${uploaded ? 'bg-emerald-100 text-emerald-600' : 'bg-primary/10 text-primary'}`}>
+                    {uploaded ? <CheckCircle className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-sm">{doc.name}</p>
-                      <Badge variant="outline" className="text-[10px] font-normal px-1.5 py-0 h-4">Belum diunggah</Badge>
+                      {uploaded ? (
+                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-[10px] font-normal px-1.5 py-0 h-4 border-emerald-200">Terunggah</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] font-normal px-1.5 py-0 h-4">Belum diunggah</Badge>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{doc.description}</p>
+                    {uploaded && <a href={uploaded.public_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline mt-1 block">Lihat dokumen</a>}
                   </div>
                 </div>
-                <Button size="sm" variant="outline" className="shrink-0 gap-2">
-                  <Upload className="h-3.5 w-3.5" /> Upload
-                </Button>
+                <div className="shrink-0 relative">
+                  <input type="file" id={`doc-upload-${idx}`} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => handleUpload(doc.name, e)} disabled={isUploading || !['document_uploaded_pending', 'document_rejected'].includes(applicant?.status)} />
+                  <Button size="sm" variant={uploaded ? "outline" : "default"} className="gap-2 pointer-events-none" disabled={isUploading || !['document_uploaded_pending', 'document_rejected'].includes(applicant?.status)}>
+                    {isUploading ? <span className="animate-spin h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full" /> : <Upload className="h-3.5 w-3.5" />} 
+                    {isUploading ? 'Uploading...' : uploaded ? 'Ganti File' : 'Upload'}
+                  </Button>
+                </div>
               </div>
-            ))}
+              )
+            })}
           </div>
           <div className="flex justify-end pt-4">
-            <Button disabled>Kirim Dokumen untuk Verifikasi</Button>
+            <Button 
+              disabled={documents.length < requiredDocs.length || !['document_uploaded_pending', 'document_rejected'].includes(applicant?.status)} 
+              onClick={handleSubmitDocs}
+            >
+              {applicant?.status === 'document_uploaded_pending' ? 'Kirim Dokumen untuk Verifikasi' : 
+               applicant?.status === 'document_rejected' ? 'Kirim Ulang Dokumen' : 
+               'Dokumen Sedang Diverifikasi'}
+            </Button>
           </div>
         </div>
       )

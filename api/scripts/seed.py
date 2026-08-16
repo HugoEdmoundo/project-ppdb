@@ -118,6 +118,53 @@ NOTIF_TEMPLATES = [
         ),
     },
     {
+        "event_key": "account_created",
+        "label": "Akun Panel Dibuat (Kredensial Login)",
+        "channel": "both",
+        "email_subject": "Akun Anda Telah Dibuat",
+        "body": (
+            "Halo {nama_peserta},\n\n"
+            "Akun Anda telah dibuat oleh admin. Berikut kredensial login Anda:\n"
+            "  Username: {username}\n"
+            "  Password: {password}\n"
+            "  Link Login: {link_login}\n"
+            "  Email: {email}\n"
+            "  No. WhatsApp: {phone}\n\n"
+            "Segera ganti password Anda setelah login pertama kali.\n\n"
+            "Terima kasih,\nAdmin PT Darrahman"
+        ),
+    },
+    {
+        "event_key": "account_updated",
+        "label": "Data Akun Diperbarui",
+        "channel": "both",
+        "email_subject": "Data Akun Anda Telah Diperbarui",
+        "body": (
+            "Halo {nama_peserta},\n\n"
+            "Data kontak akun Anda telah diperbarui oleh admin:\n"
+            "  Username: {username}\n"
+            "  Email: {email}\n"
+            "  No. WhatsApp: {phone}\n\n"
+            "Bila Anda tidak merasa melakukan perubahan ini, segera hubungi admin.\n\n"
+            "Terima kasih,\nAdmin PT Darrahman"
+        ),
+    },
+    {
+        "event_key": "password_reset",
+        "label": "Password Direset (Kredensial Baru)",
+        "channel": "both",
+        "email_subject": "Password Akun Anda Telah Direset",
+        "body": (
+            "Halo {nama_peserta},\n\n"
+            "Password akun Anda telah direset oleh admin. Berikut kredensial login terbaru:\n"
+            "  Username: {username}\n"
+            "  Password: {password}\n"
+            "  Link Login: {link_login}\n\n"
+            "Segera login dan ganti password Anda jika diperlukan.\n\n"
+            "Terima kasih,\nAdmin PT Darrahman"
+        ),
+    },
+    {
         "event_key": "payment_reminder",
         "label": "Pengingat Pembayaran Formulir (saat daftar)",
         "channel": "both",

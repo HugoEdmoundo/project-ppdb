@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
@@ -16,13 +16,16 @@ from src.core.database import (
     create_record,
     delete_record,
     execute_raw,
+    get_by_id,
     get_raw_pool,
     update_record,
 )
 from src.core.notif_service import send_notifications
-from src.core.dependencies import require_ppdb_admin, require_ppdb_read
+from src.core.dependencies import require_ppdb_admin, require_ppdb_read, get_current_user
+from src.core.uploads import upload_file, delete_upload
 from src.core.security import hash_password
 from src.modules.ppdb.schemas import (
+    ApplicantPasswordReset,
     ApplicantRegister,
     PeriodCreate,
     PeriodUpdate,
@@ -477,6 +480,62 @@ def get_applicants(
     return {"data": [dict(r) for r in rows], "total": count_rows[0]["cnt"]}
 
 
+@router.put("/applicants/{id}/password")
+def reset_applicant_password(
+    id: str,
+    body: ApplicantPasswordReset,
+    user: dict = Depends(require_ppdb_admin),
+):
+    """Reset password akun pendaftar. Password wajib dibuat sistem (bukan isian manual
+    dari admin) — kalau body.password kosong maka tidak ada yang berubah (no-op)."""
+    applicant = get_by_id("ppdb_applicants", id)
+    if not applicant:
+        raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+
+    user_id = applicant.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Akun login pendaftar tidak ditemukan")
+
+    new_password = (body.password or "").strip()
+    if not new_password:
+        return {"changed": False, "message": "Password tidak diubah (field kosong)"}
+
+    user_row = get_by_id("users", user_id)
+    if not user_row:
+        raise HTTPException(status_code=400, detail="Akun login pendaftar tidak ditemukan")
+
+    update_record(
+        "users",
+        user_id,
+        {
+            "password_hash": hash_password(new_password),
+            "failed_login_attempts": 0,
+            "locked_until": None,
+        },
+    )
+
+    # Kirim notif password baru (simulasi: tercatat di notification_logs).
+    try:
+        send_notifications(
+            [("password_reset", {
+                "password": new_password,
+                "link_login": "https://ppdb.ptdarrahman.sch.id/auth/login",  # TBD
+            })],
+            user_id,
+            user_row=user_row,
+            applicant_row=applicant,
+        )
+    except Exception:
+        logger.exception("send password_reset notification failed; continuing")
+
+    return {
+        "changed": True,
+        "message": "Password berhasil direset",
+        "username": user_row.get("username", ""),
+        "password": new_password,
+    }
+
+
 @router.get("/dashboard/stats")
 def get_ppdb_dashboard(user: dict = Depends(require_ppdb_read)):
     pool = get_raw_pool()
@@ -552,3 +611,187 @@ def soft_delete_expired_applicants():
         
     return {"deleted": len(applicant_ids), "applicant_ids": applicant_ids}
 
+
+# ---------------------------------------------------------------------------
+# Documents
+# ---------------------------------------------------------------------------
+
+@router.get("/documents")
+def get_my_documents(user: dict = Depends(get_current_user)):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        applicant = conn.execute(
+            text("SELECT id FROM ppdb_applicants WHERE user_id = :user_id LIMIT 1"),
+            {"user_id": user["id"]}
+        ).mappings().first()
+        
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Applicant not found")
+            
+        docs = conn.execute(
+            text("SELECT * FROM file_uploads WHERE entity_id = :entity_id AND entity_type LIKE 'ppdb_document:%'"),
+            {"entity_id": applicant["id"]}
+        ).mappings().all()
+        
+    return {"data": [dict(d) for d in docs]}
+
+
+@router.post("/documents/upload")
+async def upload_document(
+    doc_type: str = Form(...),
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user)
+):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        applicant = conn.execute(
+            text("SELECT id FROM ppdb_applicants WHERE user_id = :user_id LIMIT 1"),
+            {"user_id": user["id"]}
+        ).mappings().first()
+        
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Applicant not found")
+            
+        applicant_id = applicant["id"]
+        entity_type = f"ppdb_document:{doc_type}"
+        
+        existing = conn.execute(
+            text("SELECT id, storage_path FROM file_uploads WHERE entity_id = :entity_id AND entity_type = :entity_type LIMIT 1"),
+            {"entity_id": applicant_id, "entity_type": entity_type}
+        ).mappings().first()
+        
+    upload_res = await upload_file(file)
+    
+    with pool.begin() as conn:
+        if existing:
+            try:
+                delete_upload(existing["storage_path"])
+            except Exception as e:
+                logger.error(f"Failed to delete old upload: {e}")
+                
+            now = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
+            conn.execute(
+                text("""
+                    UPDATE file_uploads 
+                    SET original_name = :oname, stored_name = :sname, mime_type = :mime, 
+                        size_bytes = :size, storage_path = :spath, public_url = :url, created_at = :now
+                    WHERE id = :id
+                """),
+                {
+                    "oname": upload_res.original_name,
+                    "sname": upload_res.storage_path.split('/')[-1],
+                    "mime": upload_res.mime_type,
+                    "size": upload_res.size_bytes,
+                    "spath": upload_res.storage_path,
+                    "url": upload_res.public_url,
+                    "now": now,
+                    "id": existing["id"]
+                }
+            )
+            doc_id = existing["id"]
+        else:
+            doc_id = str(uuid.uuid4())
+            now = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
+            conn.execute(
+                text("""
+                    INSERT INTO file_uploads 
+                    (id, uploaded_by, original_name, stored_name, mime_type, size_bytes, storage_path, public_url, entity_type, entity_id, created_at)
+                    VALUES 
+                    (:id, :uid, :oname, :sname, :mime, :size, :spath, :url, :etype, :eid, :now)
+                """),
+                {
+                    "id": doc_id,
+                    "uid": user["id"],
+                    "oname": upload_res.original_name,
+                    "sname": upload_res.storage_path.split('/')[-1],
+                    "mime": upload_res.mime_type,
+                    "size": upload_res.size_bytes,
+                    "spath": upload_res.storage_path,
+                    "url": upload_res.public_url,
+                    "etype": entity_type,
+                    "eid": applicant_id,
+                    "now": now
+                }
+            )
+            
+    return {"success": True, "id": doc_id, "url": upload_res.public_url, "doc_type": doc_type}
+
+
+@router.post("/documents/submit")
+def submit_documents(user: dict = Depends(get_current_user)):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        applicant = conn.execute(
+            text("SELECT id, status FROM ppdb_applicants WHERE user_id = :user_id LIMIT 1"),
+            {"user_id": user["id"]}
+        ).mappings().first()
+        
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Applicant not found")
+            
+        if applicant["status"] not in ("document_uploaded_pending", "document_rejected"):
+            raise HTTPException(status_code=400, detail="Tidak dapat mengirim dokumen pada status ini")
+            
+    now = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
+    update_record("ppdb_applicants", applicant["id"], {"status": "document_uploaded", "updated_at": now})
+    
+    return {"success": True, "message": "Dokumen berhasil dikirim untuk verifikasi"}
+
+
+# ---------------------------------------------------------------------------
+# Admin Verification
+# ---------------------------------------------------------------------------
+
+@router.get("/applicants/{id}/documents")
+def get_applicant_documents(id: str, user: dict = Depends(require_ppdb_read)):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        docs = conn.execute(
+            text("SELECT * FROM file_uploads WHERE entity_id = :id AND entity_type LIKE 'ppdb_document:%'"),
+            {"id": id}
+        ).mappings().all()
+    return {"data": [dict(d) for d in docs]}
+
+from pydantic import BaseModel
+
+class DocumentVerify(BaseModel):
+    status: str
+    rejection_reason: Optional[str] = None
+
+@router.put("/applicants/{id}/documents/verify")
+def verify_applicant_documents(id: str, body: DocumentVerify, user: dict = Depends(require_ppdb_admin)):
+    if body.status not in ("document_approved", "document_rejected"):
+        raise HTTPException(status_code=400, detail="Status tidak valid")
+        
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        applicant = conn.execute(
+            text("SELECT user_id, status FROM ppdb_applicants WHERE id = :id LIMIT 1"),
+            {"id": id}
+        ).mappings().first()
+        
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Applicant not found")
+            
+        now = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
+        with conn.begin():
+            conn.execute(
+                text("""
+                    UPDATE ppdb_applicants 
+                    SET status = :status, updated_at = :now, rejection_reason = :reason
+                    WHERE id = :id
+                """),
+                {
+                    "status": body.status,
+                    "now": now,
+                    "reason": (body.rejection_reason or "").strip() if body.status == "document_rejected" else None,
+                    "id": id,
+                }
+            )
+            
+    if body.status == "document_approved":
+        send_notifications([("document_approved", {})], applicant["user_id"])
+    else:
+        send_notifications([("document_rejected", {"alasan_penolakan": body.rejection_reason or ""})], applicant["user_id"])
+        
+    return {"success": True}

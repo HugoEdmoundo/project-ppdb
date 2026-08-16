@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth, useFilteredNav } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, ChevronDown, ChevronLeft, Menu, LogOut, CalendarDays, CreditCard, Bell
+  LayoutDashboard, ChevronDown, ChevronLeft, Menu, LogOut, CalendarDays, CreditCard, Bell, User as UserIcon
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -225,7 +225,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="gap-2 px-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={logoUrl} className="object-contain p-0.5" />
+                    <AvatarImage src={user?.avatar_url || undefined} className="object-cover" />
                     <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
                       {user?.full_name?.[0] || user?.username?.[0] || 'A'}
                     </AvatarFallback>
@@ -242,6 +242,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <span className="text-xs font-normal text-muted-foreground">{user?.email}</span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem className="cursor-pointer" onSelect={() => navigate('/admin/profile')}>
+                  <UserIcon className="h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
                 <DropdownMenuItem className="cursor-pointer text-rose-danger focus:text-rose-danger focus:bg-rose-light/60" onSelect={handleLogout}>
                   <LogOut className="h-4 w-4" />
                   Logout

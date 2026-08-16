@@ -1,3 +1,4 @@
+import logging
 import random
 import string
 import uuid
@@ -13,15 +14,46 @@ from src.core.database import (
     update_record,
 )
 from src.core.dependencies import require_superadmin
+from src.core.notif_service import send_notifications
 from src.core.security import hash_password
 from src.modules.users.schemas import PagePermissionsUpdate, UserCreate, UserUpdate
 
+logger = logging.getLogger("ptdarrahman.users")
+
 router = APIRouter()
+
+# TBD: URL login resmi masing-masing app (masih placeholder seperti di ppdb router).
+PPDB_LOGIN_URL = "https://ppdb.ptdarrahman.sch.id/auth/login"
+DEFAULT_LOGIN_URL = "https://superadmin.ptdarrahman.sch.id/login"
 
 
 def _generate_password(length: int = 8) -> str:
     chars = string.ascii_letters + string.digits
     return "".join(random.choice(chars) for _ in range(length))
+
+
+def _login_link_for(user_type: str) -> str:
+    if user_type == "applicant":
+        return PPDB_LOGIN_URL
+    return DEFAULT_LOGIN_URL
+
+
+def _send_credentials(event_key: str, user_row: Dict[str, Any], raw_password: str = "") -> None:
+    """Best-effort: kirim notif kredensial/data akun (masih simulasi, hanya log)."""
+    try:
+        send_notifications(
+            [(event_key, {
+                "username": user_row.get("username", ""),
+                "email": user_row.get("email", ""),
+                "phone": user_row.get("phone", ""),
+                "password": raw_password,
+                "link_login": _login_link_for(user_row.get("user_type") or "admin"),
+            })],
+            user_row["id"],
+            user_row=user_row,
+        )
+    except Exception:
+        logger.exception("send credential notification failed")
 
 
 @router.get("/")
@@ -71,6 +103,8 @@ def create_user(body: UserCreate, user: Dict[str, Any] = Depends(require_superad
     }
     if body.email:
         data["email"] = body.email
+    if body.phone:
+        data["phone"] = body.phone
     if body.full_name:
         data["full_name"] = body.full_name
     if body.role_id:
@@ -79,6 +113,8 @@ def create_user(body: UserCreate, user: Dict[str, Any] = Depends(require_superad
         data["user_type"] = body.user_type
 
     created = create_record("users", data)
+    # Kirim kredensial (username, email, password) ke user yang baru dibuat.
+    _send_credentials("account_created", created, raw_password)
     if generated:
         created["_generated_password"] = raw_password
     return created
@@ -93,9 +129,11 @@ def update_user(id: str, body: UserUpdate, user: Dict[str, Any] = Depends(requir
     data: dict[str, Any] = {}
     if body.username:
         data["username"] = body.username
-    if body.email:
+    if body.email is not None:
         data["email"] = body.email
-    if body.full_name:
+    if body.phone is not None:
+        data["phone"] = body.phone
+    if body.full_name is not None:
         data["full_name"] = body.full_name
     if body.password:
         data["password_hash"] = hash_password(body.password)
@@ -106,7 +144,15 @@ def update_user(id: str, body: UserUpdate, user: Dict[str, Any] = Depends(requir
     if body.is_active is not None:
         data["is_active"] = 1 if body.is_active else 0
 
-    return update_record("users", id, data)
+    updated = update_record("users", id, data)
+
+    # Notif hanya dikirim saat data kontak / password benar-benar diisi.
+    if body.password:
+        _send_credentials("password_reset", updated, body.password)
+    if body.email or body.phone:
+        _send_credentials("account_updated", updated)
+
+    return updated
 
 
 @router.delete("/{id}")

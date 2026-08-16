@@ -226,7 +226,7 @@ async def cp_profile(body: ProfileUpdateReq, user: Dict[str, Any] = Depends(get_
         data["password_hash"] = hash_password(body.new_password)
 
     if "email" in data and data["email"] != user.get("email", ""):
-        if user.get("user_type") != "superadmin":
+        if user.get("user_type") != "superadmin" and not user.get("is_superadmin"):
             raise HTTPException(status_code=403, detail="Only superadmin can change email")
         existing = get_by_column("users", "email", data["email"])
         if existing and existing["id"] != user["id"]:

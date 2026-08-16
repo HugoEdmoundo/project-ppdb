@@ -84,7 +84,7 @@ def send_notifications(events, recipient_user_id: str, user_row=None, applicant_
                 "recipient_user_id": user["id"],
                 "recipient_name": ctx["nama_peserta"],
                 "recipient_email": user.get("email", ""),
-                "recipient_phone": applicant.get("phone", ""),
+                "recipient_phone": applicant.get("phone") or user.get("phone", ""),
                 "channel": template.get("channel", "email"),
                 "subject_sent": subject,
                 "body_sent": body,
@@ -95,6 +95,53 @@ def send_notifications(events, recipient_user_id: str, user_row=None, applicant_
 
             create_record("notification_logs", log_data, return_row=False)
             logger.info(f"Sending {template.get('channel')} to {user.get('email')} : {subject}")
+
+
+def send_custom_notifications(recipient_user_ids, channel: str, subject: str, body: str, event_key: str = "custom"):
+    """Kirim pesan bebas (tanpa template) ke daftar user, lalu catat di notification_logs.
+
+    Tetap simulasi: email/WA belum aktif, hanya menulis log berstatus 'sent'.
+    """
+    if not recipient_user_ids:
+        return {"sent": 0, "total": 0}
+
+    pool = get_raw_pool()
+    sent = 0
+    now_wib = datetime.datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
+
+    with pool.connect() as conn:
+        for user_id in recipient_user_ids:
+            rows = conn.execute(
+                text("SELECT * FROM users WHERE id = :id"), {"id": user_id}
+            ).mappings().all()
+            if not rows:
+                continue
+            user = dict(rows[0])
+
+            applicant_rows = conn.execute(
+                text("SELECT * FROM ppdb_applicants WHERE user_id = :id"), {"id": user_id}
+            ).mappings().all()
+            applicant = dict(applicant_rows[0]) if applicant_rows else {}
+
+            log_data = {
+                "id": f"notiflog-{uuid.uuid4()}",
+                "template_id": None,
+                "event_key": event_key,
+                "recipient_user_id": user["id"],
+                "recipient_name": applicant.get("full_name") or user.get("full_name", ""),
+                "recipient_email": user.get("email", ""),
+                "recipient_phone": applicant.get("phone") or user.get("phone", ""),
+                "channel": channel,
+                "subject_sent": subject,
+                "body_sent": body,
+                "status": "sent",
+                "sent_at": now_wib,
+                "error_message": None,
+            }
+            create_record("notification_logs", log_data, return_row=False)
+            sent += 1
+
+    return {"sent": sent, "total": len(recipient_user_ids)}
 
 
 def update_log_status(log_id: str, status: str, sent_at: str = None, error: str = None):

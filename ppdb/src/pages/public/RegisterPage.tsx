@@ -4,7 +4,7 @@ import { ppdbService } from '@/services'
 import { useToast } from '@/components/Toast'
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
-  Button, Input, Label, Alert,
+  Button, Input, Label, Alert, ConfirmDialog,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui'
 import { SuccessState } from '@/components/ui/SuccessState'
@@ -33,6 +33,7 @@ export default function RegisterPage() {
   
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [successData, setSuccessData] = useState<{username: string, password: string} | null>(null)
 
   const levelOptions = useMemo(() => {
@@ -66,10 +67,19 @@ export default function RegisterPage() {
     else setStep(s => s - 1)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
     setSubmitError(null)
+    if (formData.email && formData.phone) {
+      setConfirmOpen(true)
+      return
+    }
+    doSubmit()
+  }
+
+  const doSubmit = async () => {
+    setConfirmOpen(false)
+    setLoading(true)
     try {
       const res = await ppdbService.registerApplicant(formData)
       setSuccessData(res.credentials)
@@ -286,6 +296,11 @@ export default function RegisterPage() {
                   )}
                 </div>
 
+                <Alert type="warning" title="Periksa Email & No. WhatsApp Anda">
+                  Pastikan email dan nomor WhatsApp yang Anda isi sudah benar, karena sistem akan mengirim
+                  kredensial login (username &amp; password) ke alamat email dan nomor WhatsApp tersebut.
+                </Alert>
+
                 <div className="flex justify-between pt-4 border-t border-border">
                   <Button type="button" variant="outline" onClick={handleBack}>Kembali</Button>
                   <Button type="submit" disabled={loading}>
@@ -302,6 +317,16 @@ export default function RegisterPage() {
             </CardContent>
           </Card>
         )}
+
+        <ConfirmDialog
+          isOpen={confirmOpen}
+          onClose={() => setConfirmOpen(false)}
+          onConfirm={doSubmit}
+          loading={loading}
+          title="Periksa Email & No. WhatsApp"
+          message={`Email: ${formData.email}\nNo. WhatsApp: ${formData.phone}\n\nPastikan keduanya sudah benar, karena sistem akan mengirim kredensial login (username & password) ke email dan nomor WhatsApp tersebut.`}
+          confirmLabel="Sudah Benar, Daftar"
+        />
       </div>
     </div>
   )

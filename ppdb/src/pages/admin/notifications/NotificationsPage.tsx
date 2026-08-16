@@ -13,7 +13,7 @@ import { useCan } from '@/hooks/useCan'
 import { notificationService } from '@/services/index'
 import { Bell, Edit } from 'lucide-react'
 
-const VARS = ['{nama_peserta}', '{username}', '{password}', '{link_login}', '{batas_waktu_bayar}', '{nama_gelombang}', '{tanggal_seleksi}', '{alasan_penolakan}', '{link_pembayaran}', '{nominal_bayar}']
+const VARS = ['{nama_peserta}', '{username}', '{email}', '{phone}', '{password}', '{link_login}', '{batas_waktu_bayar}', '{nama_gelombang}', '{tanggal_seleksi}', '{alasan_penolakan}', '{link_pembayaran}', '{nominal_bayar}']
 
 export default function NotificationsPage() {
   const { toast } = useToast()

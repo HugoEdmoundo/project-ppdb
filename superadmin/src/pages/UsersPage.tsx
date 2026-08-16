@@ -166,6 +166,7 @@ export default function UsersPage() {
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Username</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
                     <TableHead>Full Name</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
@@ -190,6 +191,7 @@ export default function UsersPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{user.email || '—'}</TableCell>
+                      <TableCell className="text-muted-foreground">{user.phone || '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{user.full_name || '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{getRoleName(user.role_id)}</TableCell>
                       <TableCell>
@@ -259,6 +261,10 @@ export default function UsersPage() {
                   <div>
                     <span className="text-muted-foreground">Full Name</span>
                     <div className="mt-0.5 font-medium text-foreground">{user.full_name || '—'}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Phone</span>
+                    <div className="mt-0.5 font-medium text-foreground">{user.phone || '—'}</div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Role</span>

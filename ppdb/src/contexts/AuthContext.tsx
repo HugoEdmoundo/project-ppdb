@@ -3,6 +3,7 @@ import * as api from '../api/client'
 
 export interface AuthUser {
   id: string; username: string; email: string; full_name: string; role_id: string; role_name?: string; user_type: string; is_active: boolean
+  avatar_url?: string
   permissions: Record<string, string>
   is_superadmin: boolean
   page_permissions: string[]

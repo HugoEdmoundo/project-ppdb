@@ -6,9 +6,9 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '.
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog'
 import { EmptyState } from '../components/ui/EmptyState'
-import { Search, GraduationCap, UserRoundSearch } from 'lucide-react'
+import { Search, GraduationCap, UserRoundSearch, KeyRound, CheckCircle2 } from 'lucide-react'
 
 export default function ApplicantsPage() {
   const { toast } = useToast()
@@ -17,6 +17,12 @@ export default function ApplicantsPage() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedApplicant, setSelectedApplicant] = useState<any>(null)
+
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetApplicant, setResetApplicant] = useState<any>(null)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetting, setResetting] = useState(false)
+  const [resetResult, setResetResult] = useState<any>(null)
 
   const fetchApplicants = async (q = search) => {
     setLoading(true)
@@ -37,6 +43,45 @@ export default function ApplicantsPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     fetchApplicants()
+  }
+
+  function generatePassword() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    let pass = ''
+    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length))
+    setResetPassword(pass)
+    setResetResult(null)
+  }
+
+  function openReset(app: any) {
+    setResetApplicant(app)
+    setResetPassword('')
+    setResetResult(null)
+    setResetOpen(true)
+  }
+
+  async function handleReset(e: React.FormEvent) {
+    e.preventDefault()
+    if (!resetApplicant) return
+    if (!resetPassword) {
+      toast('warning', 'Klik Generate untuk membuat password terlebih dahulu')
+      return
+    }
+    setResetting(true)
+    try {
+      const res = await api.resetApplicantPassword(resetApplicant.id, resetPassword)
+      if (res && res.changed) {
+        setResetResult(res)
+        toast('success', 'Password berhasil direset & notifikasi dikirim (simulasi)')
+      } else {
+        toast('warning', res?.message || 'Password tidak diubah (field kosong)')
+        setResetOpen(false)
+      }
+    } catch (err: any) {
+      toast('error', err.message || 'Gagal mereset password')
+    } finally {
+      setResetting(false)
+    }
   }
 
   return (
@@ -207,10 +252,104 @@ export default function ApplicantsPage() {
                   </div>
                 </div>
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  Password hanya muncul sekali saat pendaftaran (tersimpan terenkripsi, tidak bisa dilihat kembali). Bila pendaftar lupa password, reset lewat menu Users.
+                  Password hanya muncul sekali saat pendaftaran (tersimpan terenkripsi, tidak bisa dilihat kembali).
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full"
+                  onClick={() => openReset(selectedApplicant)}
+                >
+                  <KeyRound className="h-4 w-4 mr-1" />
+                  Reset Password (Generate)
+                </Button>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Password baru dibuat otomatis oleh sistem dan dikirim sebagai notifikasi ke pendaftar (simulasi).
                 </p>
               </div>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={resetOpen} onOpenChange={(v: boolean) => !v && setResetOpen(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset Password Pendaftar</DialogTitle>
+          </DialogHeader>
+          {resetApplicant && (
+            <>
+              {resetResult ? (
+                <div className="space-y-4 pt-4">
+                  <div className="flex flex-col items-center gap-2 rounded-xl border border-success/30 bg-success/5 p-4 text-center">
+                    <CheckCircle2 className="h-8 w-8 text-success" />
+                    <p className="text-sm font-semibold text-foreground">Password berhasil direset</p>
+                    <p className="text-xs text-muted-foreground">
+                      Notifikasi kredensial baru telah dikirim ke pendaftar (simulasi). Salin password di bawah untuk diberikan secara manual bila diperlukan.
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-muted/40 p-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground text-xs">Username</p>
+                        <p className="font-mono font-medium">{resetResult.username || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground text-xs">Password Baru</p>
+                        <p className="font-mono font-semibold text-primary">{resetResult.password}</p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 w-full"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(resetResult.password)
+                        toast('success', 'Password disalin')
+                      }}
+                    >
+                      Salin Password
+                    </Button>
+                  </div>
+                  <DialogFooter>
+                    <Button className="w-full" onClick={() => { setResetOpen(false); setSelectedApplicant(null) }}>
+                      Selesai
+                    </Button>
+                  </DialogFooter>
+                </div>
+              ) : (
+                <form onSubmit={handleReset} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Password baru untuk <span className="font-semibold text-foreground">{resetApplicant.full_name}</span> ({resetApplicant.username || 'tanpa username'}). Password dibuat otomatis oleh sistem.
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        value={resetPassword}
+                        placeholder="Klik Generate untuk membuat password"
+                        readOnly
+                        className="font-mono select-none"
+                        onKeyDown={(e) => e.preventDefault()}
+                      />
+                      <Button type="button" variant="outline" onClick={generatePassword}>
+                        <KeyRound className="h-4 w-4 mr-1" />
+                        Generate
+                      </Button>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setResetOpen(false)}>Batal</Button>
+                    <Button type="submit" disabled={resetting || !resetPassword}>
+                      {resetting ? 'Memproses...' : 'Reset Password & Kirim Notif'}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              )}
+            </>
           )}
         </DialogContent>
       </Dialog>

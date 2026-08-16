@@ -58,3 +58,7 @@ class ApplicantUpdate(BaseModel):
     gender: Optional[str] = None
     address: Optional[str] = None
     status: Optional[str] = None
+
+
+class ApplicantPasswordReset(BaseModel):
+    password: Optional[str] = None

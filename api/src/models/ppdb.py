@@ -71,6 +71,8 @@ class PPDBApplicant(Base):
     payment_deadline: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3))
     # ── Soft Delete (Hari ke-8 belum bayar → cron job set deleted_at) ────────
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3), default=None)
+    # Alasan penolakan dokumen (diisi admin saat verifikasi; NULL saat belum/sudah disetujui)
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
 
@@ -87,7 +89,7 @@ class FileUpload(Base):
     storage_path: Mapped[str] = mapped_column(String(500), nullable=False)
     public_url: Mapped[Optional[str]] = mapped_column(String(500))
     entity_type: Mapped[Optional[str]] = mapped_column(String(50))
-    entity_id: Mapped[Optional[str]] = mapped_column(String(36))
+    entity_id: Mapped[Optional[str]] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
 
 

@@ -135,3 +135,15 @@ async def require_ppdb_admin(user: Dict[str, Any] = Depends(get_current_user)) -
     if not await has_module_access(user, Module.PPDB, AccessLevel.CRUD):
         raise HTTPException(status_code=403, detail="Access denied")
     return user
+
+
+async def require_notification_admin(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+    if not await has_module_access(user, "notification", AccessLevel.CRUD):
+        raise HTTPException(status_code=403, detail="Forbidden: Requires notification CRUD access")
+    return user
+
+
+async def require_notification_read(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+    if not await has_module_access(user, "notification", AccessLevel.READ):
+        raise HTTPException(status_code=403, detail="Forbidden: Requires notification read access")
+    return user

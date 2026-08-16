@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/Button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useToast } from '@/components/Toast'
+import { useCan } from '@/hooks/useCan'
 import { CreditCard, CheckCircle } from 'lucide-react'
 import { apiFetch } from '@/api/client'
 
 export default function PaymentsPage() {
   const { toast } = useToast()
+  const { canCrud } = useCan('payment', 'crud')
   
   const [activeTab, setActiveTab] = useState('all')
   const [transactions, setTransactions] = useState<any[]>([])
@@ -95,7 +97,7 @@ export default function PaymentsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {t.status === 'pending' && (
+                    {canCrud && t.status === 'pending' && (
                       <Button size="sm" onClick={() => handleConfirm(t.id)} className="gap-2">
                         <CheckCircle className="h-4 w-4" />
                         Konfirmasi

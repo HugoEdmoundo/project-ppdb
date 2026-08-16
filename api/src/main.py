@@ -1,12 +1,13 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi import FastAPI
+from fastapi.responses import Response
 from scalar_fastapi import get_scalar_api_reference
 
 from src.core.config import settings
 from src.core.cors import setup_cors
+from src.core.middleware import ServerErrorJSONMiddleware
 from src.modules.auth.router import router as auth_router
 from src.modules.companyprofile.router import router as companyprofile_router
 from src.modules.modules.router import router as modules_router
@@ -36,8 +37,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Pesantren Tahfidz Qur'an dan Digital Arrahman API",
-    description="Backend API (FastAPI) for the PTDARRAHMAN monorepo: company profile, PPDB, auth, and user/role management.",
-    version="2.0.0",
+    description="Backend API (FastAPI) for the PTDARRAHMAN company profile, PPDB, auth, and user/role management.",
+    version="0.1.0",
     docs_url=None,
     redoc_url=None,
     lifespan=lifespan,
@@ -45,14 +46,11 @@ app = FastAPI(
 
 
 # --- CORS (env-driven, centralized in src/core/cors.py) ---
+# NOTE: the 500-error middleware MUST be registered BEFORE CORSMiddleware so
+# its responses flow back through CORS (otherwise 500s have no CORS headers
+# and browsers report a misleading "blocked by CORS" error).
+app.add_middleware(ServerErrorJSONMiddleware)
 setup_cors(app, settings)
-
-
-# --- Global exception handler -> consistent JSON errors ---
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
-    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 # --- Utility routes ---

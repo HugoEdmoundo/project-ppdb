@@ -5,8 +5,11 @@ from datetime import datetime, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 from src.core.database import (
     audit_log,
@@ -26,6 +29,8 @@ from src.modules.ppdb.schemas import (
     WaveCreate,
     WaveUpdate,
 )
+
+logger = logging.getLogger("ptdarrahman.ppdb")
 
 router = APIRouter()
 
@@ -283,9 +288,20 @@ def generate_random_password(length: int = 8) -> str:
     return "".join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
 
 
-def generate_username(full_name: str) -> str:
-    base = "".join(c for c in full_name.split(" ")[0].lower() if c.isalnum())
-    return f"{base}{''.join(random.choice(string.digits) for _ in range(4))}"
+def generate_unique_username(full_name: str) -> str:
+    """Generate a username that does not collide with an existing `users` row.
+
+    `users.username` is UNIQUE; the naive 4-digit suffix collides easily once
+    several applicants share the same first name, which raised a duplicate-key
+    500 during registration.
+    """
+    base = "".join(c for c in full_name.split(" ")[0].lower() if c.isalnum()) or "user"
+    for _ in range(10):
+        candidate = f"{base}{''.join(random.choice(string.digits) for _ in range(4))}"
+        rows = execute_raw("SELECT id FROM users WHERE username = :u LIMIT 1", {"u": candidate})
+        if not rows:
+            return candidate
+    return f"{base}{uuid.uuid4().hex[:8]}"
 
 
 @router.post("/register", status_code=201)
@@ -306,78 +322,106 @@ def register_applicant(body: ApplicantRegister):
         if existing:
             raise HTTPException(status_code=400, detail="Email sudah terdaftar. Silakan login atau gunakan email lain.")
 
+        # `users.email` is UNIQUE but never deleted (cron only soft-deletes the
+        # applicant), so also block emails that belong to an expired/old account.
+        existing_user = conn.execute(
+            text("SELECT id FROM users WHERE email = :email LIMIT 1"),
+            {"email": body.email},
+        ).mappings().all()
+        if existing_user:
+            raise HTTPException(
+                status_code=400,
+                detail="Email sudah pernah terdaftar sebelumnya. Hubungi panitia jika ingin mendaftar ulang.",
+            )
+
     raw_password = generate_random_password()
-    username = generate_username(body.full_name)
+    username = generate_unique_username(body.full_name)
 
-    created_user = create_record(
-        "users",
-        {
-            "id": str(uuid.uuid4()),
-            "username": username,
-            "password_hash": hash_password(raw_password),
-            "email": body.email,
-            "full_name": body.full_name,
-            "user_type": "applicant",
-        },
-        return_row=False,
-    )
+    calon_role = execute_raw("SELECT id FROM roles WHERE name = 'Calon Murid' LIMIT 1")
+    calon_role_id = calon_role[0]["id"] if calon_role else None
 
-    created_applicant = create_record(
-        "ppdb_applicants",
-        {
-            "id": f"applicant-{uuid.uuid4()}",
-            "wave_id": active_wave_id,
-            "user_id": created_user["id"],
-            "full_name": body.full_name,
-            "email": body.email,
-            "phone": body.phone,
-            "registration_path": body.registration_path,
-            "registration_level": body.registration_level,
-            "gender": body.gender,
-            "birth_place": body.birth_place,
-            "birth_date": body.birth_date,
-            "nisn": body.nisn,
-            "nik": body.nik,
-            "parent_name": body.parent_name,
-            "previous_school": body.previous_school,
-            "major_choice": body.major_choice,
-            "status": "pending_payment",
-            "payment_status": "pending",
-            "payment_deadline": (datetime.now(ZoneInfo("Asia/Jakarta")) + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"),
-        },
-        return_row=False,
-    )
+    try:
+        created_user = create_record(
+            "users",
+            {
+                "id": str(uuid.uuid4()),
+                "username": username,
+                "password_hash": hash_password(raw_password),
+                "email": body.email,
+                "full_name": body.full_name,
+                "user_type": "applicant",
+                "role_id": calon_role_id,
+            },
+            return_row=False,
+        )
 
-    # Buat transaksi pembayaran offline dengan status pending
-    create_record(
-        "ppdb_payment_transactions",
-        {
-            "id": f"pay-{uuid.uuid4()}",
-            "applicant_id": created_applicant["id"],
-            "method": "offline",
-            "amount": 0,  # Akan di-update sesuai nominal pendaftaran
-            "status": "pending",
-        },
-        return_row=False,
-    )
+        created_applicant = create_record(
+            "ppdb_applicants",
+            {
+                "id": f"applicant-{uuid.uuid4()}",
+                "wave_id": active_wave_id,
+                "user_id": created_user["id"],
+                "full_name": body.full_name,
+                "email": body.email,
+                "phone": body.phone,
+                "registration_path": body.registration_path,
+                "registration_level": body.registration_level,
+                "gender": body.gender,
+                "birth_place": body.birth_place,
+                "birth_date": body.birth_date,
+                "nisn": body.nisn,
+                "nik": body.nik,
+                "parent_name": body.parent_name,
+                "previous_school": body.previous_school,
+                "major_choice": body.major_choice,
+                "status": "pending_payment",
+                "payment_status": "pending",
+                "payment_deadline": (datetime.now(ZoneInfo("Asia/Jakarta")) + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"),
+            },
+            return_row=False,
+        )
 
-    # Kirim notifikasi welcome + pengingat pembayaran (satu set lookup DB)
-    send_notifications(
-        [
-            ("welcome", {
-                "password": raw_password,
-                "link_login": "https://ppdb.ptdarrahman.sch.id/auth/login", # TBD
-                "batas_waktu_bayar": created_applicant["payment_deadline"],
-            }),
-            ("payment_reminder", {
-                "link_pembayaran": "https://ppdb.ptdarrahman.sch.id/checkout", # TBD
-                "batas_waktu_bayar": created_applicant["payment_deadline"],
-            }),
-        ],
-        created_user["id"],
-        user_row=created_user,
-        applicant_row=created_applicant,
-    )
+        # Buat transaksi pembayaran offline dengan status pending
+        create_record(
+            "ppdb_payment_transactions",
+            {
+                "id": f"pay-{uuid.uuid4()}",
+                "applicant_id": created_applicant["id"],
+                "method": "offline",
+                "amount": 0,  # Akan di-update sesuai nominal pendaftaran
+                "status": "pending",
+            },
+            return_row=False,
+        )
+    except IntegrityError:
+        # Race condition / collision (e.g. email yang baru saja terdaftar).
+        logger.exception("Duplicate on register: email=%s username=%s", body.email, username)
+        raise HTTPException(
+            status_code=400,
+            detail="Email sudah terdaftar. Silakan login atau gunakan email lain.",
+        )
+
+    # Kirim notifikasi welcome + pengingat pembayaran (best-effort; jangan gagalkan
+    # pendaftaran hanya karena logging notifikasi bermasalah).
+    try:
+        send_notifications(
+            [
+                ("welcome", {
+                    "password": raw_password,
+                    "link_login": "https://ppdb.ptdarrahman.sch.id/auth/login", # TBD
+                    "batas_waktu_bayar": created_applicant["payment_deadline"],
+                }),
+                ("payment_reminder", {
+                    "link_pembayaran": "https://ppdb.ptdarrahman.sch.id/checkout", # TBD
+                    "batas_waktu_bayar": created_applicant["payment_deadline"],
+                }),
+            ],
+            created_user["id"],
+            user_row=created_user,
+            applicant_row=created_applicant,
+        )
+    except Exception:
+        logger.exception("send_notifications failed after registration; continuing")
 
     return {
         "success": True,

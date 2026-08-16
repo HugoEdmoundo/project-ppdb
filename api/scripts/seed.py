@@ -23,6 +23,7 @@ from src.core.database import (  # noqa: E402
     get_by_column,
     get_by_id,
     create_record,
+    update_record,
     execute_raw,
 )
 from src.core.security import hash_password  # noqa: E402
@@ -79,6 +80,7 @@ DEFAULT_ROLES = [
             "ppdb": "crud",
             "payment": "read",
             "selection": "crud",
+            "notification": "crud",
         },
     },
 ]
@@ -308,7 +310,24 @@ def ensure_roles() -> None:
     for role in DEFAULT_ROLES:
         existing = get_by_column("roles", "name", role["name"])
         if existing:
-            print(f"  role exists:     {role['name']}")
+            stored_perms = json.loads(existing.get("permissions") or "{}")
+            if (
+                stored_perms != role["permissions"]
+                or existing.get("description") != role["description"]
+                or bool(existing.get("is_superadmin")) != role["is_superadmin"]
+            ):
+                update_record(
+                    "roles",
+                    existing["id"],
+                    {
+                        "description": role["description"],
+                        "is_superadmin": 1 if role["is_superadmin"] else 0,
+                        "permissions": json.dumps(role["permissions"], ensure_ascii=False),
+                    },
+                )
+                print(f"  role updated:    {role['name']}")
+            else:
+                print(f"  role exists:     {role['name']}")
             continue
         create_record(
             "roles",
@@ -321,6 +340,17 @@ def ensure_roles() -> None:
             },
         )
         print(f"  role created:    {role['name']}")
+
+
+def ensure_applicant_roles() -> None:
+    """Assign the default 'Calon Murid' role to applicant users missing a role."""
+    role = get_by_column("roles", "name", "Calon Murid")
+    if not role:
+        return
+    rows = execute_raw("SELECT id FROM users WHERE user_type = 'applicant' AND role_id IS NULL")
+    for row in rows:
+        update_record("users", row["id"], {"role_id": role["id"]})
+        print(f"  applicant role:  {row['id']} -> Calon Murid")
 
 
 def ensure_superadmin() -> None:
@@ -391,6 +421,7 @@ def main() -> None:
     print("Seeding database...")
     ensure_modules_and_pages()
     ensure_roles()
+    ensure_applicant_roles()
     ensure_superadmin()
     ensure_site_settings()
     ensure_notification_templates()

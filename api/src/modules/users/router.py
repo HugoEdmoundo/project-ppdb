@@ -10,8 +10,6 @@ from src.core.database import (
     delete_record,
     execute_raw,
     get_by_id,
-    list_all,
-    search_paginated,
     update_record,
 )
 from src.core.dependencies import require_superadmin
@@ -33,17 +31,25 @@ def get_users(
     per_page: int = Query(20),
     user: Dict[str, Any] = Depends(require_superadmin),
 ):
+    # Akun calon murid dikelola lewat halaman Pendaftar, bukan Users.
+    where = "WHERE (user_type IS NULL OR user_type != 'applicant')"
+    params: dict[str, Any] = {}
+
     if search:
-        result = search_paginated(
-            table="users",
-            search=search,
-            columns=["username", "email", "full_name"],
-            page=page,
-            per_page=per_page,
-            order="created_at.desc",
-        )
-        return {"data": result["data"], "total": result["total"], "page": page, "per_page": per_page}
-    return list_all("users", order="created_at.desc")
+        where += " AND (username LIKE :s OR email LIKE :s OR full_name LIKE :s)"
+        params["s"] = f"%{search}%"
+
+    rows = execute_raw(
+        f"SELECT * FROM users {where} ORDER BY created_at DESC LIMIT :limit OFFSET :offset",
+        {**params, "limit": per_page, "offset": (page - 1) * per_page},
+    )
+    count_rows = execute_raw(f"SELECT COUNT(*) AS cnt FROM users {where}", params)
+    return {
+        "data": rows,
+        "total": count_rows[0]["cnt"] if count_rows else 0,
+        "page": page,
+        "per_page": per_page,
+    }
 
 
 @router.get("/{id}")

@@ -95,6 +95,9 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
         if role:
             user["role_permissions"] = _parse_permissions(role.get("permissions"))
             user["permissions"] = user["role_permissions"]
+            user["is_superadmin"] = bool(role.get("is_superadmin"))
+    if user.get("user_type") == "superadmin":
+        user["is_superadmin"] = True
     return user
 
 

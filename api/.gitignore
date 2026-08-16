@@ -7,6 +7,7 @@
 __pycache__/
 *.pyc
 .venv/
+.venv_*/
 venv/
 
 # Uploads (local fallback storage)

@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginFn = useCallback(async (username: string, password: string) => { const u = await api.login(username, password); setUser(u) }, [])
   const logoutFn = useCallback(async () => { await api.logout(); setUser(null) }, [])
-  const refreshUser = useCallback(async () => { try { setUser(await api.getMe()) } catch {} }, [])
+  const refreshUser = useCallback(async () => { try { setUser(await api.getMe()) } catch (e) { void e } }, [])
 
   return <AuthContext.Provider value={{ user, loading, login: loginFn, logout: logoutFn, refreshUser }}>{children}</AuthContext.Provider>
 }
@@ -99,7 +99,7 @@ export function useFilteredNav(items: { label: string; href?: string; module?: s
       }
 
       // Filter children based on page_permissions
-      let filteredItem = { ...item }
+      const filteredItem = { ...item }
       if (item.children) {
         filteredItem.children = item.children.filter(c => {
           if (!isSuperadmin && pagePermissions.length > 0) {

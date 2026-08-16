@@ -32,6 +32,12 @@ Panel manajemen users & roles (Vite + React + TypeScript + Tailwind) untuk Pesan
 - Halaman form (`/users/new`, `/users/:id`, `/roles/new`, `/roles/:id`) redirect ke list bila `!canCrud` (UserFormPage.tsx / RoleFormPage.tsx).
 - `ProfilePage` = edit profil sendiri, tidak perlu guard CRUD.
 
+## System Roles (is_system)
+- Role dengan `is_system = true` (seperti Superadmin dan Calon Murid) dilindungi oleh sistem:
+  - Pada daftar role, tidak memiliki tombol Edit/Hapus dan UI badge-nya dibedakan.
+  - Halaman RoleFormPage untuk role ini bersifat read-only.
+  - Role Calon Murid (sistem & bukan superadmin) disembunyikan dari dropdown role di UserFormPage agar tidak bisa di-assign ke user panel.
+
 ## Module Permissions editor (RoleFormPage)
 - Daftar modul yang bisa diberi permission per role: hanya **Company Profile** dan **PPDB**.
 - Group PPDB menulis semua key sub-modul sekaligus: `ppdb`, `payment`, `selection`, `notification`, `dashboard`, `applicant_dashboard`.

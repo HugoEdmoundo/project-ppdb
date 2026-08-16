@@ -265,7 +265,7 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
     try {
       const res = await ppdbService.getWaves({ period_id: period.id })
       setWaves(res || []) // endpoint returns raw array for waves if not paginated or we handle appropriately
-    } catch (e: any) {
+    } catch {
       toast('error', 'Gagal memuat gelombang')
     } finally {
       setLoading(false)

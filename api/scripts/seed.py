@@ -60,21 +60,23 @@ DEFAULT_ROLES = [
         "name": "Superadmin",
         "description": "Full access to everything.",
         "is_superadmin": True,
+        "is_system": True,
         "permissions": {},
     },
     {
         "name": "Calon Murid",
         "description": "Default role for PPDB applicants.",
         "is_superadmin": False,
+        "is_system": True,
         "permissions": {
             "applicant_dashboard": "dashboard",
-            "ppdb": "read",
         },
     },
     {
         "name": "Admin PPDB",
         "description": "Manages PPDB periods, waves and applicants.",
         "is_superadmin": False,
+        "is_system": False,
         "permissions": {
             "dashboard": "dashboard",
             "ppdb": "crud",
@@ -310,11 +312,16 @@ def ensure_roles() -> None:
     for role in DEFAULT_ROLES:
         existing = get_by_column("roles", "name", role["name"])
         if existing:
+            if not role.get("is_system"):
+                print(f"  role exists:     {role['name']}")
+                continue
+
             stored_perms = json.loads(existing.get("permissions") or "{}")
             if (
                 stored_perms != role["permissions"]
                 or existing.get("description") != role["description"]
                 or bool(existing.get("is_superadmin")) != role["is_superadmin"]
+                or bool(existing.get("is_system")) != role.get("is_system", False)
             ):
                 update_record(
                     "roles",
@@ -322,6 +329,7 @@ def ensure_roles() -> None:
                     {
                         "description": role["description"],
                         "is_superadmin": 1 if role["is_superadmin"] else 0,
+                        "is_system": 1 if role.get("is_system", False) else 0,
                         "permissions": json.dumps(role["permissions"], ensure_ascii=False),
                     },
                 )
@@ -336,6 +344,7 @@ def ensure_roles() -> None:
                 "name": role["name"],
                 "description": role["description"],
                 "is_superadmin": 1 if role["is_superadmin"] else 0,
+                "is_system": 1 if role.get("is_system", False) else 0,
                 "permissions": json.dumps(role["permissions"], ensure_ascii=False),
             },
         )

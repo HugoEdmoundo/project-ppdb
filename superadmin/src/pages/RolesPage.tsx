@@ -131,9 +131,9 @@ export default function RolesPage() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                    role.is_superadmin ? 'bg-purple-100' : 'bg-primary/10'
+                    role.is_superadmin ? 'bg-purple-100' : role.is_system ? 'bg-orange-100' : 'bg-primary/10'
                   }`}>
-                    <ShieldCheck className={`h-5 w-5 ${role.is_superadmin ? 'text-purple-600' : 'text-primary'}`} />
+                    <ShieldCheck className={`h-5 w-5 ${role.is_superadmin ? 'text-purple-600' : role.is_system ? 'text-orange-600' : 'text-primary'}`} />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -141,11 +141,14 @@ export default function RolesPage() {
                       {role.is_superadmin && (
                         <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">SUPERADMIN</Badge>
                       )}
+                      {role.is_system && !role.is_superadmin && (
+                        <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 uppercase">{role.name}</Badge>
+                      )}
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">{role.description || '—'}</p>
                   </div>
                 </div>
-                {canCrud && !role.is_superadmin && (
+                {canCrud && !role.is_system && (
                   <div className="flex shrink-0 items-center gap-2">
                     <Button
                       variant="outline"
@@ -165,15 +168,33 @@ export default function RolesPage() {
                     </Button>
                   </div>
                 )}
+                {canCrud && role.is_system && !role.is_superadmin && (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/roles/${role.id}`)}
+                    >
+                      Lihat Detail
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Permissions */}
-              {!role.is_superadmin && Object.keys(role.permissions || {}).length > 0 && (
+              {!role.is_system && Object.keys(role.permissions || {}).length > 0 && (
                 <div className="mt-3 border-t border-border pt-3">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Permissions:</span>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {getPermissionBadges(role.permissions)}
                   </div>
+                </div>
+              )}
+              {role.is_system && !role.is_superadmin && (
+                <div className="mt-3 border-t border-border pt-3">
+                  <p className="text-xs text-muted-foreground italic">
+                    Role sistem — akses diatur otomatis, tidak bisa diubah/dihapus.
+                  </p>
                 </div>
               )}
             </Card>

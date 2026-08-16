@@ -44,6 +44,7 @@ api/
 - Real-time: SSE hub `companyprofile_hub` di `src/core/events.py` → endpoint `/companyprofile/events` (dipakai `companyprofile/app/hooks/useSSE.ts`). Bukan WebSocket, bukan Postgres.
 - Migrasi skema DB via Alembic. Jangan edit live DB manual. Jalankan: `cd api && .venv\Scripts\alembic.exe upgrade head`.
 - Seeder: `cd api && .venv\Scripts\python.exe -m scripts.seed` (idempotent; reset password superadmin sesuai `SEED_SUPERADMIN_*` bila mismatch).
+- Role Sistem: Role dengan `is_system=True` (Superadmin, Calon Murid) dilindungi di backend, tidak bisa diedit/dihapus via endpoint CRUD roles.
 - Local dev: `cd api && .venv\Scripts\python.exe -m uvicorn src.main:app --reload --port 8000`.
 - Test: `cd api && .venv\Scripts\python.exe -m pytest tests -q` (butuh DB live via `api/.env`).
 

@@ -51,7 +51,7 @@ export default function CheckoutPage() {
     try {
       await refreshUser()
       toast('success', 'Status diperbarui')
-    } catch (err) {
+    } catch {
       toast('error', 'Gagal memperbarui status')
     } finally {
       setLoading(false)

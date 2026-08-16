@@ -16,6 +16,8 @@ def _prepare(data: dict) -> dict:
         payload["permissions"] = json.dumps(payload["permissions"], ensure_ascii=False)
     if "is_superadmin" in payload:
         payload["is_superadmin"] = 1 if payload["is_superadmin"] else 0
+    if "is_system" in payload:
+        payload["is_system"] = 1 if payload["is_system"] else 0
     return payload
 
 
@@ -34,7 +36,9 @@ def get_role(id: str, user: Dict[str, Any] = Depends(require_superadmin)):
 
 @router.post("/", status_code=201)
 def create_role(body: RoleCreate, user: Dict[str, Any] = Depends(require_superadmin)):
-    return create_record("roles", _prepare(body.model_dump(exclude_unset=True)))
+    data = body.model_dump(exclude_unset=True)
+    data["is_system"] = False
+    return create_record("roles", _prepare(data))
 
 
 @router.put("/{id}")
@@ -42,11 +46,20 @@ def update_role(id: str, body: RoleUpdate, user: Dict[str, Any] = Depends(requir
     existing = get_by_id("roles", id)
     if not existing:
         raise HTTPException(404, "Role not found")
-    return update_record("roles", id, _prepare(body.model_dump(exclude_unset=True)))
+    if existing.get("is_system"):
+        raise HTTPException(403, "Cannot edit a system role")
+    data = body.model_dump(exclude_unset=True)
+    data.pop("is_system", None)
+    return update_record("roles", id, _prepare(data))
 
 
 @router.delete("/{id}")
 def delete_role(id: str, user: Dict[str, Any] = Depends(require_superadmin)):
+    existing = get_by_id("roles", id)
+    if not existing:
+        raise HTTPException(404, "Role not found")
+    if existing.get("is_system"):
+        raise HTTPException(403, "Cannot delete a system role")
     try:
         deleted = delete_record("roles", id)
         if not deleted:

@@ -264,7 +264,7 @@ export default function UserFormPage() {
                   <SelectValue placeholder="Pilih role..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {roles.filter(r => !r.is_superadmin).map(r => (
+                  {roles.filter(r => !r.is_superadmin && !r.is_system).map(r => (
                     <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                   ))}
                 </SelectContent>

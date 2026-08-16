@@ -35,6 +35,7 @@ class Role(Base):
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
     is_superadmin: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False)
     permissions: Mapped[Optional[dict]] = mapped_column(LONGTEXT)
     created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)

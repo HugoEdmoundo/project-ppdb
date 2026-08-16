@@ -17,6 +17,7 @@ export interface Role {
   name: string
   description: string
   is_superadmin: boolean
+  is_system: boolean
   permissions: Record<string, string>
   created_at: string
   updated_at: string

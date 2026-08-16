@@ -30,6 +30,7 @@ export default function RoleFormPage() {
     name: '',
     description: '',
     is_superadmin: false,
+    is_system: false,
   })
   const [permissions, setPermissions] = useState<Record<string, AccessLevel>>({})
   const [loading, setLoading] = useState(false)
@@ -44,6 +45,7 @@ export default function RoleFormPage() {
             name: role.name || '',
             description: role.description || '',
             is_superadmin: role.is_superadmin ?? false,
+            is_system: role.is_system ?? false,
           })
           const perms: Record<string, AccessLevel> = {}
           for (const [mod, level] of Object.entries(role.permissions || {})) {
@@ -114,10 +116,10 @@ export default function RoleFormPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-foreground">
-            {isEdit ? 'Edit Role' : 'Buat Role Baru'}
+            {isEdit ? (form.is_system ? 'Detail Role Sistem' : 'Edit Role') : 'Buat Role Baru'}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {isEdit ? 'Ubah informasi dan hak akses role' : 'Buat role baru dengan hak akses yang ditentukan'}
+            {isEdit ? (form.is_system ? 'Melihat informasi role sistem' : 'Ubah informasi dan hak akses role') : 'Buat role baru dengan hak akses yang ditentukan'}
           </p>
         </div>
       </div>
@@ -140,7 +142,7 @@ export default function RoleFormPage() {
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 placeholder="Contoh: Editor, Viewer, dll."
                 required
-                disabled={form.is_superadmin}
+                disabled={form.is_superadmin || form.is_system}
               />
             </div>
 
@@ -152,7 +154,7 @@ export default function RoleFormPage() {
                 value={form.description}
                 onChange={e => setForm({ ...form, description: e.target.value })}
                 placeholder="Deskripsi singkat tentang role ini"
-                disabled={form.is_superadmin}
+                disabled={form.is_superadmin || form.is_system}
               />
             </div>
           </CardContent>
@@ -170,6 +172,12 @@ export default function RoleFormPage() {
               <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
                 <p className="text-sm font-medium text-purple-700">
                   ✨ Role ini adalah Superadmin — memiliki akses penuh ke semua module tanpa perlu pengaturan permissions.
+                </p>
+              </div>
+            ) : form.is_system ? (
+              <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+                <p className="text-sm font-medium text-orange-700">
+                  🔒 Role ini adalah role sistem. Aksesnya diatur otomatis dan tidak bisa diubah melalui form.
                 </p>
               </div>
             ) : (
@@ -244,11 +252,13 @@ export default function RoleFormPage() {
             variant="outline"
             onClick={() => navigate('/roles')}
           >
-            Batal
+            {form.is_system ? 'Kembali' : 'Batal'}
           </Button>
-          <Button type="submit" disabled={loading || form.is_superadmin}>
-            {loading ? 'Menyimpan...' : isEdit ? 'Simpan Perubahan' : 'Buat Role'}
-          </Button>
+          {!form.is_system && (
+            <Button type="submit" disabled={loading || form.is_superadmin}>
+              {loading ? 'Menyimpan...' : isEdit ? 'Simpan Perubahan' : 'Buat Role'}
+            </Button>
+          )}
         </div>
       </form>
     </div>

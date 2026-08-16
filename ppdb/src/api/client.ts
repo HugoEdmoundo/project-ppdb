@@ -82,7 +82,7 @@ export async function getMe() {
 }
 
 export async function logout() {
-  try { const rt = localStorage.getItem(REFRESH_KEY); if (rt) await apiFetch('/auth/logout', { method: 'POST', body: JSON.stringify({ refresh_token: rt }) }) } catch {}
+  try { const rt = localStorage.getItem(REFRESH_KEY); if (rt) await apiFetch('/auth/logout', { method: 'POST', body: JSON.stringify({ refresh_token: rt }) }) } catch (e) { void e }
   clearAuth()
 }
 

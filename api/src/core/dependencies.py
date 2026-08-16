@@ -94,6 +94,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
         role = get_by_id("roles", role_id)
         if role:
             user["role_permissions"] = _parse_permissions(role.get("permissions"))
+            user["permissions"] = user["role_permissions"]
     return user
 
 

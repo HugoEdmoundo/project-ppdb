@@ -186,12 +186,12 @@ export default function ApplicantsPage() {
       </Card>
 
       <Dialog open={!!selectedApplicant} onOpenChange={(v: boolean) => !v && setSelectedApplicant(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detail Pendaftar</DialogTitle>
           </DialogHeader>
           {selectedApplicant && (
-            <div className="space-y-4 pt-4">
+            <div className="space-y-6 pt-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground text-xs">Nama Lengkap</p>

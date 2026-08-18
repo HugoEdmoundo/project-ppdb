@@ -25,11 +25,11 @@ def upgrade() -> None:
                existing_server_default=sa.text('current_timestamp(3)'))
     op.drop_index(op.f('idx_audit_log_created'), table_name='audit_log', if_exists=True)
     op.drop_index(op.f('idx_audit_log_entity'), table_name='audit_log', mysql_length={'entity_type': 255, 'entity_id': 255}, if_exists=True)
-    op.drop_constraint('fk_audit_log_user_id_users', 'audit_log', type_='foreignkey', if_exists=True)
+    op.drop_constraint('fk_audit_log_user', 'audit_log', type_='foreignkey')
     op.drop_index(op.f('idx_audit_log_user'), table_name='audit_log', if_exists=True)
     op.create_index(op.f('ix_audit_log_created_at'), 'audit_log', ['created_at'], unique=False)
     op.create_index(op.f('ix_audit_log_user_id'), 'audit_log', ['user_id'], unique=False)
-    op.create_foreign_key('fk_audit_log_user_id_users', 'audit_log', 'users', ['user_id'], ['id'], ondelete='SET NULL')
+    op.create_foreign_key('fk_audit_log_user', 'audit_log', 'users', ['user_id'], ['id'], ondelete='SET NULL')
     op.alter_column('file_uploads', 'entity_type',
                existing_type=mysql.VARCHAR(length=50),
                comment=None,
@@ -454,13 +454,13 @@ def downgrade() -> None:
                existing_type=mysql.VARCHAR(length=50),
                comment='applicant_document,payment_proof,etc',
                existing_nullable=True)
-    op.drop_constraint('fk_audit_log_user_id_users', 'audit_log', type_='foreignkey')
+    op.drop_constraint('fk_audit_log_user', 'audit_log', type_='foreignkey')
     op.drop_index(op.f('ix_audit_log_user_id'), table_name='audit_log', if_exists=True)
     op.drop_index(op.f('ix_audit_log_created_at'), table_name='audit_log', if_exists=True)
     op.create_index(op.f('idx_audit_log_user'), 'audit_log', ['user_id'], unique=False)
     op.create_index(op.f('idx_audit_log_entity'), 'audit_log', ['entity_type', 'entity_id'], unique=False, mysql_length={'entity_type': 255, 'entity_id': 255})
     op.create_index(op.f('idx_audit_log_created'), 'audit_log', ['created_at'], unique=False)
-    op.create_foreign_key('fk_audit_log_user_id_users', 'audit_log', 'users', ['user_id'], ['id'], ondelete='SET NULL')
+    op.create_foreign_key('fk_audit_log_user', 'audit_log', 'users', ['user_id'], ['id'], ondelete='SET NULL')
     op.alter_column('audit_log', 'created_at',
                existing_type=mysql.DATETIME(fsp=3),
                nullable=True,

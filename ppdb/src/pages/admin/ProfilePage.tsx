@@ -129,9 +129,8 @@ export default function AdminProfilePage() {
         {/* ── Identity card ── */}
         <aside className="space-y-6">
           <Card className="overflow-hidden shadow-sm">
-            <div className="relative h-20 bg-gradient-to-br from-emerald-dark via-emerald-primary to-[#103D27]" />
             <CardContent className="px-5 pb-5">
-              <div className="-mt-14 flex justify-center">
+              <div className="flex justify-center">
                 <AvatarEditor
                   value={form.avatar_url}
                   initials={initials}

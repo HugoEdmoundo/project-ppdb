@@ -16,6 +16,7 @@ import ApplicantDashboardPage from './pages/applicant/DashboardPage'
 import PaymentsPage from './pages/admin/ppdb/PaymentsPage'
 import NotificationsPage from './pages/admin/notifications/NotificationsPage'
 import ApplicantsPage from './pages/admin/ppdb/ApplicantsPage'
+import DataPendaftarPage from './pages/admin/ppdb/DataPendaftarPage'
 import AdminProfilePage from './pages/admin/ProfilePage'
 import * as api from './api/client'
 
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout><Outlet /></AdminLayout></ProtectedRoute>}>
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />
+              <Route path="data-pendaftar" element={<DataPendaftarPage />} />
               <Route path="applicants" element={<ApplicantsPage />} />
               <Route path="periods" element={<PeriodsPage />} />
               <Route path="payments" element={<PaymentsPage />} />

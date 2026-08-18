@@ -13,28 +13,20 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { Textarea } from '@/components/ui/Textarea'
 import { Can } from '@/components/Permission'
 
-export default function ApplicantsPage() {
+export default function DataPendaftarPage() {
   const { toast } = useToast()
   
   const [applicants, setApplicants] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
   const [selectedApplicant, setSelectedApplicant] = useState<any>(null)
-  
-  // Document verification modal state
-  const [verifyApplicant, setVerifyApplicant] = useState<any>(null)
-  const [applicantDocs, setApplicantDocs] = useState<any[]>([])
-  const [rejectionReason, setRejectionReason] = useState('')
-  const [isVerifying, setIsVerifying] = useState(false)
 
-  const fetchApplicants = async (q = search, status = statusFilter) => {
+  const fetchApplicants = async (q = search) => {
     setLoading(true)
     try {
       const qs = new URLSearchParams()
       if (q) qs.append('search', q)
-      if (status && status !== 'all') qs.append('status', status)
-      
+      // fetch all applicants ignoring status filter for Data Pendaftar page
       const res = await api.apiFetch<any>(`/ppdb/applicants?${qs.toString()}`)
       setApplicants(res.data || [])
     } catch (e: any) {
@@ -50,57 +42,18 @@ export default function ApplicantsPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    fetchApplicants(search, statusFilter)
-  }
-
-  const handleStatusChange = (val: string) => {
-    setStatusFilter(val)
-    fetchApplicants(search, val)
-  }
-
-  const openVerifyModal = async (applicant: any) => {
-    setVerifyApplicant(applicant)
-    setApplicantDocs([])
-    setRejectionReason('')
-    try {
-      const res = await api.apiFetch<any>(`/ppdb/applicants/${applicant.id}/documents`)
-      setApplicantDocs(res.data || [])
-    } catch {
-      toast('error', 'Gagal memuat dokumen')
-    }
-  }
-
-  const handleVerify = async (status: 'document_approved' | 'document_rejected') => {
-    if (status === 'document_rejected' && !rejectionReason.trim()) {
-      toast('error', 'Alasan penolakan wajib diisi')
-      return
-    }
-    
-    setIsVerifying(true)
-    try {
-      await api.apiFetch(`/ppdb/applicants/${verifyApplicant.id}/documents/verify`, {
-        method: 'PUT',
-        body: JSON.stringify({ status, rejection_reason: rejectionReason })
-      })
-      toast('success', `Dokumen berhasil ${status === 'document_approved' ? 'disetujui' : 'ditolak'}`)
-      setVerifyApplicant(null)
-      fetchApplicants()
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal memverifikasi dokumen')
-    } finally {
-      setIsVerifying(false)
-    }
+    fetchApplicants(search)
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <GraduationCap className="h-6 w-6 text-emerald-600" />
-          Dokumen Pendaftar
+          <UserRoundSearch className="h-6 w-6 text-primary" />
+          Data Pendaftar
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Verifikasi dokumen kelengkapan calon santri yang telah mendaftar.
+          Kelola data biodata lengkap calon santri yang telah mendaftar.
         </p>
       </div>
 
@@ -254,9 +207,34 @@ export default function ApplicantsPage() {
                   <p className="font-medium">{selectedApplicant.nik || '-'}</p>
                 </div>
 
-                <div className="col-span-2">
-                  <p className="text-muted-foreground text-xs">Alamat</p>
-                  <p className="font-medium">{selectedApplicant.address || '-'}</p>
+                <div className="col-span-2 border-t pt-4 mt-2">
+                  <h4 className="font-semibold text-sm mb-2">Data Domisili</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-muted-foreground text-xs">Provinsi</p>
+                      <p className="font-medium">{selectedApplicant.province || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Kota/Kabupaten</p>
+                      <p className="font-medium">{selectedApplicant.city || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Kecamatan</p>
+                      <p className="font-medium">{selectedApplicant.district || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Kelurahan/Desa</p>
+                      <p className="font-medium">{selectedApplicant.village || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Kode Pos</p>
+                      <p className="font-medium">{selectedApplicant.postal_code || '-'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground text-xs">Alamat Detail</p>
+                      <p className="font-medium">{selectedApplicant.address || '-'}</p>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -275,76 +253,6 @@ export default function ApplicantsPage() {
                 <div>
                   <p className="text-muted-foreground text-xs">Waktu Daftar</p>
                   <p className="font-medium">{new Date(selectedApplicant.created_at).toLocaleString('id-ID')}</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-      <Dialog open={!!verifyApplicant} onOpenChange={(v) => !v && setVerifyApplicant(null)}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Verifikasi Dokumen Pendaftar</DialogTitle>
-          </DialogHeader>
-          
-          {verifyApplicant && (
-            <div className="space-y-6 pt-4">
-              <div className="bg-muted/30 p-4 rounded-lg flex items-center justify-between border">
-                <div>
-                  <h4 className="font-medium">{verifyApplicant.full_name}</h4>
-                  <p className="text-sm text-muted-foreground">{verifyApplicant.registration_path} - {verifyApplicant.registration_level}</p>
-                </div>
-                <Badge variant="secondary">
-                  {applicantDocs.length} Dokumen Terunggah
-                </Badge>
-              </div>
-
-              <div className="grid gap-3">
-                {applicantDocs.length === 0 ? (
-                  <div className="text-center p-6 border border-dashed rounded-lg text-muted-foreground">
-                    Belum ada dokumen yang diunggah
-                  </div>
-                ) : (
-                  applicantDocs.map((doc, idx) => {
-                    const docName = doc.entity_type.replace('ppdb_document:', '')
-                    return (
-                      <div key={idx} className="flex items-center justify-between p-3 border rounded-lg bg-white shadow-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                            <FileText className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">{docName}</p>
-                            <p className="text-xs text-muted-foreground">{(doc.size_bytes / 1024).toFixed(1)} KB</p>
-                          </div>
-                        </div>
-                        <a href={doc.public_url} target="_blank" rel="noreferrer" className={buttonVariants({ size: 'sm', variant: 'outline' })}>
-                          Buka File
-                        </a>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
-
-              <div className="pt-4 border-t space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Alasan Penolakan (Wajib jika menolak)</label>
-                  <Textarea 
-                    placeholder="Contoh: KTP kurang jelas, mohon foto ulang dengan pencahayaan yang terang..."
-                    value={rejectionReason}
-                    onChange={(e: any) => setRejectionReason(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3 pt-2">
-                  <Button variant="danger" onClick={() => handleVerify('document_rejected')} disabled={isVerifying || !rejectionReason.trim()}>
-                    <XCircle className="h-4 w-4 mr-2" /> Tolak Dokumen
-                  </Button>
-                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleVerify('document_approved')} disabled={isVerifying}>
-                    <CheckCircle className="h-4 w-4 mr-2" /> Setujui Dokumen
-                  </Button>
                 </div>
               </div>
             </div>

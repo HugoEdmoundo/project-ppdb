@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth, useFilteredNav } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, ChevronDown, ChevronLeft, Menu, LogOut, CalendarDays, CreditCard, Bell, User as UserIcon, Users
+  LayoutDashboard, ChevronDown, ChevronLeft, Menu, LogOut, CalendarDays, CreditCard, Bell, User as UserIcon, Users, FileCheck2
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -22,7 +22,8 @@ import {
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/admin/dashboard', module: 'dashboard' },
-  { label: 'Data Pendaftar', icon: Users, href: '/admin/applicants', module: 'ppdb', minLevel: 'read' },
+  { label: 'Data Pendaftar', icon: Users, href: '/admin/data-pendaftar', module: 'ppdb', minLevel: 'read' },
+  { label: 'Dokumen Pendaftar', icon: FileCheck2, href: '/admin/applicants', module: 'ppdb', minLevel: 'read' },
   { label: 'Periode PPDB', icon: CalendarDays, href: '/admin/periods', module: 'ppdb', minLevel: 'read' },
   { label: 'Pembayaran', icon: CreditCard, href: '/admin/payments', module: 'payment', minLevel: 'read' },
   { label: 'Notifikasi', icon: Bell, href: '/admin/notifications', module: 'notification', minLevel: 'read' },

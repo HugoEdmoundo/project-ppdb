@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ppdbService } from '@/services'
 import { useToast } from '@/components/Toast'
@@ -6,6 +6,7 @@ import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
   Button, Input, Label, Alert, ConfirmDialog,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Textarea
 } from '@/components/ui'
 import { SuccessState } from '@/components/ui/SuccessState'
 import { CredentialsCard } from '@/components/CredentialsCard'
@@ -28,7 +29,13 @@ export default function RegisterPage() {
     phone: '',
     parent_name: '',
     previous_school: '',
-    major_choice: ''
+    major_choice: '',
+    address: '',
+    province: '',
+    city: '',
+    district: '',
+    village: '',
+    postal_code: ''
   })
   
   const [loading, setLoading] = useState(false)
@@ -36,9 +43,75 @@ export default function RegisterPage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [successData, setSuccessData] = useState<{username: string, password: string} | null>(null)
 
+  const [provinces, setProvinces] = useState<any[]>([])
+  const [cities, setCities] = useState<any[]>([])
+  const [districts, setDistricts] = useState<any[]>([])
+  const [villages, setVillages] = useState<any[]>([])
+
+  const [selectedProvinceId, setSelectedProvinceId] = useState('')
+  const [selectedCityId, setSelectedCityId] = useState('')
+  const [selectedDistrictId, setSelectedDistrictId] = useState('')
+
+  useEffect(() => {
+    fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json')
+      .then(res => res.json())
+      .then(data => setProvinces(data))
+      .catch(() => {})
+  }, [])
+
+  const handleProvinceChange = (id: string) => {
+    setSelectedProvinceId(id)
+    const name = provinces.find(p => p.id === id)?.name || ''
+    setFormData({...formData, province: name, city: '', district: '', village: ''})
+    
+    setSelectedCityId('')
+    setSelectedDistrictId('')
+    setCities([])
+    setDistricts([])
+    setVillages([])
+    
+    fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${id}.json`)
+      .then(res => res.json())
+      .then(data => setCities(data))
+      .catch(() => {})
+  }
+
+  const handleCityChange = (id: string) => {
+    setSelectedCityId(id)
+    const name = cities.find(c => c.id === id)?.name || ''
+    setFormData({...formData, city: name, district: '', village: ''})
+    
+    setSelectedDistrictId('')
+    setDistricts([])
+    setVillages([])
+
+    fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${id}.json`)
+      .then(res => res.json())
+      .then(data => setDistricts(data))
+      .catch(() => {})
+  }
+
+  const handleDistrictChange = (id: string) => {
+    setSelectedDistrictId(id)
+    const name = districts.find(d => d.id === id)?.name || ''
+    setFormData({...formData, district: name, village: ''})
+    
+    setVillages([])
+
+    fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${id}.json`)
+      .then(res => res.json())
+      .then(data => setVillages(data))
+      .catch(() => {})
+  }
+
+  const handleVillageChange = (id: string) => {
+    const name = villages.find(v => v.id === id)?.name || ''
+    setFormData({...formData, village: name})
+  }
+
   const levelOptions = useMemo(() => {
     if (formData.registration_path === 'reguler') {
-      return ['SMP Kelas 7', 'SMA Kelas 10']
+      return ['SMP', 'SMA']
     }
     if (formData.registration_path === 'pindahan') {
       return ['SMP Kelas 7', 'SMP Kelas 8', 'SMP Kelas 9', 'SMA Kelas 10', 'SMA Kelas 11']
@@ -278,6 +351,66 @@ export default function RegisterPage() {
                       id="previous_school" required 
                       value={formData.previous_school}
                       onChange={(e) => setFormData({...formData, previous_school: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 pt-4 pb-2">
+                    <h3 className="text-lg font-semibold border-b pb-2">Data Domisili</h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="province">Provinsi *</Label>
+                    <Select required value={selectedProvinceId} onValueChange={handleProvinceChange}>
+                      <SelectTrigger><SelectValue placeholder="Pilih Provinsi..." /></SelectTrigger>
+                      <SelectContent>
+                        {provinces.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="city">Kota/Kabupaten *</Label>
+                    <Select required disabled={!selectedProvinceId} value={selectedCityId} onValueChange={handleCityChange}>
+                      <SelectTrigger><SelectValue placeholder="Pilih Kota/Kabupaten..." /></SelectTrigger>
+                      <SelectContent>
+                        {cities.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="district">Kecamatan *</Label>
+                    <Select required disabled={!selectedCityId} value={selectedDistrictId} onValueChange={handleDistrictChange}>
+                      <SelectTrigger><SelectValue placeholder="Pilih Kecamatan..." /></SelectTrigger>
+                      <SelectContent>
+                        {districts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="village">Kelurahan/Desa *</Label>
+                    <Select required disabled={!selectedDistrictId} value={villages.find(v => v.name === formData.village)?.id || ''} onValueChange={handleVillageChange}>
+                      <SelectTrigger><SelectValue placeholder="Pilih Kelurahan/Desa..." /></SelectTrigger>
+                      <SelectContent>
+                        {villages.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="postal_code">Kode Pos</Label>
+                    <Input id="postal_code" value={formData.postal_code} onChange={(e) => setFormData({...formData, postal_code: e.target.value})} />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="address">Alamat Detail *</Label>
+                    <Textarea 
+                      id="address" required 
+                      placeholder="Contoh: Jl. Ahmad Yani No. 12 RT 01/RW 03, Perumahan ABC Blok C5"
+                      value={formData.address}
+                      onChange={(e) => setFormData({...formData, address: e.target.value})}
+                      className="min-h-[80px]"
                     />
                   </div>
 

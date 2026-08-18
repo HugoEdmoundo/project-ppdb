@@ -60,6 +60,11 @@ class PPDBApplicant(Base):
     parent_name: Mapped[Optional[str]] = mapped_column(String(255))
     previous_school: Mapped[Optional[str]] = mapped_column(String(255))
     major_choice: Mapped[Optional[str]] = mapped_column(String(100))
+    province: Mapped[Optional[str]] = mapped_column(String(100))
+    city: Mapped[Optional[str]] = mapped_column(String(100))
+    district: Mapped[Optional[str]] = mapped_column(String(100))
+    village: Mapped[Optional[str]] = mapped_column(String(100))
+    postal_code: Mapped[Optional[str]] = mapped_column(String(20))
     address: Mapped[Optional[str]] = mapped_column(Text)
     # status alur pendaftaran: pending_payment | paid | document_uploaded |
     #   document_approved | document_rejected | selection | passed | failed | expired

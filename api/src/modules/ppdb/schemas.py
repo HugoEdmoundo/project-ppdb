@@ -47,6 +47,12 @@ class ApplicantRegister(BaseModel):
     parent_name: Optional[str] = None
     previous_school: Optional[str] = None
     major_choice: Optional[str] = None
+    province: str = Field(min_length=1)
+    city: str = Field(min_length=1)
+    district: str = Field(min_length=1)
+    village: str = Field(min_length=1)
+    postal_code: Optional[str] = None
+    address: str = Field(min_length=5)
 
 
 class ApplicantUpdate(BaseModel):

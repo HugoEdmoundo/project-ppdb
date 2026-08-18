@@ -369,6 +369,12 @@ def register_applicant(body: ApplicantRegister):
                 "phone": body.phone,
                 "registration_path": body.registration_path,
                 "registration_level": body.registration_level,
+                "address": body.address,
+                "province": body.province,
+                "city": body.city,
+                "district": body.district,
+                "village": body.village,
+                "postal_code": body.postal_code,
                 "gender": body.gender,
                 "birth_place": body.birth_place,
                 "birth_date": body.birth_date,
@@ -454,8 +460,8 @@ def get_applicants(
     params: dict = {}
 
     if search:
-        sql += " AND (a.full_name LIKE :search OR a.email LIKE :search)"
-        count_sql += " AND (a.full_name LIKE :search OR a.email LIKE :search)"
+        sql += " AND (a.full_name LIKE :search OR a.email LIKE :search OR a.province LIKE :search OR a.city LIKE :search OR a.district LIKE :search OR a.village LIKE :search)"
+        count_sql += " AND (a.full_name LIKE :search OR a.email LIKE :search OR a.province LIKE :search OR a.city LIKE :search OR a.district LIKE :search OR a.village LIKE :search)"
         params["search"] = f"%{search}%"
 
     if wave_id:

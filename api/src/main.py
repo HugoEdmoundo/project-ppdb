@@ -17,6 +17,7 @@ from src.modules.superadmin.router import router as superadmin_router
 from src.modules.users.router import router as users_router
 from src.modules.payment.router import router as payment_router
 from src.modules.notifications.router import router as notifications_router
+from src.modules.uploads.router import router as uploads_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("ptdarrahman")
@@ -92,3 +93,4 @@ app.include_router(modules_router, prefix="/modules", tags=["Modules"])
 app.include_router(ppdb_router, prefix="/ppdb", tags=["PPDB"])
 app.include_router(payment_router, prefix="/payment", tags=["Payment"])
 app.include_router(notifications_router, prefix="/notifications", tags=["Notifications"])
+app.include_router(uploads_router, tags=["Uploads"])

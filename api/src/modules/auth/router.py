@@ -383,11 +383,13 @@ def logout(user: Dict[str, Any] = Depends(get_current_user)):
 
 
 @router.post("/upload")
-async def upload(user: Dict[str, Any] = Depends(get_current_user), file: UploadFile = File(...)):
-    result = await upload_file(file)
+async def upload(request: Request, user: Dict[str, Any] = Depends(get_current_user), file: UploadFile = File(...)):
+    record_id = str(uuid.uuid4())
+    result = await upload_file(file, record_id)
     record = create_record(
         "file_uploads",
         {
+            "id": record_id,
             "uploaded_by": user["id"],
             "original_name": result.original_name,
             "stored_name": result.storage_path.split("/")[-1],
@@ -395,6 +397,10 @@ async def upload(user: Dict[str, Any] = Depends(get_current_user), file: UploadF
             "size_bytes": result.size_bytes,
             "storage_path": result.storage_path,
             "public_url": result.public_url,
+            "data": result.data,
         },
     )
-    return {"url": result.public_url, "id": record.get("id")}
+    url = result.public_url
+    if url.startswith("/"):
+        url = f"{request.base_url}{url.lstrip('/')}"
+    return {"url": url, "id": record.get("id")}

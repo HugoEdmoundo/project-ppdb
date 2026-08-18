@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Request
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
@@ -711,6 +711,7 @@ def get_my_documents(user: dict = Depends(get_current_user)):
 
 @router.post("/documents/upload")
 async def upload_document(
+    request: Request,
     doc_type: str = Form(...),
     file: UploadFile = File(...),
     user: dict = Depends(get_current_user)
@@ -733,7 +734,8 @@ async def upload_document(
             {"entity_id": applicant_id, "entity_type": entity_type}
         ).mappings().first()
         
-    upload_res = await upload_file(file)
+    record_id = existing["id"] if existing else str(uuid.uuid4())
+    upload_res = await upload_file(file, record_id)
     
     with pool.begin() as conn:
         if existing:
@@ -747,7 +749,7 @@ async def upload_document(
                 text("""
                     UPDATE file_uploads 
                     SET original_name = :oname, stored_name = :sname, mime_type = :mime, 
-                        size_bytes = :size, storage_path = :spath, public_url = :url, created_at = :now
+                        size_bytes = :size, storage_path = :spath, public_url = :url, data = :data, created_at = :now
                     WHERE id = :id
                 """),
                 {
@@ -757,20 +759,20 @@ async def upload_document(
                     "size": upload_res.size_bytes,
                     "spath": upload_res.storage_path,
                     "url": upload_res.public_url,
+                    "data": upload_res.data,
                     "now": now,
                     "id": existing["id"]
                 }
             )
             doc_id = existing["id"]
         else:
-            doc_id = str(uuid.uuid4())
             now = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
             conn.execute(
                 text("""
                     INSERT INTO file_uploads 
-                    (id, uploaded_by, original_name, stored_name, mime_type, size_bytes, storage_path, public_url, entity_type, entity_id, created_at)
+                    (id, uploaded_by, original_name, stored_name, mime_type, size_bytes, storage_path, public_url, data, entity_type, entity_id, created_at)
                     VALUES 
-                    (:id, :uid, :oname, :sname, :mime, :size, :spath, :url, :etype, :eid, :now)
+                    (:id, :uid, :oname, :sname, :mime, :size, :spath, :url, :data, :etype, :eid, :now)
                 """),
                 {
                     "id": doc_id,
@@ -781,13 +783,17 @@ async def upload_document(
                     "size": upload_res.size_bytes,
                     "spath": upload_res.storage_path,
                     "url": upload_res.public_url,
+                    "data": upload_res.data,
                     "etype": entity_type,
                     "eid": applicant_id,
                     "now": now
                 }
             )
             
-    return {"success": True, "id": doc_id, "url": upload_res.public_url, "doc_type": doc_type}
+    url = upload_res.public_url
+    if url.startswith("/"):
+        url = f"{request.base_url}{url.lstrip('/')}"
+    return {"success": True, "id": doc_id, "url": url, "doc_type": doc_type}
 
 
 @router.post("/documents/submit")

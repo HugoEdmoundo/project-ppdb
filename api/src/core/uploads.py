@@ -1,13 +1,18 @@
 """File upload service.
 
-`UPLOAD_PROVIDER=cloudinary` (production) uploads to Cloudinary and returns a CDN URL.
+`UPLOAD_PROVIDER=cloudinary` (production default) uploads to Cloudinary and returns a CDN URL.
+`UPLOAD_PROVIDER=db` stores the bytes inside the `file_uploads.data` column and serves them
+via `GET /uploads/{id}` — works on serverless (Vercel) without any external service.
 `UPLOAD_PROVIDER=local` (dev only) saves to a local folder — note that the disk is
 ephemeral on serverless runtimes, so never use it in production.
+
+If `cloudinary` is requested but not configured, uploads automatically fall back to `db`.
 """
 import logging
 import uuid
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
+from typing import Optional
 
 from fastapi import HTTPException, UploadFile
 
@@ -28,6 +33,7 @@ class UploadResult:
     original_name: str
     mime_type: str
     size_bytes: int
+    data: Optional[bytes] = field(default=None)
 
 
 def _validate(file: UploadFile) -> None:
@@ -82,6 +88,19 @@ def _upload_cloudinary(content: bytes, original_name: str, content_type: str) ->
     )
 
 
+def _upload_db(content: bytes, original_name: str, content_type: str, record_id: str) -> UploadResult:
+    """Store file bytes in the file_uploads.data column (served via GET /uploads/{id})."""
+    ext = Path(original_name).suffix or ".bin"
+    return UploadResult(
+        public_url=f"/uploads/{record_id}",
+        storage_path=f"db://{record_id}",
+        original_name=original_name,
+        mime_type=content_type,
+        size_bytes=len(content),
+        data=content,
+    )
+
+
 def _upload_local(content: bytes, original_name: str, content_type: str) -> UploadResult:
     base = Path(settings.upload_dir)
     base.mkdir(parents=True, exist_ok=True)
@@ -97,15 +116,23 @@ def _upload_local(content: bytes, original_name: str, content_type: str) -> Uplo
     )
 
 
-async def upload_file(file: UploadFile) -> UploadResult:
+async def upload_file(file: UploadFile, record_id: Optional[str] = None) -> UploadResult:
     _validate(file)
     content = await _read_with_limit(file)
     original_name = file.filename or "file"
 
-    if settings.upload_provider == "cloudinary":
-        if not settings.cloudinary_configured:
-            raise HTTPException(status_code=500, detail="Cloudinary is not configured")
+    provider = settings.upload_provider
+    if provider == "cloudinary" and not settings.cloudinary_configured:
+        # Graceful fallback: no Cloudinary creds -> store in DB instead of failing.
+        logger.warning("Cloudinary not configured, falling back to db storage")
+        provider = "db"
+
+    if provider == "cloudinary":
         result = _upload_cloudinary(content, original_name, file.content_type or "application/octet-stream")
+    elif provider == "db":
+        if not record_id:
+            raise HTTPException(status_code=500, detail="db storage requires a record id")
+        result = _upload_db(content, original_name, file.content_type or "application/octet-stream", record_id)
     else:
         result = _upload_local(content, original_name, file.content_type or "application/octet-stream")
 
@@ -116,6 +143,9 @@ async def upload_file(file: UploadFile) -> UploadResult:
 def delete_upload(storage_path: str) -> None:
     """Delete a previously uploaded asset (by Cloudinary public_id or local path)."""
     if not storage_path:
+        return
+    if storage_path.startswith("db://"):
+        # Stored inside file_uploads.data; row cleanup is handled by the caller.
         return
     if settings.upload_provider == "cloudinary" and settings.cloudinary_configured:
         try:

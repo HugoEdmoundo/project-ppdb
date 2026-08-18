@@ -380,9 +380,9 @@ export default function ApplicantsPage() {
                       <Input
                         type="text"
                         value={resetPassword}
-                        onChange={(e) => setResetPassword(e.target.value)}
-                        placeholder="Ketik password atau klik Generate"
-                        className="font-mono"
+                        readOnly
+                        placeholder="Klik Generate untuk membuat password"
+                        className="font-mono bg-muted cursor-default"
                       />
                       <Button type="button" variant="outline" onClick={generatePassword}>
                         <KeyRound className="h-4 w-4 mr-1" />

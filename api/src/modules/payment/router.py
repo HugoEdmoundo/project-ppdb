@@ -129,10 +129,56 @@ def confirm_payment(id: str, user: dict = Depends(require_payment_admin)):
                 user_id = applicant_rows[0]["user_id"]
                 
     if 'user_id' in locals() and user_id:
-        from src.core.notif_service import send_notification
-        send_notification("payment_success", user_id, {"nominal_bayar": tx["amount"]})
+        try:
+            from src.core.notif_service import send_notification
+            send_notification("payment_success", user_id, {"nominal_bayar": tx["amount"]})
+        except Exception:
+            import logging
+            logging.getLogger("ptdarrahman.payment").exception("Failed to send payment_success notification for tx %s", id)
     
     return {"success": True, "message": "Payment confirmed successfully"}
+
+@router.put("/transactions/{id}/cancel-confirm")
+def cancel_confirm_payment(id: str, user: dict = Depends(require_payment_admin)):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        tx_rows = conn.execute(
+            text("SELECT * FROM ppdb_payment_transactions WHERE id = :id"),
+            {"id": id}
+        ).mappings().all()
+        
+        if not tx_rows:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+            
+        tx = tx_rows[0]
+        if tx["status"] != "success":
+            raise HTTPException(status_code=400, detail="Only successful transactions can be cancelled")
+            
+        if tx["method"] != "offline":
+            raise HTTPException(status_code=400, detail="Cannot cancel confirmation for online payment gateway transactions")
+            
+        with conn.begin():
+            now_wib = datetime.now(WIB).strftime("%Y-%m-%d %H:%M:%S")
+            # Revert transaction status
+            conn.execute(
+                text("""
+                    UPDATE ppdb_payment_transactions 
+                    SET status = 'pending', confirmed_by = NULL, confirmed_at = NULL, updated_at = :now 
+                    WHERE id = :id
+                """),
+                {"id": id, "now": now_wib}
+            )
+            # Revert applicant status
+            conn.execute(
+                text("""
+                    UPDATE ppdb_applicants 
+                    SET payment_status = 'pending', status = 'pending_payment', updated_at = :now 
+                    WHERE id = :applicant_id
+                """),
+                {"applicant_id": tx["applicant_id"], "now": now_wib}
+            )
+            
+    return {"success": True, "message": "Payment confirmation cancelled successfully"}
 
 from fastapi import Request
 

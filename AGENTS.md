@@ -34,10 +34,10 @@ Permissions are defined per-module (`companyprofile`, `ppdb`, `payment`, `select
 - System roles (`is_system=True`) like "Superadmin" and "Calon Murid" are protected from accidental deletion or modification.
 
 ## PPDB Flow
-1. **Registration**: User registers -> receives `payment_status = 'pending'` and a 7-day `payment_deadline`.
+1. **Registration**: User registers -> receives `payment_status = 'pending'` and a 7-day `payment_deadline`. Nominal biaya pendaftaran (Tahap 1) ditarik otomatis dari konfigurasi `registration_fee` pada tabel `ppdb_waves` yang sedang aktif.
 2. **Paywall**: Users with pending payments are restricted to `/checkout`. No dashboard access.
 3. **Expiration**: If unpaid after 7 days, `payment_status` becomes `expired` and account is soft-deleted.
-4. **Paid**: On success (manual or webhook), status becomes `paid` -> Dashboard is unlocked for document uploads.
+4. **Paid**: On success (manual or webhook), status becomes `paid` -> Dashboard is unlocked for document uploads. Khusus untuk pembayaran manual (offline), admin dapat **membatalkan konfirmasi** yang mengembalikan status user menjadi `pending` dan mengunci kembali dashboard. (Pembayaran online via gateway tidak bisa dibatalkan).
 
 ## Environment & Secrets
 - Uses `.env` files for local development. Never commit secrets.

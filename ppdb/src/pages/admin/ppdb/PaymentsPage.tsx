@@ -5,10 +5,11 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
-import { CreditCard, CheckCircle } from 'lucide-react'
+import { CreditCard, CheckCircle, XCircle } from 'lucide-react'
 import { apiFetch } from '@/api/client'
 
 export default function PaymentsPage() {
@@ -18,6 +19,10 @@ export default function PaymentsPage() {
   const [activeTab, setActiveTab] = useState('all')
   const [transactions, setTransactions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [cancelId, setCancelId] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
 
   const fetchTransactions = async (statusFilter = activeTab) => {
     setLoading(true)
@@ -40,15 +45,33 @@ export default function PaymentsPage() {
     fetchTransactions(activeTab)
   }, [activeTab])
 
-  const handleConfirm = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin memverifikasi pembayaran ini secara manual?')) return
-    
+  const handleConfirm = async () => {
+    if (!confirmId) return
+    setConfirming(true)
     try {
-      await apiFetch(`/payment/transactions/${id}/confirm`, { method: 'PUT' })
+      await apiFetch(`/payment/transactions/${confirmId}/confirm`, { method: 'PUT' })
       toast('success', 'Pembayaran berhasil diverifikasi')
       fetchTransactions()
     } catch (e: any) {
       toast('error', e.message || 'Gagal verifikasi')
+    } finally {
+      setConfirming(false)
+      setConfirmId(null)
+    }
+  }
+
+  const handleCancel = async () => {
+    if (!cancelId) return
+    setCancelling(true)
+    try {
+      await apiFetch(`/payment/transactions/${cancelId}/cancel-confirm`, { method: 'PUT' })
+      toast('success', 'Verifikasi berhasil dibatalkan')
+      fetchTransactions()
+    } catch (e: any) {
+      toast('error', e.message || 'Gagal membatalkan verifikasi')
+    } finally {
+      setCancelling(false)
+      setCancelId(null)
     }
   }
 
@@ -99,9 +122,15 @@ export default function PaymentsPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     {canCrud && t.status === 'pending' && (
-                      <Button size="sm" onClick={() => handleConfirm(t.id)} className="gap-2">
+                      <Button size="sm" onClick={() => setConfirmId(t.id)} className="gap-2">
                         <CheckCircle className="h-4 w-4" />
                         Konfirmasi
+                      </Button>
+                    )}
+                    {canCrud && t.status === 'success' && t.method === 'offline' && (
+                      <Button size="sm" variant="outline" onClick={() => setCancelId(t.id)} className="gap-2 text-rose-500 hover:text-rose-600 hover:bg-rose-50 border-rose-200">
+                        <XCircle className="h-4 w-4" />
+                        Batal Konfirmasi
                       </Button>
                     )}
                   </TableCell>
@@ -126,12 +155,12 @@ export default function PaymentsPage() {
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 sm:w-auto">
-          <TabsTrigger value="all">Semua</TabsTrigger>
-          <TabsTrigger value="success">Lunas</TabsTrigger>
-          <TabsTrigger value="pending">Menunggu</TabsTrigger>
-          <TabsTrigger value="expired">Expired/Gagal</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full overflow-x-auto">
+        <TabsList className="inline-flex w-max sm:w-auto">
+          <TabsTrigger value="all" className="text-xs sm:text-sm">Semua</TabsTrigger>
+          <TabsTrigger value="success" className="text-xs sm:text-sm">Lunas</TabsTrigger>
+          <TabsTrigger value="pending" className="text-xs sm:text-sm">Menunggu</TabsTrigger>
+          <TabsTrigger value="expired" className="text-xs sm:text-sm">Expired/Gagal</TabsTrigger>
         </TabsList>
         
         <div className="mt-6">
@@ -141,6 +170,27 @@ export default function PaymentsPage() {
           <TabsContent value="expired">{renderTable()}</TabsContent>
         </div>
       </Tabs>
+
+      <ConfirmDialog
+        isOpen={!!confirmId}
+        onClose={() => setConfirmId(null)}
+        onConfirm={handleConfirm}
+        loading={confirming}
+        title="Konfirmasi Pembayaran"
+        message="Apakah Anda yakin ingin memverifikasi pembayaran ini secara manual?"
+        confirmLabel="Ya, Verifikasi"
+      />
+
+      <ConfirmDialog
+        isOpen={!!cancelId}
+        onClose={() => setCancelId(null)}
+        onConfirm={handleCancel}
+        loading={cancelling}
+        title="Batalkan Verifikasi"
+        message="Apakah Anda yakin ingin membatalkan verifikasi pembayaran ini? Pendaftar akan dikembalikan status pembayarannya menjadi pending dan tidak dapat mengakses dashboard."
+        confirmLabel="Ya, Batalkan"
+        variant="danger"
+      />
     </div>
   )
 }

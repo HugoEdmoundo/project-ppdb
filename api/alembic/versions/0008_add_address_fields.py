@@ -23,21 +23,23 @@ def upgrade() -> None:
                existing_type=mysql.DATETIME(fsp=3),
                nullable=False,
                existing_server_default=sa.text('current_timestamp(3)'))
-    op.drop_index(op.f('idx_audit_log_created'), table_name='audit_log')
-    op.drop_index(op.f('idx_audit_log_entity'), table_name='audit_log', mysql_length={'entity_type': 255, 'entity_id': 255})
-    op.drop_index(op.f('idx_audit_log_user'), table_name='audit_log')
+    op.drop_index(op.f('idx_audit_log_created'), table_name='audit_log', if_exists=True)
+    op.drop_index(op.f('idx_audit_log_entity'), table_name='audit_log', mysql_length={'entity_type': 255, 'entity_id': 255}, if_exists=True)
+    op.drop_constraint('fk_audit_log_user_id_users', 'audit_log', type_='foreignkey', if_exists=True)
+    op.drop_index(op.f('idx_audit_log_user'), table_name='audit_log', if_exists=True)
     op.create_index(op.f('ix_audit_log_created_at'), 'audit_log', ['created_at'], unique=False)
     op.create_index(op.f('ix_audit_log_user_id'), 'audit_log', ['user_id'], unique=False)
+    op.create_foreign_key('fk_audit_log_user_id_users', 'audit_log', 'users', ['user_id'], ['id'], ondelete='SET NULL')
     op.alter_column('file_uploads', 'entity_type',
                existing_type=mysql.VARCHAR(length=50),
                comment=None,
                existing_comment='applicant_document,payment_proof,etc',
                existing_nullable=True)
-    op.drop_index(op.f('idx_file_uploads_entity'), table_name='file_uploads')
-    op.drop_index(op.f('idx_file_uploads_uploaded_by'), table_name='file_uploads')
-    op.drop_index(op.f('uk_modules_key'), table_name='modules')
+    op.drop_index(op.f('idx_file_uploads_entity'), table_name='file_uploads', if_exists=True)
+    op.drop_index(op.f('idx_file_uploads_uploaded_by'), table_name='file_uploads', if_exists=True)
+    op.drop_index(op.f('uk_modules_key'), table_name='modules', if_exists=True)
     op.create_unique_constraint(op.f('uq_modules_key'), 'modules', ['key'])
-    op.drop_index(op.f('idx_news_articles_slug'), table_name='news_articles')
+    op.drop_index(op.f('idx_news_articles_slug'), table_name='news_articles', if_exists=True)
     op.create_index(op.f('ix_news_articles_slug'), 'news_articles', ['slug'], unique=False)
     op.alter_column('notification_logs', 'id',
                existing_type=mysql.VARCHAR(length=50),
@@ -52,7 +54,7 @@ def upgrade() -> None:
                existing_type=mysql.INTEGER(display_width=11),
                nullable=False,
                existing_server_default=sa.text('0'))
-    op.drop_index(op.f('uk_pages_module_key'), table_name='pages')
+    op.drop_index(op.f('uk_pages_module_key'), table_name='pages', if_exists=True)
     op.add_column('ppdb_applicants', sa.Column('province', sa.String(length=100), nullable=True))
     op.add_column('ppdb_applicants', sa.Column('city', sa.String(length=100), nullable=True))
     op.add_column('ppdb_applicants', sa.Column('district', sa.String(length=100), nullable=True))
@@ -95,11 +97,11 @@ def upgrade() -> None:
                comment=None,
                existing_comment='active,inactive',
                existing_server_default=sa.text("'inactive'"))
-    op.drop_index(op.f('period_id'), table_name='ppdb_waves')
+    op.drop_index(op.f('period_id'), table_name='ppdb_waves', if_exists=True)
     op.create_foreign_key(op.f('fk_ppdb_waves_period_id_ppdb_periods'), 'ppdb_waves', 'ppdb_periods', ['period_id'], ['id'], ondelete='CASCADE')
-    op.drop_index(op.f('idx_programs_slug'), table_name='programs')
+    op.drop_index(op.f('idx_programs_slug'), table_name='programs', if_exists=True)
     op.create_index(op.f('ix_programs_slug'), 'programs', ['slug'], unique=False)
-    op.drop_index(op.f('idx_key'), table_name='rate_limits')
+    op.drop_index(op.f('idx_key'), table_name='rate_limits', if_exists=True)
     op.alter_column('refresh_tokens', 'revoked',
                existing_type=mysql.TINYINT(display_width=1),
                nullable=False,
@@ -108,14 +110,14 @@ def upgrade() -> None:
                existing_type=mysql.DATETIME(fsp=3),
                nullable=False,
                existing_server_default=sa.text('current_timestamp(3)'))
-    op.drop_index(op.f('idx_refresh_tokens_hash'), table_name='refresh_tokens', mysql_length={'token_hash': 255})
-    op.drop_index(op.f('idx_refresh_tokens_user'), table_name='refresh_tokens')
+    op.drop_index(op.f('idx_refresh_tokens_hash'), table_name='refresh_tokens', mysql_length={'token_hash': 255}, if_exists=True)
+    op.drop_index(op.f('idx_refresh_tokens_user'), table_name='refresh_tokens', if_exists=True)
     op.create_index(op.f('ix_refresh_tokens_user_id'), 'refresh_tokens', ['user_id'], unique=False)
     op.alter_column('roles', 'is_superadmin',
                existing_type=mysql.TINYINT(display_width=1),
                nullable=False,
                existing_server_default=sa.text('0'))
-    op.drop_index(op.f('uk_roles_name'), table_name='roles')
+    op.drop_index(op.f('uk_roles_name'), table_name='roles', if_exists=True)
     op.create_unique_constraint(op.f('uq_roles_name'), 'roles', ['name'])
     op.alter_column('spp_bills', 'total_paid',
                existing_type=mysql.BIGINT(display_width=20),
@@ -125,17 +127,17 @@ def upgrade() -> None:
                existing_type=mysql.VARCHAR(length=20),
                nullable=False,
                existing_server_default=sa.text("'unpaid'"))
-    op.drop_index(op.f('idx_spp_bills_month_year'), table_name='spp_bills')
-    op.drop_index(op.f('idx_spp_bills_status'), table_name='spp_bills')
-    op.drop_index(op.f('idx_spp_bills_student'), table_name='spp_bills')
+    op.drop_index(op.f('idx_spp_bills_month_year'), table_name='spp_bills', if_exists=True)
+    op.drop_index(op.f('idx_spp_bills_status'), table_name='spp_bills', if_exists=True)
+    op.drop_index(op.f('idx_spp_bills_student'), table_name='spp_bills', if_exists=True)
     op.alter_column('spp_payments', 'status',
                existing_type=mysql.VARCHAR(length=20),
                nullable=False,
                existing_server_default=sa.text("'pending'"))
-    op.drop_index(op.f('idx_spp_payments_bill'), table_name='spp_payments')
-    op.drop_index(op.f('idx_spp_payments_status'), table_name='spp_payments')
-    op.drop_index(op.f('idx_spp_payments_student'), table_name='spp_payments')
-    op.drop_index(op.f('idx_spp_settings_class_year'), table_name='spp_settings')
+    op.drop_index(op.f('idx_spp_payments_bill'), table_name='spp_payments', if_exists=True)
+    op.drop_index(op.f('idx_spp_payments_status'), table_name='spp_payments', if_exists=True)
+    op.drop_index(op.f('idx_spp_payments_student'), table_name='spp_payments', if_exists=True)
+    op.drop_index(op.f('idx_spp_settings_class_year'), table_name='spp_settings', if_exists=True)
     op.alter_column('students', 'gender',
                existing_type=mysql.VARCHAR(length=10),
                nullable=False,
@@ -200,15 +202,15 @@ def upgrade() -> None:
                existing_type=mysql.VARCHAR(length=20),
                nullable=False,
                existing_server_default=sa.text("'active'"))
-    op.drop_index(op.f('idx_students_academic_year'), table_name='students')
-    op.drop_index(op.f('idx_students_class'), table_name='students')
-    op.drop_index(op.f('idx_students_program'), table_name='students')
-    op.drop_index(op.f('idx_students_status'), table_name='students')
-    op.drop_index(op.f('uk_students_nis'), table_name='students')
-    op.drop_index(op.f('uk_students_nisn'), table_name='students')
+    op.drop_index(op.f('idx_students_academic_year'), table_name='students', if_exists=True)
+    op.drop_index(op.f('idx_students_class'), table_name='students', if_exists=True)
+    op.drop_index(op.f('idx_students_program'), table_name='students', if_exists=True)
+    op.drop_index(op.f('idx_students_status'), table_name='students', if_exists=True)
+    op.drop_index(op.f('uk_students_nis'), table_name='students', if_exists=True)
+    op.drop_index(op.f('uk_students_nisn'), table_name='students', if_exists=True)
     op.create_unique_constraint(op.f('uq_students_nis'), 'students', ['nis'])
     op.create_unique_constraint(op.f('uq_students_nisn'), 'students', ['nisn'])
-    op.drop_index(op.f('uk_user_page'), table_name='user_page_permissions')
+    op.drop_index(op.f('uk_user_page'), table_name='user_page_permissions', if_exists=True)
     op.alter_column('users', 'email',
                existing_type=mysql.VARCHAR(length=255),
                nullable=False,
@@ -233,9 +235,9 @@ def upgrade() -> None:
                existing_type=mysql.INTEGER(display_width=11),
                nullable=False,
                existing_server_default=sa.text('0'))
-    op.drop_index(op.f('idx_users_role_id'), table_name='users')
-    op.drop_index(op.f('uk_users_email'), table_name='users')
-    op.drop_index(op.f('uk_users_username'), table_name='users')
+    op.drop_index(op.f('idx_users_role_id'), table_name='users', if_exists=True)
+    op.drop_index(op.f('uk_users_email'), table_name='users', if_exists=True)
+    op.drop_index(op.f('uk_users_username'), table_name='users', if_exists=True)
     op.create_index(op.f('ix_users_role_id'), 'users', ['role_id'], unique=False)
     op.create_unique_constraint(op.f('uq_users_email'), 'users', ['email'])
     op.create_unique_constraint(op.f('uq_users_username'), 'users', ['username'])
@@ -246,7 +248,7 @@ def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_constraint(op.f('uq_users_username'), 'users', type_='unique')
     op.drop_constraint(op.f('uq_users_email'), 'users', type_='unique')
-    op.drop_index(op.f('ix_users_role_id'), table_name='users')
+    op.drop_index(op.f('ix_users_role_id'), table_name='users', if_exists=True)
     op.create_index(op.f('uk_users_username'), 'users', ['username'], unique=True)
     op.create_index(op.f('uk_users_email'), 'users', ['email'], unique=True)
     op.create_index(op.f('idx_users_role_id'), 'users', ['role_id'], unique=False)
@@ -372,7 +374,7 @@ def downgrade() -> None:
                existing_type=mysql.TINYINT(display_width=1),
                nullable=True,
                existing_server_default=sa.text('0'))
-    op.drop_index(op.f('ix_refresh_tokens_user_id'), table_name='refresh_tokens')
+    op.drop_index(op.f('ix_refresh_tokens_user_id'), table_name='refresh_tokens', if_exists=True)
     op.create_index(op.f('idx_refresh_tokens_user'), 'refresh_tokens', ['user_id'], unique=False)
     op.create_index(op.f('idx_refresh_tokens_hash'), 'refresh_tokens', ['token_hash'], unique=False, mysql_length={'token_hash': 255})
     op.alter_column('refresh_tokens', 'created_at',
@@ -384,7 +386,7 @@ def downgrade() -> None:
                nullable=True,
                existing_server_default=sa.text('0'))
     op.create_index(op.f('idx_key'), 'rate_limits', ['key'], unique=False)
-    op.drop_index(op.f('ix_programs_slug'), table_name='programs')
+    op.drop_index(op.f('ix_programs_slug'), table_name='programs', if_exists=True)
     op.create_index(op.f('idx_programs_slug'), 'programs', ['slug'], unique=False)
     op.drop_constraint(op.f('fk_ppdb_waves_period_id_ppdb_periods'), 'ppdb_waves', type_='foreignkey')
     op.create_index(op.f('period_id'), 'ppdb_waves', ['period_id', 'wave_number'], unique=True)
@@ -442,7 +444,7 @@ def downgrade() -> None:
                existing_type=sa.String(length=36),
                type_=mysql.VARCHAR(length=50),
                existing_nullable=False)
-    op.drop_index(op.f('ix_news_articles_slug'), table_name='news_articles')
+    op.drop_index(op.f('ix_news_articles_slug'), table_name='news_articles', if_exists=True)
     op.create_index(op.f('idx_news_articles_slug'), 'news_articles', ['slug'], unique=False)
     op.drop_constraint(op.f('uq_modules_key'), 'modules', type_='unique')
     op.create_index(op.f('uk_modules_key'), 'modules', ['key'], unique=True)
@@ -452,11 +454,13 @@ def downgrade() -> None:
                existing_type=mysql.VARCHAR(length=50),
                comment='applicant_document,payment_proof,etc',
                existing_nullable=True)
-    op.drop_index(op.f('ix_audit_log_user_id'), table_name='audit_log')
-    op.drop_index(op.f('ix_audit_log_created_at'), table_name='audit_log')
+    op.drop_constraint('fk_audit_log_user_id_users', 'audit_log', type_='foreignkey')
+    op.drop_index(op.f('ix_audit_log_user_id'), table_name='audit_log', if_exists=True)
+    op.drop_index(op.f('ix_audit_log_created_at'), table_name='audit_log', if_exists=True)
     op.create_index(op.f('idx_audit_log_user'), 'audit_log', ['user_id'], unique=False)
     op.create_index(op.f('idx_audit_log_entity'), 'audit_log', ['entity_type', 'entity_id'], unique=False, mysql_length={'entity_type': 255, 'entity_id': 255})
     op.create_index(op.f('idx_audit_log_created'), 'audit_log', ['created_at'], unique=False)
+    op.create_foreign_key('fk_audit_log_user_id_users', 'audit_log', 'users', ['user_id'], ['id'], ondelete='SET NULL')
     op.alter_column('audit_log', 'created_at',
                existing_type=mysql.DATETIME(fsp=3),
                nullable=True,

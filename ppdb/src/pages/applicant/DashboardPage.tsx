@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { CheckCircle, Clock, FileText, Upload, ChevronDown, ChevronUp } from 'lucide-react'
 import * as api from '../../api/client'
 import { useToast } from '@/components/Toast'
@@ -15,6 +16,8 @@ export default function ApplicantDashboardPage() {
   const [expandedStep, setExpandedStep] = useState<number>(1)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState<string | null>(null)
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     const fetchMyData = async () => {
@@ -73,15 +76,15 @@ export default function ApplicantDashboardPage() {
   }
 
   const handleSubmitDocs = async () => {
-    if (!confirm('Apakah Anda yakin semua dokumen sudah benar? Dokumen yang sudah dikirim tidak bisa diubah kembali.')) return
+    setShowSubmitConfirm(false)
     try {
-      setLoading(true)
+      setSubmitting(true)
       await api.apiFetch('/ppdb/documents/submit', { method: 'POST' })
       toast('success', 'Dokumen berhasil dikirim untuk verifikasi')
       window.location.reload()
     } catch (err: any) {
       toast('error', err.message || 'Gagal mengirim dokumen')
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
@@ -198,7 +201,7 @@ export default function ApplicantDashboardPage() {
           <div className="flex justify-end pt-4">
             <Button 
               disabled={documents.length < requiredDocs.length || !['document_uploaded_pending', 'document_rejected'].includes(applicant?.status)} 
-              onClick={handleSubmitDocs}
+              onClick={() => setShowSubmitConfirm(true)}
             >
               {applicant?.status === 'document_uploaded_pending' ? 'Kirim Dokumen untuk Verifikasi' : 
                applicant?.status === 'document_rejected' ? 'Kirim Ulang Dokumen' : 
@@ -310,7 +313,16 @@ export default function ApplicantDashboardPage() {
         })}
 
       </div>
-      
+
+      <ConfirmDialog
+        isOpen={showSubmitConfirm}
+        onClose={() => setShowSubmitConfirm(false)}
+        onConfirm={handleSubmitDocs}
+        loading={submitting}
+        title="Kirim Dokumen"
+        message="Apakah Anda yakin semua dokumen sudah benar? Dokumen yang sudah dikirim tidak bisa diubah kembali."
+        confirmLabel="Ya, Kirim"
+      />
     </div>
   )
 }

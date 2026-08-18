@@ -363,7 +363,7 @@ export default function UserFormPage() {
                   {modules.map(mod => (
                     <div key={mod.id}>
                       <h4 className="mb-2 text-sm font-semibold text-foreground">{mod.name}</h4>
-                      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:grid-cols-3">
                         {mod.pages.map(page => (
                           <label
                             key={page.id}

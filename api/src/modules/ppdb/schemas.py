@@ -22,6 +22,8 @@ class WaveCreate(BaseModel):
     document_upload_end_date: date
     selection_date: date
     quota: int = Field(ge=0)
+    registration_fee: int = Field(default=0, ge=0)
+    second_stage_fee: int = Field(default=0, ge=0)
 
 
 class WaveUpdate(BaseModel):
@@ -31,6 +33,8 @@ class WaveUpdate(BaseModel):
     document_upload_end_date: date
     selection_date: date
     quota: int = Field(ge=0)
+    registration_fee: int = Field(default=0, ge=0)
+    second_stage_fee: int = Field(default=0, ge=0)
 
 
 class ApplicantRegister(BaseModel):

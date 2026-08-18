@@ -36,6 +36,8 @@ class PPDBWave(Base):
     document_upload_end_date: Mapped[Optional[date]] = mapped_column(Date)
     selection_date: Mapped[Optional[date]] = mapped_column(Date)
     quota: Mapped[int] = mapped_column(Integer, default=0)
+    registration_fee: Mapped[int] = mapped_column(BigInteger, default=0)
+    second_stage_fee: Mapped[int] = mapped_column(BigInteger, default=0)
     status: Mapped[str] = mapped_column(String(20), default="inactive")
     created_at: Mapped[datetime] = mapped_column(DATETIME, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DATETIME, nullable=False)

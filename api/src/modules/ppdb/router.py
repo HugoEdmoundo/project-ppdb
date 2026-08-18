@@ -214,6 +214,8 @@ def create_wave(body: WaveCreate, user: dict = Depends(require_ppdb_admin)):
         "document_upload_end_date": body.document_upload_end_date,
         "selection_date": body.selection_date,
         "quota": body.quota,
+        "registration_fee": body.registration_fee,
+        "second_stage_fee": body.second_stage_fee,
         "status": "inactive",
     }
     return create_record("ppdb_waves", data)
@@ -228,6 +230,8 @@ def update_wave(id: str, body: WaveUpdate, user: dict = Depends(require_ppdb_adm
         "document_upload_end_date": body.document_upload_end_date,
         "selection_date": body.selection_date,
         "quota": body.quota,
+        "registration_fee": body.registration_fee,
+        "second_stage_fee": body.second_stage_fee,
     }
     updated = update_record("ppdb_waves", id, data)
     if not updated:
@@ -312,11 +316,12 @@ def register_applicant(body: ApplicantRegister):
     pool = get_raw_pool()
     with pool.connect() as conn:
         wave_rows = conn.execute(
-            text('SELECT id FROM ppdb_waves WHERE status = "active" LIMIT 1')
+            text('SELECT id, registration_fee FROM ppdb_waves WHERE status = "active" LIMIT 1')
         ).mappings().all()
         if not wave_rows:
             raise HTTPException(status_code=400, detail="Pendaftaran saat ini sedang ditutup atau belum dibuka.")
         active_wave_id = wave_rows[0]["id"]
+        registration_fee = wave_rows[0]["registration_fee"] or 0
 
         existing = conn.execute(
             text('SELECT id FROM ppdb_applicants WHERE email = :email AND status != "expired" LIMIT 1'),
@@ -397,7 +402,7 @@ def register_applicant(body: ApplicantRegister):
                 "id": f"pay-{uuid.uuid4()}",
                 "applicant_id": created_applicant["id"],
                 "method": "offline",
-                "amount": 0,  # Akan di-update sesuai nominal pendaftaran
+                "amount": registration_fee,
                 "status": "pending",
             },
             return_row=False,

@@ -45,6 +45,11 @@ Wrapped in `AdminLayout` (`src/layouts/AdminLayout.tsx`):
 - `/403` (`ForbiddenPage`): Insufficient permissions.
 - `*` (`NotFoundPage`): 404 Not Found.
 
+## PPDB Flow
+1. **Registration**: User registers -> receives `payment_status = 'pending'` and a 7-day `payment_deadline`. Nominal biaya ditarik otomatis dari `registration_fee` di konfigurasi gelombang yang aktif.
+2. **Paywall**: Users with pending payments are restricted to `/checkout`.
+3. **Paid**: On success (manual or webhook), status becomes `paid` -> Dashboard is unlocked. Khusus pembayaran manual, admin dapat **membatalkan konfirmasi** (mengunci dashboard kembali).
+
 ## Access Control & Permissions (ATURAN WAJIB)
 - Permissions are strictly enforced on the frontend through `usePermission()` hook in `AuthContext` dan komponen `ProtectedRoute`.
 - **Module Keys:** `ppdb`, `payment`, `selection`, `notification`, `dashboard`, `applicant_dashboard`, `companyprofile`, dll.

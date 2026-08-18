@@ -251,7 +251,7 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [actionId, setActionId] = useState<{ id: string, type: 'activate' | 'deactivate' } | null>(null)
 
-  const [formData, setFormData] = useState({ name: '', registration_start_date: '', registration_end_date: '', document_upload_end_date: '', selection_date: '', quota: 0 })
+  const [formData, setFormData] = useState({ name: '', registration_start_date: '', registration_end_date: '', document_upload_end_date: '', selection_date: '', quota: 0, registration_fee: 0, second_stage_fee: 0 })
 
   useEffect(() => {
     if (period?.id) {
@@ -333,7 +333,7 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
           <div className="flex justify-between items-center">
             <h3 className="font-semibold text-foreground">Daftar Gelombang</h3>
             {canCrud && (
-              <Button size="sm" onClick={() => { setEditingWave(null); setFormData({ name: '', registration_start_date: '', registration_end_date: '', document_upload_end_date: '', selection_date: '', quota: 0 }); setShowForm(true) }} className="gap-1">
+              <Button size="sm" onClick={() => { setEditingWave(null); setFormData({ name: '', registration_start_date: '', registration_end_date: '', document_upload_end_date: '', selection_date: '', quota: 0, registration_fee: 0, second_stage_fee: 0 }); setShowForm(true) }} className="gap-1">
                 <Plus className="h-4 w-4" /> Tambah
               </Button>
             )}
@@ -398,7 +398,7 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
                                 <CheckCircle className="h-4 w-4" />
                               </Button>
                             )}
-                            <Button variant="ghost" size="icon" onClick={() => { setEditingWave(w); setFormData({ name: w.name, registration_start_date: w.registration_start_date.split('T')[0], registration_end_date: w.registration_end_date.split('T')[0], document_upload_end_date: w.document_upload_end_date.split('T')[0], selection_date: w.selection_date.split('T')[0], quota: w.quota }); setShowForm(true) }} title="Edit" className="h-8 w-8">
+                            <Button variant="ghost" size="icon" onClick={() => { setEditingWave(w); setFormData({ name: w.name, registration_start_date: w.registration_start_date.split('T')[0], registration_end_date: w.registration_end_date.split('T')[0], document_upload_end_date: w.document_upload_end_date.split('T')[0], selection_date: w.selection_date.split('T')[0], quota: w.quota, registration_fee: w.registration_fee || 0, second_stage_fee: w.second_stage_fee || 0 }); setShowForm(true) }} title="Edit" className="h-8 w-8">
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => setDeletingId(w.id)} title="Hapus" className="h-8 w-8 text-rose-danger hover:text-rose-danger hover:bg-rose-light">
@@ -426,7 +426,7 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
               <Label>Nama Gelombang</Label>
               <Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Contoh: Gelombang 1" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Tanggal Mulai Daftar</Label>
                 <Input type="date" required value={formData.registration_start_date} onChange={e => setFormData({ ...formData, registration_start_date: e.target.value })} />
@@ -443,9 +443,17 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
                 <Label>Jadwal Seleksi</Label>
                 <Input type="date" required value={formData.selection_date} onChange={e => setFormData({ ...formData, selection_date: e.target.value })} />
               </div>
-              <div className="space-y-2 col-span-2">
+              <div className="space-y-2 col-span-2 sm:col-span-1">
                 <Label>Kuota</Label>
                 <Input type="number" required value={formData.quota} onChange={e => setFormData({ ...formData, quota: parseInt(e.target.value) || 0 })} placeholder="Contoh: 100" />
+              </div>
+              <div className="space-y-2 col-span-2 sm:col-span-1">
+                <Label>Biaya Formulir (Tahap 1)</Label>
+                <Input type="number" required value={formData.registration_fee} onChange={e => setFormData({ ...formData, registration_fee: parseInt(e.target.value) || 0 })} placeholder="Contoh: 350000" />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label>Biaya Pendaftaran (Tahap 2)</Label>
+                <Input type="number" required value={formData.second_stage_fee} onChange={e => setFormData({ ...formData, second_stage_fee: parseInt(e.target.value) || 0 })} placeholder="Contoh: 15000000" />
               </div>
             </div>
             <DialogFooter>

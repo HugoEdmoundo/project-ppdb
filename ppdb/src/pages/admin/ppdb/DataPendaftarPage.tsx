@@ -151,7 +151,7 @@ export default function DataPendaftarPage() {
           </DialogHeader>
           {selectedApplicant && (
             <div className="space-y-6 pt-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground text-xs">Nama Lengkap</p>
                   <p className="font-medium">{selectedApplicant.full_name}</p>
@@ -199,9 +199,9 @@ export default function DataPendaftarPage() {
                   <p className="font-medium">{selectedApplicant.nik || '-'}</p>
                 </div>
 
-                <div className="col-span-2 border-t pt-4 mt-2">
+                <div className="col-span-1 sm:col-span-2 border-t pt-4 mt-2">
                   <h4 className="font-semibold text-sm mb-2">Data Domisili</h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-muted-foreground text-xs">Provinsi</p>
                       <p className="font-medium">{selectedApplicant.province || '-'}</p>

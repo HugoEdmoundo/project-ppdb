@@ -120,15 +120,17 @@ export default function ApplicantsPage() {
                 <TableHead>Email / No. WA</TableHead>
                 <TableHead>Gelombang</TableHead>
                 <TableHead>Jalur / Jenjang</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Status Pembayaran</TableHead>
+                <TableHead>Status Dokumen</TableHead>
+                <TableHead>Status Seleksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8">Memuat data...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8">Memuat data...</TableCell></TableRow>
               ) : applicants.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-8">
+                  <TableCell colSpan={7} className="py-8">
                     <EmptyState
                       icon={UserRoundSearch}
                       title="Belum Ada Pendaftar"
@@ -141,7 +143,7 @@ export default function ApplicantsPage() {
                 applicants.map((a) => (
                   <TableRow
                     key={a.id}
-                    className="cursor-pointer"
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => setSelectedApplicant(a)}
                   >
                     <TableCell className="font-medium">{a.full_name}</TableCell>
@@ -155,9 +157,25 @@ export default function ApplicantsPage() {
                       <span className="font-medium">{a.registration_level}</span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className="uppercase text-[10px]">
-                        {a.status.replace('_', ' ')}
+                      <Badge variant={a.payment_status === 'paid' ? 'success' : a.payment_status === 'expired' ? 'destructive' : 'warning'}>
+                        {a.payment_status?.toUpperCase() || 'PENDING'}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="uppercase text-[10px]">
+                        {['passed', 'failed', 'selection'].includes(a.status) ? 'DOCUMENT APPROVED' : a.status.replace('_', ' ')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {a.status === 'passed' ? (
+                        <Badge variant="success">LULUS</Badge>
+                      ) : a.status === 'failed' ? (
+                        <Badge variant="destructive">TIDAK LULUS</Badge>
+                      ) : a.status === 'selection' ? (
+                        <Badge variant="warning">SELEKSI</Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -180,8 +198,10 @@ export default function ApplicantsPage() {
                   <p className="font-medium">{selectedApplicant.full_name}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Status</p>
-                  <Badge variant="secondary" className="uppercase text-[10px] mt-1">{selectedApplicant.status.replace('_', ' ')}</Badge>
+                  <p className="text-muted-foreground text-xs">Status Pembayaran</p>
+                  <Badge variant={selectedApplicant.payment_status === 'paid' ? 'success' : 'warning'} className="mt-1">
+                    {selectedApplicant.payment_status?.toUpperCase() || 'PENDING'}
+                  </Badge>
                 </div>
                 
                 <div>
@@ -206,6 +226,10 @@ export default function ApplicantsPage() {
                   <p className="text-muted-foreground text-xs">Tempat, Tgl Lahir</p>
                   <p className="font-medium">{selectedApplicant.birth_place || '-'}, {selectedApplicant.birth_date || '-'}</p>
                 </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Jenis Kelamin</p>
+                  <p className="font-medium">{selectedApplicant.gender === 'L' ? 'Laki-laki' : selectedApplicant.gender === 'P' ? 'Perempuan' : '-'}</p>
+                </div>
 
                 <div>
                   <p className="text-muted-foreground text-xs">NISN</p>
@@ -215,18 +239,44 @@ export default function ApplicantsPage() {
                   <p className="text-muted-foreground text-xs">NIK</p>
                   <p className="font-medium">{selectedApplicant.nik || '-'}</p>
                 </div>
+
+                <div className="col-span-2 border-t pt-4 mt-2">
+                  <h4 className="font-semibold text-sm mb-2">Data Domisili</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-muted-foreground text-xs">Provinsi</p>
+                      <p className="font-medium">{selectedApplicant.province || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Kota/Kabupaten</p>
+                      <p className="font-medium">{selectedApplicant.city || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Kecamatan</p>
+                      <p className="font-medium">{selectedApplicant.district || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Kelurahan/Desa</p>
+                      <p className="font-medium">{selectedApplicant.village || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Kode Pos</p>
+                      <p className="font-medium">{selectedApplicant.postal_code || '-'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground text-xs">Alamat Detail</p>
+                      <p className="font-medium">{selectedApplicant.address || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <p className="text-muted-foreground text-xs">Nama Orang Tua/Wali</p>
                   <p className="font-medium">{selectedApplicant.parent_name || '-'}</p>
                 </div>
-
                 <div>
                   <p className="text-muted-foreground text-xs">Asal Sekolah</p>
                   <p className="font-medium">{selectedApplicant.previous_school || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Pilihan Jurusan</p>
-                  <p className="font-medium">{selectedApplicant.major_choice || '-'}</p>
                 </div>
 
                 <div>
@@ -330,10 +380,9 @@ export default function ApplicantsPage() {
                       <Input
                         type="text"
                         value={resetPassword}
-                        placeholder="Klik Generate untuk membuat password"
-                        readOnly
-                        className="font-mono select-none"
-                        onKeyDown={(e) => e.preventDefault()}
+                        onChange={(e) => setResetPassword(e.target.value)}
+                        placeholder="Ketik password atau klik Generate"
+                        className="font-mono"
                       />
                       <Button type="button" variant="outline" onClick={generatePassword}>
                         <KeyRound className="h-4 w-4 mr-1" />

@@ -8,9 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Eye, Search, UserRoundSearch, FileCheck2 } from 'lucide-react'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs'
-import { Can } from '@/components/Permission'
+import { Search, UserRoundSearch } from 'lucide-react'
 
 export default function DataPendaftarPage() {
   const { toast } = useToast()
@@ -19,7 +17,6 @@ export default function DataPendaftarPage() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedApplicant, setSelectedApplicant] = useState<any>(null)
-  const [statusFilter, setStatusFilter] = useState('all')
 
   const fetchApplicants = async (q = search) => {
     setLoading(true)
@@ -45,14 +42,6 @@ export default function DataPendaftarPage() {
     fetchApplicants(search)
   }
 
-  const handleStatusChange = (value: string) => {
-    setStatusFilter(value)
-  }
-
-  const openVerifyModal = (applicant: any) => {
-    setSelectedApplicant(applicant)
-  }
-
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -76,15 +65,6 @@ export default function DataPendaftarPage() {
               onChange={(e: any) => setSearch(e.target.value)}
             />
           </div>
-          <Tabs value={statusFilter} onValueChange={handleStatusChange} className="w-full sm:w-auto overflow-x-auto">
-            <TabsList className="inline-flex w-max sm:w-auto">
-              <TabsTrigger value="all" className="text-xs sm:text-sm">Semua</TabsTrigger>
-              <TabsTrigger value="document_uploaded" className="text-xs sm:text-sm">Menunggu Verifikasi</TabsTrigger>
-              <TabsTrigger value="document_approved" className="text-xs sm:text-sm">Disetujui</TabsTrigger>
-              <TabsTrigger value="document_rejected" className="text-xs sm:text-sm">Ditolak</TabsTrigger>
-              <TabsTrigger value="expired" className="text-xs sm:text-sm">Expired</TabsTrigger>
-            </TabsList>
-          </Tabs>
           <Button type="submit" variant="secondary" className="shrink-0">Cari</Button>
         </form>
       </div>
@@ -100,7 +80,7 @@ export default function DataPendaftarPage() {
                 <TableHead>Jalur / Jenjang</TableHead>
                 <TableHead>Status Pembayaran</TableHead>
                 <TableHead>Status Dokumen</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
+                <TableHead>Status Seleksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -119,7 +99,11 @@ export default function DataPendaftarPage() {
                 </TableRow>
               ) : (
                 applicants.map((a) => (
-                  <TableRow key={a.id}>
+                  <TableRow 
+                    key={a.id} 
+                    onClick={() => setSelectedApplicant(a)}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  >
                     <TableCell className="font-medium">{a.full_name}</TableCell>
                     <TableCell className="text-sm">
                       {a.email} <br/>
@@ -137,20 +121,19 @@ export default function DataPendaftarPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="uppercase text-[10px]">
-                        {a.status.replace('_', ' ')}
+                        {['passed', 'failed', 'selection'].includes(a.status) ? 'DOCUMENT APPROVED' : a.status.replace('_', ' ')}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
-                      {a.status === 'document_uploaded' && (
-                        <Can module="ppdb" level="crud">
-                          <Button variant="outline" size="sm" onClick={() => openVerifyModal(a)} className="mr-2 border-blue-200 text-blue-700 hover:bg-blue-50">
-                            <FileCheck2 className="h-3.5 w-3.5 mr-1" /> Periksa Dokumen
-                          </Button>
-                        </Can>
+                    <TableCell>
+                      {a.status === 'passed' ? (
+                        <Badge variant="success">LULUS</Badge>
+                      ) : a.status === 'failed' ? (
+                        <Badge variant="destructive">TIDAK LULUS</Badge>
+                      ) : a.status === 'selection' ? (
+                        <Badge variant="warning">SELEKSI</Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
                       )}
-                      <Button variant="ghost" size="icon" onClick={() => setSelectedApplicant(a)} title="Lihat Detail">
-                        <Eye className="h-4 w-4" />
-                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

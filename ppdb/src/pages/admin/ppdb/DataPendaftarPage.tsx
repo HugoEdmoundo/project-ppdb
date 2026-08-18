@@ -4,13 +4,12 @@ import { useToast } from '@/components/Toast'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table'
 import { Badge } from '@/components/ui/Badge'
-import { Button, buttonVariants } from '@/components/ui/Button'
+import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Eye, Search, GraduationCap, UserRoundSearch, FileCheck2, FileText, CheckCircle, XCircle } from 'lucide-react'
+import { Eye, Search, UserRoundSearch, FileCheck2 } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs'
-import { Textarea } from '@/components/ui/Textarea'
 import { Can } from '@/components/Permission'
 
 export default function DataPendaftarPage() {
@@ -20,6 +19,7 @@ export default function DataPendaftarPage() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedApplicant, setSelectedApplicant] = useState<any>(null)
+  const [statusFilter, setStatusFilter] = useState('all')
 
   const fetchApplicants = async (q = search) => {
     setLoading(true)
@@ -43,6 +43,14 @@ export default function DataPendaftarPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     fetchApplicants(search)
+  }
+
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value)
+  }
+
+  const openVerifyModal = (applicant: any) => {
+    setSelectedApplicant(applicant)
   }
 
   return (

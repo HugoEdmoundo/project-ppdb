@@ -3,51 +3,72 @@
 Main public website + admin dashboard for Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.
 
 ## Stack
-- Next.js 16 (App Router) + Turbopack, Tailwind CSS v4, TypeScript, lucide-react, framer-motion
-- Deploy: Cloudflare Workers via `@opennextjs/cloudflare`
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **UI/Animation**: `lucide-react`, `framer-motion`, `gsap`
+- **Security**: `dompurify`
+- **Fonts**: `Inter`, `DM_Sans`, `Playfair_Display`, `Amiri` via `next/font/google`
+- **Deployment**: Cloudflare Workers via `@opennextjs/cloudflare`
+- **Build Tools**: ESLint 9
 
 ## Routes
-- `/` — Home
-- `/about`, `/news`, `/news/[slug]`, `/programs`, `/programs/[slug]`
-- `/facilities`, `/achievements`, `/gallery`, `/staff`, `/contact`
-- `/ppdb` — halaman PPDB (landing/coming soon, link ke portal `ppdb.ptdarrahman.sch.id`)
-- `/auth` — Student/parent portal login
-- `/admin` — redirect (ke dashboard bila ada token, ke login bila belum)
-- `/admin/login`, `/admin/dashboard` — CRUD dashboard
+- **Public (`app/(main)/`)**:
+  - `/` — Home
+  - `/about`, `/news`, `/news/[slug]`, `/programs`, `/programs/[slug]`
+  - `/facilities`, `/achievements`, `/gallery`, `/staff`, `/contact`
+  - `/ppdb` — PPDB landing page
+- **Auth**:
+  - `/auth` — Student/parent portal login
+- **Admin (`app/admin/`)**:
+  - `/admin/login` — Login page
+  - `/admin/dashboard` — Main CRUD dashboard
+  - `/admin` — Redirects to dashboard if token exists, else login
 
 ## Key Conventions
-- Route group: `app/(main)/` contains pages with Navbar/Footer
-- Root `app/layout.tsx` is minimal (html/body/globals.css)
-- Error pages render without Navbar
-- All imports use `@/app/...` path alias
+- **Route Group**: `app/(main)/` contains all public pages wrapped with Navbar and Footer.
+- **Layout**: Root `app/layout.tsx` is minimal (sets up `html`, `body`, fonts, and `Providers`).
+- **Error Pages**: Custom `error.tsx`, `not-found.tsx`, and `global-error.tsx`.
+- **Path Alias**: All imports use the `@/...` path alias (e.g., `@/app/...`).
 
 ## Backend & API
-- Backend = FastAPI monolitik (`../api/`), bukan Postgres/Hono.
-- Public API via `GET /companyprofile/{table}`.
-- Admin CRUD via `POST/PUT/DELETE /companyprofile/{table}[/{id}]`.
-- Auth: login di `/companyprofile/auth/login`; token key localStorage: `admin_token`, user key: `admin_user`.
-- Real-time: `useSSE.ts` (EventSource) subscribe `/companyprofile/events` — SSE hub server-side, bukan WebSocket/Postgres channel.
+- **Backend Architecture**: FastAPI monolithic backend (located in `../api/`), deployed separately (Vercel). NOT Postgres/Hono.
+- **API Client**: Handled centrally in `app/lib/api.ts` with fallback mechanisms (`fetchWithFallback`).
+- **Public API**: Fetched via `GET /companyprofile/{table}`.
+- **Admin CRUD**: Managed via `POST/PUT/DELETE /companyprofile/{table}[/{id}]`.
+- **Auth Flow**: Login at `/companyprofile/auth/login`. Returns JWT tokens.
+  - Keys in `localStorage`: `admin_token`, `admin_refresh`, `admin_user`.
+  - Token refresh logic is built into the API client (`tryRefresh`).
+- **Real-time**: `useSSE.ts` uses `EventSource` to subscribe to `/companyprofile/events` (Server-Side Events from FastAPI).
 
 ## Admin Dashboard
-- 9 CRUD tabs: news, programs, facilities, staff, achievements, gallery, testimonials, social, contact.
-- Upload file lewat `/companyprofile/upload` (diteruskan ke Cloudinary oleh backend).
+- **10 CRUD Tabs**: news, programs, facilities, staff, achievements, gallery, testimonials, social, contact, and settings.
+- **File Uploads**: Files are uploaded via `/companyprofile/upload` (forwarded to Cloudinary by backend).
 
-### ATURAN WAJIB: Tombol CRUD mengikuti permission
-- `const canCrud = adminUser?.user_type === 'superadmin' || adminUser?.permissions?.companyprofile === 'crud'` (`app/admin/dashboard/page.tsx`)
-- Semua tombol Buat/Edit/Hapus, kolom "Aksi", dan form (SettingsEditor/ContactEditor) digate `canCrud`; form di-disable bila `!canCrud` (read-only).
-- `adminUser` diambil dari localStorage `admin_user` (diisi saat login dari `data.user.permissions`) atau via `api.getMe()`.
-- Backend tetap enforce permission; hiding di frontend hanya UX.
+### ATURAN WAJIB: Access Control & Permissions
+- Users with `user_type === 'superadmin'` or `permissions.companyprofile === 'crud'` can create, edit, and delete.
+- User data (`admin_user`) is retrieved from `localStorage` (populated at login) or via `api.getMe()`.
+- Buttons (Create/Edit/Delete), "Aksi" columns, and forms must check this permission before rendering or allowing edits. Forms should be read-only if the user lacks `crud` access.
+- Backend enforces permissions; frontend hiding is just for UX.
 
-## Hooks
-- `useFocusTrap(open, onClose?)` — focus trap + Escape key + role=dialog for modals
-- `useSSE()` — subscribe perubahan content real-time (EventSource ke `/companyprofile/events`)
+## Hooks & Contexts
+- `useFocusTrap(open, onClose?)` — Focus trap for modals (Escape key, `role=dialog`).
+- `useSSE()` — Subscribe to real-time content changes.
+- `useRealtimeData()` — Fetch initial data and sync updates via SSE.
+- `useScrollAnimations()` & `useTiltEffect()` — UI interactions and animations.
+- `Providers` (in `app/context/Providers.tsx`) — Wraps the application to provide contexts.
 
 ## Components
-- `AdminConfirm` — reusable confirm dialog (danger/default variant), triggered via `confirm()`
-- `ProfileModal` — edit profile (username, email, avatar upload/URL, password change)
+- `AdminConfirm` — Reusable confirmation dialog.
+- `AdminToast` — Toast notifications for admin actions.
+- `ProfileModal` / `ProfileDropdown` — Manage user profile (username, email, password, avatar).
+- `CrossTabSync` — Syncs state (like auth logout) across browser tabs.
+- `EmptyState` — Renders empty fallback UI for admin tables.
 
-## Build
-- `npm run dev` — port 3000
-- `npm run lint` — ESLint with --cache
-- `npm run build` — Next.js build
-- `npm run preview` / `npm run deploy` — OpenNext Cloudflare Worker (build + preview/deploy)
+## Build & Deployment
+- `npm run dev` — Local development (port 3000)
+- `npm run lint` — ESLint 9 with `--cache`
+- `npm run build` — Standard Next.js build
+- `npm run preview` — Cloudflare preview via OpenNext
+- `npm run deploy` — Deploy to Cloudflare Workers via OpenNext
+- **Cloudflare Config**: `wrangler.jsonc` points to `.open-next/worker.js`, enables `nodejs_compat`. `open-next.config.ts` handles the OpenNext configuration.

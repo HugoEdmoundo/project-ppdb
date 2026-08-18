@@ -1,47 +1,65 @@
-# PPDB - PTDARRAHMAN
+# PPDB Frontend App (PTDARRAHMAN)
 
-Aplikasi Penerimaan Peserta Didik Baru (Vite + React + TypeScript + Tailwind) untuk Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.
+Aplikasi frontend Penerimaan Peserta Didik Baru (PPDB) untuk Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.
 
-## Stack
-- Vite + React + TypeScript
-- Tailwind CSS, lucide-react, shadcn-style UI components (`src/components/ui`)
-- Deploy: Cloudflare Pages (static)
-- API: `src/api/client.ts` (fetch wrapper + JWT auto-refresh), services di `src/services`
+## Tech Stack
+- **Framework:** React 19 + Vite 8
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS v3, `class-variance-authority`, `clsx`, `tailwind-merge`
+- **UI Components:** Radix UI primitives (`@radix-ui/react-*`), shadcn-style structured in `src/components/ui/`, Lucide React for icons
+- **Routing:** React Router v7 (`react-router-dom`)
+- **Build & Deploy:** Cloudflare Pages (configured via `wrangler.toml` and built with `tsc -b && vite build`)
 
-## Backend
-- Backend = FastAPI monolitik di `../api/` (bukan folder `backend/`, bukan Hono).
-- PPDB API di `/ppdb/*` (`/ppdb/periods`, `/ppdb/waves`, `/ppdb/applicants`, `/ppdb/dashboard/stats`, `/ppdb/register` publik).
-- Auth (login calon murid & admin): `/auth/*`.
-- Skema PPDB v2: lihat `../api/alembic/versions/0002_ppdb_v2.py` (kolom `academic_year`/`description` di periode; `registration_start_date`/`registration_end_date`/`document_upload_end_date`/`selection_date`/`quota` di wave).
+## Architecture & State Management
+- **API Client (`src/api/client.ts`):** 
+  - Custom `fetch` wrapper (`apiFetch`).
+  - Automatic JWT token refresh via `/auth/refresh`.
+  - Fallback mechanism from `PRIMARY_API` to `FALLBACK_API` upon connection failures.
+- **Services (`src/services/`):**
+  - Modular API calls: `authService`, `ppdbService`, `applicantService`, `documentService`, `paymentService`, `selectionService`, `postService`, `notifService`, `notificationService`, `dashboardService`, `settingsService`.
+- **Global Contexts (`src/contexts/`):**
+  - `AuthContext`: Manages user state, login/logout, and permissions. Auto-refreshes `/auth/me` every 30 seconds to catch permission or deactivation changes on the fly.
 
-## Routes
-- `/` — landing page PPDB
-- `/register` — pendaftaran calon murid (sukses → inline success state + kredensial login via `SuccessState`/`CredentialsCard`, bukan route terpisah; gagal → alert validasi inline di form)
-- `/auth/login` — login
-- `/checkout` — paywall pembayaran formulir (redirect paksa saat `payment_status != paid`)
-- `/applicant` — dashboard pendaftar (wajib sudah bayar, `requirePaid`)
-- `/admin` — dashboard admin PPDB (AdminLayout + AdminDashboardPage)
-- `/403`, `*` — error pages
+## Routes & Pages (`src/pages/`)
+### Public
+- `/` (`LandingPage`): Entry point for PPDB.
+- `/register` (`RegisterPage`): New student registration.
+  - **Pattern:** Sukses → render inline success state + kredensial login via `SuccessState`/`CredentialsCard` (bukan route terpisah). Gagal → alert validasi inline di form.
+- `/auth/login` (`LoginPage`): Shared login page for applicants and admins.
 
-## ATURAN WAJIB: Tombol CRUD mengikuti permission
+### Applicant (Protected, `role="applicant"`)
+- `/checkout` (`CheckoutPage`): Payment paywall. Restricts users here if `payment_status != paid`.
+- `/applicant` (`DashboardPage`): Main dashboard for applicants. Requires the payment status to be paid (`requirePaid={true}`).
 
-Semua tombol CRUD (Tambah/Buat/Edit/Ubah/Hapus/Simpan, kolom "Aksi") HANYA dirender jika user punya `crud` pada modul terkait. `read` = tampil data saja (read-only), form wajib di-disable.
+### Admin (Protected, `role="admin"`)
+Wrapped in `AdminLayout` (`src/layouts/AdminLayout.tsx`):
+- `/admin/dashboard` (`AdminDashboardPage`): General stats and overview.
+- `/admin/data-pendaftar` (`DataPendaftarPage`): Applicant data overview.
+- `/admin/applicants` (`ApplicantsPage`): Document reviews and detailed applicant data.
+- `/admin/periods` (`PeriodsPage`): PPDB periods and waves management.
+- `/admin/payments` (`PaymentsPage`): Invoices and transaction verifications.
+- `/admin/notifications` (`NotificationsPage`): Notification history/templates.
+- `/admin/profile` (`AdminProfilePage`): Admin profile settings.
 
-- Gunakan helper permission:
-  - `const { canCrud } = useCan('ppdb', 'crud')` (dari `src/hooks/useCan.ts`) lalu `{canCrud && <Button .../>}`
-  - atau JSX wrapper: `<Can module="ppdb" level="crud"><Button .../></Can>` (dari `src/components/Permission.tsx`)
-- Level modul yang berlaku: `none < dashboard < read < crud`
-- Modul keys: `ppdb`, `payment`, `selection`, `notification`, `dashboard`, `applicant_dashboard`, `companyprofile`
-- `is_superadmin` selalu bypass.
-- Enforce keamanan ada di backend (`require_ppdb_admin` di `src/core/dependencies.py`); jangan andalkan frontend saja.
+### Errors
+- `/403` (`ForbiddenPage`): Insufficient permissions.
+- `*` (`NotFoundPage`): 404 Not Found.
 
-## Permission plumbing
-- `usePermission()` di `src/contexts/AuthContext.tsx` → `hasModuleAccess(module, level)`, `isAdmin()`, `hasApplicantAccess()`, `pagePermissions`, `permissions`, `isSuperadmin`.
-- `useFilteredNav(items)` → filter menu sidebar by modul permission + `page_permissions` (AuthContext.tsx).
-- `AuthProvider` auto-refresh `/auth/me` tiap 30 detik, jadi perubahan permission langsung berefek tanpa login ulang.
-- Backend mengirim `permissions` (module→level) dan `page_permissions` di login & `/auth/me`.
+## Access Control & Permissions (ATURAN WAJIB)
+- Permissions are strictly enforced on the frontend through `usePermission()` hook in `AuthContext` dan komponen `ProtectedRoute`.
+- **Module Keys:** `ppdb`, `payment`, `selection`, `notification`, `dashboard`, `applicant_dashboard`, `companyprofile`, dll.
+- **Permission Levels:** `none` < `dashboard` < `read` < `crud`.
+- **Navigation (`useFilteredNav`):** Sidebar items (`AdminLayout.tsx`) otomatis disembunyikan jika user tidak memiliki minimum level akses (`minLevel`) atau tidak ada di `page_permissions`.
+- **Superadmin Bypass:** User dengan `is_superadmin=true` atau `user_type === 'superadmin'` bypass semua checking permission.
+- **Tombol CRUD & Form:** Semua aksi/tombol (Tambah, Edit, Hapus) dan input form HANYA aktif dirender jika user punya `crud` pada modul terkait. Gunakan helper seperti `hasModuleAccess('modul', 'crud')` (atau JSX Wrapper `<Can module="..." level="crud">` / hook `useCan`). Jika permission hanya `read`, halaman bersifat read-only.
+- **Backend Enforced:** Keamanan absolut selalu divalidasi juga oleh Backend API.
 
-## Build
-- `npm run dev` — dev server (Vite)
-- `npm run build` — `tsc -b && vite build`
-- `npm run preview`
+## Dynamic Branding & Events
+- **Favicon & Logo:** Di-fetch dinamis via `settingsService.getAll()` / `/companyprofile/settings/favicon` dari API.
+- **Real-time Updates:** Perubahan pada brand otomatis live di client melalui Server-Sent Events (SSE) yang listening di `/companyprofile/events` (lihat `App.tsx` & `AdminLayout.tsx`).
+
+## Build & Run
+- `npm run dev` — Start Vite dev server.
+- `npm run build` — Type checking (`tsc -b`) & build production (`vite build`).
+- `npm run preview` — Preview local build production.
+- `npm run lint` — Lint code via ESLint.

@@ -1,53 +1,52 @@
-# Superadmin - PTDARRAHMAN
+# Superadmin Panel - PTDARRAHMAN
 
-Panel manajemen users & roles (Vite + React + TypeScript + Tailwind) untuk Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.
+This document provides a technical overview of the Superadmin panel for the Pesantren Tahfidz Qur'an dan Digital Ar-Rahman system. It is meant to be read by AI agents and developers to quickly understand the directory structure, tech stack, and conventions.
 
-## Stack
-- Vite + React 18 + TypeScript
-- Tailwind CSS, lucide-react
-- Deploy: Cloudflare Pages (static)
-- API: `src/api/client.ts` (fetch wrapper + JWT auto-refresh)
+## Tech Stack
+- **Framework:** React 18 with Vite 5.
+- **Language:** TypeScript.
+- **Styling:** Tailwind CSS v3.4.17.
+- **Components:** `lucide-react` for icons, `sonner` for toast notifications, and Radix UI primitives (`@radix-ui/react-*`) combined with `class-variance-authority`, `clsx`, and `tailwind-merge` for UI components.
+- **Routing:** `react-router-dom` v6.
 
-## Routes
-- `/login` — login superadmin
-- `/` — dashboard ringkasan
-- `/users`, `/users/new`, `/users/:id` — manajemen users
-- `/roles`, `/roles/new`, `/roles/:id` — manajemen roles
-- `/applicants` — daftar calon murid
-- `/notifications` — notifikasi (logs/templates)
-- `/profile` — edit profil sendiri
-- `*` — not found
+## Routing (`src/App.tsx`)
+The application is a Single Page Application (SPA) with the following routes:
+- **Public Routes:**
+  - `/login`: Superadmin login page.
+- **Protected Routes** (Requires Superadmin access):
+  - `/`: Dashboard summary page showing user and role statistics.
+  - `/users`, `/users/new`, `/users/:id`: User management CRUD operations.
+  - `/roles`, `/roles/new`, `/roles/:id`: Role management CRUD. Includes assigning module and page permissions (`companyprofile` and `ppdb`).
+  - `/applicants`: PPDB Applicants management.
+  - `/notifications`: View notification logs and send custom notifications.
+  - `/profile`: Update current superadmin profile (including avatar, password).
+  - `*`: 404 Not Found page.
 
-## Akses: KHUSUS superadmin
-- Panel ini **hanya bisa diakses oleh `user_type === 'superadmin'`** (atau `is_superadmin` dari role).
-- Tidak ada modul/permission `superadmin`. Jangan menambahkan tombol/menu/guard yang mengandalkan `permissions?.superadmin`.
-- Enforce: `src/api/client.ts` (login menolak non-superadmin) + `src/components/ProtectedRoute.tsx`.
-- Karena hanya superadmin yang masuk, semua CRUD di panel ini otomatis full-access.
+## Authentication & Access Control
+- **Token Management:** Handled in `src/api/client.ts`. Access and refresh tokens are stored in `localStorage` under keys `sa_token`, `sa_refresh`, and `sa_user`. Automatic token refresh is implemented on HTTP 401 errors using `/companyprofile/auth/refresh`.
+- **Authorization Guard:** Checked by `src/components/ProtectedRoute.tsx`.
+  - The panel is **STRICTLY** for superadmin users.
+  - Access is granted **only** if `user.user_type === 'superadmin'` or `user.is_superadmin === true`. Any other user attempting to access protected routes will be forcibly redirected to `/login`.
+- **CRUD Operations Guarding:** Actions like creating or editing users/roles require `canCrud = currentUser?.user_type === 'superadmin'`.
+- **System Roles (`is_system = true`):** Protected system roles (e.g., Superadmin, Calon Murid) have specific UI safeguards in `RoleFormPage` to prevent unauthorized modification or deletion.
 
-## ATURAN: Tombol CRUD mengikuti permission
-- Pola standar di tiap halaman:
-  - `const canCrud = currentUser?.user_type === 'superadmin'`
-  - `const canView = currentUser?.user_type === 'superadmin'`
-- Semua tombol Buat/Edit/Hapus + kolom "Aksi" digate `{canCrud && ...}`.
-- Halaman form (`/users/new`, `/users/:id`, `/roles/new`, `/roles/:id`) redirect ke list bila `!canCrud` (UserFormPage.tsx / RoleFormPage.tsx).
-- `ProfilePage` = edit profil sendiri, tidak perlu guard CRUD.
+## API Integration (`src/api/client.ts`)
+- The `apiFetch` wrapper handles automatic token injection and token refresh logic.
+- **Base URL:** Defined via the `VITE_API_URL` environment variable, falling back to `https://project-ppdb-murex.vercel.app`. The Vite dev server proxies `/companyprofile` to `http://localhost:8000` via `vite.config.ts`.
+- **Endpoints Interacted With:**
+  - **Auth:** `/companyprofile/auth/login`, `/companyprofile/auth/me`, `/companyprofile/auth/refresh`, `/companyprofile/auth/logout`.
+  - **Users:** `/users` (CRUD).
+  - **Roles & Permissions:** `/roles` (CRUD), `/modules`, `/users/:id/page-permissions`.
+  - **Applicants:** `/ppdb/applicants`, `/ppdb/applicants/:id/password`.
+  - **Notifications:** `/notifications/logs`, `/notifications/send`.
+  - **General:** `/superadmin/dashboard`, `/companyprofile/settings`, `/companyprofile/upload`.
 
-## System Roles (is_system)
-- Role dengan `is_system = true` (seperti Superadmin dan Calon Murid) dilindungi oleh sistem:
-  - Pada daftar role, tidak memiliki tombol Edit/Hapus dan UI badge-nya dibedakan.
-  - Halaman RoleFormPage untuk role ini bersifat read-only.
-  - Role Calon Murid (sistem & bukan superadmin) disembunyikan dari dropdown role di UserFormPage agar tidak bisa di-assign ke user panel.
+## Modules & Permissions
+- Modules available for configuration in Role forms are defined in `src/types/index.ts` under `MODULE_LABELS` (`companyprofile` and `ppdb`).
+- Access levels (`ACCESS_LEVELS`) include: `none`, `dashboard`, `read`, and `crud`.
+- Page-level permissions can be directly assigned to users via the `/users/:id/page-permissions` endpoint, managing specific UI capabilities per user based on assigned module roles.
 
-## Module Permissions editor (RoleFormPage)
-- Daftar modul yang bisa diberi permission per role: hanya **Company Profile** dan **PPDB**.
-- Group PPDB menulis semua key sub-modul sekaligus: `ppdb`, `payment`, `selection`, `notification`, `dashboard`, `applicant_dashboard`.
-- MODULE_LABELS di `src/types/index.ts` hanya berisi `companyprofile` & `ppdb`.
-
-## Backend
-- Backend = FastAPI monolitik di `../api/`; endpoints superadmin: `/users/*`, `/roles/*`, `/modules/*`, `/superadmin/*` (semua guard `require_superadmin`).
-- API base default: `https://project-ppdb-murex.vercel.app`.
-
-## Build
-- `npm run dev` — dev server (Vite)
-- `npm run build` — `tsc -b && vite build`
-- `npm run preview`
+## Development & Build Commands
+- `npm run dev`: Start Vite development server on port 5173.
+- `npm run build`: Compile TypeScript and build for production (`tsc -b && vite build`).
+- `npm run preview`: Preview production build locally.

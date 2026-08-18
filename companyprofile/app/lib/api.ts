@@ -29,9 +29,10 @@ async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Respo
 
   let res: Response
   try {
-    res = await fetch(url, opts)
+    const signal = opts?.body ? undefined : AbortSignal.timeout(3000)
+    res = await fetch(url, signal ? { ...opts, signal } : opts)
   } catch {
-    // API lokal tidak terjangkau -> coba API produksi
+    // API lokal tidak terjangkau atau timeout -> coba API produksi
     return fetch(fallbackUrl, opts)
   }
 

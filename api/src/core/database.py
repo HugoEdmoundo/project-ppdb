@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 from datetime import datetime
 from typing import Any, Optional
@@ -9,6 +10,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import URL, MetaData, create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.pool import NullPool
 
 from src.core.config import settings
 
@@ -48,14 +50,22 @@ def get_engine() -> Engine:
         connect_args: dict[str, Any] = {"charset": "utf8mb4"}
         if settings.mysql_ssl:
             connect_args["ssl"] = {}
-        _engine = create_engine(
-            url,
-            pool_pre_ping=True,
-            pool_recycle=3600,
-            pool_size=5,
-            max_overflow=10,
-            connect_args=connect_args,
-        )
+            
+        if os.getenv("VERCEL"):
+            _engine = create_engine(
+                url,
+                poolclass=NullPool,
+                connect_args=connect_args,
+            )
+        else:
+            _engine = create_engine(
+                url,
+                pool_pre_ping=True,
+                pool_recycle=3600,
+                pool_size=5,
+                max_overflow=10,
+                connect_args=connect_args,
+            )
     return _engine
 
 

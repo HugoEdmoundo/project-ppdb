@@ -126,9 +126,8 @@ export default function ProfilePage() {
         {/* ── Identity card ── */}
         <aside className="space-y-6">
           <Card className="overflow-hidden shadow-sm">
-            <div className="relative h-20 bg-gradient-to-br from-primary via-primary to-[#103D27]" />
-            <CardContent className="px-5 pb-5">
-              <div className="-mt-14 flex justify-center">
+            <CardContent className="px-5 pt-6 pb-5">
+              <div className="flex justify-center">
                 <AvatarEditor
                   value={form.avatar_url}
                   initials={initials}

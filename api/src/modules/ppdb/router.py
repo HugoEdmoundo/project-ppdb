@@ -612,6 +612,68 @@ def soft_delete_expired_applicants():
     return {"deleted": len(applicant_ids), "applicant_ids": applicant_ids}
 
 
+@router.post("/cron/reminders")
+def run_reminders():
+    """
+    Cron job run daily to send reminders.
+    """
+    pool = get_raw_pool()
+    now_wib = datetime.now(ZoneInfo("Asia/Jakarta"))
+    now_wib_str = now_wib.strftime("%Y-%m-%d %H:%M:%S")
+    
+    with pool.connect() as conn:
+        tomorrow_wib = now_wib + timedelta(days=1)
+        tomorrow_wib_str = tomorrow_wib.strftime("%Y-%m-%d %H:%M:%S")
+        
+        rows_payment = conn.execute(
+            text("""
+                SELECT id, user_id FROM ppdb_applicants 
+                WHERE payment_status = 'pending' 
+                AND payment_deadline > :now 
+                AND payment_deadline <= :tomorrow 
+                AND deleted_at IS NULL
+            """),
+            {"now": now_wib_str, "tomorrow": tomorrow_wib_str}
+        ).mappings().all()
+        
+        from src.core.notif_service import send_notification
+        
+        payment_reminded = 0
+        for r in rows_payment:
+            send_notification("payment_reminder_d7", r["user_id"], {"batas_waktu_bayar": tomorrow_wib_str})
+            payment_reminded += 1
+            
+        rows_docs = conn.execute(
+            text("""
+                SELECT a.id, a.user_id, DATEDIFF(w.document_upload_end_date, :now) as days_left
+                FROM ppdb_applicants a 
+                JOIN ppdb_waves w ON a.wave_id = w.id 
+                WHERE a.status IN ('document_uploaded_pending', 'document_rejected') 
+                AND w.document_upload_end_date IS NOT NULL
+                AND a.deleted_at IS NULL
+            """),
+            {"now": now_wib_str}
+        ).mappings().all()
+        
+        doc_reminded_h3 = 0
+        doc_reminded_h1 = 0
+        for r in rows_docs:
+            days_left = r["days_left"]
+            if days_left == 3:
+                send_notification("document_reminder_d3", r["user_id"], {})
+                doc_reminded_h3 += 1
+            elif days_left == 1:
+                send_notification("document_reminder_d1", r["user_id"], {})
+                doc_reminded_h1 += 1
+                
+    return {
+        "success": True,
+        "payment_reminded": payment_reminded,
+        "doc_reminded_h3": doc_reminded_h3,
+        "doc_reminded_h1": doc_reminded_h1
+    }
+
+
 # ---------------------------------------------------------------------------
 # Documents
 # ---------------------------------------------------------------------------

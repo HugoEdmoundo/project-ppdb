@@ -115,12 +115,13 @@ export default function ApplicantsPage() {
               onChange={(e: any) => setSearch(e.target.value)}
             />
           </div>
-          <Tabs value={statusFilter} onValueChange={handleStatusChange} className="w-full sm:w-auto">
-            <TabsList className="grid w-full grid-cols-4 sm:w-auto sm:inline-flex">
+          <Tabs value={statusFilter} onValueChange={handleStatusChange} className="w-full sm:w-auto overflow-x-auto">
+            <TabsList className="inline-flex w-max sm:w-auto">
               <TabsTrigger value="all" className="text-xs sm:text-sm">Semua</TabsTrigger>
               <TabsTrigger value="document_uploaded" className="text-xs sm:text-sm">Menunggu Verifikasi</TabsTrigger>
               <TabsTrigger value="document_approved" className="text-xs sm:text-sm">Disetujui</TabsTrigger>
               <TabsTrigger value="document_rejected" className="text-xs sm:text-sm">Ditolak</TabsTrigger>
+              <TabsTrigger value="expired" className="text-xs sm:text-sm">Expired</TabsTrigger>
             </TabsList>
           </Tabs>
           <Button type="submit" variant="secondary" className="shrink-0">Cari</Button>

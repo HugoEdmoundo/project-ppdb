@@ -133,3 +133,82 @@ def confirm_payment(id: str, user: dict = Depends(require_payment_admin)):
         send_notification("payment_success", user_id, {"nominal_bayar": tx["amount"]})
     
     return {"success": True, "message": "Payment confirmed successfully"}
+
+from fastapi import Request
+
+@router.post("/webhook")
+async def payment_webhook(request: Request):
+    """
+    Webhook for Payment Gateway (e.g., Midtrans)
+    """
+    payload = await request.json()
+    order_id = payload.get("order_id")
+    transaction_status = payload.get("transaction_status")
+    fraud_status = payload.get("fraud_status")
+    
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        tx_rows = conn.execute(
+            text("SELECT * FROM ppdb_payment_transactions WHERE id = :id"),
+            {"id": order_id}
+        ).mappings().all()
+        
+        if not tx_rows:
+            return {"status": "ignored", "message": "Transaction not found"}
+            
+        tx = tx_rows[0]
+        if tx["status"] == "success":
+            return {"status": "ignored", "message": "Already success"}
+            
+        new_status = tx["status"]
+        if transaction_status == "capture":
+            if fraud_status == "challenge":
+                new_status = "pending"
+            elif fraud_status == "accept":
+                new_status = "success"
+        elif transaction_status == "settlement":
+            new_status = "success"
+        elif transaction_status in ["cancel", "deny", "expire"]:
+            new_status = "expired" if transaction_status == "expire" else "failed"
+        elif transaction_status == "pending":
+            new_status = "pending"
+            
+        if new_status == tx["status"]:
+            return {"status": "ignored"}
+            
+        now_wib = datetime.now(WIB).strftime("%Y-%m-%d %H:%M:%S")
+        with conn.begin():
+            conn.execute(
+                text("UPDATE ppdb_payment_transactions SET status = :status, updated_at = :now WHERE id = :id"),
+                {"status": new_status, "now": now_wib, "id": order_id}
+            )
+            
+            if new_status == "success":
+                conn.execute(
+                    text("UPDATE ppdb_applicants SET payment_status = 'paid', status = 'document_uploaded_pending', updated_at = :now WHERE id = :applicant_id"),
+                    {"applicant_id": tx["applicant_id"], "now": now_wib}
+                )
+            elif new_status in ["failed", "expired"]:
+                conn.execute(
+                    text("UPDATE ppdb_applicants SET payment_status = :status, updated_at = :now WHERE id = :applicant_id"),
+                    {"status": new_status, "now": now_wib, "applicant_id": tx["applicant_id"]}
+                )
+                
+        applicant_rows = conn.execute(
+            text("SELECT user_id FROM ppdb_applicants WHERE id = :id"),
+            {"id": tx["applicant_id"]}
+        ).mappings().all()
+        
+        if applicant_rows:
+            user_id = applicant_rows[0]["user_id"]
+            from src.core.notif_service import send_notification
+            
+            if new_status == "success":
+                send_notification("payment_success", user_id, {"nominal_bayar": tx["amount"]})
+            elif new_status == "failed":
+                send_notification("payment_failed", user_id, {"alasan_kegagalan": "Pembayaran ditolak atau dibatalkan dari sistem."})
+            elif new_status == "expired":
+                send_notification("payment_expired", user_id, {})
+                
+    return {"status": "ok"}
+

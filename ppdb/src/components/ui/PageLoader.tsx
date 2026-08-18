@@ -17,8 +17,16 @@ export function PageLoader() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    settingsService.getLogo()
-      .then(data => { if (data?.value) setLogoUrl(data.value) })
+    settingsService.getAll()
+      .then(settings => {
+        const logo = settings.find((s: any) => s.key === 'logo')?.value
+        const favicon = settings.find((s: any) => s.key === 'favicon')?.value
+        if (logo) {
+          setLogoUrl(logo)
+        } else if (favicon) {
+          setLogoUrl(favicon)
+        }
+      })
       .catch(() => { /* silently fallback to text mark */ })
   }, [])
 

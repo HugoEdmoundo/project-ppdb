@@ -44,7 +44,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('ppdb_collapsed') === 'true')
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [logoUrl, setLogoUrl] = useState('/download.png')
+  const [logoUrl, setLogoUrl] = useState('')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
   const filtered = useFilteredNav(navItems as unknown as Parameters<typeof useFilteredNav>[0]) as NavItem[]
@@ -53,8 +53,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const loadLogo = () => {
       settingsService.getAll()
         .then((settings) => {
+          const logo = settings.find((s) => s.key === 'logo')?.value
           const favicon = settings.find((s) => s.key === 'favicon')?.value
-          setLogoUrl(favicon || '/download.png')
+          setLogoUrl(logo || favicon || '')
         })
         .catch(() => {})
     }
@@ -129,10 +130,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Header */}
         <div className={cn('relative flex items-center border-b border-border/60 bg-white/40', collapsed ? 'justify-center px-2 py-3' : 'px-5 py-4')}>
           {collapsed ? (
-            <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-auto max-w-8 object-contain" />
+            logoUrl ? <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-auto max-w-8 object-contain" /> : <div className="h-8 w-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg select-none">ار</div>
           ) : (
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 object-contain shrink-0" />
+              {logoUrl ? <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 object-contain shrink-0" /> : <div className="h-9 w-9 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg shrink-0 select-none">ار</div>}
               <div className="min-w-0">
                 <div className="font-heading text-sm font-bold text-foreground truncate">PTDARRAHMAN</div>
                 <div className="text-[11px] text-muted-foreground">PPDB Admin</div>

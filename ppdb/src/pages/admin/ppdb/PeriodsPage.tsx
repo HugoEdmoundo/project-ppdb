@@ -8,6 +8,7 @@ import {
   Badge, Button, Input, Label, Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogFooter, ConfirmDialog, Sheet, SheetContent, SheetHeader, SheetTitle, EmptyState
 } from '@/components/ui'
+import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { Plus, Edit, Trash2, CalendarDays, CheckCircle, XCircle, Layers, CalendarX2, Waves } from 'lucide-react'
 
 export default function PeriodsPage() {
@@ -126,7 +127,7 @@ export default function PeriodsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8">Memuat data...</TableCell></TableRow>
+                <TableSkeletonRows cols={6} rows={5} />
               ) : periods.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="py-8">

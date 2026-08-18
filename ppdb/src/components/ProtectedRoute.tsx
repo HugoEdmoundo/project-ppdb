@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth, usePermission } from '../contexts/AuthContext'
-import { Spinner } from '@/components/ui/Spinner'
+import { PageLoader } from '@/components/ui/PageLoader'
 
 export default function ProtectedRoute({ 
   children, 
@@ -16,11 +16,7 @@ export default function ProtectedRoute({
   const location = useLocation()
 
   if (loading) {
-    return (
-      <div className="min-h-dvh flex items-center justify-center bg-background">
-        <Spinner size="lg" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   if (!user) {

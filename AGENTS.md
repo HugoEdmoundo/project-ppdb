@@ -42,3 +42,11 @@ Permissions are defined per-module (`companyprofile`, `ppdb`, `payment`, `select
 ## Environment & Secrets
 - Uses `.env` files for local development. Never commit secrets.
 - Production uses Vercel/Cloudflare environment variables.
+
+## Dynamic Branding (Frontend Rule)
+- **Logo & Favicon** di semua frontend (PPDB, Superadmin) WAJIB diambil secara **dinamis** dari API via endpoint `/companyprofile/settings/{key}` (key: `logo`, `favicon`, `site_name`, dll).
+- **⚠️ No Static Brand Assets:** Tidak ada file logo/favicon statis di project ini. Jangan pernah gunakan `<img src="/logo.png">` atau path statis lainnya.
+- `settingsService.getLogo()` → GET `/companyprofile/settings/logo`
+- `settingsService.getFavicon()` → GET `/companyprofile/settings/favicon`
+- Perubahan brand tampil live via SSE (`/companyprofile/events`).
+

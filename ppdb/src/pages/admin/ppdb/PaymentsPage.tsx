@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
 import { CreditCard, CheckCircle } from 'lucide-react'
@@ -67,7 +68,7 @@ export default function PaymentsPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8">Memuat data...</TableCell></TableRow>
+              <TableSkeletonRows cols={6} rows={5} />
             ) : transactions.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-8">

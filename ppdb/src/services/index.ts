@@ -148,4 +148,5 @@ export const dashboardService = {
 export const settingsService = {
   getAll: () => apiFetch<{ key: string; value: string }[]>('/companyprofile/settings'),
   getFavicon: () => apiFetch<{ value: string }>('/companyprofile/settings/favicon'),
+  getLogo: () => apiFetch<{ value: string }>('/companyprofile/settings/logo'),
 }

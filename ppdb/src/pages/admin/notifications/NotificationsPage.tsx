@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
 import { notificationService } from '@/services/index'
+import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { Bell, Edit } from 'lucide-react'
 
 const VARS = ['{nama_peserta}', '{username}', '{email}', '{phone}', '{password}', '{link_login}', '{batas_waktu_bayar}', '{nama_gelombang}', '{tanggal_seleksi}', '{alasan_penolakan}', '{link_pembayaran}', '{nominal_bayar}']
@@ -104,7 +105,7 @@ export default function NotificationsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8">Memuat data...</TableCell></TableRow>
+                <TableSkeletonRows cols={5} rows={4} />
               ) : templates.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="py-8">

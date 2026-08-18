@@ -148,3 +148,26 @@
 .animate-shake {
   animation: shake 0.45s ease-in-out;
 }
+
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes logo-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.93); }
+}
+
+@keyframes ring-spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-logo-pulse {
+  animation: logo-pulse 2s ease-in-out infinite;
+}
+
+.animate-ring-spin {
+  animation: ring-spin 1.1s linear infinite;
+}
+

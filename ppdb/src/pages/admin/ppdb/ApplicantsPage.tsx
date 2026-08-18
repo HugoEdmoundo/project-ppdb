@@ -12,6 +12,7 @@ import { Eye, Search, GraduationCap, UserRoundSearch, FileCheck2, FileText, Chec
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { Textarea } from '@/components/ui/Textarea'
 import { Can } from '@/components/Permission'
+import { TableSkeletonRows } from '@/components/ui/Skeleton'
 
 export default function ApplicantsPage() {
   const { toast } = useToast()
@@ -144,7 +145,7 @@ export default function ApplicantsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8">Memuat data...</TableCell></TableRow>
+                <TableSkeletonRows cols={7} rows={6} />
               ) : applicants.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="py-8">

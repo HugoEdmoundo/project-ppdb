@@ -55,8 +55,21 @@ Wrapped in `AdminLayout` (`src/layouts/AdminLayout.tsx`):
 - **Backend Enforced:** Keamanan absolut selalu divalidasi juga oleh Backend API.
 
 ## Dynamic Branding & Events
-- **Favicon & Logo:** Di-fetch dinamis via `settingsService.getAll()` / `/companyprofile/settings/favicon` dari API.
+- **Favicon & Logo:** Di-fetch dinamis via `settingsService.getFavicon()` dan `settingsService.getLogo()` dari endpoint `/companyprofile/settings/{key}`.
+- **⚠️ WAJIB — No Static Logo:** Tidak ada aset logo statis di project ini. Logo HARUS selalu diambil secara dinamis dari API. Jangan pernah hardcode path gambar logo.
 - **Real-time Updates:** Perubahan pada brand otomatis live di client melalui Server-Sent Events (SSE) yang listening di `/companyprofile/events` (lihat `App.tsx` & `AdminLayout.tsx`).
+
+## Loading System (`src/components/ui/`)
+- **`PageLoader`** — Full-screen branded loader digunakan di `ProtectedRoute` saat auth check.
+  - Logo diambil **dinamis** via `settingsService.getLogo()` (GET `/companyprofile/settings/logo`), fallback ke text mark jika belum tersedia.
+  - Animasi: dual SVG arc spinner (emerald luar + gold dalam, counter-rotating) + logo pulse + staggered dots.
+  - CSS: pure CSS keyframes (`ring-spin`, `logo-pulse`) di `index.css`. SVG arc gap menggunakan `strokeDasharray`.
+  - **Dilarang** pakai `<img src="/logo.png">` atau aset statis apapun.
+- **`Skeleton`** — Shimmer gradient (flowing `before:` pseudo-element) menggantikan `animate-pulse` biasa.
+- **`TableSkeletonRows`** — Renders N baris skeleton di dalam `<TableBody>` untuk replace teks "Memuat data...".
+  - Usage: `<TableSkeletonRows cols={7} rows={6} />` di dalam blok `{loading ? (...) : ...}`.
+  - Tiap sel punya lebar variatif + stagger delay buat kesan loading yang natural.
+
 
 ## Build & Run
 - `npm run dev` — Start Vite dev server.

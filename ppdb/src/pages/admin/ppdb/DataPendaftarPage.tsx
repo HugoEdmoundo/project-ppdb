@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { Search, UserRoundSearch } from 'lucide-react'
 
 export default function DataPendaftarPage() {
@@ -85,7 +86,7 @@ export default function DataPendaftarPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8">Memuat data...</TableCell></TableRow>
+                <TableSkeletonRows cols={7} rows={6} />
               ) : applicants.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="py-8">

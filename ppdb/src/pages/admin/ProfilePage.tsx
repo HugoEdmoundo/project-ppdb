@@ -129,7 +129,7 @@ export default function AdminProfilePage() {
         {/* ── Identity card ── */}
         <aside className="space-y-6">
           <Card className="overflow-hidden shadow-sm">
-            <CardContent className="px-5 pb-5">
+            <CardContent className="px-5 pt-6 pb-5">
               <div className="flex justify-center">
                 <AvatarEditor
                   value={form.avatar_url}

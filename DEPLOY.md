@@ -9,13 +9,13 @@ Arsitektur produksi:
 | `superadmin` | Cloudflare Pages (static) | git / `wrangler pages deploy` |
 | `api` | Vercel (FastAPI) | Vercel dashboard / `vercel --prod` |
 
-Production API URL: **https://project-ppdb-murex.vercel.app**
+Production API URL: **https://api-lime-zeta-22.vercel.app**
 
 ---
 
 ## `api` → Vercel
 
-Sudah ter-deploy di https://project-ppdb-murex.vercel.app. Untuk update, deploy ulang folder `api` (Vercel project root directory = `api/`). Vercel mendeteksi FastAPI otomatis (entrypoint `src/main.py`, variabel `app`).
+Sudah ter-deploy di https://api-lime-zeta-22.vercel.app. Untuk update, deploy ulang folder `api` (Vercel project root directory = `api/`). Vercel mendeteksi FastAPI otomatis (entrypoint `src/main.py`, variabel `app`).
 
 - **Dokumentasi API**: `/scalar` (Swagger `/docs` & `/redoc` sengaja dimatikan).
 - **Favicon**: route `/favicon.ico` dibalikin SVG, tidak 404 lagi.
@@ -83,7 +83,7 @@ Vite SPA, static. Sudah ada `wrangler.toml` (`pages_build_output_dir = "dist"`) 
 Via dashboard Cloudflare Pages (connect GitHub, root dir = folder app):
 - Build command: `npm run build`
 - Output directory: `dist`
-- Env var: `VITE_API_URL=https://project-ppdb-murex.vercel.app`
+- Env var: `VITE_API_URL=https://api-lime-zeta-22.vercel.app`
 
 Atau via CLI (jika mau):
 ```bash

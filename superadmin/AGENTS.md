@@ -32,7 +32,7 @@ The application is a Single Page Application (SPA) with the following routes:
 
 ## API Integration (`src/api/client.ts`)
 - The `apiFetch` wrapper handles automatic token injection and token refresh logic.
-- **Base URL:** Defined via the `VITE_API_URL` environment variable, falling back to `https://project-ppdb-murex.vercel.app`. The Vite dev server proxies `/companyprofile` to `http://localhost:8000` via `vite.config.ts`.
+- **Base URL:** Defined via the `VITE_API_URL` environment variable, falling back to `https://api-lime-zeta-22.vercel.app`. The Vite dev server proxies `/companyprofile` to `http://localhost:8000` via `vite.config.ts`.
 - **Endpoints Interacted With:**
   - **Auth:** `/companyprofile/auth/login`, `/companyprofile/auth/me`, `/companyprofile/auth/refresh`, `/companyprofile/auth/logout`.
   - **Users:** `/users` (CRUD).

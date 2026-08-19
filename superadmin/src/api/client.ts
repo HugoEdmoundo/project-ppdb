@@ -1,7 +1,7 @@
 import type { AuthUser, LoginResponse, User, Role, Module, UserPagePermissions } from '../types'
 
-const PRIMARY_API = (import.meta.env.VITE_API_URL || 'https://project-ppdb-murex.vercel.app').replace(/\/+$/, '')
-const FALLBACK_API = 'https://project-ppdb-murex.vercel.app'
+const PRIMARY_API = (import.meta.env.VITE_API_URL || 'https://api-lime-zeta-22.vercel.app').replace(/\/+$/, '')
+const FALLBACK_API = 'https://api-lime-zeta-22.vercel.app'
 const API_BASE = PRIMARY_API
 
 function isRetryableStatus(status: number): boolean {

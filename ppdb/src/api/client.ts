@@ -1,8 +1,8 @@
 const TOKEN_KEY = 'ppdb_token'
 const REFRESH_KEY = 'ppdb_refresh'
 const USER_KEY = 'ppdb_user'
-export const PRIMARY_API = (import.meta.env.VITE_API_URL || 'https://project-ppdb-murex.vercel.app').replace(/\/+$/, '')
-export const FALLBACK_API = 'https://project-ppdb-murex.vercel.app'
+export const PRIMARY_API = (import.meta.env.VITE_API_URL || 'https://api-lime-zeta-22.vercel.app').replace(/\/+$/, '')
+export const FALLBACK_API = 'https://api-lime-zeta-22.vercel.app'
 export const API_BASE = PRIMARY_API
 
 function isRetryableStatus(status: number): boolean {

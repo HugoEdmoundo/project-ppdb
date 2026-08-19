@@ -11,8 +11,8 @@ import type {
   Testimonial,
 } from './types'
 
-export const PRIMARY_API = (process.env.NEXT_PUBLIC_API_URL || 'https://project-ppdb-murex.vercel.app').replace(/\/+$/, '')
-export const FALLBACK_API = 'https://project-ppdb-murex.vercel.app'
+export const PRIMARY_API = (process.env.NEXT_PUBLIC_API_URL || 'https://api-lime-zeta-22.vercel.app').replace(/\/+$/, '')
+export const FALLBACK_API = 'https://api-lime-zeta-22.vercel.app'
 export const API_BASE = PRIMARY_API
 const TOKEN_KEY = 'admin_token'
 const REFRESH_KEY = 'admin_refresh'

@@ -1,0 +1,81 @@
+[1. ISI DATA AWAL]
+       │
+       ▼
+[2. SISTEM VALIDASI EMAIL / NO. WA]
+       │
+       ├───► (TIDAK VALID) ──► Tampilkan Pesan Error / Minta Input Ulang
+       │
+       ▼ (VALID)
+[3. SISTEM GENERATE CREDENTIALS & TOKEN LINK]
+       │
+       ▼
+[4. KIRIM EMAIL & WA] ──► (Isi: Username, Password, Link Direct Login + Notif Step Selanjutnya)
+       │
+       ▼
+[5. PENDAFTAR KLIK LINK DIRECT LOGIN]
+       │
+       ▼
+[6. DIRECT REDIRECT KE HALAMAN PEMBAYARAN]
+   (Paywall Strict: Tidak ada CTA/Menu ke fitur lain. Berisi Banner Penjelasan Alur & Instruksi)
+       │
+       ├─────────────────────────────────────────┐
+       ▼ (Metode Online)                         ▼ (Metode Offline)
+[7a. BAYAR VIA PAYMENT GATEWAY / SIMULATOR] [7b. BAYAR CASH KE PANITIA]
+       │                                         │
+       ▼                                         ▼
+[8a. WEBHOOK SISTEM AUTOMATION]           [8b. ADMIN VERIFIKASI MANUALLY]
+       │                                   (Admin Klik "Sudah Bayar")
+       │                                         │
+       ├─────────────────────────────────────────┘
+       │
+       ▼
+[9. CEK STATUS PEMBAYARAN]
+       │
+       ├──────────────────────────────────────────────────────────────────────┐
+       ▼ (PEMBAYARAN GAGAL / TRANSACTION FAILED)                              │
+[9a. KIRIM NOTIF EMAIL & WA: PEMBAYARAN GAGAL]                                │
+ (Isi: Alasan Gagal & Instuksi Coba Lagi / Hubungi Admin)                     │
+       │                                                                      │
+       ├──────────────────────────────────────────────────────────────────────┤
+       │                                                                      │
+       ▼ (HARI KE-7: BELUM BAYAR)                                             ▼ (PEMBAYARAN SUCCESS)
+[10a. AUTOREMINDER PEMBAYARAN (EMAIL/WA)]                             [10e. KIRIM NOTIF EMAIL & WA: SUCCESS]
+ (Peringatan: Besok hari terakhir/ke-8 pendaftaran expired)            (Isi: Bukti Bayar & Step Selanjutnya: Upload Dokumen)
+       │                                                                      │
+       ▼ (HARI KE-8: TETAP BELUM BAYAR)                                       ▼
+[10b. CRON JOB SISTEM: SOFT DELETE DATA]                              [11. UNLOCK DASHBOARD: FORM UPLOAD DOKUMEN]
+ (Flag Status: EXPIRED_DELETED / Data Disembunyikan dari User)                │
+       │                                                                      ▼
+       ▼                                                              [12. PENDAFTAR UPLOAD DOKUMEN]
+[10c. KIRIM NOTIF EMAIL & WA: EXPIRED]                                 (Batas Waktu Mengikuti Config Tanggal di Gelombang)
+ (Instruksi: Pendaftaran Expired, Wajib Registrasi Ulang)                     │
+       │                                                                      │
+       ▼                                      ┌───────────────────────────────┴───────────────────────────────┐
+[10d. DATA DITAMPILKAN DI TAB ADMIN]          ▼ (Belum Upload Dokumen)                                        ▼ (Sudah Upload Dokumen)
+ (Admin bisa rekap pendaftar Expired/Gagal) [12a. REMINDER UPLOAD DOKUMEN]                                      [13. ADMIN PERIKSA DOKUMEN MANUAL]
+                                             (Auto H-3 & H-1 Batas Upload Gelombang)                                            │
+                                                                                                ┌───────────────────────────────┴───────────────────────────────┐
+                                                                                                ▼ (REJECTED)                                                    ▼ (APPROVED)
+                                                                                    [14a. NOTIF WA/EMAIL: REJECT]                                   [14b. NOTIF WA/EMAIL: SUCCESS]
+                                                                                     (Isi: Alasan & Step selanjutnya: Re-upload)                     (Isi: Step selanjutnya: Menunggu Jadwal Seleksi)
+                                                                                                │                                                               │
+                                                                                                ▼                                                               ▼
+                                                                                    [Pendaftar Re-upload Dokumen]                                   [15. MASUK DAFTAR PESERTA SELEKSI]
+                                                                                                                                                                │
+                                                                                                                            ┌───────────────────────────────────┴───────────────────────────────────┐
+                                                                                                                            ▼ (H-5 Seleksi)                                                         ▼ (H-1 Seleksi)
+                                                                                                                [16a. AUTOMATED REMINDER 1]                                             [16b. AUTOMATED REMINDER 2]
+                                                                                                                (Kirim Email & WA H-5 Seleksi)                                          (Kirim Email & WA H-1 Seleksi)
+                                                                                                                (Isi: Lokasi/Link, Waktu, & Step selanjutnya)                            (Isi: Pengingat Final H-1)
+                                                                                                                            │                                                                       │
+                                                                                                                            └───────────────────────────────────┬───────────────────────────────────┘
+                                                                                                                                                                │
+                                                                                                                                                                ▼
+                                                                                                                                                   [17. PELAKSANAAN SELEKSI]
+                                                                                                                                                                │
+                                                                                                                                                                ▼
+                                                                                                                                                   [18. ADMIN INPUT HASIL SELEKSI]
+                                                                                                                                                   (Custom Test Data / Nilai Test)
+                                                                                                                                                                │
+                                                                                                                                                                ▼
+                                                                                                                                                 [19. PENGUMUMAN HASIL AKHIR]

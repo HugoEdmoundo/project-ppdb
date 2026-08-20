@@ -6,6 +6,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # --- Database ---
+    # Set DATABASE_URL to override MySQL settings entirely (e.g. sqlite:///./dev.db for local dev)
+    database_url: Optional[str] = None
+
     mysql_host: str = "127.0.0.1"
     mysql_port: int = 3306
     mysql_user: str = "root"
@@ -23,7 +26,7 @@ class Settings(BaseSettings):
     cors_origin_regex: str = ""
 
     # --- Uploads ---
-    upload_provider: str = "cloudinary"  # cloudinary | local
+    upload_provider: str = "local"  # local
     upload_dir: str = "uploads"
 
     cloudinary_cloud_name: Optional[str] = None

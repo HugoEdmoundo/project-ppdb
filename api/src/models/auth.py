@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, text
-from sqlalchemy.dialects.mysql import DATETIME, JSON, LONGTEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base
@@ -19,14 +18,14 @@ class User(Base):
     role_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("roles.id"), index=True)
     user_type: Mapped[str] = mapped_column(String(50), default="admin")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    profile: Mapped[Optional[dict]] = mapped_column(LONGTEXT)
+    profile: Mapped[Optional[dict]] = mapped_column(Text)
     full_name: Mapped[str] = mapped_column(String(255), default="")
     avatar_url: Mapped[str] = mapped_column(String(255), default="")
-    last_login_at: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3))
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
-    locked_until: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3))
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class Role(Base):
@@ -37,9 +36,9 @@ class Role(Base):
     description: Mapped[Optional[str]] = mapped_column(Text)
     is_superadmin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_system: Mapped[bool] = mapped_column(Boolean, default=False)
-    permissions: Mapped[Optional[dict]] = mapped_column(LONGTEXT)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    permissions: Mapped[Optional[dict]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class RefreshToken(Base):
@@ -48,11 +47,9 @@ class RefreshToken(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
     token_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     revoked: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DATETIME(fsp=3), server_default=text("CURRENT_TIMESTAMP(3)")
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class UserPagePermission(Base):
@@ -61,7 +58,7 @@ class UserPagePermission(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"))
     page_id: Mapped[str] = mapped_column(String(36), ForeignKey("pages.id", ondelete="CASCADE"))
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class AuditLog(Base):
@@ -73,11 +70,9 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(Text, nullable=False)
     entity_type: Mapped[str] = mapped_column(Text, nullable=False)
     entity_id: Mapped[Optional[str]] = mapped_column(Text)
-    changes: Mapped[Optional[dict]] = mapped_column(LONGTEXT)
+    changes: Mapped[Optional[dict]] = mapped_column(Text)
     ip_address: Mapped[Optional[str]] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(
-        DATETIME(fsp=3), server_default=text("CURRENT_TIMESTAMP(3)"), index=True
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
 
 
 class Module(Base):
@@ -86,8 +81,8 @@ class Module(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     key: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class Page(Base):
@@ -99,5 +94,5 @@ class Page(Base):
     label: Mapped[str] = mapped_column(String(255), nullable=False)
     icon: Mapped[str] = mapped_column(String(50), default="")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

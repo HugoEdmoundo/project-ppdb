@@ -422,11 +422,11 @@ def register_applicant(body: ApplicantRegister):
             [
                 ("welcome", {
                     "password": raw_password,
-                    "link_login": "https://ppdb.ptdarrahman.sch.id/auth/login", # TBD
+                    "link_login": "http://localhost:5174/auth/login", # TBD
                     "batas_waktu_bayar": created_applicant["payment_deadline"],
                 }),
                 ("payment_reminder", {
-                    "link_pembayaran": "https://ppdb.ptdarrahman.sch.id/checkout", # TBD
+                    "link_pembayaran": "http://localhost:5174/checkout", # TBD
                     "batas_waktu_bayar": created_applicant["payment_deadline"],
                 }),
             ],
@@ -530,7 +530,7 @@ def reset_applicant_password(
         send_notifications(
             [("password_reset", {
                 "password": new_password,
-                "link_login": "https://ppdb.ptdarrahman.sch.id/auth/login",  # TBD
+                "link_login": "http://localhost:5174/auth/login",  # TBD
             })],
             user_id,
             user_row=user_row,
@@ -656,20 +656,30 @@ def run_reminders():
             
         rows_docs = conn.execute(
             text("""
-                SELECT a.id, a.user_id, DATEDIFF(w.document_upload_end_date, :now) as days_left
+                SELECT a.id, a.user_id, w.document_upload_end_date
                 FROM ppdb_applicants a 
                 JOIN ppdb_waves w ON a.wave_id = w.id 
                 WHERE a.status IN ('document_uploaded_pending', 'document_rejected') 
                 AND w.document_upload_end_date IS NOT NULL
                 AND a.deleted_at IS NULL
-            """),
-            {"now": now_wib_str}
+            """)
         ).mappings().all()
         
         doc_reminded_h3 = 0
         doc_reminded_h1 = 0
         for r in rows_docs:
-            days_left = r["days_left"]
+            end_date = r["document_upload_end_date"]
+            if isinstance(end_date, str):
+                try:
+                    end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    end_date = datetime.strptime(end_date, "%Y-%m-%d")
+            
+            if hasattr(end_date, "date"):
+                days_left = (end_date.date() - now_wib.date()).days
+            else:
+                continue
+                
             if days_left == 3:
                 send_notification("document_reminder_d3", r["user_id"], {})
                 doc_reminded_h3 += 1

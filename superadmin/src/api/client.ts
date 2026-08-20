@@ -1,35 +1,9 @@
 import type { AuthUser, LoginResponse, User, Role, Module, UserPagePermissions } from '../types'
 
-const PRIMARY_API = (import.meta.env.VITE_API_URL || 'https://api-lime-zeta-22.vercel.app').replace(/\/+$/, '')
-const FALLBACK_API = 'https://api-lime-zeta-22.vercel.app'
-const API_BASE = PRIMARY_API
-
-function isRetryableStatus(status: number): boolean {
-  return status === 404 || status >= 500
-}
+export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 
 async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Response> {
-  if (API_BASE === FALLBACK_API) return fetch(url, opts)
-
-  const fallbackUrl = url.replace(PRIMARY_API, FALLBACK_API)
-
-  let res: Response
-  try {
-    const signal = opts?.body ? undefined : AbortSignal.timeout(3000)
-    res = await fetch(url, signal ? { ...opts, signal } : opts)
-  } catch {
-    // API lokal tidak terjangkau atau timeout -> coba API produksi
-    return fetch(fallbackUrl, opts)
-  }
-
-  if (isRetryableStatus(res.status)) {
-    try {
-      return await fetch(fallbackUrl, opts)
-    } catch {
-      return res
-    }
-  }
-  return res
+  return fetch(url, opts)
 }
 
 const TOKEN_KEY = 'sa_token'
@@ -340,4 +314,4 @@ export async function getNotificationLogs(params?: any): Promise<any> {
 
 // ── Helpers ───────────────────────────────────────────────
 
-export { getToken, getStoredUser, clearAuth, API_BASE, apiFetch }
+export { getToken, getStoredUser, clearAuth, apiFetch }

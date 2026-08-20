@@ -9,7 +9,6 @@ Main public website + admin dashboard for Pesantren Tahfidz Qur'an dan Digital A
 - **UI/Animation**: `lucide-react`, `framer-motion`, `gsap`
 - **Security**: `dompurify`
 - **Fonts**: `Inter`, `DM_Sans`, `Playfair_Display`, `Amiri` via `next/font/google`
-- **Deployment**: Cloudflare Workers via `@opennextjs/cloudflare`
 - **Build Tools**: ESLint 9
 
 ## Routes
@@ -32,7 +31,7 @@ Main public website + admin dashboard for Pesantren Tahfidz Qur'an dan Digital A
 - **Path Alias**: All imports use the `@/...` path alias (e.g., `@/app/...`).
 
 ## Backend & API
-- **Backend Architecture**: FastAPI monolithic backend (located in `../api/`), deployed separately (Vercel). NOT Postgres/Hono.
+- **Backend Architecture**: FastAPI monolithic backend (located in `../api/`). NOT Postgres/Hono.
 - **API Client**: Handled centrally in `app/lib/api.ts` with fallback mechanisms (`fetchWithFallback`).
 - **Public API**: Fetched via `GET /companyprofile/{table}`.
 - **Admin CRUD**: Managed via `POST/PUT/DELETE /companyprofile/{table}[/{id}]`.
@@ -69,6 +68,3 @@ Main public website + admin dashboard for Pesantren Tahfidz Qur'an dan Digital A
 - `npm run dev` — Local development (port 3000)
 - `npm run lint` — ESLint 9 with `--cache`
 - `npm run build` — Standard Next.js build
-- `npm run preview` — Cloudflare preview via OpenNext
-- `npm run deploy` — Deploy to Cloudflare Workers via OpenNext
-- **Cloudflare Config**: `wrangler.jsonc` points to `.open-next/worker.js`, enables `nodejs_compat`. `open-next.config.ts` handles the OpenNext configuration.

@@ -7,6 +7,12 @@
 __pycache__/
 *.pyc
 .venv/
+.venv_dev
+.venv_linux
+.venv_new
+.venv_new_bash
+.venv_new_bash2
+.venv_temp
 .venv_*/
 venv/
 

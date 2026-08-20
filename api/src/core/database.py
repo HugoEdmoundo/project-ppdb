@@ -39,6 +39,17 @@ def _require_ident(name: str) -> str:
 def get_engine() -> Engine:
     global _engine
     if _engine is None:
+        # --- SQLite / custom DATABASE_URL override (local dev) ---
+        if settings.database_url:
+            from sqlalchemy.pool import StaticPool
+            _engine = create_engine(
+                settings.database_url,
+                connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
+                poolclass=StaticPool if "sqlite" in settings.database_url else None,
+            )
+            return _engine
+
+        # --- MySQL (production / default) ---
         url = URL.create(
             drivername="mysql+pymysql",
             username=settings.mysql_user,
@@ -50,7 +61,7 @@ def get_engine() -> Engine:
         connect_args: dict[str, Any] = {"charset": "utf8mb4"}
         if settings.mysql_ssl:
             connect_args["ssl"] = {}
-            
+
         if os.getenv("VERCEL"):
             _engine = create_engine(
                 url,
@@ -61,7 +72,7 @@ def get_engine() -> Engine:
             _engine = create_engine(
                 url,
                 pool_pre_ping=True,
-                pool_recycle=3600,
+                pool_recycle=280,
                 pool_size=5,
                 max_overflow=10,
                 connect_args=connect_args,

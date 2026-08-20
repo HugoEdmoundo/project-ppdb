@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Integer, String, Text
-from sqlalchemy.dialects.mysql import DATETIME, LONGTEXT
+from sqlalchemy import DateTime, Integer, String, Text
+
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base
@@ -16,10 +16,10 @@ class NewsArticle(Base):
     image: Mapped[Optional[str]] = mapped_column(String(255))
     category: Mapped[str] = mapped_column(String(100), nullable=False)
     date: Mapped[Optional[str]] = mapped_column(String(50))
-    gallery: Mapped[Optional[dict]] = mapped_column(LONGTEXT)
-    content: Mapped[Optional[dict]] = mapped_column(LONGTEXT)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    gallery: Mapped[Optional[dict]] = mapped_column(Text)
+    content: Mapped[Optional[dict]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class Program(Base):
@@ -29,9 +29,9 @@ class Program(Base):
     slug: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     icon: Mapped[Optional[str]] = mapped_column(String(255))
     image: Mapped[Optional[str]] = mapped_column(String(255))
-    content: Mapped[Optional[dict]] = mapped_column(LONGTEXT)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    content: Mapped[Optional[dict]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class Facility(Base):
@@ -40,9 +40,9 @@ class Facility(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     image: Mapped[Optional[str]] = mapped_column(String(255))
     category: Mapped[str] = mapped_column(String(100), nullable=False)
-    content: Mapped[Optional[dict]] = mapped_column(LONGTEXT)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    content: Mapped[Optional[dict]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class Staff(Base):
@@ -51,9 +51,9 @@ class Staff(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     image: Mapped[Optional[str]] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(100), nullable=False)
-    content: Mapped[Optional[dict]] = mapped_column(LONGTEXT)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    content: Mapped[Optional[dict]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class Achievement(Base):
@@ -62,9 +62,9 @@ class Achievement(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     year: Mapped[int] = mapped_column(Integer, nullable=False)
     image: Mapped[Optional[str]] = mapped_column(String(255))
-    content: Mapped[Optional[dict]] = mapped_column(LONGTEXT)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    content: Mapped[Optional[dict]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class GalleryItem(Base):
@@ -73,9 +73,9 @@ class GalleryItem(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     image: Mapped[Optional[str]] = mapped_column(String(255))
     category: Mapped[str] = mapped_column(String(100), nullable=False)
-    content: Mapped[Optional[dict]] = mapped_column(LONGTEXT)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    content: Mapped[Optional[dict]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class Testimonial(Base):
@@ -86,9 +86,9 @@ class Testimonial(Base):
     child: Mapped[str] = mapped_column(String(255), nullable=False)
     image: Mapped[Optional[str]] = mapped_column(String(255))
     order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    content: Mapped[Optional[dict]] = mapped_column(LONGTEXT)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    content: Mapped[Optional[dict]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class SocialLink(Base):
@@ -98,8 +98,8 @@ class SocialLink(Base):
     label: Mapped[str] = mapped_column(String(255), nullable=False)
     href: Mapped[str] = mapped_column(String(255), nullable=False)
     path: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class SiteSetting(Base):
@@ -107,8 +107,8 @@ class SiteSetting(Base):
 
     key: Mapped[str] = mapped_column(String(255), primary_key=True)
     value: Mapped[Optional[str]] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class ContactInfo(Base):
@@ -122,5 +122,5 @@ class ContactInfo(Base):
     email_primary: Mapped[Optional[str]] = mapped_column(String(255))
     email_admission: Mapped[Optional[str]] = mapped_column(String(255))
     office_hours: Mapped[Optional[str]] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

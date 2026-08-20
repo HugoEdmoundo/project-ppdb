@@ -19,21 +19,11 @@ from fastapi.middleware.cors import CORSMiddleware
 logger = logging.getLogger("ptdarrahman.cors")
 
 # Explicit allowlist used when CORS_ORIGINS is empty/unset.
-DEFAULT_ORIGINS = [
-    "https://ppdb.ptdarrahman.sch.id",
-    "https://superadmin.ptdarrahman.sch.id",
-    "https://companyprofile.ptdarrahman.sch.id",
-    "https://ppdb-cct.pages.dev",
-    "https://superadmin-fxc.pages.dev",
-]
+DEFAULT_ORIGINS = []
 
-# Covers every local dev port + all Cloudflare Pages/Workers preview & production
-# subdomains + every subdomain of the production domain.
+# Covers every local dev port
 DEFAULT_ORIGIN_REGEX = re.compile(
     r"^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$"
-    r"|^https://([a-z0-9-]+\.)*pages\.dev$"
-    r"|^https://([a-z0-9-]+\.)*workers\.dev$"
-    r"|^https://([a-z0-9-]+\.)*ptdarrahman\.sch\.id$"
 )
 
 

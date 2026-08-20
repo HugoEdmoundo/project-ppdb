@@ -1,8 +1,8 @@
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import BigInteger, Boolean, Date, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.mysql import DATETIME
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Integer, String, Text
+
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base
@@ -18,8 +18,8 @@ class PPDBPeriod(Base):
     academic_year: Mapped[Optional[str]] = mapped_column(String(20))
     description: Mapped[Optional[str]] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="inactive")
-    created_at: Mapped[datetime] = mapped_column(DATETIME, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class PPDBWave(Base):
@@ -39,8 +39,8 @@ class PPDBWave(Base):
     registration_fee: Mapped[int] = mapped_column(BigInteger, default=0)
     second_stage_fee: Mapped[int] = mapped_column(BigInteger, default=0)
     status: Mapped[str] = mapped_column(String(20), default="inactive")
-    created_at: Mapped[datetime] = mapped_column(DATETIME, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class PPDBApplicant(Base):
@@ -75,13 +75,13 @@ class PPDBApplicant(Base):
     # payment_status: pending | paid | failed | expired
     payment_status: Mapped[str] = mapped_column(String(20), default="pending")
     # Batas waktu bayar = created_at + 7 hari (diisi saat register)
-    payment_deadline: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3))
+    payment_deadline: Mapped[Optional[datetime]] = mapped_column(DateTime)
     # ── Soft Delete (Hari ke-8 belum bayar → cron job set deleted_at) ────────
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3), default=None)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
     # Alasan penolakan dokumen (diisi admin saat verifikasi; NULL saat belum/sudah disetujui)
     rejection_reason: Mapped[Optional[str]] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class FileUpload(Base):
@@ -97,7 +97,7 @@ class FileUpload(Base):
     public_url: Mapped[Optional[str]] = mapped_column(String(500))
     entity_type: Mapped[Optional[str]] = mapped_column(String(50))
     entity_id: Mapped[Optional[str]] = mapped_column(String(50))
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class Student(Base):
@@ -122,14 +122,14 @@ class Student(Base):
     photo: Mapped[str] = mapped_column(String(255), default="")
     previous_school: Mapped[str] = mapped_column(String(255), default="")
     registration_number: Mapped[str] = mapped_column(String(100), default="")
-    registration_date: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3))
+    registration_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
     program: Mapped[str] = mapped_column(String(255), default="")
     class_name: Mapped[str] = mapped_column(String(255), default="")
     academic_year: Mapped[str] = mapped_column(String(20), default="")
     status: Mapped[str] = mapped_column(String(20), default="active")
     notes: Mapped[Optional[str]] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class SPPBill(Base):
@@ -142,10 +142,10 @@ class SPPBill(Base):
     nominal: Mapped[int] = mapped_column(BigInteger, default=0)
     total_paid: Mapped[int] = mapped_column(BigInteger, default=0)
     status: Mapped[str] = mapped_column(String(20), default="unpaid")
-    due_date: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3))
+    due_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
     notes: Mapped[Optional[str]] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class SPPPayment(Base):
@@ -161,11 +161,11 @@ class SPPPayment(Base):
     status: Mapped[str] = mapped_column(String(20), default="pending")
     rejection_reason: Mapped[Optional[str]] = mapped_column(Text)
     confirmed_by: Mapped[Optional[str]] = mapped_column(String(36))
-    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3))
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     notes: Mapped[Optional[str]] = mapped_column(Text)
     paid_by: Mapped[Optional[str]] = mapped_column(String(36))
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class SPPSetting(Base):
@@ -176,8 +176,8 @@ class SPPSetting(Base):
     academic_year: Mapped[str] = mapped_column(String(20), nullable=False)
     nominal: Mapped[int] = mapped_column(BigInteger, default=0)
     is_active: Mapped[bool] = mapped_column("is_active", nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class RateLimit(Base):
@@ -223,10 +223,10 @@ class PPDBPaymentTransaction(Base):
     proof_url: Mapped[Optional[str]] = mapped_column(Text)
     # Admin yang mengkonfirmasi (untuk metode offline)
     confirmed_by: Mapped[Optional[str]] = mapped_column(String(36))
-    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3))
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     notes: Mapped[Optional[str]] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -273,8 +273,8 @@ class NotificationTemplate(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     # True = template ini diaktifkan / akan dikirim sistem
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class NotificationLog(Base):
@@ -308,5 +308,5 @@ class NotificationLog(Base):
     # Pesan error jika gagal
     error_message: Mapped[Optional[str]] = mapped_column(Text)
     # Timestamp kirim / gagal
-    sent_at: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=3))
-    created_at: Mapped[datetime] = mapped_column(DATETIME(fsp=3), nullable=False)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

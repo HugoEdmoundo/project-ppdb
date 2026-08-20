@@ -434,6 +434,8 @@ def ensure_superadmin() -> None:
             "role_id": role_id,
             "user_type": "superadmin",
             "full_name": "Super Admin",
+            "avatar_url": "",
+            "phone": None,
             "is_active": 1,
             "created_at": now,
             "updated_at": now,

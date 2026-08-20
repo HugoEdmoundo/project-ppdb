@@ -57,7 +57,7 @@ setup_cors(app, settings)
 # --- Utility routes ---
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "ptdarrahman-api"}
+    return {"status": "gwenchana", "service": "geprek-service-engine-machine-wkwk"}
 
 
 @app.get("/scalar", include_in_schema=False)

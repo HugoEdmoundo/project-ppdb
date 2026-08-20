@@ -8,7 +8,7 @@ import { socialLinks } from '@/app/data/social'
 import { getSettings } from '@/app/lib/api'
 
 export default function Footer() {
-  const [logoUrl, setLogoUrl] = useState('/logo.png')
+  const [logoUrl, setLogoUrl] = useState('')
 
   useEffect(() => {
     getSettings()
@@ -36,11 +36,15 @@ export default function Footer() {
           {/* Logo & About */}
           <div className="sm:col-span-2 lg:col-span-4">
             <div className="flex items-center gap-3 mb-5">
-              <img
-                src={logoUrl}
-                alt="PTDARRAHMAN Logo"
-                className="h-12 w-auto object-contain"
-              />
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt="PTDARRAHMAN Logo"
+                  className="h-12 w-auto object-contain"
+                />
+              ) : (
+                <div className="h-12 w-12 rounded bg-[var(--accent)] flex items-center justify-center text-white font-bold text-lg select-none">ار</div>
+              )}
               <div>
                 <div className="font-[var(--font-heading)] text-base font-bold text-[var(--text)] leading-tight tracking-tight">
                   PTDARRAHMAN

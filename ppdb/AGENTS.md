@@ -8,7 +8,7 @@ Aplikasi frontend Penerimaan Peserta Didik Baru (PPDB) untuk Pesantren Tahfidz Q
 - **Styling:** Tailwind CSS v3, `class-variance-authority`, `clsx`, `tailwind-merge`
 - **UI Components:** Radix UI primitives (`@radix-ui/react-*`), shadcn-style structured in `src/components/ui/`, Lucide React for icons
 - **Routing:** React Router v7 (`react-router-dom`)
-- **Build & Deploy:** Cloudflare Pages (configured via `wrangler.toml` and built with `tsc -b && vite build`)
+- **Build & Deploy:** Built with `tsc -b && vite build`
 
 ## Architecture & State Management
 - **API Client (`src/api/client.ts`):** 

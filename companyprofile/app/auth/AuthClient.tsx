@@ -48,11 +48,12 @@ export default function AuthClient() {
       }
       setSuccess(true)
       setTimeout(() => {
-        window.location.href = process.env.NEXT_PUBLIC_PORTAL_URL || 'https://app.ptdarrahman.sch.id'
+        window.location.href = process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:5174'
       }, 900)
-    } catch (err: any) {
+    } catch (err: unknown) {
       setSuccess(false)
-      setError(err.message || 'Login gagal')
+      const msg = err instanceof Error ? err.message : 'Login gagal'
+      setError(msg || 'Login gagal')
     } finally {
       setLoading(false)
     }

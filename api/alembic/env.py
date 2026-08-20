@@ -19,6 +19,8 @@ target_metadata = Base.metadata
 
 
 def _database_url() -> str:
+    if settings.database_url:
+        return settings.database_url
     url = URL.create(
         drivername="mysql+pymysql",
         username=settings.mysql_user,
@@ -42,11 +44,18 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    connect_args = {"charset": "utf8mb4"}
-    if settings.mysql_ssl:
-        connect_args["ssl"] = {}
+    db_url = _database_url()
+    is_sqlite = "sqlite" in db_url
+    connect_args: dict = {}
+    if not is_sqlite:
+        connect_args["charset"] = "utf8mb4"
+        if settings.mysql_ssl:
+            connect_args["ssl"] = {}
+    elif is_sqlite:
+        connect_args["check_same_thread"] = False
+
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = _database_url()
+    configuration["sqlalchemy.url"] = db_url
 
     engine = engine_from_config(
         configuration,

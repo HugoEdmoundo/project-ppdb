@@ -5,8 +5,7 @@ import { getSettings } from '@/app/lib/api'
 
 export default function LoaderScreen() {
   const [visible, setVisible] = useState(true)
-  const [logoUrl, setLogoUrl] = useState('/logo.png')
-  const logoRef = useRef<HTMLImageElement>(null)
+  const [logoUrl, setLogoUrl] = useState('')
   const textRef = useRef<HTMLDivElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
   const ring1Ref = useRef<HTMLDivElement>(null)
@@ -15,6 +14,7 @@ export default function LoaderScreen() {
   const subtitleRef = useRef<HTMLDivElement>(null)
   const bismillahRef = useRef<HTMLDivElement>(null)
   const particlesRef = useRef<HTMLDivElement>(null)
+  const logoWrapperRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     getSettings()
@@ -49,7 +49,7 @@ export default function LoaderScreen() {
       { scale: 2, opacity: 0.1, duration: 1, ease: 'power2.out' },
       '-=0.5'
     )
-    .fromTo(logoRef.current,
+    .fromTo(logoWrapperRef.current,
       { y: -30, scale: 1.4, opacity: 0, rotation: -5 },
       { y: 0, scale: 1, opacity: 1, rotation: 0, duration: 0.7, ease: 'back.out(1.7)' },
       '-=0.5'
@@ -74,7 +74,7 @@ export default function LoaderScreen() {
     .to(glowRef.current, { scale: 3, opacity: 0, duration: 0.4, ease: 'power2.in' }, 'exit')
     .to(ring1Ref.current, { scale: 1.3, opacity: 0, duration: 0.35 }, 'exit')
     .to(ring2Ref.current, { scale: 1.3, opacity: 0, duration: 0.35 }, 'exit+=0.05')
-    .to(logoRef.current, { y: -15, scale: 0.85, opacity: 0, duration: 0.35, ease: 'power2.in' }, 'exit')
+    .to(logoWrapperRef.current, { y: -15, scale: 0.85, opacity: 0, duration: 0.35, ease: 'power2.in' }, 'exit')
     .to(textRef.current, { y: -10, opacity: 0, duration: 0.3 }, 'exit+=0.05')
     .to(subtitleRef.current, { y: -8, opacity: 0, duration: 0.3 }, 'exit+=0.05')
     .to(barRef.current, { opacity: 0, duration: 0.2 }, 'exit+=0.1')
@@ -142,13 +142,17 @@ export default function LoaderScreen() {
 
         <div className="relative inline-block">
           <div className="absolute inset-0 rounded-full bg-[var(--color-gold)] blur-2xl opacity-10 scale-150" />
-          <img
-            ref={logoRef}
-            src={logoUrl}
-            alt="Ar-Rahman"
-            className="h-16 w-auto mx-auto mb-4 relative object-contain"
-            style={{ opacity: 0 }}
-          />
+          <div ref={logoWrapperRef} style={{ opacity: 0 }} className="relative mx-auto mb-4 h-16 w-16">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt="Ar-Rahman"
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <div className="h-full w-full rounded-lg bg-[var(--color-emerald)] flex items-center justify-center text-white font-bold text-2xl select-none">ار</div>
+            )}
+          </div>
         </div>
 
         <div ref={textRef} className="text-sm font-[var(--font-display)] font-bold text-[var(--color-slate)] tracking-[0.3em] uppercase" style={{ opacity: 0 }}>

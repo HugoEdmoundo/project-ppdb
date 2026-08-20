@@ -1,12 +1,6 @@
 """File upload service.
 
-`UPLOAD_PROVIDER=cloudinary` (production default) uploads to Cloudinary and returns a CDN URL.
-`UPLOAD_PROVIDER=db` stores the bytes inside the `file_uploads.data` column and serves them
-via `GET /uploads/{id}` — works on serverless (Vercel) without any external service.
-`UPLOAD_PROVIDER=local` (dev only) saves to a local folder — note that the disk is
-ephemeral on serverless runtimes, so never use it in production.
-
-If `cloudinary` is requested but not configured, uploads automatically fall back to `db`.
+`UPLOAD_PROVIDER=local` saves to a local folder.
 """
 import logging
 import uuid
@@ -123,9 +117,8 @@ async def upload_file(file: UploadFile, record_id: Optional[str] = None) -> Uplo
 
     provider = settings.upload_provider
     if provider == "cloudinary" and not settings.cloudinary_configured:
-        # Graceful fallback: no Cloudinary creds -> store in DB instead of failing.
-        logger.warning("Cloudinary not configured, falling back to db storage")
-        provider = "db"
+        logger.warning("Cloudinary not configured, falling back to local storage")
+        provider = "local"
 
     if provider == "cloudinary":
         result = _upload_cloudinary(content, original_name, file.content_type or "application/octet-stream")

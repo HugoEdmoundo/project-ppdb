@@ -32,7 +32,7 @@ The application is a Single Page Application (SPA) with the following routes:
 
 ## API Integration (`src/api/client.ts`)
 - The `apiFetch` wrapper handles automatic token injection and token refresh logic.
-- **Base URL:** Defined via the `VITE_API_URL` environment variable, falling back to `https://api-lime-zeta-22.vercel.app`. The Vite dev server proxies `/companyprofile` to `http://localhost:8000` via `vite.config.ts`.
+- **Base URL:** Defined via the `VITE_API_URL` environment variable, falling back to `http://localhost:8000`. The Vite dev server proxies `/companyprofile` to `http://localhost:8000` via `vite.config.ts`.
 - **Endpoints Interacted With:**
   - **Auth:** `/companyprofile/auth/login`, `/companyprofile/auth/me`, `/companyprofile/auth/refresh`, `/companyprofile/auth/logout`.
   - **Users:** `/users` (CRUD).
@@ -48,5 +48,5 @@ The application is a Single Page Application (SPA) with the following routes:
 
 ## Development & Build Commands
 - `npm run dev`: Start Vite development server on port 5173.
-- `npm run build`: Compile TypeScript and build for production (`tsc -b && vite build`).
-- `npm run preview`: Preview production build locally.
+- `npm run build`: Compile TypeScript and build (`tsc -b && vite build`).
+- `npm run preview`: Preview build locally.

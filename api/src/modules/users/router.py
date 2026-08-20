@@ -23,8 +23,8 @@ logger = logging.getLogger("ptdarrahman.users")
 router = APIRouter()
 
 # TBD: URL login resmi masing-masing app (masih placeholder seperti di ppdb router).
-PPDB_LOGIN_URL = "https://ppdb.ptdarrahman.sch.id/auth/login"
-DEFAULT_LOGIN_URL = "https://superadmin.ptdarrahman.sch.id/login"
+PPDB_LOGIN_URL = "http://localhost:5174/auth/login"
+DEFAULT_LOGIN_URL = "http://localhost:5173/login"
 
 
 def _generate_password(length: int = 8) -> str:

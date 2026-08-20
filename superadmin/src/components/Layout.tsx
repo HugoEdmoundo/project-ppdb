@@ -32,7 +32,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sa_collapsed') === 'true')
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [logoUrl, setLogoUrl] = useState('/download.png')
+  const [logoUrl, setLogoUrl] = useState('')
 
   // Load favicon dynamically (sidebar pakai favicon, bukan logo)
   useEffect(() => {
@@ -40,7 +40,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       getSettings()
         .then((settings) => {
           const favicon = settings.find((s) => s.key === 'favicon')?.value
-          setLogoUrl(favicon || '/download.png')
+          if (favicon) setLogoUrl(favicon)
         })
         .catch(() => {})
     }
@@ -86,10 +86,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Header */}
         <div className={`relative flex items-center border-b border-border ${collapsed ? 'justify-center px-2 py-3' : 'px-5 py-4'}`}>
           {collapsed ? (
-            <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-auto max-w-8 object-contain" />
+            logoUrl ? <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-auto max-w-8 object-contain" /> : <div className="h-8 w-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg select-none">ار</div>
           ) : (
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 shrink-0 object-contain" />
+              {logoUrl ? <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 shrink-0 object-contain" /> : <div className="h-9 w-9 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg shrink-0 select-none">ار</div>}
               <div className="min-w-0">
                 <div className="truncate text-sm font-bold text-foreground">PTDARRAHMAN</div>
                 <div className="text-[11px] text-muted-foreground">Superadmin Panel</div>

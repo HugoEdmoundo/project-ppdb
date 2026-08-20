@@ -27,9 +27,10 @@ export default function AdminLogin() {
       localStorage.setItem('admin_token', res.access_token)
       setSuccess(true)
       setTimeout(() => router.push('/admin/dashboard'), 900)
-    } catch (e: any) {
+    } catch (e: unknown) {
       setSuccess(false)
-      setError(e.message || 'Login gagal. Periksa username dan password.')
+      const msg = e instanceof Error ? e.message : 'Login gagal. Periksa username dan password.'
+      setError(msg || 'Login gagal. Periksa username dan password.')
     } finally {
       setLoading(false)
     }

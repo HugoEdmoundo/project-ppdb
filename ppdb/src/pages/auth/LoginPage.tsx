@@ -72,7 +72,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [loginSuccess, setLoginSuccess] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const [logoUrl, setLogoUrl] = useState('/logo.png')
+  const [logoUrl, setLogoUrl] = useState('')
 
   useEffect(() => {
     settingsService
@@ -204,11 +204,15 @@ export default function LoginPage() {
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
 
                 {/* Logo */}
-                <img
-                  src={logoUrl}
-                  alt="Logo Ar-Rahman"
-                  className="mx-auto mb-6 h-11 w-auto max-w-full object-contain"
-                />
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt="Logo Ar-Rahman"
+                    className="mx-auto mb-6 h-11 w-auto max-w-full object-contain"
+                  />
+                ) : (
+                  <div className="mx-auto mb-6 h-11 w-11 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-2xl select-none">ار</div>
+                )}
 
                 <h1 className="font-heading text-2xl font-bold text-foreground mb-1">
                   {user && canChoose ? 'Pilih Dashboard' : 'Masuk ke Akun'}

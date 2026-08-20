@@ -178,7 +178,7 @@ export default function Navbar() {
           <div className="flex items-center gap-3">
             <MagneticButton strength={0.25}>
             <a
-              href="https://app.ptdarrahman.sch.id"
+              href="http://localhost:5174"
               target="_blank"
               rel="noopener noreferrer"
               className={`hidden md:inline-flex items-center px-5 py-2.5 text-xs font-bold rounded-full whitespace-nowrap transition-all ${
@@ -261,7 +261,7 @@ export default function Navbar() {
             </div>
           ))}
           <a
-            href="https://app.ptdarrahman.sch.id"
+            href="http://localhost:5174"
             target="_blank"
             rel="noopener noreferrer"
             className="mt-8 px-10 py-3.5 bg-[var(--accent)] text-white text-sm font-bold rounded-full whitespace-nowrap hover:bg-[#15803D] transition-all"

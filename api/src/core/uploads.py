@@ -4,7 +4,7 @@
 """
 import logging
 import uuid
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -160,7 +160,3 @@ def delete_upload(storage_path: str) -> None:
         Path(storage_path).unlink(missing_ok=True)
     except OSError:
         logger.exception("Local delete failed for %s", storage_path)
-
-
-def upload_result_dict(result: UploadResult) -> dict:
-    return asdict(result)

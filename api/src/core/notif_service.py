@@ -142,12 +142,3 @@ def send_custom_notifications(recipient_user_ids, channel: str, subject: str, bo
             sent += 1
 
     return {"sent": sent, "total": len(recipient_user_ids)}
-
-
-def update_log_status(log_id: str, status: str, sent_at: str = None, error: str = None):
-    pool = get_raw_pool()
-    with pool.begin() as conn:
-        conn.execute(
-            text("UPDATE notification_logs SET status = :status, sent_at = :sent_at, error_message = :err WHERE id = :id"),
-            {"status": status, "sent_at": sent_at, "err": error, "id": log_id}
-        )

@@ -1,4 +1,5 @@
-﻿from typing import Any, Dict, Optional
+﻿import uuid
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
@@ -24,7 +25,7 @@ from src.core.security import (
     hash_refresh_token,
     verify_password,
 )
-from src.core.uploads import upload_file
+from src.core.uploads import upload_file, delete_upload
 
 router = APIRouter()
 
@@ -287,6 +288,11 @@ async def cp_upload(request: Request, user: Dict[str, Any] = Depends(require_cp_
 async def cp_delete_upload(filename: str, user: Dict[str, Any] = Depends(require_cp_crud())):
     if not filename or ".." in filename or "/" in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
+    record = get_by_column("file_uploads", "stored_name", filename)
+    if not record:
+        raise HTTPException(status_code=404, detail="File not found")
+    delete_upload(record["storage_path"])
+    delete_record("file_uploads", record["id"])
     return {"message": "Deleted"}
 
 

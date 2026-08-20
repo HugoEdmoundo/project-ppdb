@@ -12,7 +12,7 @@ registered before CORSMiddleware (see src/main.py) so CORS wraps it.
 """
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import Request
 from fastapi.responses import JSONResponse
 
 logger = logging.getLogger("ptdarrahman")
@@ -51,8 +51,3 @@ class ServerErrorJSONMiddleware:
             logger.exception("Unhandled error on %s %s", scope["method"], scope["path"])
             response = self.handler(Request(scope, receive), exc)
             await response(scope, receive, send)
-
-
-def add_server_error_middleware(app: FastAPI) -> None:
-    """Register the middleware so it sits inside the CORS middleware."""
-    app.add_middleware(ServerErrorJSONMiddleware)

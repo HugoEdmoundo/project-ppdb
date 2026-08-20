@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     cors_origins: str = ""
     cors_origin_regex: str = ""
 
+    # --- Frontend URLs (for notification links) ---
+    ppdb_frontend_url: str = "http://localhost:5173"
+
     # --- Uploads ---
     upload_provider: str = "local"  # local
     upload_dir: str = "uploads"

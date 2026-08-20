@@ -20,6 +20,7 @@ from src.core.database import (
     get_raw_pool,
     update_record,
 )
+from src.core.config import settings
 from src.core.notif_service import send_notifications
 from src.core.dependencies import require_ppdb_admin, require_ppdb_read, get_current_user
 from src.core.uploads import upload_file, delete_upload
@@ -422,11 +423,11 @@ def register_applicant(body: ApplicantRegister):
             [
                 ("welcome", {
                     "password": raw_password,
-                    "link_login": "http://localhost:5174/auth/login", # TBD
+                    "link_login": f"{settings.ppdb_frontend_url}/auth/login",
                     "batas_waktu_bayar": created_applicant["payment_deadline"],
                 }),
                 ("payment_reminder", {
-                    "link_pembayaran": "http://localhost:5174/checkout", # TBD
+                    "link_pembayaran": f"{settings.ppdb_frontend_url}/checkout",
                     "batas_waktu_bayar": created_applicant["payment_deadline"],
                 }),
             ],
@@ -530,7 +531,7 @@ def reset_applicant_password(
         send_notifications(
             [("password_reset", {
                 "password": new_password,
-                "link_login": "http://localhost:5174/auth/login",  # TBD
+                "link_login": f"{settings.ppdb_frontend_url}/auth/login",
             })],
             user_id,
             user_row=user_row,

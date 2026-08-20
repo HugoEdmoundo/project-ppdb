@@ -1,8 +1,8 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import text
-from src.core.database import execute_raw, update_record, get_raw_pool, get_by_column
-from src.core.dependencies import get_current_user, require_module_access
+from src.core.database import execute_raw, get_raw_pool, get_by_column
+from src.core.dependencies import get_current_user
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -180,7 +180,6 @@ def cancel_confirm_payment(id: str, user: dict = Depends(require_payment_admin))
             
     return {"success": True, "message": "Payment confirmation cancelled successfully"}
 
-from fastapi import Request
 
 @router.post("/webhook")
 async def payment_webhook(request: Request):

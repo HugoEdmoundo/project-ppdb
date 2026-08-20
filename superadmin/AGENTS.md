@@ -3,11 +3,11 @@
 This document provides a technical overview of the Superadmin panel for the Pesantren Tahfidz Qur'an dan Digital Ar-Rahman system. It is meant to be read by AI agents and developers to quickly understand the directory structure, tech stack, and conventions.
 
 ## Tech Stack
-- **Framework:** React 18 with Vite 5.
-- **Language:** TypeScript.
-- **Styling:** Tailwind CSS v3.4.17.
+- **Framework:** React 19 with Vite 8.
+- **Language:** TypeScript ~6.0.
+- **Styling:** Tailwind CSS v3.4.
 - **Components:** `lucide-react` for icons, `sonner` for toast notifications, and Radix UI primitives (`@radix-ui/react-*`) combined with `class-variance-authority`, `clsx`, and `tailwind-merge` for UI components.
-- **Routing:** `react-router-dom` v6.
+- **Routing:** `react-router-dom` v7.
 
 ## Routing (`src/App.tsx`)
 The application is a Single Page Application (SPA) with the following routes:

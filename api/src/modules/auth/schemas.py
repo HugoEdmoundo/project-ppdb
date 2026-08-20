@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr, ConfigDict, Field
-from typing import Optional, Dict, Any, List
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional, Dict, Any
 
 class LoginRequest(BaseModel):
     username: str

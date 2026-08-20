@@ -59,16 +59,5 @@ class ApplicantRegister(BaseModel):
     address: str = Field(min_length=5)
 
 
-class ApplicantUpdate(BaseModel):
-    full_name: Optional[str] = None
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    birth_place: Optional[str] = None
-    birth_date: Optional[date] = None
-    gender: Optional[str] = None
-    address: Optional[str] = None
-    status: Optional[str] = None
-
-
 class ApplicantPasswordReset(BaseModel):
     password: Optional[str] = None

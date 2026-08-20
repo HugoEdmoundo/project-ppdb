@@ -312,8 +312,3 @@ def audit_log(
         )
     except Exception:
         logger.exception("audit_log failed")
-
-
-def get_active_period_id() -> Optional[str]:
-    rows = _run("SELECT id FROM ppdb_periods WHERE status = 'active' LIMIT 1")
-    return rows[0]["id"] if rows else None

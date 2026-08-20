@@ -2,11 +2,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
 from pydantic import BaseModel
-import uuid
 
 from src.core.database import (
     execute_raw, 
-    create_record, 
     update_record, 
     get_raw_pool,
     get_by_id

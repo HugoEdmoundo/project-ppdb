@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Request, Header
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
@@ -566,10 +566,14 @@ def get_ppdb_dashboard(user: dict = Depends(require_ppdb_read)):
 
 
 @router.post("/cron/soft-delete-expired")
-def soft_delete_expired_applicants():
+def soft_delete_expired_applicants(x_cron_secret: str = Header(None)):
     """
     Cron job run daily to soft delete applicants who haven't paid past their deadline.
     """
+    from src.core.config import settings
+    if x_cron_secret != settings.cron_secret:
+        raise HTTPException(status_code=401, detail="Unauthorized cron request")
+
     pool = get_raw_pool()
     now_wib = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
     
@@ -591,31 +595,42 @@ def soft_delete_expired_applicants():
         applicant_ids = [r["id"] for r in rows]
         user_ids = [r["user_id"] for r in rows]
         
+        a_ph = ", ".join(f":a_{i}" for i in range(len(applicant_ids)))
+        u_ph = ", ".join(f":u_{i}" for i in range(len(user_ids))) if user_ids else ""
+        
+        params = {"now": now_wib}
+        for i, aid in enumerate(applicant_ids):
+            params[f"a_{i}"] = aid
+            
+        u_params = {}
+        for i, uid in enumerate(user_ids):
+            u_params[f"u_{i}"] = uid
+
         # Soft delete applicants
         conn.execute(
-            text("""
+            text(f"""
                 UPDATE ppdb_applicants 
                 SET deleted_at = :now, payment_status = 'expired', status = 'expired' 
-                WHERE id IN :ids
+                WHERE id IN ({a_ph})
             """),
-            {"now": now_wib, "ids": tuple(applicant_ids)}
+            params
         )
         
         # Disable users so they cannot login
         if user_ids:
             conn.execute(
-                text("UPDATE users SET is_active = 0 WHERE id IN :user_ids"),
-                {"user_ids": tuple(user_ids)}
+                text(f"UPDATE users SET is_active = 0 WHERE id IN ({u_ph})"),
+                u_params
             )
             
         # Update pending transactions to expired
         conn.execute(
-            text("""
+            text(f"""
                 UPDATE ppdb_payment_transactions 
                 SET status = 'expired', updated_at = :now 
-                WHERE applicant_id IN :ids AND status = 'pending'
+                WHERE applicant_id IN ({a_ph}) AND status = 'pending'
             """),
-            {"now": now_wib, "ids": tuple(applicant_ids)}
+            params
         )
         
     for user_id in user_ids:
@@ -625,10 +640,14 @@ def soft_delete_expired_applicants():
 
 
 @router.post("/cron/reminders")
-def run_reminders():
+def run_reminders(x_cron_secret: str = Header(None)):
     """
     Cron job run daily to send reminders.
     """
+    from src.core.config import settings
+    if x_cron_secret != settings.cron_secret:
+        raise HTTPException(status_code=401, detail="Unauthorized cron request")
+    
     pool = get_raw_pool()
     now_wib = datetime.now(ZoneInfo("Asia/Jakarta"))
     now_wib_str = now_wib.strftime("%Y-%m-%d %H:%M:%S")
@@ -701,7 +720,7 @@ def run_reminders():
 # ---------------------------------------------------------------------------
 
 @router.get("/documents")
-def get_my_documents(user: dict = Depends(get_current_user)):
+def get_my_documents(request: Request, user: dict = Depends(get_current_user)):
     pool = get_raw_pool()
     with pool.connect() as conn:
         applicant = conn.execute(
@@ -717,7 +736,14 @@ def get_my_documents(user: dict = Depends(get_current_user)):
             {"entity_id": applicant["id"]}
         ).mappings().all()
         
-    return {"data": [dict(d) for d in docs]}
+    res = []
+    for d in docs:
+        d_dict = dict(d)
+        if d_dict.get("public_url") and d_dict["public_url"].startswith("/"):
+            d_dict["public_url"] = f"{request.base_url}{d_dict['public_url'].lstrip('/')}"
+        res.append(d_dict)
+        
+    return {"data": res}
 
 
 @router.post("/documents/upload")
@@ -760,7 +786,7 @@ async def upload_document(
                 text("""
                     UPDATE file_uploads 
                     SET original_name = :oname, stored_name = :sname, mime_type = :mime, 
-                        size_bytes = :size, storage_path = :spath, public_url = :url, data = :data, created_at = :now
+                        size_bytes = :size, storage_path = :spath, public_url = :url, created_at = :now
                     WHERE id = :id
                 """),
                 {
@@ -770,7 +796,6 @@ async def upload_document(
                     "size": upload_res.size_bytes,
                     "spath": upload_res.storage_path,
                     "url": upload_res.public_url,
-                    "data": upload_res.data,
                     "now": now,
                     "id": existing["id"]
                 }
@@ -781,12 +806,12 @@ async def upload_document(
             conn.execute(
                 text("""
                     INSERT INTO file_uploads 
-                    (id, uploaded_by, original_name, stored_name, mime_type, size_bytes, storage_path, public_url, data, entity_type, entity_id, created_at)
+                    (id, uploaded_by, original_name, stored_name, mime_type, size_bytes, storage_path, public_url, entity_type, entity_id, created_at)
                     VALUES 
-                    (:id, :uid, :oname, :sname, :mime, :size, :spath, :url, :data, :etype, :eid, :now)
+                    (:id, :uid, :oname, :sname, :mime, :size, :spath, :url, :etype, :eid, :now)
                 """),
                 {
-                    "id": doc_id,
+                    "id": record_id,
                     "uid": user["id"],
                     "oname": upload_res.original_name,
                     "sname": upload_res.storage_path.split('/')[-1],
@@ -794,12 +819,12 @@ async def upload_document(
                     "size": upload_res.size_bytes,
                     "spath": upload_res.storage_path,
                     "url": upload_res.public_url,
-                    "data": upload_res.data,
                     "etype": entity_type,
                     "eid": applicant_id,
                     "now": now
                 }
             )
+            doc_id = record_id
             
     url = upload_res.public_url
     if url.startswith("/"):
@@ -833,14 +858,22 @@ def submit_documents(user: dict = Depends(get_current_user)):
 # ---------------------------------------------------------------------------
 
 @router.get("/applicants/{id}/documents")
-def get_applicant_documents(id: str, user: dict = Depends(require_ppdb_read)):
+def get_applicant_documents(id: str, request: Request, user: dict = Depends(require_ppdb_read)):
     pool = get_raw_pool()
     with pool.connect() as conn:
         docs = conn.execute(
             text("SELECT * FROM file_uploads WHERE entity_id = :id AND entity_type LIKE 'ppdb_document:%'"),
             {"id": id}
         ).mappings().all()
-    return {"data": [dict(d) for d in docs]}
+        
+    res = []
+    for d in docs:
+        d_dict = dict(d)
+        if d_dict.get("public_url") and d_dict["public_url"].startswith("/"):
+            d_dict["public_url"] = f"{request.base_url}{d_dict['public_url'].lstrip('/')}"
+        res.append(d_dict)
+        
+    return {"data": res}
 
 from pydantic import BaseModel
 

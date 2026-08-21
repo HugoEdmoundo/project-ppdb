@@ -157,6 +157,7 @@ def login(body: LoginRequest):
             "user_id": user["id"],
             "token_hash": refresh_hash,
             "expires_at": to_mysql_datetime(refresh_expires),
+            "revoked": False,
         },
     )
 
@@ -208,6 +209,7 @@ def refresh(body: RefreshRequest):
             "user_id": user["id"],
             "token_hash": new_hash,
             "expires_at": to_mysql_datetime(new_expires),
+            "revoked": False,
         },
     )
 
@@ -322,6 +324,7 @@ def register_applicant(body: RegisterApplicantRequest, request: Request):
             "user_id": user["id"],
             "token_hash": refresh_hash,
             "expires_at": to_mysql_datetime(refresh_expires),
+            "revoked": False,
         },
     )
 
@@ -397,7 +400,6 @@ async def upload(request: Request, user: Dict[str, Any] = Depends(get_current_us
             "size_bytes": result.size_bytes,
             "storage_path": result.storage_path,
             "public_url": result.public_url,
-            "data": result.data,
         },
     )
     url = result.public_url

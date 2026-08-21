@@ -85,7 +85,7 @@ def get_my_transaction(user: dict = Depends(get_current_user)):
 @router.put("/transactions/{id}/confirm")
 def confirm_payment(id: str, user: dict = Depends(require_payment_admin)):
     pool = get_raw_pool()
-    with pool.connect() as conn:
+    with pool.begin() as conn:
         tx_rows = conn.execute(
             text("SELECT * FROM ppdb_payment_transactions WHERE id = :id"),
             {"id": id}
@@ -98,35 +98,34 @@ def confirm_payment(id: str, user: dict = Depends(require_payment_admin)):
         if tx["status"] == "success":
             raise HTTPException(status_code=400, detail="Transaction already confirmed")
             
-        with conn.begin():
-            now_wib = datetime.now(WIB).strftime("%Y-%m-%d %H:%M:%S")
-            # Update transaction status
-            conn.execute(
-                text("""
-                    UPDATE ppdb_payment_transactions 
-                    SET status = 'success', confirmed_by = :confirmed_by, confirmed_at = :confirmed_at, updated_at = :now 
-                    WHERE id = :id
-                """),
-                {"id": id, "confirmed_by": user["id"], "confirmed_at": now_wib, "now": now_wib}
-            )
-            # Update applicant status
-            conn.execute(
-                text("""
-                    UPDATE ppdb_applicants 
-                    SET payment_status = 'paid', status = 'document_uploaded_pending', updated_at = :now 
-                    WHERE id = :applicant_id
-                """),
-                {"applicant_id": tx["applicant_id"], "now": now_wib}
-            )
-            
-            # Fetch user_id for notification
-            applicant_rows = conn.execute(
-                text("SELECT user_id FROM ppdb_applicants WHERE id = :id"),
-                {"id": tx["applicant_id"]}
-            ).mappings().all()
-            
-            if applicant_rows:
-                user_id = applicant_rows[0]["user_id"]
+        now_wib = datetime.now(WIB).strftime("%Y-%m-%d %H:%M:%S")
+        # Update transaction status
+        conn.execute(
+            text("""
+                UPDATE ppdb_payment_transactions 
+                SET status = 'success', confirmed_by = :confirmed_by, confirmed_at = :confirmed_at, updated_at = :now 
+                WHERE id = :id
+            """),
+            {"id": id, "confirmed_by": user["id"], "confirmed_at": now_wib, "now": now_wib}
+        )
+        # Update applicant status
+        conn.execute(
+            text("""
+                UPDATE ppdb_applicants 
+                SET payment_status = 'paid', status = 'document_uploaded_pending', updated_at = :now 
+                WHERE id = :applicant_id
+            """),
+            {"applicant_id": tx["applicant_id"], "now": now_wib}
+        )
+        
+        # Fetch user_id for notification
+        applicant_rows = conn.execute(
+            text("SELECT user_id FROM ppdb_applicants WHERE id = :id"),
+            {"id": tx["applicant_id"]}
+        ).mappings().all()
+        
+        if applicant_rows:
+            user_id = applicant_rows[0]["user_id"]
                 
     if 'user_id' in locals() and user_id:
         try:

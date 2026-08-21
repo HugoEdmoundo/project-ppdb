@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
@@ -111,9 +111,8 @@ async def cp_login(body: LoginReq):
     if not verify_password(body.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    user["role_permissions"] = _parse_permissions(
-        get_by_id("roles", user["role_id"])["permissions"] if user.get("role_id") else None
-    )
+    role = get_by_id("roles", user["role_id"]) if user.get("role_id") else None
+    user["role_permissions"] = _parse_permissions(role["permissions"] if role else None)
     if not await has_module_access(user, Module.COMPANYPROFILE, AccessLevel.DASHBOARD):
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -125,6 +124,7 @@ async def cp_login(body: LoginReq):
             "user_id": user["id"],
             "token_hash": new_hash,
             "expires_at": expires_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "revoked": False,
         },
     )
 
@@ -161,6 +161,7 @@ async def cp_refresh(body: RefreshReq):
             "user_id": user["id"],
             "token_hash": new_hash,
             "expires_at": new_expires.strftime("%Y-%m-%d %H:%M:%S"),
+            "revoked": False,
         },
     )
     return {"access_token": new_access, "refresh_token": raw_refresh, "token_type": "bearer"}
@@ -275,7 +276,6 @@ async def cp_upload(request: Request, user: Dict[str, Any] = Depends(require_cp_
             "size_bytes": result.size_bytes,
             "storage_path": result.storage_path,
             "public_url": result.public_url,
-            "data": result.data,
         },
     )
     url = result.public_url

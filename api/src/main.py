@@ -93,4 +93,10 @@ app.include_router(modules_router, prefix="/modules", tags=["Modules"])
 app.include_router(ppdb_router, prefix="/ppdb", tags=["PPDB"])
 app.include_router(payment_router, prefix="/payment", tags=["Payment"])
 app.include_router(notifications_router, prefix="/notifications", tags=["Notifications"])
-app.include_router(uploads_router, tags=["Uploads"])
+if settings.upload_provider == "db":
+    app.include_router(uploads_router, tags=["Uploads"])
+elif settings.upload_provider == "local":
+    import os
+    from fastapi.staticfiles import StaticFiles
+    os.makedirs(settings.upload_dir, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")

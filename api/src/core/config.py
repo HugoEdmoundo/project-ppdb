@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # --- JWT ---
     jwt_secret: str = "dev-only-secret-change-me"
     jwt_expiry_hours: int = 24
+    
+    # --- Cron ---
+    cron_secret: str = "dev-only-cron-secret-change-me"
 
     # --- CORS ---
     # "*" = allow all (dev only). Empty = default allowlist + regex (see core/cors.py).

@@ -6,6 +6,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { CheckCircle, Clock, FileText, Upload, ChevronDown, ChevronUp } from 'lucide-react'
 import * as api from '../../api/client'
 import { useToast } from '@/components/Toast'
+import { REQUIRED_DOCUMENTS } from '@/constants/documents'
 
 export default function ApplicantDashboardPage() {
   const { toast } = useToast()
@@ -88,16 +89,7 @@ export default function ApplicantDashboardPage() {
     }
   }
 
-  const requiredDocs = [
-    { name: 'Ijazah atau SKL', description: 'Bukti kelulusan dari sekolah sebelumnya.' },
-    { name: 'Akta Kelahiran', description: 'Bukti tanggal dan tempat lahir anak.' },
-    { name: 'Kartu Keluarga (KK)', description: 'Bukti alamat tempat tinggal dan susunan keluarga.' },
-    { name: 'KTP Orang Tua/Wali', description: 'Bukti identitas ayah, ibu, atau wali.' },
-    { name: 'Buku Rapor', description: 'Nilai rapor dari semester awal sampai akhir.' },
-    { name: 'Pas Foto', description: 'Foto terbaru calon siswa sesuai ukuran permintaan sekolah.' },
-    { name: 'Surat Pernyataan Orang Tua', description: 'Surat tanda keabsahan data bermeterai.' },
-    { name: 'Medical Checkup', description: 'Surat keterangan sehat atau hasil pemeriksaan medis dari Kemenkes atau klinik resmi.' }
-  ]
+  const requiredDocs = REQUIRED_DOCUMENTS
 
   const toggleStep = (step: number) => {
     setExpandedStep(prev => prev === step ? 0 : step)

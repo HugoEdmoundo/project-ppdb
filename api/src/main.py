@@ -1,8 +1,9 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
-from fastapi.responses import Response
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, Response
 from scalar_fastapi import get_scalar_api_reference
 
 from src.core.config import settings
@@ -18,6 +19,7 @@ from src.modules.users.router import router as users_router
 from src.modules.payment.router import router as payment_router
 from src.modules.notifications.router import router as notifications_router
 from src.modules.uploads.router import router as uploads_router
+from src.modules.selection.router import router as selection_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("ptdarrahman")
@@ -52,6 +54,16 @@ app = FastAPI(
 # and browsers report a misleading "blocked by CORS" error).
 app.add_middleware(ServerErrorJSONMiddleware)
 setup_cors(app, settings)
+
+
+# --- Validation errors: kirim pesan pertama sebagai string biasa (bukan list
+# teknis pydantic) supaya pesan validasi Indonesia terbaca langsung di frontend.
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    msg = errors[0].get("msg", "Data yang dikirim tidak valid") if errors else "Data yang dikirim tidak valid"
+    msg = msg.replace("Value error, ", "")
+    return JSONResponse(status_code=422, content={"detail": msg})
 
 
 # --- Utility routes ---
@@ -93,6 +105,7 @@ app.include_router(modules_router, prefix="/modules", tags=["Modules"])
 app.include_router(ppdb_router, prefix="/ppdb", tags=["PPDB"])
 app.include_router(payment_router, prefix="/payment", tags=["Payment"])
 app.include_router(notifications_router, prefix="/notifications", tags=["Notifications"])
+app.include_router(selection_router, prefix="/selection", tags=["Selection"])
 if settings.upload_provider == "db":
     app.include_router(uploads_router, tags=["Uploads"])
 elif settings.upload_provider == "local":

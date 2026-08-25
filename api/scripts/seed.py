@@ -88,8 +88,7 @@ DEFAULT_ROLES = [
 ]
 
 SITE_SETTINGS = [
-    ("site_name", "PT Darrahman"),
-    ("site_description", "Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"),
+    ("site_description", "Membentuk generasi Qurani yang tangguh dan adaptif di era digital."),
     ("favicon", ""),
     ("logo", ""),
     ("whatsapp", ""),

@@ -169,7 +169,7 @@ function ErrorActions({ actions, retry }: { actions: ErrorActions; retry?: () =>
     case 'signin-home':
       return (
         <>
-          <Link to="/login" className="inline-flex w-full sm:w-auto">
+          <Link to="/auth/login" className="inline-flex w-full sm:w-auto">
             <Button className={`${btnBase} inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-primary to-[#D4A853] text-white shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0`}>
               <LogIn className="h-4 w-4" />
               Masuk

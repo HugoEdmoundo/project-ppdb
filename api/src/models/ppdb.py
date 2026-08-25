@@ -29,6 +29,9 @@ class PPDBWave(Base):
     period_id: Mapped[str] = mapped_column(String(50), ForeignKey("ppdb_periods.id", ondelete="CASCADE"))
     wave_number: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    # Scope gelombang: nilai dipisah koma, contoh "reguler,pindahan" / "SMP,SMK"
+    allowed_paths: Mapped[str] = mapped_column(String(50), default="reguler,pindahan")
+    allowed_levels: Mapped[str] = mapped_column(String(100), default="SMP,SMK")
     start_date: Mapped[Optional[date]] = mapped_column(Date)
     end_date: Mapped[Optional[date]] = mapped_column(Date)
     registration_start_date: Mapped[Optional[date]] = mapped_column(Date)

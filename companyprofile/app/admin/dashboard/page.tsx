@@ -12,13 +12,53 @@ import Image from 'next/image'
 import {
   Newspaper, GraduationCap, Building2, Users, Trophy,
   Image as ImageIcon, MessageSquare, Link, Phone, Settings,
-  Plus, Menu, X, ChevronLeft,
+  Plus, Menu, X, ChevronLeft, LogOut, User as UserIcon,
   LayoutDashboard, Upload, ImagePlus, Link2,
 } from 'lucide-react'
-import ProfileDropdown from '@/app/components/ProfileDropdown'
 import ProfileModal from '@/app/components/ProfileModal'
 import CrossTabSync from '@/app/components/CrossTabSync'
 import EmptyState from '@/app/components/ui/EmptyState'
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from '@/app/components/ui/Avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/DropdownMenu'
+import { Button } from '@/app/components/ui/Button'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from '@/app/components/ui/Card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/app/components/ui/Table'
+import { Input } from '@/app/components/ui/Input'
+import { Label } from '@/app/components/ui/Label'
+import { Textarea } from '@/app/components/ui/Textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/app/components/ui/Dialog'
+import { cn } from '@/app/lib/utils'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -284,14 +324,6 @@ function truncate(str: string | null | undefined, len: number) {
   return str.length > len ? str.slice(0, len) + '…' : str
 }
 
-function CardValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{label}</span>
-      <p className="text-sm text-[var(--text)] mt-0.5 leading-snug">{value || '—'}</p>
-    </div>
-  )
-}
 
 // ─── Skeleton ───────────────────────────────────────────────
 
@@ -672,38 +704,20 @@ export default function AdminDashboard() {
     const tab = TABS.find((t) => t.key === activeTab)!
 
     return (
-      <div
-        className="fixed inset-0 z-50 overflow-y-auto flex items-start sm:items-center justify-center p-0 sm:p-4 scrollbar-none"
-        style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }}
-        onClick={(e) => { if (e.target === e.currentTarget) closeForm() }}
-      >
-        <div
-          ref={formTrapRef}
-          role="dialog"
-          aria-modal="true"
-          className="bg-white/85 backdrop-blur-xl border border-white/40 rounded-2xl max-sm:rounded-none shadow-xl w-full max-w-2xl max-h-[90vh] max-sm:h-full overflow-y-auto modal-scroll"
-          style={{ animation: 'modalIn 0.2s ease-out' }}
-        >
-          {/* ── Header with gradient accent ── */}
-          <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-[var(--border)] rounded-t-2xl">
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--accent)]/30 to-transparent" />
-            <div className="flex items-center justify-between px-6 md:px-8 py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/10 flex items-center justify-center">
-                  <tab.icon className="w-4 h-4 text-[var(--accent)]" />
-                </div>
-                <h2 className="font-[var(--font-heading)] text-base md:text-lg font-bold text-[var(--text)]">
-                  {formMode === 'create' ? 'Buat' : 'Edit'} {tab.label}
-                </h2>
+      <Dialog open={!!formMode} onOpenChange={(val) => { if (!val) closeForm() }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <tab.icon className="w-4 h-4 text-primary" />
               </div>
-              <button onClick={closeForm} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--accent-subtle)] transition-all" aria-label="Tutup">
-                <X className="w-5 h-5" />
-              </button>
+              <DialogTitle>
+                {formMode === 'create' ? 'Buat' : 'Edit'} {tab.label}
+              </DialogTitle>
             </div>
-          </div>
+          </DialogHeader>
 
-          {/* ── Body ── */}
-          <div className="p-6 md:p-8 space-y-6">
+          <div className="space-y-6 py-4">
 
             {/* ── Informasi Utama ── */}
             {fields.length > 0 && (
@@ -714,10 +728,10 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-3.5">
                   {fields.map((f) => (
-                    <div key={f.name}>
-                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">{f.label}</label>
+                    <div key={f.name} className="space-y-1.5">
+                      <Label>{f.label}</Label>
                       {activeTab === 'social' && f.name === 'path' ? (
-                        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 pt-2">
                           {SOCIAL_PRESETS.map((preset) => (
                             <button
                               key={preset.label}
@@ -725,33 +739,31 @@ export default function AdminDashboard() {
                               onClick={() => setFormData({ ...formData, [f.name]: preset.path })}
                               className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${
                                 formData[f.name] === preset.path
-                                  ? 'border-[var(--accent)] bg-[var(--accent-subtle)] ring-2 ring-[var(--accent)]/20'
-                                  : 'border-[var(--border)] hover:border-[var(--accent)]/50 hover:bg-[var(--accent-subtle)]'
+                                  ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                                  : 'border-border hover:border-primary/50 hover:bg-primary/5'
                               }`}
                               title={preset.label}
                             >
-                              <svg className="w-6 h-6 text-[var(--text)]" viewBox="0 0 24 24" fill="currentColor">
+                              <svg className="w-6 h-6 text-foreground" viewBox="0 0 24 24" fill="currentColor">
                                 <path d={preset.path} />
                               </svg>
-                              <span className="text-[10px] text-[var(--text-muted)] truncate w-full text-center leading-tight">{preset.label}</span>
+                              <span className="text-[10px] text-muted-foreground truncate w-full text-center leading-tight">{preset.label}</span>
                             </button>
                           ))}
                         </div>
                       ) : f.type === 'textarea' ? (
-                        <textarea
+                        <Textarea
                           value={String(formData[f.name] ?? '')}
                           onChange={(e) => setFormData({ ...formData, [f.name]: e.target.value })}
                           rows={4}
                           maxLength={10000}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-white text-sm text-[var(--text)] outline-none resize-y focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] transition-all"
                         />
                       ) : (
-                        <input
+                        <Input
                           type={f.type === 'number' ? 'number' : 'text'}
                           maxLength={255}
                           value={String(formData[f.name] ?? '')}
                           onChange={(e) => setFormData({ ...formData, [f.name]: e.target.value })}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-white text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] transition-all"
                         />
                       )}
                     </div>
@@ -819,12 +831,11 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="flex items-center gap-2">
                     <Link2 className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
-                    <input
+                    <Input
                       type="url"
                       value={formData.image ?? ''}
                       onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                       placeholder="https://example.com/image.jpg"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-white text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] transition-all"
                     />
                   </div>
                 )}
@@ -940,12 +951,11 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="flex items-center gap-2">
                     <Link2 className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
-                    <input
+                    <Input
                       type="url"
                       value={galleryInputValue}
                       onChange={(e) => setGalleryInputValue(e.target.value)}
                       placeholder="https://example.com/image.jpg"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-white text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] transition-all"
                     />
                     <button
                       type="button"
@@ -970,21 +980,19 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-3.5">
                   {(CONTENT_FIELDS[activeTab] || []).map((f) => (
-                    <div key={f.name}>
-                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">{f.label}</label>
+                    <div key={f.name} className="space-y-1.5">
+                      <Label>{f.label}</Label>
                       {f.type === 'list' || f.type === 'textarea' ? (
-                        <textarea
+                        <Textarea
                           value={String(formData[`_c_${f.name}`] ?? '')}
                           onChange={(e) => setFormData({ ...formData, [`_c_${f.name}`]: e.target.value })}
                           rows={f.type === 'textarea' ? 5 : 4}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-white text-sm text-[var(--text)] outline-none resize-y focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] transition-all"
                         />
                       ) : (
-                        <input
+                        <Input
                           type="text"
                           value={String(formData[`_c_${f.name}`] ?? '')}
                           onChange={(e) => setFormData({ ...formData, [`_c_${f.name}`]: e.target.value })}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-white text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] transition-all"
                         />
                       )}
                     </div>
@@ -995,41 +1003,14 @@ export default function AdminDashboard() {
 
           </div>
 
-          {/* ── Footer ── */}
-          <div className="sticky bottom-0 bg-white/80 backdrop-blur-md border-t border-[var(--border)] rounded-b-2xl px-6 md:px-8 py-4">
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={closeForm}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium border border-[var(--border)] text-[var(--text)] hover:bg-[var(--accent-subtle)] hover:border-[var(--accent)]/30 transition-all active:scale-[0.98]"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-[var(--accent)] hover:bg-[var(--accent)]/90 shadow-md hover:shadow-lg transition-all active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {saving ? (
-                  <>
-                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Menyimpan...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                    Simpan
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeForm}>Batal</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? 'Menyimpan...' : 'Simpan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     )
   }
 
@@ -1038,52 +1019,46 @@ export default function AdminDashboard() {
   const activeTabDef = TABS.find((t) => t.key === activeTab)!
 
   return (
-    <div className="min-h-dvh bg-[var(--bg)] flex">
+    <div className="min-h-dvh bg-background flex">
       <AdminToast />
       <AdminConfirm />
 
-      {/* Sidebar overlay (mobile) */}
+      {/* Mobile overlay */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/30 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* ── Sidebar ── */}
       <aside
-        className={`
-          fixed md:sticky top-0 left-0 z-40 h-dvh
-          bg-white/80 backdrop-blur-xl border-r border-[var(--border)]
-          flex flex-col transition-all duration-300
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          ${collapsed ? 'w-16' : 'w-60'}
-        `}
+        className={cn(
+          'fixed md:sticky top-0 left-0 z-40 h-dvh glass-sidebar flex flex-col transition-all duration-300',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+          collapsed ? 'w-16' : 'w-60'
+        )}
       >
-        {/* Sidebar header */}
-        <div className={`flex items-center border-b border-[var(--border)] relative ${collapsed ? 'justify-center px-2 py-3' : 'px-5 py-4'}`}>
+        {/* Header */}
+        <div className={cn('relative flex items-center border-b border-border/60 bg-white/40', collapsed ? 'justify-center px-2 py-3' : 'px-5 py-4')}>
           {collapsed ? (
-            <Image src={logoUrl} alt="PTDARRAHMAN" width={36} height={36} className="w-9 h-9 object-contain" />
+            logoUrl ? <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-auto max-w-8 object-contain" /> : <div className="h-8 w-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg select-none">ار</div>
           ) : (
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <Image src={logoUrl} alt="PTDARRAHMAN" width={40} height={40} className="h-10 w-auto object-contain shrink-0" />
+              {logoUrl ? <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 object-contain shrink-0" /> : <div className="h-9 w-9 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg shrink-0 select-none">ار</div>}
               <div className="min-w-0">
-                <div className="text-sm font-bold text-[var(--text)] truncate font-[var(--font-heading)]">PTDARRAHMAN</div>
-                <div className="text-[11px] text-[var(--text-muted)]">Panel Admin</div>
+                <div className="font-heading text-sm font-bold text-foreground truncate">PTDARRAHMAN</div>
+                <div className="text-[11px] text-muted-foreground">Admin CMS</div>
               </div>
             </div>
           )}
           <button
             onClick={() => { setCollapsed(p => { const v = !p; localStorage.setItem('cp_collapsed', String(v)); return v }) }}
-            className="hidden md:flex items-center justify-center w-6 h-6 rounded-lg text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--accent-subtle)] transition-all absolute -right-3 top-1/2 -translate-y-1/2 bg-white border border-[var(--border)] shadow-sm"
-            aria-label="Ciutkan sidebar"
+            className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 h-6 w-6 items-center justify-center rounded-full border border-border bg-white text-muted-foreground shadow-sm transition-all hover:text-foreground"
           >
-            <ChevronLeft className={`w-3.5 h-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
+            <ChevronLeft className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
           </button>
         </div>
 
         {/* Nav */}
-        <nav className="sidebar-nav flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1 no-scrollbar">
           {filteredTabs.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.key
@@ -1091,16 +1066,16 @@ export default function AdminDashboard() {
               <button
                 key={tab.key}
                 onClick={() => { setActiveTab(tab.key); setSidebarOpen(false) }}
-                className={`w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-150 text-left ${
-                  collapsed ? 'justify-center p-2' : 'px-3 py-2.5'
-                } ${
+                className={cn(
+                  'w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-150 text-left',
+                  collapsed ? 'justify-center p-2' : 'px-3 py-2.5',
                   isActive
-                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)] shadow-sm'
-                    : 'text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--text)]'
-                }`}
+                    ? 'sidebar-item-active scale-[1.01]'
+                    : 'text-muted-foreground hover:bg-primary/10 hover:text-foreground'
+                )}
                 title={collapsed ? tab.label : undefined}
               >
-                <Icon className="w-4 h-4 shrink-0" />
+                <Icon className="h-4 w-4 shrink-0" />
                 {!collapsed && <span className="truncate">{tab.label}</span>}
               </button>
             )
@@ -1110,38 +1085,58 @@ export default function AdminDashboard() {
 
       {/* ── Main Area ── */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Nav */}
-        <header className="sticky top-0 z-20 bg-white/70 backdrop-blur-xl border-b border-[var(--border)]">
+        {/* Header */}
+        <header className="sticky top-0 z-20 glass-navbar">
           <div className="flex items-center justify-between px-4 md:px-6 h-14">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="md:hidden p-2 -ml-2 rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] transition-all"
-                aria-label="Buka sidebar"
+                className="md:hidden -ml-2 rounded-xl p-2 text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground"
               >
-                <Menu className="w-5 h-5" />
+                <Menu className="h-5 w-5" />
               </button>
-              <h1 className="font-[var(--font-heading)] text-base font-bold text-[var(--text)] hidden sm:block">
+              <h1 className="hidden sm:block font-heading text-base font-bold text-foreground">
                 {activeTabDef.label}
               </h1>
             </div>
 
-            <div className="flex items-center gap-3">
-              <ProfileDropdown
-                username={adminUser?.username || ''}
-                fullName={adminUser?.full_name || ''}
-                email={adminUser?.email || ''}
-                avatarUrl={adminUser?.avatar_url || ''}
-                roleName={adminUser?.role_name || ''}
-                onProfile={() => setProfileOpen(true)}
-                onLogout={handleLogout}
-              />
-            </div>
+            {/* Profile dropdown (shadcn) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="gap-2 px-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={adminUser?.avatar_url || undefined} className="object-cover" />
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
+                      {adminUser?.full_name?.[0] || adminUser?.username?.[0] || 'A'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hidden sm:block text-left">
+                    <div className="text-sm font-semibold text-foreground leading-tight">{adminUser?.full_name || adminUser?.username}</div>
+                    <div className="text-[11px] text-muted-foreground">{adminUser?.role_name || adminUser?.user_type}</div>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold text-foreground">{adminUser?.full_name || adminUser?.username}</span>
+                  <span className="text-xs font-normal text-muted-foreground">{adminUser?.email}</span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="cursor-pointer" onSelect={() => setProfileOpen(true)}>
+                  <UserIcon className="h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer text-rose-danger focus:text-rose-danger focus:bg-rose-light/60" onSelect={handleLogout}>
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
         {/* Content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto animate-fade-in">
           {/* Error */}
           {error && (
             <div className="mb-5 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium">
@@ -1205,126 +1200,71 @@ export default function AdminDashboard() {
 
           {/* List operations bar (Buat Baru) */}
           {activeTab !== 'settings' && activeTab !== 'contact' && !loading && items.length > 0 && canCrud && (
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={openCreate}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:bg-[var(--accent)]/90 shadow-md hover:shadow-lg transition-all active:scale-[0.97]"
-              >
+            <div className="flex justify-end mb-6">
+              <Button onClick={openCreate} className="gap-2 shadow-md">
                 <Plus className="w-4 h-4" />
-                <span>Buat Baru</span>
-              </button>
+                Buat Baru
+              </Button>
             </div>
           )}
 
-          {/* Desktop table */}
+          {/* Table Data */}
           {activeTab !== 'settings' && activeTab !== 'contact' && !loading && items.length > 0 && (
-            <div className="hidden md:block bg-white/60 backdrop-blur-sm rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--border)] bg-[var(--bg-secondary)]/50">
+            <Card className="border-border shadow-sm bg-white/60 backdrop-blur-sm overflow-hidden">
+              <div className="overflow-x-auto no-scrollbar">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-secondary/40 hover:bg-secondary/40">
                       {TABLE_COLS[activeTab]?.map((col) => (
-                        <th key={col.label} className="text-left px-4 py-3.5 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                        <TableHead key={col.label} className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider h-11">
                           {col.label}
-                        </th>
+                        </TableHead>
                       ))}
-                      {canCrud && (
-                        <th className="text-right px-4 py-3.5 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-                          Aksi
-                        </th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
+                      {canCrud && <TableHead className="text-right text-[12px] font-semibold text-muted-foreground uppercase tracking-wider h-11">Aksi</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {items.map((item, idx) => (
-                      <tr
-                        key={item.id || item.key}
-                        className={`border-b border-[var(--border)] transition-colors hover:bg-[var(--accent-subtle)] ${
-                          idx % 2 === 0 ? 'bg-white/40' : 'bg-transparent'
-                        }`}
-                      >
+                      <TableRow key={item.id || item.key} className={idx % 2 === 0 ? 'bg-white/40' : 'bg-transparent'}>
                         {TABLE_COLS[activeTab]?.map((col) => (
-                          <td key={col.label} className="px-4 py-3.5 text-[var(--text)] max-w-[200px] truncate">
+                          <TableCell key={col.label} className="py-3 max-w-[200px] sm:max-w-[300px] truncate text-foreground font-medium">
                             {truncate(col.accessor(item), 40)}
-                          </td>
+                          </TableCell>
                         ))}
                         {canCrud && (
-                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                            <button
-                              onClick={() => openEdit(item)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] transition-all mr-2"
-                            >
-                              Edit
-                            </button>
-                            {activeTab !== 'contact' && (
-                              <button
-                                onClick={async () => {
-                                  const { confirm } = await import('@/app/components/ui/AdminConfirm')
-                                  const ok = await confirm({
-                                    title: 'Hapus Item',
-                                    message: `Yakin ingin menghapus item ini? Tindakan ini tidak bisa dibatalkan.`,
-                                    confirmLabel: 'Ya, Hapus',
-                                    cancelLabel: 'Batal',
-                                    variant: 'danger',
-                                  })
-                                  if (ok) handleDelete(item)
-                                }}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-200 text-xs font-medium text-red-500 hover:bg-red-50 transition-all"
-                              >
-                                Hapus
-                              </button>
-                            )}
-                          </td>
+                          <TableCell className="py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button variant="outline" size="sm" onClick={() => openEdit(item)}>
+                                Edit
+                              </Button>
+                              {activeTab !== 'contact' && (
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  onClick={async () => {
+                                    const { confirm } = await import('@/app/components/ui/AdminConfirm')
+                                    const ok = await confirm({
+                                      title: 'Hapus Item',
+                                      message: 'Yakin ingin menghapus item ini? Tindakan ini tidak bisa dibatalkan.',
+                                      confirmLabel: 'Ya, Hapus',
+                                      cancelLabel: 'Batal',
+                                      variant: 'danger',
+                                    })
+                                    if (ok) handleDelete(item)
+                                  }}
+                                >
+                                  Hapus
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
                         )}
-                      </tr>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
-            </div>
-          )}
-
-          {/* Mobile cards */}
-          {activeTab !== 'settings' && activeTab !== 'contact' && !loading && items.length > 0 && (
-            <div className="md:hidden space-y-3">
-              {items.map((item) => (
-                <div key={item.id || item.key} className="bg-white/60 backdrop-blur-sm rounded-xl border border-[var(--border)] p-5 shadow-sm">
-                  <div className="space-y-2 mb-4">
-                    {TABLE_COLS[activeTab]?.map((col) => (
-                      <CardValue key={col.label} label={col.label} value={col.accessor(item) || ''} />
-                    ))}
-                  </div>
-                  {canCrud && (
-                    <div className="flex gap-2 pt-3 border-t border-[var(--border)]">
-                      <button
-                        onClick={() => openEdit(item)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--border)] text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] transition-all"
-                      >
-                        Edit
-                      </button>
-                      {activeTab !== 'contact' && (
-                        <button
-                          onClick={async () => {
-                            const { confirm } = await import('@/app/components/ui/AdminConfirm')
-                            const ok = await confirm({
-                              title: 'Hapus Item',
-                              message: 'Yakin ingin menghapus item ini?',
-                              confirmLabel: 'Ya, Hapus',
-                              cancelLabel: 'Batal',
-                              variant: 'danger',
-                            })
-                            if (ok) handleDelete(item)
-                          }}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-red-200 text-xs font-medium text-red-500 hover:bg-red-50 transition-all"
-                        >
-                          Hapus
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            </Card>
           )}
         </main>
       </div>
@@ -1339,7 +1279,6 @@ export default function AdminDashboard() {
 }
 
 const SETTING_FIELDS: { key: string; label: string; type: 'text' | 'url' | 'textarea' | 'email'; description: string; image?: boolean }[] = [
-  { key: 'site_name', label: 'Nama Situs', type: 'text', description: 'Nama website yang tampil di judul browser dan pencarian.' },
   { key: 'site_description', label: 'Deskripsi Situs', type: 'textarea', description: 'Deskripsi singkat untuk SEO dan metadata.' },
   { key: 'logo', label: 'Logo', type: 'url', description: 'URL gambar logo untuk seluruh sistem.', image: true },
   { key: 'favicon', label: 'Favicon', type: 'url', description: 'URL gambar favicon (32x32 atau 16x16 px).', image: true },
@@ -1348,7 +1287,6 @@ const SETTING_FIELDS: { key: string; label: string; type: 'text' | 'url' | 'text
 ]
 
 const DEFAULT_SETTING_VALUES: Record<string, string> = {
-  site_name: "Pesantren Tahfidz Qur'an dan Digital Ar-Rahman",
   site_description: 'Pesantren premium yang menggabungkan hafalan Al-Quran dengan pendidikan teknologi digital mutakhir.',
   to_email: 'ptdarrahmanm9@gmail.com',
   whatsapp_message: "Assalamu'alaikum, Saya ingin tahu lebih lanjut tentang Pesantren Ar-Rahman.",
@@ -1412,44 +1350,50 @@ function SettingsEditor({ settings, canCrud }: { settings: api.SiteSetting[]; ca
   return (
     <div className="grid gap-6">
       {SETTING_FIELDS.map(field => (
-        <div key={field.key} className="bg-white/60 backdrop-blur-sm rounded-2xl border border-[var(--border)] p-6">
-          <h3 className="font-[var(--font-heading)] text-base font-semibold text-[var(--text)] mb-1">{field.label}</h3>
-          <p className="text-sm text-[var(--text-muted)] mb-4">{field.description}</p>
+        <Card key={field.key} className="bg-white/60 backdrop-blur-sm shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base">{field.label}</CardTitle>
+            <CardDescription>{field.description}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {(field.image || field.type === 'url') && values[field.key] && (
+              <div className="mb-2">
+                <Image src={values[field.key]} alt={field.label} width={64} height={64} className="w-16 h-16 rounded-lg border object-cover" unoptimized />
+              </div>
+            )}
 
-          {(field.image || field.type === 'url') && values[field.key] && (
-            <div className="mb-3">
-              <Image src={values[field.key]} alt={field.label} width={64} height={64} className="w-16 h-16 rounded-lg border border-[var(--border)] object-cover" unoptimized />
-            </div>
-          )}
-
-          {field.type === 'textarea' ? (
-            <textarea value={values[field.key] ?? ''} onChange={e => setValues(p => ({ ...p, [field.key]: e.target.value }))}
-              rows={3}
-              disabled={!canCrud}
-              className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-white text-sm text-[var(--text)] outline-none resize-y focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] transition-all mb-3 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed" />
-          ) : (
-            <input type={field.type} value={values[field.key] ?? ''} onChange={e => setValues(p => ({ ...p, [field.key]: e.target.value }))}
-              placeholder={field.type === 'url' ? 'https://example.com/gambar.jpg' : field.type === 'email' ? 'email@example.com' : ''}
-              disabled={!canCrud}
-              className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-white text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] transition-all mb-3 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed" />
-          )}
+            {field.type === 'textarea' ? (
+              <Textarea
+                value={values[field.key] ?? ''}
+                onChange={e => setValues(p => ({ ...p, [field.key]: e.target.value }))}
+                disabled={!canCrud}
+                rows={3}
+              />
+            ) : (
+              <Input
+                type={field.type}
+                value={values[field.key] ?? ''}
+                onChange={e => setValues(p => ({ ...p, [field.key]: e.target.value }))}
+                disabled={!canCrud}
+                placeholder={field.type === 'url' ? 'https://example.com/gambar.jpg' : field.type === 'email' ? 'email@example.com' : ''}
+              />
+            )}
+          </CardContent>
 
           {canCrud && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <button onClick={() => handleSave(field.key)} disabled={saving === field.key}
-                className="px-5 py-2.5 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:bg-[var(--accent)]/90 shadow-md transition-all disabled:opacity-60">
+            <CardFooter className="flex items-center gap-2 flex-wrap border-t pt-4">
+              <Button onClick={() => handleSave(field.key)} disabled={saving === field.key}>
                 {saving === field.key ? 'Menyimpan...' : 'Simpan'}
-              </button>
+              </Button>
 
               {field.image && (
-                <button onClick={() => handleUpload(field.key)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] transition-all">
+                <Button variant="outline" onClick={() => handleUpload(field.key)}>
                   <Upload className="w-4 h-4" /> Upload Gambar
-                </button>
+                </Button>
               )}
 
               {values[field.key] && (
-                <button onClick={async () => {
+                <Button variant="danger" onClick={async () => {
                   setValues(p => ({ ...p, [field.key]: '' }))
                   setSaving(field.key)
                   try {
@@ -1460,14 +1404,13 @@ function SettingsEditor({ settings, canCrud }: { settings: api.SiteSetting[]; ca
                   } finally {
                     setSaving(null)
                   }
-                }} disabled={saving === field.key}
-                  className="px-4 py-2.5 rounded-xl border border-red-200 text-sm font-medium text-red-500 hover:bg-red-50 transition-all disabled:opacity-60">
+                }} disabled={saving === field.key}>
                   Reset
-                </button>
+                </Button>
               )}
-            </div>
+            </CardFooter>
           )}
-        </div>
+        </Card>
       ))}
     </div>
   )
@@ -1511,49 +1454,45 @@ function ContactEditor({ contactInfo, canCrud, onSave }: { contactInfo: RowRecor
 
   return (
     <div className="grid gap-6">
-      <div className="bg-white/60 backdrop-blur-sm rounded-2xl border border-[var(--border)] p-6 space-y-6">
-        <div>
-          <h2 className="font-[var(--font-heading)] text-base font-bold text-[var(--text)]">Edit Info Kontak</h2>
-          <p className="text-sm text-[var(--text-muted)] mt-1">Ubah alamat, nomor telepon, email, dan jam operasional pesantren</p>
-        </div>
+      <Card className="bg-white/60 backdrop-blur-sm shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Edit Info Kontak</CardTitle>
+          <CardDescription>Ubah alamat, nomor telepon, email, dan jam operasional pesantren</CardDescription>
+        </CardHeader>
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          {fields.map(f => (
-            <div key={f.key} className={f.type === 'textarea' ? 'sm:col-span-2' : ''}>
-              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">{f.label}</label>
-              {f.type === 'textarea' ? (
-                <textarea
-                  value={form[f.key]}
-                  onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                  disabled={!canCrud}
-                  rows={3}
-                  className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-white text-sm text-[var(--text)] outline-none resize-y focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] transition-all disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
-                />
-              ) : (
-                <input
-                  type="text"
-                  value={form[f.key]}
-                  onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                  disabled={!canCrud}
-                  className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-white text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] transition-all disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
-                />
-              )}
-            </div>
-          ))}
-        </div>
+        <CardContent className="space-y-4">
+          <div className="grid sm:grid-cols-2 gap-4">
+            {fields.map(f => (
+              <div key={f.key} className={f.type === 'textarea' ? 'sm:col-span-2 space-y-2' : 'space-y-2'}>
+                <Label>{f.label}</Label>
+                {f.type === 'textarea' ? (
+                  <Textarea
+                    value={form[f.key]}
+                    onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                    disabled={!canCrud}
+                    rows={3}
+                  />
+                ) : (
+                  <Input
+                    type="text"
+                    value={form[f.key]}
+                    onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                    disabled={!canCrud}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
 
         {canCrud && (
-          <div className="flex justify-end pt-4 border-t border-[var(--border)]">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-6 py-2.5 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:bg-[var(--accent)]/90 shadow-md transition-all disabled:opacity-60"
-            >
+          <CardFooter className="justify-end border-t pt-4">
+            <Button onClick={handleSave} disabled={saving}>
               {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
-            </button>
-          </div>
+            </Button>
+          </CardFooter>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

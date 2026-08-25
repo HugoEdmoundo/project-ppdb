@@ -6,7 +6,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '.
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog'
+import { Modal } from '../components/ui/Modal'
 import { EmptyState } from '../components/ui/EmptyState'
 import { Search, GraduationCap, UserRoundSearch, KeyRound, CheckCircle2 } from 'lucide-react'
 
@@ -185,223 +185,226 @@ export default function ApplicantsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!selectedApplicant} onOpenChange={(v: boolean) => !v && setSelectedApplicant(null)}>
-        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detail Pendaftar</DialogTitle>
-          </DialogHeader>
-          {selectedApplicant && (
-            <div className="space-y-6 pt-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground text-xs">Nama Lengkap</p>
-                  <p className="font-medium">{selectedApplicant.full_name}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Status Pembayaran</p>
-                  <Badge variant={selectedApplicant.payment_status === 'paid' ? 'success' : 'warning'} className="mt-1">
-                    {selectedApplicant.payment_status?.toUpperCase() || 'PENDING'}
-                  </Badge>
-                </div>
-                
-                <div>
-                  <p className="text-muted-foreground text-xs">Email</p>
-                  <p className="font-medium">{selectedApplicant.email}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">No. WhatsApp</p>
-                  <p className="font-medium">{selectedApplicant.phone}</p>
-                </div>
+      <Modal
+        isOpen={!!selectedApplicant}
+        onClose={() => setSelectedApplicant(null)}
+        title="Detail Pendaftar"
+        size="xl"
+      >
+        {selectedApplicant && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground text-xs">Nama Lengkap</p>
+                <p className="font-medium">{selectedApplicant.full_name}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Status Pembayaran</p>
+                <Badge variant={selectedApplicant.payment_status === 'paid' ? 'success' : 'warning'} className="mt-1">
+                  {selectedApplicant.payment_status?.toUpperCase() || 'PENDING'}
+                </Badge>
+              </div>
+              
+              <div>
+                <p className="text-muted-foreground text-xs">Email</p>
+                <p className="font-medium">{selectedApplicant.email}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">No. WhatsApp</p>
+                <p className="font-medium">{selectedApplicant.phone}</p>
+              </div>
 
-                <div>
-                  <p className="text-muted-foreground text-xs">Jalur Pendaftaran</p>
-                  <p className="font-medium capitalize">{selectedApplicant.registration_path}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Jenjang Tujuan</p>
-                  <p className="font-medium">{selectedApplicant.registration_level}</p>
-                </div>
-                
-                <div>
-                  <p className="text-muted-foreground text-xs">Tempat, Tgl Lahir</p>
-                  <p className="font-medium">{selectedApplicant.birth_place || '-'}, {selectedApplicant.birth_date || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Jenis Kelamin</p>
-                  <p className="font-medium">{selectedApplicant.gender === 'L' ? 'Laki-laki' : selectedApplicant.gender === 'P' ? 'Perempuan' : '-'}</p>
-                </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Jalur Pendaftaran</p>
+                <p className="font-medium capitalize">{selectedApplicant.registration_path}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Jenjang Tujuan</p>
+                <p className="font-medium">{selectedApplicant.registration_level}</p>
+              </div>
+              
+              <div>
+                <p className="text-muted-foreground text-xs">Tempat, Tgl Lahir</p>
+                <p className="font-medium">{selectedApplicant.birth_place || '-'}, {selectedApplicant.birth_date || '-'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Jenis Kelamin</p>
+                <p className="font-medium">{selectedApplicant.gender === 'L' ? 'Laki-laki' : selectedApplicant.gender === 'P' ? 'Perempuan' : '-'}</p>
+              </div>
 
-                <div>
-                  <p className="text-muted-foreground text-xs">NISN</p>
-                  <p className="font-medium">{selectedApplicant.nisn || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">NIK</p>
-                  <p className="font-medium">{selectedApplicant.nik || '-'}</p>
-                </div>
+              <div>
+                <p className="text-muted-foreground text-xs">NISN</p>
+                <p className="font-medium">{selectedApplicant.nisn || '-'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">NIK</p>
+                <p className="font-medium">{selectedApplicant.nik || '-'}</p>
+              </div>
 
-                <div className="col-span-2 border-t pt-4 mt-2">
-                  <h4 className="font-semibold text-sm mb-2">Data Domisili</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-muted-foreground text-xs">Provinsi</p>
-                      <p className="font-medium">{selectedApplicant.province || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Kota/Kabupaten</p>
-                      <p className="font-medium">{selectedApplicant.city || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Kecamatan</p>
-                      <p className="font-medium">{selectedApplicant.district || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Kelurahan/Desa</p>
-                      <p className="font-medium">{selectedApplicant.village || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Kode Pos</p>
-                      <p className="font-medium">{selectedApplicant.postal_code || '-'}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-muted-foreground text-xs">Alamat Detail</p>
-                      <p className="font-medium">{selectedApplicant.address || '-'}</p>
-                    </div>
+              <div className="col-span-2 border-t pt-4 mt-2">
+                <h4 className="font-semibold text-sm mb-2">Data Domisili</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-muted-foreground text-xs">Provinsi</p>
+                    <p className="font-medium">{selectedApplicant.province || '-'}</p>
                   </div>
-                </div>
-
-                <div>
-                  <p className="text-muted-foreground text-xs">Nama Orang Tua/Wali</p>
-                  <p className="font-medium">{selectedApplicant.parent_name || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Asal Sekolah</p>
-                  <p className="font-medium">{selectedApplicant.previous_school || '-'}</p>
-                </div>
-
-                <div>
-                  <p className="text-muted-foreground text-xs">Gelombang</p>
-                  <p className="font-medium">{selectedApplicant.wave_name || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Waktu Daftar</p>
-                  <p className="font-medium">{new Date(selectedApplicant.created_at).toLocaleString('id-ID')}</p>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Kota/Kabupaten</p>
+                    <p className="font-medium">{selectedApplicant.city || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Kecamatan</p>
+                    <p className="font-medium">{selectedApplicant.district || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Kelurahan/Desa</p>
+                    <p className="font-medium">{selectedApplicant.village || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Kode Pos</p>
+                    <p className="font-medium">{selectedApplicant.postal_code || '-'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground text-xs">Alamat Detail</p>
+                    <p className="font-medium">{selectedApplicant.address || '-'}</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border bg-muted/40 p-4">
-                <p className="text-xs font-semibold text-foreground mb-3">Kredensial Login</p>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground text-xs">Username</p>
-                    <p className="font-mono font-medium">{selectedApplicant.username || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Password</p>
-                    <p className="font-mono font-medium text-muted-foreground">••••••</p>
-                  </div>
-                </div>
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Password hanya muncul sekali saat pendaftaran (tersimpan terenkripsi, tidak bisa dilihat kembali).
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 w-full"
-                  onClick={() => openReset(selectedApplicant)}
-                >
-                  <KeyRound className="h-4 w-4 mr-1" />
-                  Reset Password (Generate)
-                </Button>
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Password baru dibuat otomatis oleh sistem dan dikirim sebagai notifikasi ke pendaftar (simulasi).
-                </p>
+              <div>
+                <p className="text-muted-foreground text-xs">Nama Orang Tua/Wali</p>
+                <p className="font-medium">{selectedApplicant.parent_name || '-'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Asal Sekolah</p>
+                <p className="font-medium">{selectedApplicant.previous_school || '-'}</p>
+              </div>
+
+              <div>
+                <p className="text-muted-foreground text-xs">Gelombang</p>
+                <p className="font-medium">{selectedApplicant.wave_name || '-'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Waktu Daftar</p>
+                <p className="font-medium">{new Date(selectedApplicant.created_at).toLocaleString('id-ID')}</p>
               </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
-      {/* Reset Password Dialog */}
-      <Dialog open={resetOpen} onOpenChange={(v: boolean) => !v && setResetOpen(false)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Reset Password Pendaftar</DialogTitle>
-          </DialogHeader>
-          {resetApplicant && (
-            <>
-              {resetResult ? (
-                <div className="space-y-4 pt-4">
-                  <div className="flex flex-col items-center gap-2 rounded-xl border border-success/30 bg-success/5 p-4 text-center">
-                    <CheckCircle2 className="h-8 w-8 text-success" />
-                    <p className="text-sm font-semibold text-foreground">Password berhasil direset</p>
-                    <p className="text-xs text-muted-foreground">
-                      Notifikasi kredensial baru telah dikirim ke pendaftar (simulasi). Salin password di bawah untuk diberikan secara manual bila diperlukan.
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-border bg-muted/40 p-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground text-xs">Username</p>
-                        <p className="font-mono font-medium">{resetResult.username || '-'}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground text-xs">Password Baru</p>
-                        <p className="font-mono font-semibold text-primary">{resetResult.password}</p>
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-3 w-full"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(resetResult.password)
-                        toast('success', 'Password disalin')
-                      }}
-                    >
-                      Salin Password
-                    </Button>
-                  </div>
-                  <DialogFooter>
-                    <Button className="w-full" onClick={() => { setResetOpen(false); setSelectedApplicant(null) }}>
-                      Selesai
-                    </Button>
-                  </DialogFooter>
+            <div className="rounded-xl border border-border bg-muted/40 p-4">
+              <p className="text-xs font-semibold text-foreground mb-3">Kredensial Login</p>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs">Username</p>
+                  <p className="font-mono font-medium">{selectedApplicant.username || '-'}</p>
                 </div>
-              ) : (
-                <form onSubmit={handleReset} className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      Password baru untuk <span className="font-semibold text-foreground">{resetApplicant.full_name}</span> ({resetApplicant.username || 'tanpa username'}). Password dibuat otomatis oleh sistem.
-                    </p>
-                    <div className="flex gap-2">
-                      <Input
-                        type="text"
-                        value={resetPassword}
-                        readOnly
-                        placeholder="Klik Generate untuk membuat password"
-                        className="font-mono bg-muted cursor-default"
-                      />
-                      <Button type="button" variant="outline" onClick={generatePassword}>
-                        <KeyRound className="h-4 w-4 mr-1" />
-                        Generate
-                      </Button>
+                <div>
+                  <p className="text-muted-foreground text-xs">Password</p>
+                  <p className="font-mono font-medium text-muted-foreground">••••••</p>
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Password hanya muncul sekali saat pendaftaran (tersimpan terenkripsi, tidak bisa dilihat kembali).
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3 w-full"
+                onClick={() => openReset(selectedApplicant)}
+              >
+                <KeyRound className="h-4 w-4 mr-1" />
+                Reset Password (Generate)
+              </Button>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Password baru dibuat otomatis oleh sistem dan dikirim sebagai notifikasi ke pendaftar (simulasi).
+              </p>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Reset Password Modal */}
+      <Modal
+        isOpen={resetOpen}
+        onClose={() => setResetOpen(false)}
+        title="Reset Password Pendaftar"
+        size="md"
+        footer={
+          resetApplicant && !resetResult ? (
+            <>
+              <Button type="button" variant="ghost" onClick={() => setResetOpen(false)}>Batal</Button>
+              <Button type="submit" form="reset-password-form" disabled={resetting || !resetPassword} loading={resetting}>
+                Reset Password & Kirim Notif
+              </Button>
+            </>
+          ) : resetResult ? (
+            <Button className="w-full" onClick={() => { setResetOpen(false); setSelectedApplicant(null) }}>
+              Selesai
+            </Button>
+          ) : undefined
+        }
+      >
+        {resetApplicant && (
+          <>
+            {resetResult ? (
+              <div className="space-y-4">
+                <div className="flex flex-col items-center gap-2 rounded-xl border border-success/30 bg-success/5 p-4 text-center">
+                  <CheckCircle2 className="h-8 w-8 text-success" />
+                  <p className="text-sm font-semibold text-foreground">Password berhasil direset</p>
+                  <p className="text-xs text-muted-foreground">
+                    Notifikasi kredensial baru telah dikirim ke pendaftar (simulasi). Salin password di bawah untuk diberikan secara manual bila diperlukan.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border bg-muted/40 p-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-xs">Username</p>
+                      <p className="font-mono font-medium">{resetResult.username || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Password Baru</p>
+                      <p className="font-mono font-semibold text-primary">{resetResult.password}</p>
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setResetOpen(false)}>Batal</Button>
-                    <Button type="submit" disabled={resetting || !resetPassword}>
-                      {resetting ? 'Memproses...' : 'Reset Password & Kirim Notif'}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 w-full"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(resetResult.password)
+                      toast('success', 'Password disalin')
+                    }}
+                  >
+                    Salin Password
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <form id="reset-password-form" onSubmit={handleReset} className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Password baru untuk <span className="font-semibold text-foreground">{resetApplicant.full_name}</span> ({resetApplicant.username || 'tanpa username'}). Password dibuat otomatis oleh sistem.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={resetPassword}
+                      readOnly
+                      placeholder="Klik Generate untuk membuat password"
+                      className="font-mono bg-muted cursor-default"
+                    />
+                    <Button type="button" variant="outline" onClick={generatePassword}>
+                      <KeyRound className="h-4 w-4 mr-1" />
+                      Generate
                     </Button>
-                  </DialogFooter>
-                </form>
-              )}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+                  </div>
+                </div>
+              </form>
+            )}
+          </>
+        )}
+      </Modal>
     </div>
   )
 }

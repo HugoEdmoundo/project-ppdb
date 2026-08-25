@@ -41,7 +41,7 @@ TABLES = {
 }
 
 PUBLIC_SETTINGS_KEYS = {
-    "favicon", "site_name", "site_description", "logo",
+    "favicon", "site_description", "logo",
     "whatsapp", "whatsapp_message", "whatsapp_message_en", "whatsapp_message_id",
 }
 

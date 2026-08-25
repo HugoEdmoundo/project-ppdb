@@ -18,6 +18,7 @@ import NotificationsPage from './pages/admin/notifications/NotificationsPage'
 import ApplicantsPage from './pages/admin/ppdb/ApplicantsPage'
 import DataPendaftarPage from './pages/admin/ppdb/DataPendaftarPage'
 import AdminProfilePage from './pages/admin/ProfilePage'
+import SelectionPage from './pages/admin/ppdb/SelectionPage'
 import * as api from './api/client'
 
 export default function App() {
@@ -52,6 +53,7 @@ export default function App() {
               <Route path="periods" element={<PeriodsPage />} />
               <Route path="payments" element={<PaymentsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="selection" element={<SelectionPage />} />
               <Route path="profile" element={<AdminProfilePage />} />
             </Route>
 

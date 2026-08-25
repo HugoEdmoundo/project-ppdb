@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
-import { useConfirm } from '../components/ConfirmDialog'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { Card, CardContent } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -23,7 +23,6 @@ interface Recipient {
 
 export default function NotificationsPage() {
   const { toast } = useToast()
-  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const [recipients, setRecipients] = useState<Recipient[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -34,6 +33,9 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
   const [logs, setLogs] = useState<any[]>([])
+
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmData, setConfirmData] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
 
   const fetchAll = async () => {
     setLoading(true)
@@ -121,12 +123,15 @@ export default function NotificationsPage() {
       toast('warning', 'Body pesan tidak boleh kosong')
       return
     }
-    const ok = await confirm({
-      title: 'Kirim Notifikasi',
-      message: `Notifikasi akan dikirim ke ${selected.size} penerima. Pastikan email/nomor WhatsApp penerima sudah benar.\n\nChannel: ${channel}\nSubject: ${subject || '(kosong)'}\n\nYakin ingin mengirim?`,
-      confirmLabel: 'Ya, Kirim',
+    const confirmed = await new Promise<boolean>((resolve) => {
+      setConfirmData({
+        title: 'Kirim Notifikasi',
+        message: `Notifikasi akan dikirim ke ${selected.size} penerima. Pastikan email/nomor WhatsApp penerima sudah benar.\n\nChannel: ${channel}\nSubject: ${subject || '(kosong)'}\n\nYakin ingin mengirim?`,
+        onConfirm: () => { setConfirmOpen(false); resolve(true) },
+      })
+      setConfirmOpen(true)
     })
-    if (!ok) return
+    if (!confirmed) return
 
     setSending(true)
     try {
@@ -151,7 +156,14 @@ export default function NotificationsPage() {
 
   return (
     <>
-      {confirmDialog}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => confirmData?.onConfirm()}
+        title={confirmData?.title || 'Konfirmasi'}
+        message={confirmData?.message || ''}
+        confirmLabel="Ya, Kirim"
+      />
       <div className="space-y-6 animate-fadeIn">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">

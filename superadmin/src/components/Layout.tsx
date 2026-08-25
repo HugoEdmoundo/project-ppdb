@@ -61,7 +61,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   async function handleLogout() {
     await logout()
-    navigate('/login')
+    navigate('/auth/login')
   }
 
   const toggleCollapse = () => {

@@ -6,7 +6,8 @@ import {
   Card, CardContent,
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell,
   Badge, Button, Input, Label, Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogFooter, ConfirmDialog, Sheet, SheetContent, SheetHeader, SheetTitle, EmptyState
+  DialogDescription, DialogFooter, ConfirmDialog, Sheet, SheetContent, SheetHeader, SheetTitle,
+  EmptyState, Alert, CurrencyInput
 } from '@/components/ui'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { Plus, Edit, Trash2, CalendarDays, CheckCircle, XCircle, Layers, CalendarX2, Waves } from 'lucide-react'
@@ -240,6 +241,60 @@ export default function PeriodsPage() {
   )
 }
 
+// ── Konstanta scope gelombang ───────────────────────────────────────────────
+const PATH_OPTIONS = [
+  { value: 'reguler', label: 'Reguler' },
+  { value: 'pindahan', label: 'Pindahan' },
+]
+const LEVEL_OPTIONS = ['SMP', 'SMK']
+const PATH_LABELS: Record<string, string> = { reguler: 'Reguler', pindahan: 'Pindahan' }
+
+const parseCsv = (v?: string | null): string[] =>
+  (v || '').split(',').map(s => s.trim()).filter(Boolean)
+
+interface WaveFormData {
+  name: string
+  allowed_paths: string[]
+  allowed_levels: string[]
+  registration_start_date: string
+  registration_end_date: string
+  document_upload_end_date: string
+  selection_date: string
+  quota: number
+  registration_fee: number
+}
+
+const emptyWaveForm = (): WaveFormData => ({
+  name: '',
+  allowed_paths: ['reguler', 'pindahan'],
+  allowed_levels: ['SMP', 'SMK'],
+  registration_start_date: '',
+  registration_end_date: '',
+  document_upload_end_date: '',
+  selection_date: '',
+  quota: 0,
+  registration_fee: 0,
+})
+
+function validateWaveForm(f: WaveFormData): string | null {
+  if (!f.name.trim()) return 'Nama gelombang wajib diisi'
+  if (f.allowed_paths.length === 0) return 'Pilih minimal satu jalur pendaftaran'
+  if (f.allowed_levels.length === 0) return 'Pilih minimal satu jenjang'
+  if (!f.registration_start_date) return 'Tanggal mulai pendaftaran wajib diisi'
+  if (!f.registration_end_date) return 'Tanggal akhir pendaftaran wajib diisi'
+  if (!f.document_upload_end_date) return 'Batas upload dokumen wajib diisi'
+  if (!f.selection_date) return 'Jadwal seleksi wajib diisi'
+  if (f.registration_end_date < f.registration_start_date)
+    return 'Tanggal akhir pendaftaran tidak boleh sebelum tanggal mulai pendaftaran'
+  if (f.document_upload_end_date < f.registration_end_date)
+    return 'Batas upload dokumen tidak boleh sebelum tanggal akhir pendaftaran'
+  if (f.selection_date < f.document_upload_end_date)
+    return 'Jadwal seleksi tidak boleh sebelum batas upload dokumen'
+  if (!Number.isFinite(f.quota) || f.quota < 1) return 'Kuota harus diisi minimal 1'
+  if (f.registration_fee < 0) return 'Biaya tidak boleh negatif'
+  return null
+}
+
 function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
   const { toast } = useToast()
   const { canCrud } = useCan('ppdb', 'crud')
@@ -248,18 +303,13 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
 
   const [showForm, setShowForm] = useState(false)
   const [editingWave, setEditingWave] = useState<any>(null)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [actionId, setActionId] = useState<{ id: string, type: 'activate' | 'deactivate' } | null>(null)
 
-  const [formData, setFormData] = useState({ name: '', registration_start_date: '', registration_end_date: '', document_upload_end_date: '', selection_date: '', quota: 0, registration_fee: 0, second_stage_fee: 0 })
-
-  useEffect(() => {
-    if (period?.id) {
-      fetchWaves()
-    } else {
-      setWaves([])
-    }
-  }, [period])
+  const [formData, setFormData] = useState<WaveFormData>(emptyWaveForm())
+  const colCount = canCrud ? 8 : 7
 
   const fetchWaves = async () => {
     setLoading(true)
@@ -273,21 +323,96 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
     }
   }
 
+  useEffect(() => {
+    if (period?.id) {
+      fetchWaves()
+    } else {
+      setWaves([])
+    }
+  }, [period])
+
+  const openCreate = () => {
+    setEditingWave(null)
+    setFormData(emptyWaveForm())
+    setFormError(null)
+    setShowForm(true)
+  }
+
+  const openEdit = (w: any) => {
+    setEditingWave(w)
+    setFormData({
+      name: w.name || '',
+      allowed_paths: parseCsv(w.allowed_paths),
+      allowed_levels: parseCsv(w.allowed_levels),
+      registration_start_date: (w.registration_start_date || '').split('T')[0],
+      registration_end_date: (w.registration_end_date || '').split('T')[0],
+      document_upload_end_date: (w.document_upload_end_date || '').split('T')[0],
+      selection_date: (w.selection_date || '').split('T')[0],
+      quota: w.quota ?? 0,
+      registration_fee: w.registration_fee ?? 0,
+    })
+    setFormError(null)
+    setShowForm(true)
+  }
+
+  const toggleScope = (key: 'allowed_paths' | 'allowed_levels', value: string) => {
+    setFormData(prev => {
+      const list = prev[key]
+      const next = list.includes(value) ? list.filter(v => v !== value) : [...list, value]
+      return { ...prev, [key]: next }
+    })
+  }
+
+  // Ubah tanggal berantai: kalau tanggal di hilir jadi tidak valid, ikut dibersihkan
+  const handleDateChange = (field: keyof WaveFormData, value: string) => {
+    setFormData(prev => {
+      const next = { ...prev, [field]: value }
+      if (next.registration_end_date && next.registration_end_date < next.registration_start_date) {
+        next.registration_end_date = ''
+        next.document_upload_end_date = ''
+        next.selection_date = ''
+      } else if (next.document_upload_end_date && next.document_upload_end_date < next.registration_end_date) {
+        next.document_upload_end_date = ''
+        next.selection_date = ''
+      } else if (next.selection_date && next.selection_date < next.document_upload_end_date) {
+        next.selection_date = ''
+      }
+      return next
+    })
+  }
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canCrud || !period) return
+    const error = validateWaveForm(formData)
+    if (error) {
+      setFormError(error)
+      return
+    }
+    const payload = {
+      ...formData,
+      name: formData.name.trim(),
+      allowed_paths: formData.allowed_paths.join(','),
+      allowed_levels: formData.allowed_levels.join(','),
+    }
+    setSaving(true)
+    setFormError(null)
     try {
       if (editingWave) {
-        await ppdbService.updateWave(editingWave.id, formData)
+        await ppdbService.updateWave(editingWave.id, payload)
         toast('success', 'Gelombang berhasil diperbarui')
       } else {
-        await ppdbService.createWave({ ...formData, period_id: period.id })
+        await ppdbService.createWave({ ...payload, period_id: period.id })
         toast('success', 'Gelombang berhasil ditambahkan')
       }
       setShowForm(false)
       fetchWaves()
     } catch (e: any) {
-      toast('error', e.message || 'Gagal menyimpan gelombang')
+      const msg = e.message || 'Gagal menyimpan gelombang'
+      setFormError(msg)
+      toast('error', msg)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -333,7 +458,7 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
           <div className="flex justify-between items-center">
             <h3 className="font-semibold text-foreground">Daftar Gelombang</h3>
             {canCrud && (
-              <Button size="sm" onClick={() => { setEditingWave(null); setFormData({ name: '', registration_start_date: '', registration_end_date: '', document_upload_end_date: '', selection_date: '', quota: 0, registration_fee: 0, second_stage_fee: 0 }); setShowForm(true) }} className="gap-1">
+              <Button size="sm" onClick={openCreate} className="gap-1">
                 <Plus className="h-4 w-4" /> Tambah
               </Button>
             )}
@@ -345,6 +470,7 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
                 <TableRow>
                   <TableHead className="w-12">Gel.</TableHead>
                   <TableHead>Nama</TableHead>
+                  <TableHead>Target</TableHead>
                   <TableHead>Waktu Daftar</TableHead>
                   <TableHead>Waktu Lainnya</TableHead>
                   <TableHead>Kuota</TableHead>
@@ -354,10 +480,10 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-6">Memuat...</TableCell></TableRow>
+                  <TableSkeletonRows cols={colCount} rows={4} />
                 ) : waves.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-8">
+                    <TableCell colSpan={colCount} className="py-8">
                       <EmptyState
                         icon={Waves}
                         title="Belum Ada Gelombang"
@@ -371,13 +497,25 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
                     <TableRow key={w.id}>
                       <TableCell className="font-semibold text-center">{w.wave_number}</TableCell>
                       <TableCell className="font-medium">{w.name}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-[170px]">
+                          {parseCsv(w.allowed_paths).map(p => (
+                            <Badge key={p} variant={p === 'reguler' ? 'info' : 'warning'}>
+                              {PATH_LABELS[p] || p}
+                            </Badge>
+                          ))}
+                          {parseCsv(w.allowed_levels).map(l => (
+                            <Badge key={l} variant="gold">{l}</Badge>
+                          ))}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-xs whitespace-nowrap">
-                        {new Date(w.registration_start_date).toLocaleDateString('id-ID')} <br/> 
+                        {new Date(w.registration_start_date).toLocaleDateString('id-ID')} <br/>
                         <span className="text-muted-foreground">s/d</span> <br/>
                         {new Date(w.registration_end_date).toLocaleDateString('id-ID')}
                       </TableCell>
                       <TableCell className="text-xs whitespace-nowrap">
-                        Upload: {new Date(w.document_upload_end_date).toLocaleDateString('id-ID')} <br/> 
+                        Upload: {new Date(w.document_upload_end_date).toLocaleDateString('id-ID')} <br/>
                         Seleksi: {new Date(w.selection_date).toLocaleDateString('id-ID')}
                       </TableCell>
                       <TableCell>{w.quota}</TableCell>
@@ -398,7 +536,7 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
                                 <CheckCircle className="h-4 w-4" />
                               </Button>
                             )}
-                            <Button variant="ghost" size="icon" onClick={() => { setEditingWave(w); setFormData({ name: w.name, registration_start_date: w.registration_start_date.split('T')[0], registration_end_date: w.registration_end_date.split('T')[0], document_upload_end_date: w.document_upload_end_date.split('T')[0], selection_date: w.selection_date.split('T')[0], quota: w.quota, registration_fee: w.registration_fee || 0, second_stage_fee: w.second_stage_fee || 0 }); setShowForm(true) }} title="Edit" className="h-8 w-8">
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(w)} title="Edit" className="h-8 w-8">
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => setDeletingId(w.id)} title="Hapus" className="h-8 w-8 text-rose-danger hover:text-rose-danger hover:bg-rose-light">
@@ -416,50 +554,114 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
         </div>
       </SheetContent>
 
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent>
+      <Dialog open={showForm} onOpenChange={(v) => { setShowForm(v); if (!v) setFormError(null) }}>
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>{editingWave ? 'Edit Gelombang' : 'Tambah Gelombang'}</DialogTitle>
+            <DialogDescription>
+              {editingWave
+                ? `Ubah detail ${editingWave.name} pada periode ${period?.name}.`
+                : `Nomor gelombang diisi otomatis untuk periode ${period?.name}.`}
+            </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSave} className="space-y-4 pt-4">
+          <form onSubmit={handleSave} className="space-y-5 pt-2 max-h-[65vh] overflow-y-auto pr-1">
             <div className="space-y-2">
-              <Label>Nama Gelombang</Label>
-              <Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Contoh: Gelombang 1" />
+              <Label htmlFor="wave-name">Nama Gelombang *</Label>
+              <Input id="wave-name" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Contoh: Gelombang 1" disabled={!canCrud} />
             </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Tanggal Mulai Daftar</Label>
-                <Input type="date" required value={formData.registration_start_date} onChange={e => setFormData({ ...formData, registration_start_date: e.target.value })} />
+                <Label>Jalur Pendaftaran *</Label>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {PATH_OPTIONS.map(opt => {
+                    const active = formData.allowed_paths.includes(opt.value)
+                    return (
+                      <button key={opt.value} type="button" aria-pressed={active} disabled={!canCrud}
+                        onClick={() => toggleScope('allowed_paths', opt.value)}
+                        className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'}`}>
+                        {opt.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">Jalur yang dibuka pada gelombang ini.</p>
               </div>
               <div className="space-y-2">
-                <Label>Tanggal Akhir Daftar</Label>
-                <Input type="date" required value={formData.registration_end_date} onChange={e => setFormData({ ...formData, registration_end_date: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Batas Upload Dokumen</Label>
-                <Input type="date" required value={formData.document_upload_end_date} onChange={e => setFormData({ ...formData, document_upload_end_date: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Jadwal Seleksi</Label>
-                <Input type="date" required value={formData.selection_date} onChange={e => setFormData({ ...formData, selection_date: e.target.value })} />
-              </div>
-              <div className="space-y-2 col-span-2 sm:col-span-1">
-                <Label>Kuota</Label>
-                <Input type="number" required value={formData.quota} onChange={e => setFormData({ ...formData, quota: parseInt(e.target.value) || 0 })} placeholder="Contoh: 100" />
-              </div>
-              <div className="space-y-2 col-span-2 sm:col-span-1">
-                <Label>Biaya Formulir (Tahap 1)</Label>
-                <Input type="number" required value={formData.registration_fee} onChange={e => setFormData({ ...formData, registration_fee: parseInt(e.target.value) || 0 })} placeholder="Contoh: 350000" />
-              </div>
-              <div className="space-y-2 col-span-2">
-                <Label>Biaya Pendaftaran (Tahap 2)</Label>
-                <Input type="number" required value={formData.second_stage_fee} onChange={e => setFormData({ ...formData, second_stage_fee: parseInt(e.target.value) || 0 })} placeholder="Contoh: 15000000" />
+                <Label>Jenjang *</Label>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {LEVEL_OPTIONS.map(lvl => {
+                    const active = formData.allowed_levels.includes(lvl)
+                    return (
+                      <button key={lvl} type="button" aria-pressed={active} disabled={!canCrud}
+                        onClick={() => toggleScope('allowed_levels', lvl)}
+                        className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'}`}>
+                        {lvl}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">Jenjang yang dibuka pada gelombang ini.</p>
               </div>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Batal</Button>
-              <Button type="submit">Simpan</Button>
-            </DialogFooter>
+
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Jadwal</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="wave-start">Tanggal Mulai Pendaftaran *</Label>
+                  <Input id="wave-start" type="date" required value={formData.registration_start_date}
+                    onChange={e => handleDateChange('registration_start_date', e.target.value)} disabled={!canCrud} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wave-end">Tanggal Akhir Pendaftaran *</Label>
+                  <Input id="wave-end" type="date" required value={formData.registration_end_date}
+                    min={formData.registration_start_date || undefined}
+                    onChange={e => handleDateChange('registration_end_date', e.target.value)} disabled={!canCrud} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wave-upload">Batas Upload Dokumen *</Label>
+                  <Input id="wave-upload" type="date" required value={formData.document_upload_end_date}
+                    min={formData.registration_end_date || undefined}
+                    onChange={e => handleDateChange('document_upload_end_date', e.target.value)} disabled={!canCrud} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wave-selection">Jadwal Seleksi *</Label>
+                  <Input id="wave-selection" type="date" required value={formData.selection_date}
+                    min={formData.document_upload_end_date || undefined}
+                    onChange={e => handleDateChange('selection_date', e.target.value)} disabled={!canCrud} />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kuota &amp; Biaya</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="wave-quota">Kuota *</Label>
+                  <Input id="wave-quota" type="number" min={1} required value={formData.quota}
+                    onChange={e => setFormData({ ...formData, quota: parseInt(e.target.value) || 0 })}
+                    placeholder="Contoh: 100" disabled={!canCrud} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wave-fee1">Biaya Formulir (Tahap 1)</Label>
+                  <CurrencyInput id="wave-fee1" value={formData.registration_fee}
+                    onValueChange={v => setFormData({ ...formData, registration_fee: v })}
+                    placeholder="Contoh: 350.000" disabled={!canCrud} />
+                </div>
+              </div>
+            </div>
+
+            {formError && (
+              <Alert type="error" title="Periksa kembali data Anda">{formError}</Alert>
+            )}
+
+            {canCrud && (
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setShowForm(false)} disabled={saving}>Batal</Button>
+                <Button type="submit" disabled={saving}>{saving ? 'Menyimpan...' : 'Simpan'}</Button>
+              </DialogFooter>
+            )}
           </form>
         </DialogContent>
       </Dialog>
@@ -473,7 +675,7 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
         confirmLabel="Ya, Hapus"
         variant="danger"
       />
-      
+
       <ConfirmDialog
         isOpen={!!actionId}
         onClose={() => setActionId(null)}

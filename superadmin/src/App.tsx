@@ -45,7 +45,7 @@ export default function App() {
         <ToastProvider>
         <Routes>
           {/* Public routes */}
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/login" element={<LoginPage />} />
 
           {/* Protected routes */}
           <Route

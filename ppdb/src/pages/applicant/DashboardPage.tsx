@@ -1,15 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { CheckCircle, Clock, FileText, Upload, ChevronDown, ChevronUp } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/Avatar'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/DropdownMenu'
+import { CheckCircle, Clock, FileText, Upload, ChevronDown, ChevronUp, MapPin, Star, CalendarDays, LogOut, User as UserIcon, Phone, MessageCircle, Mail, X, ShieldCheck } from 'lucide-react'
 import * as api from '../../api/client'
 import { useToast } from '@/components/Toast'
 import { REQUIRED_DOCUMENTS } from '@/constants/documents'
 
 export default function ApplicantDashboardPage() {
   const { toast } = useToast()
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
   
   const [applicant, setApplicant] = useState<any>(null)
   const [transaction, setTransaction] = useState<any>(null)
@@ -19,32 +26,74 @@ export default function ApplicantDashboardPage() {
   const [uploading, setUploading] = useState<string | null>(null)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [selectionResult, setSelectionResult] = useState<any>(null)
+  const [selectionSession, setSelectionSession] = useState<any>(null)
+  const [availableSessions, setAvailableSessions] = useState<any[]>([])
+  const [booking, setBooking] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
+  const [contactInfo, setContactInfo] = useState<any>(null)
+
+  const fetchMyData = useCallback(async () => {
+    try {
+      const [res, docsRes] = await Promise.all([
+        api.apiFetch<any>('/payment/my-transaction'),
+        api.apiFetch<any>('/ppdb/documents')
+      ])
+      setApplicant(res.applicant)
+      setTransaction(res.transaction)
+      setDocuments(docsRes.data || [])
+      
+      const status = res.applicant?.status
+      if (['document_uploaded_pending', 'document_rejected'].includes(status)) {
+        setExpandedStep(2)
+      } else if (['selection', 'passed', 'failed'].includes(status)) {
+        setExpandedStep(3)
+      }
+
+      if (['selection', 'passed', 'failed'].includes(status)) {
+        try {
+          const [resultRes, sessionRes] = await Promise.all([
+            api.apiFetch<any>('/selection/applicants/me/results'),
+            api.apiFetch<any>('/selection/applicants/me/sessions'),
+          ])
+          setSelectionResult(resultRes || null) // { notes, scores: [] }
+          setSelectionSession(sessionRes.session || null)
+          setAvailableSessions(sessionRes.available_sessions || [])
+        } catch {}
+      }
+    } catch (e: any) {
+      toast('error', e.message || 'Gagal memuat data')
+    } finally {
+      setLoading(false)
+    }
+  }, [toast])
 
   useEffect(() => {
-    const fetchMyData = async () => {
-      try {
-        const [res, docsRes] = await Promise.all([
-          api.apiFetch<any>('/payment/my-transaction'),
-          api.apiFetch<any>('/ppdb/documents')
-        ])
-        setApplicant(res.applicant)
-        setTransaction(res.transaction)
-        setDocuments(docsRes.data || [])
-        
-        // Auto expand step based on status
-        if (['document_uploaded_pending', 'document_rejected'].includes(res.applicant?.status)) {
-          setExpandedStep(2)
-        } else if (res.applicant?.status === 'selection') {
-          setExpandedStep(3)
-        }
-      } catch (e: any) {
-        toast('error', e.message || 'Gagal memuat data')
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchMyData()
-  }, [])
+    api.apiFetch<any>('/companyprofile/contact-info').then(setContactInfo).catch(() => {})
+  }, [fetchMyData])
+
+  const handleBookSession = async (sessionId: string) => {
+    if(!confirm('Anda yakin ingin memilih jadwal ini?')) return
+    setBooking(true)
+    try {
+      await api.apiFetch('/selection/applicants/me/book', {
+        method: 'POST',
+        body: JSON.stringify({ session_id: sessionId })
+      })
+      toast('success', 'Berhasil memilih jadwal ujian')
+      await fetchMyData()
+    } catch(e: any) {
+      toast('error', e.message || 'Gagal memilih jadwal')
+    } finally {
+      setBooking(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/auth/login')
+  }
 
   const handleUpload = async (docType: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -210,12 +259,125 @@ export default function ApplicantDashboardPage() {
       status: ['passed', 'failed'].includes(applicant?.status) ? 'completed' : 
               applicant?.status === 'selection' ? 'active' : 'locked',
       content: (
-        <div className="p-6 border rounded-lg text-center bg-muted/10 space-y-3">
-          <Clock className="h-8 w-8 text-muted-foreground mx-auto" />
-          <h4 className="font-semibold text-foreground">Menunggu Jadwal Seleksi</h4>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Jadwal seleksi belum tersedia. Kami akan memberitahu Anda melalui Email dan WhatsApp setelah panitia memverifikasi dokumen Anda.
-          </p>
+        <div className="space-y-4">
+          {/* Jadwal Seleksi */}
+          {selectionSession ? (
+            <div className="p-4 border rounded-lg bg-blue-50/50 border-blue-200 space-y-2">
+              <h4 className="font-semibold text-foreground flex items-center gap-2 text-sm">
+                <CalendarDays className="h-4 w-4 text-blue-600" />
+                Jadwal Seleksi Anda
+              </h4>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <div className="text-muted-foreground">Sesi</div>
+                <div className="font-medium">{selectionSession.name}</div>
+                {selectionSession.session_date && (
+                  <>
+                    <div className="text-muted-foreground">Tanggal</div>
+                    <div className="font-medium">
+                      {new Date(selectionSession.session_date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                  </>
+                )}
+                {(selectionSession.start_time || selectionSession.end_time) && (
+                  <>
+                    <div className="text-muted-foreground">Waktu</div>
+                    <div className="font-medium">
+                      {selectionSession.start_time}{selectionSession.end_time ? ` – ${selectionSession.end_time}` : ''} WIB
+                    </div>
+                  </>
+                )}
+                {selectionSession.location && (
+                  <>
+                    <div className="text-muted-foreground">Lokasi</div>
+                    <div className="font-medium flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                      {selectionSession.location}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : applicant?.status === 'selection' && (
+            <div className="p-5 border rounded-lg bg-card shadow-sm space-y-4">
+              <div>
+                <h4 className="font-semibold text-foreground flex items-center gap-2">
+                  <CalendarDays className="h-5 w-5 text-primary" />
+                  Pilih Jadwal Ujian
+                </h4>
+                <p className="text-sm text-muted-foreground mt-1">Silakan pilih salah satu jadwal ujian yang tersedia di bawah ini.</p>
+              </div>
+              
+              {availableSessions.length === 0 ? (
+                <div className="p-4 bg-muted/20 text-center rounded-md">
+                  <p className="text-sm text-muted-foreground">Belum ada jadwal sesi yang dibuka oleh panitia.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {availableSessions.map(s => {
+                    const isFull = s.quota > 0 && s.booked_count >= s.quota;
+                    return (
+                      <div key={s.id} className={`border rounded-lg p-3 ${isFull ? 'bg-muted/30 opacity-60' : 'bg-background'}`}>
+                        <div className="flex justify-between items-start mb-2">
+                          <h5 className="font-medium text-sm">{s.name}</h5>
+                          {s.quota > 0 && (
+                            <Badge variant={isFull ? "destructive" : "secondary"} className="text-[10px]">
+                              {s.booked_count}/{s.quota} terisi
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-1 mb-3">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-3 w-3" />
+                            {s.session_date ? new Date(s.session_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-'}, {s.start_time || '-'}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="h-3 w-3" />
+                            {s.location || '-'}
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          className="w-full h-8 text-xs" 
+                          disabled={isFull || booking}
+                          onClick={() => handleBookSession(s.id)}
+                        >
+                          {isFull ? 'Penuh' : booking ? 'Wait...' : 'Pilih Jadwal'}
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Nilai Seleksi Dinamis */}
+          {selectionResult && selectionResult.scores && selectionResult.scores.length > 0 && (
+            <div className="p-4 border rounded-lg bg-muted/30 space-y-3">
+              <h4 className="font-semibold text-foreground flex items-center gap-2 text-sm">
+                <Star className="h-4 w-4 text-yellow-500" />
+                Hasil & Nilai Seleksi
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {selectionResult.scores.map((sc: any, idx: number) => (
+                  <div key={idx} className="bg-background border rounded-md p-3 flex justify-between items-center">
+                    <div>
+                      <p className="text-xs text-muted-foreground">{sc.category_name}</p>
+                      <p className="text-sm font-medium">{sc.criteria_name}</p>
+                    </div>
+                    <div className="text-xl font-bold">{sc.score}</div>
+                  </div>
+                ))}
+              </div>
+              {selectionResult.notes && (
+                <div className="mt-3 p-3 bg-yellow-50/50 border border-yellow-100 rounded-md">
+                  <p className="text-xs font-medium text-yellow-800 mb-1">Catatan Panitia:</p>
+                  <p className="text-sm text-yellow-700">{selectionResult.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       )
     },
@@ -236,85 +398,380 @@ export default function ApplicantDashboardPage() {
   if (loading) return <div className="p-8 text-center">Memuat dashboard...</div>
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">Dashboard Pendaftar</h1>
-        <p className="text-muted-foreground">
-          Pantau progres pendaftaran Anda di bawah ini. Pastikan Anda menyelesaikan setiap tahapan yang masih aktif.
-        </p>
+    <div className="min-h-screen bg-muted/30">
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-20 glass-navbar">
+        <div className="flex items-center justify-between px-4 md:px-6 h-14 max-w-6xl mx-auto">
+          <h1 className="font-heading text-base font-bold text-foreground">PPDB</h1>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="gap-2 px-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.avatar_url || undefined} className="object-cover" />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
+                    {user?.full_name?.[0] || user?.username?.[0] || 'A'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="hidden sm:block text-left">
+                  <div className="text-sm font-semibold text-foreground leading-tight">{user?.full_name || user?.username}</div>
+                  <div className="text-[11px] text-muted-foreground">{user?.role_name || 'Calon Murid'}</div>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="flex flex-col gap-0.5">
+                <span className="text-sm font-semibold text-foreground">{user?.full_name || user?.username}</span>
+                <span className="text-xs font-normal text-muted-foreground">{user?.email}</span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer" onSelect={() => setShowProfile(true)}>
+                <UserIcon className="h-4 w-4" />
+                Profil Saya
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer text-rose-danger focus:text-rose-danger focus:bg-rose-light/60" onSelect={handleLogout}>
+                <LogOut className="h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {/* ── Main Content ── */}
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-primary">Dashboard Pendaftar</h2>
+          <p className="text-muted-foreground">
+            Pantau progres pendaftaran Anda di bawah ini. Pastikan Anda menyelesaikan setiap tahapan yang masih aktif.
+          </p>
+        </div>
+
+        <div className="space-y-4 relative before:absolute before:inset-0 before:ml-6 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-muted before:to-transparent">
+          
+          {steps.map((step) => {
+            const isCompleted = step.status === 'completed'
+            const isActive = step.status === 'active' || step.status === 'pending'
+            const isLocked = step.status === 'locked'
+            const isExpanded = expandedStep === step.number
+
+            let iconBg = 'bg-muted border-muted-foreground/30 text-muted-foreground'
+            if (isCompleted) iconBg = 'bg-emerald-500 border-emerald-600 text-white shadow-sm'
+            if (isActive) iconBg = 'bg-blue-500 border-blue-600 text-white shadow-sm ring-4 ring-blue-500/20'
+
+            return (
+              <div key={step.number} className="relative flex items-center group is-active">
+                
+                <div className="flex items-center justify-center w-12 h-12 rounded-full border-2 bg-background shrink-0 z-10 mr-4">
+                  <div className={`flex items-center justify-center w-full h-full rounded-full transition-colors ${iconBg}`}>
+                    {isCompleted ? <CheckCircle className="w-5 h-5" /> : <span className="font-bold">{step.number}</span>}
+                  </div>
+                </div>
+
+                <div className="w-[calc(100%-4rem)]">
+                  <Card 
+                    className={`transition-all duration-200 ${isActive ? 'border-blue-300 shadow-md ring-1 ring-blue-100' : isLocked ? 'opacity-70 grayscale-[50%]' : ''}`}
+                  >
+                    <CardHeader 
+                      className={`cursor-pointer p-4 ${isLocked ? 'cursor-not-allowed' : 'hover:bg-muted/50'}`}
+                      onClick={() => !isLocked && toggleStep(step.number)}
+                    >
+                      <div className="flex justify-between items-center gap-4">
+                        <div>
+                          <CardTitle className={`text-base ${isActive ? 'text-blue-700' : isCompleted ? 'text-emerald-700' : ''}`}>
+                            {step.title}
+                          </CardTitle>
+                          <CardDescription className="text-xs mt-1">
+                            {step.description}
+                          </CardDescription>
+                        </div>
+                        {!isLocked && (
+                          <div className="shrink-0 text-muted-foreground">
+                            {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                          </div>
+                        )}
+                      </div>
+                    </CardHeader>
+                    
+                    {isExpanded && !isLocked && (
+                      <CardContent className="px-4 pb-4 pt-0 border-t mt-4 border-dashed">
+                        <div className="pt-4 animate-in slide-in-from-top-2 fade-in duration-200">
+                          {step.content}
+                        </div>
+                      </CardContent>
+                    )}
+                  </Card>
+                </div>
+              </div>
+            )
+          })}
+
+        </div>
+
+        <ConfirmDialog
+          isOpen={showSubmitConfirm}
+          onClose={() => setShowSubmitConfirm(false)}
+          onConfirm={handleSubmitDocs}
+          loading={submitting}
+          title="Kirim Dokumen"
+          message="Apakah Anda yakin semua dokumen sudah benar? Dokumen yang sudah dikirim tidak bisa diubah kembali."
+          confirmLabel="Ya, Kirim"
+        />
       </div>
 
-      <div className="space-y-4 relative before:absolute before:inset-0 before:ml-6 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-muted before:to-transparent">
-        
-        {steps.map((step) => {
-          const isCompleted = step.status === 'completed'
-          const isActive = step.status === 'active' || step.status === 'pending'
-          const isLocked = step.status === 'locked'
-          const isExpanded = expandedStep === step.number
+      {/* ── Profile Modal (Read-only, same layout as admin DataPendaftarPage) ── */}
+      <Dialog open={showProfile} onOpenChange={setShowProfile}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Profil Saya</DialogTitle>
+          </DialogHeader>
+          {user && applicant && (
+            <div className="space-y-6 pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs">Nama Lengkap</p>
+                  <p className="font-medium">{applicant.full_name || user.full_name}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Status Pembayaran</p>
+                  <Badge variant={applicant.payment_status === 'paid' ? 'success' : applicant.payment_status === 'expired' ? 'destructive' : 'warning'} className="mt-1">
+                    {applicant.payment_status?.toUpperCase() || 'PENDING'}
+                  </Badge>
+                </div>
 
-          let iconBg = 'bg-muted border-muted-foreground/30 text-muted-foreground'
-          if (isCompleted) iconBg = 'bg-emerald-500 border-emerald-600 text-white shadow-sm'
-          if (isActive) iconBg = 'bg-blue-500 border-blue-600 text-white shadow-sm ring-4 ring-blue-500/20'
+                <div>
+                  <p className="text-muted-foreground text-xs">Email</p>
+                  <p className="font-medium">{applicant.email || user.email || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">No. WhatsApp</p>
+                  <p className="font-medium">{applicant.phone || '-'}</p>
+                </div>
 
-          return (
-            <div key={step.number} className="relative flex items-center group is-active">
-              
-              <div className="flex items-center justify-center w-12 h-12 rounded-full border-2 bg-background shrink-0 z-10 mr-4">
-                <div className={`flex items-center justify-center w-full h-full rounded-full transition-colors ${iconBg}`}>
-                  {isCompleted ? <CheckCircle className="w-5 h-5" /> : <span className="font-bold">{step.number}</span>}
+                <div>
+                  <p className="text-muted-foreground text-xs">Username</p>
+                  <p className="font-medium font-mono">{user.username}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Jalur Pendaftaran</p>
+                  <p className="font-medium capitalize">{applicant.registration_path || '-'}</p>
+                </div>
+
+                <div>
+                  <p className="text-muted-foreground text-xs">Jenjang Tujuan</p>
+                  <p className="font-medium">{applicant.registration_level || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Jenis Kelamin</p>
+                  <p className="font-medium">{applicant.gender === 'L' ? 'Laki-laki' : applicant.gender === 'P' ? 'Perempuan' : '-'}</p>
+                </div>
+
+                <div>
+                  <p className="text-muted-foreground text-xs">Tempat, Tgl Lahir</p>
+                  <p className="font-medium">{applicant.birth_place || '-'}, {applicant.birth_date || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">NISN</p>
+                  <p className="font-medium">{applicant.nisn || '-'}</p>
+                </div>
+
+                <div>
+                  <p className="text-muted-foreground text-xs">NIK</p>
+                  <p className="font-medium">{applicant.nik || '-'}</p>
+                </div>
+
+                <div className="col-span-1 sm:col-span-2 border-t pt-4 mt-2">
+                  <h4 className="font-semibold text-sm mb-2">Data Domisili</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-muted-foreground text-xs">Provinsi</p>
+                      <p className="font-medium">{applicant.province || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Kota/Kabupaten</p>
+                      <p className="font-medium">{applicant.city || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Kecamatan</p>
+                      <p className="font-medium">{applicant.district || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Kelurahan/Desa</p>
+                      <p className="font-medium">{applicant.village || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Kode Pos</p>
+                      <p className="font-medium">{applicant.postal_code || '-'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground text-xs">Alamat Detail</p>
+                      <p className="font-medium">{applicant.address || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-muted-foreground text-xs">Nama Orang Tua/Wali</p>
+                  <p className="font-medium">{applicant.parent_name || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Asal Sekolah</p>
+                  <p className="font-medium">{applicant.previous_school || '-'}</p>
+                </div>
+
+                <div>
+                  <p className="text-muted-foreground text-xs">Gelombang</p>
+                  <p className="font-medium">{applicant.wave_name || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Waktu Daftar</p>
+                  <p className="font-medium">{applicant.created_at ? new Date(applicant.created_at).toLocaleString('id-ID') : '-'}</p>
                 </div>
               </div>
 
-              <div className="w-[calc(100%-4rem)]">
-                <Card 
-                  className={`transition-all duration-200 ${isActive ? 'border-blue-300 shadow-md ring-1 ring-blue-100' : isLocked ? 'opacity-70 grayscale-[50%]' : ''}`}
-                >
-                  <CardHeader 
-                    className={`cursor-pointer p-4 ${isLocked ? 'cursor-not-allowed' : 'hover:bg-muted/50'}`}
-                    onClick={() => !isLocked && toggleStep(step.number)}
-                  >
-                    <div className="flex justify-between items-center gap-4">
-                      <div>
-                        <CardTitle className={`text-base ${isActive ? 'text-blue-700' : isCompleted ? 'text-emerald-700' : ''}`}>
-                          {step.title}
-                        </CardTitle>
-                        <CardDescription className="text-xs mt-1">
-                          {step.description}
-                        </CardDescription>
-                      </div>
-                      {!isLocked && (
-                        <div className="shrink-0 text-muted-foreground">
-                          {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                        </div>
-                      )}
-                    </div>
-                  </CardHeader>
-                  
-                  {isExpanded && !isLocked && (
-                    <CardContent className="px-4 pb-4 pt-0 border-t mt-4 border-dashed">
-                      <div className="pt-4 animate-in slide-in-from-top-2 fade-in duration-200">
-                        {step.content}
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
+              <div className="border-t pt-4">
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                  Lupa password? Hubungi admin untuk mereset password Anda.
+                </p>
               </div>
             </div>
-          )
-        })}
+          )}
+        </DialogContent>
+      </Dialog>
 
+      {/* ── Floating Support FAB ── */}
+      {contactInfo && (
+        <SupportFab
+          phone={contactInfo.phone_primary}
+          whatsapp={contactInfo.whatsapp}
+          email={contactInfo.email_primary}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ── Floating Support FAB (adapted from companyprofile) ── */
+function SupportFab({ phone, whatsapp, email }: { phone?: string; whatsapp?: string; email?: string }) {
+  const [fabOpen, setFabOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!fabOpen) return
+    const handler = (e: PointerEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setFabOpen(false)
+    }
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
+  }, [fabOpen])
+
+  useEffect(() => {
+    if (!fabOpen) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFabOpen(false)
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [fabOpen])
+
+  const telHref = `tel:${(phone || '').replace(/[^0-9+]/g, '')}`
+  const waHref = `https://wa.me/${(whatsapp || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Assalamualaikum! Saya ingin bertanya tentang PPDB Pesantren Ar-Rahman.')}`
+  const mailHref = `mailto:${email || ''}`
+
+  const options = [
+    { icon: Phone, title: 'Call Support', subtitle: phone || '-', href: telHref },
+    { icon: MessageCircle, title: 'WhatsApp', subtitle: `+${(whatsapp || '').replace(/[^0-9]/g, '')}`, href: waHref, external: true },
+    { icon: Mail, title: 'Email Support', subtitle: email || '-', href: mailHref },
+  ]
+
+  return (
+    <div className="fixed bottom-6 right-6 z-[100]">
+      <div ref={containerRef} className="relative">
+        {/* Panel */}
+        <div
+          role="dialog"
+          aria-label="Butuh Bantuan?"
+          aria-hidden={!fabOpen}
+          className={[
+            'absolute bottom-full right-0 mb-4 w-[300px] max-w-[calc(100vw-2.5rem)]',
+            'origin-bottom-right overflow-hidden rounded-2xl border border-border',
+            'bg-card shadow-xl',
+            'transition-all duration-300 ease-out',
+            fabOpen ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' : 'opacity-0 translate-y-3 scale-95 pointer-events-none',
+          ].join(' ')}
+        >
+          <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Butuh Bantuan?</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Pilih cara menghubungi kami</p>
+            </div>
+            <button
+              onClick={() => setFabOpen(false)}
+              className="p-1.5 -m-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Tutup menu bantuan"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="border-t py-2">
+            {options.map((opt) => (
+              <a
+                key={opt.title}
+                href={opt.href}
+                {...(opt.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
+              >
+                <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <opt.icon className="w-5 h-5 text-primary" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-foreground">{opt.title}</span>
+                  <span className="block text-xs text-muted-foreground truncate">{opt.subtitle}</span>
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* FAB Button */}
+        <button
+          onClick={() => setFabOpen(!fabOpen)}
+          aria-label={fabOpen ? 'Tutup menu bantuan' : 'Butuh Bantuan?'}
+          aria-expanded={fabOpen}
+          aria-haspopup="dialog"
+          className="relative flex items-center justify-center w-14 h-14 rounded-full bg-emerald-600 text-white transition-all hover:bg-emerald-700 hover:shadow-lg hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 shadow-lg"
+        >
+          <span
+            className="relative flex items-center justify-center"
+            style={{
+              transform: fabOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+              transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            }}
+          >
+            <MessageCircle
+              className="w-6 h-6"
+              aria-hidden="true"
+              style={{
+                opacity: fabOpen ? 0 : 1,
+                transform: fabOpen ? 'scale(0.4) rotate(-90deg)' : 'scale(1)',
+                transition: 'opacity 0.15s ease, transform 0.25s ease',
+              }}
+            />
+            <X
+              className="absolute w-6 h-6"
+              aria-hidden="true"
+              style={{
+                opacity: fabOpen ? 1 : 0,
+                transform: fabOpen ? 'scale(1)' : 'scale(0.4) rotate(90deg)',
+                transition: 'opacity 0.15s ease 0.05s, transform 0.25s ease 0.05s',
+              }}
+            />
+          </span>
+        </button>
       </div>
-
-      <ConfirmDialog
-        isOpen={showSubmitConfirm}
-        onClose={() => setShowSubmitConfirm(false)}
-        onConfirm={handleSubmitDocs}
-        loading={submitting}
-        title="Kirim Dokumen"
-        message="Apakah Anda yakin semua dokumen sudah benar? Dokumen yang sudah dikirim tidak bisa diubah kembali."
-        confirmLabel="Ya, Kirim"
-      />
     </div>
   )
 }

@@ -12,6 +12,9 @@ import { SuccessState } from '@/components/ui/SuccessState'
 import { CredentialsCard } from '@/components/CredentialsCard'
 import { ArrowLeft, ArrowRight, LogIn, BookOpen, GraduationCap } from 'lucide-react'
 
+// Batas maksimal tanggal lahir = hari ini (tidak boleh lahir di masa depan)
+const todayStr = new Date().toISOString().split('T')[0]
+
 export default function RegisterPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -47,6 +50,24 @@ export default function RegisterPage() {
   const [cities, setCities] = useState<any[]>([])
   const [districts, setDistricts] = useState<any[]>([])
   const [villages, setVillages] = useState<any[]>([])
+
+  // Scope gelombang aktif: null = belum diketahui (biarkan semua terbuka),
+  // array kosong = gelombang tidak aktif (semua jalur/jenjang ditutup).
+  const [waveScope, setWaveScope] = useState<{ paths: string[] | null, levels: string[] | null }>({ paths: null, levels: null })
+  const [scopeLoaded, setScopeLoaded] = useState(false)
+
+  useEffect(() => {
+    ppdbService.getActiveWavePublic()
+      .then((res) => {
+        if (res?.active) {
+          setWaveScope({ paths: res.allowed_paths || [], levels: res.allowed_levels || [] })
+        } else {
+          setWaveScope({ paths: [], levels: [] })
+        }
+      })
+      .catch(() => {})
+      .finally(() => setScopeLoaded(true))
+  }, [])
 
   const [selectedProvinceId, setSelectedProvinceId] = useState('')
   const [selectedCityId, setSelectedCityId] = useState('')
@@ -111,24 +132,40 @@ export default function RegisterPage() {
 
   const levelOptions = useMemo(() => {
     if (formData.registration_path === 'reguler') {
-      return ['SMP', 'SMA']
+      return ['SMP', 'SMK']
     }
     if (formData.registration_path === 'pindahan') {
-      return ['SMP Kelas 7', 'SMP Kelas 8', 'SMP Kelas 9', 'SMA Kelas 10', 'SMA Kelas 11']
+      return ['SMP Kelas 7', 'SMP Kelas 8', 'SMP Kelas 9', 'SMK Kelas 10', 'SMK Kelas 11']
     }
     return []
   }, [formData.registration_path])
 
+  // Saring opsi jenjang sesuai scope gelombang aktif (jenjang yang ditutup disembunyikan)
+  const availableLevels = useMemo(() => {
+    if (!waveScope.levels) return levelOptions
+    return levelOptions.filter(lvl => waveScope.levels!.includes(lvl.split(' ')[0]))
+  }, [levelOptions, waveScope])
+
+  const isPathOpen = (path: string) => !waveScope.paths || waveScope.paths.includes(path)
+
+  const noActiveWave = scopeLoaded && waveScope.paths !== null && waveScope.paths.length === 0
+
+  // Pilihan jenjang efektif: otomatis tidak berlaku jika ditutup oleh gelombang aktif
+  const effectiveRegistrationLevel = useMemo(() => {
+    if (!formData.registration_level) return ''
+    return availableLevels.includes(formData.registration_level) ? formData.registration_level : ''
+  }, [availableLevels, formData.registration_level])
+
   const showMajor = useMemo(() => {
-    return formData.registration_level.includes('SMA')
-  }, [formData.registration_level])
+    return effectiveRegistrationLevel.startsWith('SMK')
+  }, [effectiveRegistrationLevel])
 
   const handleNext = () => {
     if (step === 1 && !formData.registration_path) {
       toast('error', 'Pilih jalur pendaftaran terlebih dahulu')
       return
     }
-    if (step === 2 && !formData.registration_level) {
+    if (step === 2 && !effectiveRegistrationLevel) {
       toast('error', 'Pilih jenjang tujuan terlebih dahulu')
       return
     }
@@ -202,30 +239,36 @@ export default function RegisterPage() {
               <CardDescription>Pilih jalur pendaftaran yang sesuai dengan kondisi Anda.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div 
-                className={`p-4 border-2 rounded-xl cursor-pointer transition-all hover:border-primary/50 ${formData.registration_path === 'reguler' ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}
-                onClick={() => setFormData({...formData, registration_path: 'reguler', registration_level: ''})}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-blue-100 text-blue-600 rounded-lg"><BookOpen className="h-6 w-6" /></div>
-                  <div>
-                    <h3 className="font-bold text-lg">Reguler (Peserta Didik Baru)</h3>
-                    <p className="text-sm text-muted-foreground mt-1">Pendaftaran untuk lulusan jenjang sebelumnya (SD ke SMP, atau SMP ke SMA) yang ingin masuk pada tahun ajaran baru tingkat awal.</p>
+              {noActiveWave && (
+                <Alert type="warning" title="Pendaftaran Sedang Ditutup">
+                  Saat ini tidak ada gelombang pendaftaran yang aktif. Silakan cek kembali nanti atau hubungi panitia.
+                </Alert>
+              )}
+              {[
+                { value: 'reguler', icon: BookOpen, title: 'Reguler (Peserta Didik Baru)', desc: "Pendaftaran untuk lulusan jenjang sebelumnya (SD ke SMP, atau SMP ke SMK) yang ingin masuk pada tahun ajaran baru tingkat awal.", bg: 'bg-blue-100 text-blue-600' },
+                { value: 'pindahan', icon: ArrowRight, title: 'Pindahan (Mutasi Masuk)', desc: 'Pendaftaran untuk siswa yang pindah sekolah di pertengahan tahun ajaran atau naik kelas namun pindah sekolah.', bg: 'bg-amber-100 text-amber-600' },
+              ].map(opt => {
+                const open = isPathOpen(opt.value)
+                const active = formData.registration_path === opt.value
+                return (
+                  <div
+                    key={opt.value}
+                    className={`p-4 border-2 rounded-xl transition-all ${open ? 'cursor-pointer hover:border-primary/50' : 'opacity-50 cursor-not-allowed'} ${active && open ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}
+                    onClick={() => { if (!open) return; setFormData({...formData, registration_path: opt.value, registration_level: ''}) }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`p-3 rounded-lg ${opt.bg}`}><opt.icon className="h-6 w-6" /></div>
+                      <div>
+                        <h3 className="font-bold text-lg flex items-center gap-2">
+                          {opt.title}
+                          {!open && <span className="text-xs font-semibold text-rose-danger border border-rose-danger/30 bg-rose-light rounded-md px-2 py-0.5">Ditutup</span>}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mt-1">{opt.desc}</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div 
-                className={`p-4 border-2 rounded-xl cursor-pointer transition-all hover:border-primary/50 ${formData.registration_path === 'pindahan' ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}
-                onClick={() => setFormData({...formData, registration_path: 'pindahan', registration_level: ''})}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-amber-100 text-amber-600 rounded-lg"><ArrowRight className="h-6 w-6" /></div>
-                  <div>
-                    <h3 className="font-bold text-lg">Pindahan (Mutasi Masuk)</h3>
-                    <p className="text-sm text-muted-foreground mt-1">Pendaftaran untuk siswa yang pindah sekolah di pertengahan tahun ajaran atau naik kelas namun pindah sekolah.</p>
-                  </div>
-                </div>
-              </div>
+                )
+              })}
 
               <div className="flex justify-end pt-4">
                 <Button onClick={handleNext} disabled={!formData.registration_path}>Lanjut <ArrowRight className="ml-2 h-4 w-4" /></Button>
@@ -241,22 +284,28 @@ export default function RegisterPage() {
               <CardDescription>Pilih jenjang dan kelas tujuan pendaftaran.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {levelOptions.map(lvl => (
-                  <div 
-                    key={lvl}
-                    className={`p-4 border-2 rounded-xl cursor-pointer text-center transition-all hover:border-primary/50 ${formData.registration_level === lvl ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}
-                    onClick={() => setFormData({...formData, registration_level: lvl})}
-                  >
-                    <GraduationCap className={`h-8 w-8 mx-auto mb-2 ${formData.registration_level === lvl ? 'text-primary' : 'text-muted-foreground'}`} />
-                    <h3 className="font-bold text-lg">{lvl}</h3>
-                  </div>
-                ))}
-              </div>
+              {availableLevels.length === 0 ? (
+                <Alert type="warning" title="Jenjang Tidak Tersedia">
+                  Gelombang yang aktif saat ini tidak membuka jenjang untuk jalur {formData.registration_path === 'pindahan' ? 'pindahan' : 'reguler'}. Silakan pilih jalur lain atau hubungi panitia.
+                </Alert>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {availableLevels.map(lvl => (
+                    <div
+                      key={lvl}
+                      className={`p-4 border-2 rounded-xl cursor-pointer text-center transition-all hover:border-primary/50 ${effectiveRegistrationLevel === lvl ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}
+                      onClick={() => setFormData({...formData, registration_level: lvl})}
+                    >
+                      <GraduationCap className={`h-8 w-8 mx-auto mb-2 ${effectiveRegistrationLevel === lvl ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <h3 className="font-bold text-lg">{lvl}</h3>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="flex justify-between pt-4">
                 <Button variant="outline" onClick={handleBack}>Kembali</Button>
-                <Button onClick={handleNext} disabled={!formData.registration_level}>Lanjut <ArrowRight className="ml-2 h-4 w-4" /></Button>
+                <Button onClick={handleNext} disabled={!effectiveRegistrationLevel}>Lanjut <ArrowRight className="ml-2 h-4 w-4" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -275,8 +324,8 @@ export default function RegisterPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="full_name">Nama Lengkap (Sesuai Ijazah/Akta) *</Label>
-                    <Input 
-                      id="full_name" required 
+                    <Input
+                      id="full_name" required maxLength={100}
                       value={formData.full_name}
                       onChange={(e) => setFormData({...formData, full_name: e.target.value})}
                     />
@@ -284,26 +333,30 @@ export default function RegisterPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="nisn">NISN *</Label>
-                    <Input 
-                      id="nisn" required 
+                    <Input
+                      id="nisn" required inputMode="numeric" minLength={10} maxLength={10}
+                      placeholder="10 digit"
                       value={formData.nisn}
-                      onChange={(e) => setFormData({...formData, nisn: e.target.value})}
+                      onChange={(e) => setFormData({...formData, nisn: e.target.value.replace(/\D/g, '')})}
                     />
+                    <p className="text-xs text-muted-foreground">Nomor Induk Siswa Nasional (10 digit angka).</p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="nik">NIK *</Label>
-                    <Input 
-                      id="nik" required 
+                    <Input
+                      id="nik" required inputMode="numeric" minLength={16} maxLength={16}
+                      placeholder="16 digit"
                       value={formData.nik}
-                      onChange={(e) => setFormData({...formData, nik: e.target.value})}
+                      onChange={(e) => setFormData({...formData, nik: e.target.value.replace(/\D/g, '')})}
                     />
+                    <p className="text-xs text-muted-foreground">NIK sesuai Kartu Keluarga / KTP (16 digit angka).</p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="birth_place">Tempat Lahir *</Label>
-                    <Input 
-                      id="birth_place" required 
+                    <Input
+                      id="birth_place" required maxLength={100}
                       value={formData.birth_place}
                       onChange={(e) => setFormData({...formData, birth_place: e.target.value})}
                     />
@@ -311,8 +364,8 @@ export default function RegisterPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="birth_date">Tanggal Lahir *</Label>
-                    <Input 
-                      id="birth_date" type="date" required 
+                    <Input
+                      id="birth_date" type="date" required max={todayStr}
                       value={formData.birth_date}
                       onChange={(e) => setFormData({...formData, birth_date: e.target.value})}
                     />
@@ -320,8 +373,9 @@ export default function RegisterPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Aktif *</Label>
-                    <Input 
-                      id="email" type="email" required 
+                    <Input
+                      id="email" type="email" required maxLength={100}
+                      placeholder="nama@email.com"
                       value={formData.email}
                       onChange={(e) => setFormData({...formData, email: e.target.value})}
                     />
@@ -329,17 +383,19 @@ export default function RegisterPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="phone">Nomor HP/WhatsApp *</Label>
-                    <Input 
-                      id="phone" type="tel" required 
+                    <Input
+                      id="phone" type="tel" required inputMode="numeric" minLength={9} maxLength={16}
+                      placeholder="08xxxxxxxxxx"
                       value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})}
                     />
+                    <p className="text-xs text-muted-foreground">Hanya angka, awali dengan 08 (9–16 digit).</p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="parent_name">Nama Orang Tua / Wali *</Label>
-                    <Input 
-                      id="parent_name" required 
+                    <Input
+                      id="parent_name" required maxLength={150}
                       value={formData.parent_name}
                       onChange={(e) => setFormData({...formData, parent_name: e.target.value})}
                     />
@@ -347,8 +403,8 @@ export default function RegisterPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="previous_school">Asal Sekolah (TK/SD/SMP) *</Label>
-                    <Input 
-                      id="previous_school" required 
+                    <Input
+                      id="previous_school" required maxLength={150}
                       value={formData.previous_school}
                       onChange={(e) => setFormData({...formData, previous_school: e.target.value})}
                     />
@@ -400,13 +456,15 @@ export default function RegisterPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="postal_code">Kode Pos</Label>
-                    <Input id="postal_code" value={formData.postal_code} onChange={(e) => setFormData({...formData, postal_code: e.target.value})} />
+                    <Input id="postal_code" inputMode="numeric" maxLength={5} placeholder="5 digit"
+                      value={formData.postal_code}
+                      onChange={(e) => setFormData({...formData, postal_code: e.target.value.replace(/\D/g, '')})} />
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="address">Alamat Detail *</Label>
-                    <Textarea 
-                      id="address" required 
+                    <Textarea
+                      id="address" required maxLength={500}
                       placeholder="Contoh: Jl. Ahmad Yani No. 12 RT 01/RW 03, Perumahan ABC Blok C5"
                       value={formData.address}
                       onChange={(e) => setFormData({...formData, address: e.target.value})}
@@ -416,13 +474,16 @@ export default function RegisterPage() {
 
                   {showMajor && (
                     <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="major_choice">Pilihan Jurusan/Program *</Label>
+                      <Label htmlFor="major_choice">Pilihan Kompetensi Keahlian *</Label>
                       <Select required value={formData.major_choice} onValueChange={(v: string) => setFormData({...formData, major_choice: v})}>
-                        <SelectTrigger><SelectValue placeholder="Pilih jurusan..." /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Pilih kompetensi keahlian..." /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="MIPA">MIPA (Matematika & Ilmu Pengetahuan Alam)</SelectItem>
-                          <SelectItem value="IPS">IPS (Ilmu Pengetahuan Sosial)</SelectItem>
-                          <SelectItem value="BAHASA">Bahasa</SelectItem>
+                          <SelectItem value="Teknik Komputer & Jaringan (TKJ)">Teknik Komputer &amp; Jaringan (TKJ)</SelectItem>
+                          <SelectItem value="Rekayasa Perangkat Lunak (RPL)">Rekayasa Perangkat Lunak (RPL)</SelectItem>
+                          <SelectItem value="Desain Komunikasi Visual (DKV)">Desain Komunikasi Visual (DKV)</SelectItem>
+                          <SelectItem value="Bisnis Digital">Bisnis Digital</SelectItem>
+                          <SelectItem value="Akuntansi dan Keuangan Lembaga (AKL)">Akuntansi dan Keuangan Lembaga (AKL)</SelectItem>
+                          <SelectItem value="Otomatisasi Tata Kelola Perkantoran (OTKP)">Otomatisasi Tata Kelola Perkantoran (OTKP)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

@@ -91,7 +91,7 @@ async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Promise<T>
     }
     if (res.status === 401) {
       clearAuth()
-      window.location.href = '/login'
+      window.location.href = '/auth/login'
       throw new Error('Unauthorized')
     }
   }

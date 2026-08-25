@@ -5,6 +5,32 @@
   --font-heading: 'DM Sans', sans-serif;
   --font-body: 'Inter', sans-serif;
   --font-arabic: 'Amiri', serif;
+  
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--bg-elevated);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--bg-elevated);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--accent);
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: var(--bg-secondary);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--bg-secondary);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--accent-subtle);
+  --color-accent-foreground: var(--text);
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #FFFFFF;
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--accent);
+  
+  /* Aliases to match PPDB */
+  --color-emerald-primary: var(--color-emerald);
+  --color-gold-accent: var(--color-gold);
+  --color-slate-dark: #334155;
+  --color-rose-danger: #e11d48;
 }
 
 :root {
@@ -359,3 +385,23 @@ h1, h2, h3, h4, h5, h6 {
 .animate-empty-in { animation: emptyIn 0.5s ease-out both; }
 .animate-icon-float { animation: iconFloat 4s ease-in-out infinite; }
 
+@layer components {
+  .glass-navbar {
+    @apply bg-white/70 backdrop-blur-xl border-b border-border;
+  }
+
+  .glass-sidebar {
+    @apply bg-white/80 backdrop-blur-xl border-r border-border;
+  }
+
+  .sidebar-item-active {
+    @apply bg-primary/10 text-primary shadow-sm;
+  }
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

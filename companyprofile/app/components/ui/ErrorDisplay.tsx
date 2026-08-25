@@ -251,7 +251,7 @@ function renderActions(type: ErrorConfig['actions'], retry?: () => void) {
       return (
         <>
           <Link
-            href="/auth"
+            href="/auth/login"
             className={btnPrimary}
           >
             <ArrowRight className="w-4 h-4" />

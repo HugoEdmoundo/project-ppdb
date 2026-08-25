@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Edit, Trash2, ShieldCheck } from 'lucide-react'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
-import { useConfirm } from '../components/ConfirmDialog'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import type { Role } from '../types'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/button'
@@ -15,7 +15,6 @@ import { EmptyState } from '../components/ui/EmptyState'
 export default function RolesPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { confirm, dialog: confirmDialog } = useConfirm()
   const { user: currentUser, loading: authLoading } = useAuth()
 
   const canCrud = currentUser?.user_type === 'superadmin'
@@ -24,6 +23,9 @@ export default function RolesPage() {
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
+
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmData, setConfirmData] = useState<{ title: string; message: string; variant?: 'danger' | 'primary'; onConfirm: () => void } | null>(null)
 
   useEffect(() => {
     if (!authLoading && currentUser && !canView) {
@@ -47,23 +49,25 @@ export default function RolesPage() {
   async function handleDelete(role: Role) {
     if (!canCrud) return
     if (role.is_superadmin) return
-    const ok = await confirm({
+    setConfirmData({
       title: 'Hapus Role',
       message: `Yakin ingin menghapus role "${role.name}"?`,
-      confirmLabel: 'Ya, hapus',
-      danger: true,
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmOpen(false)
+        setDeleting(role.id)
+        try {
+          await api.deleteRole(role.id)
+          toast('success', 'Role berhasil dihapus')
+          fetchData()
+        } catch (e: any) {
+          toast('error', e.message || 'Gagal menghapus')
+        } finally {
+          setDeleting(null)
+        }
+      },
     })
-    if (!ok) return
-    setDeleting(role.id)
-    try {
-      await api.deleteRole(role.id)
-      toast('success', 'Role berhasil dihapus')
-      fetchData()
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal menghapus')
-    } finally {
-      setDeleting(null)
-    }
+    setConfirmOpen(true)
   }
 
   function getPermissionBadges(permissions: Record<string, string>) {
@@ -84,7 +88,15 @@ export default function RolesPage() {
 
   return (
     <>
-      {confirmDialog}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => confirmData?.onConfirm()}
+        title={confirmData?.title || 'Konfirmasi'}
+        message={confirmData?.message || ''}
+        variant={confirmData?.variant}
+        confirmLabel="Ya, hapus"
+      />
       <div className="space-y-6 animate-fadeIn">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

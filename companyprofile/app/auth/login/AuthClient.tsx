@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { ArrowRight, Lock, User, Loader2, Eye, EyeOff, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react'
-import AnimatedLogo from '../components/ui/AnimatedLogo'
-import { API_BASE, getSettings } from '../lib/api'
+import AnimatedLogo from '@/app/components/ui/AnimatedLogo'
+import { API_BASE, getSettings } from '@/app/lib/api'
 
 export default function AuthClient() {
   const [email, setEmail] = useState('')

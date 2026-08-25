@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, KeyRound } from 'lucide-react'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
-import { useConfirm } from '../components/ConfirmDialog'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import type { Role, Module } from '../types'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/button'
@@ -20,11 +20,13 @@ import { cn } from '@/lib/utils'
 export default function UserFormPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { confirm, dialog: confirmDialog } = useConfirm()
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id)
   const { user: currentUser, loading: authLoading } = useAuth()
   const canCrud = currentUser?.user_type === 'superadmin'
+
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmData, setConfirmData] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
 
   useEffect(() => {
     if (!authLoading && currentUser && !canCrud) {
@@ -117,12 +119,15 @@ export default function UserFormPage() {
 
     // Alert konfirmasi: email/phone akan dipakai sebagai tujuan notifikasi.
     if (form.email || form.phone) {
-      const ok = await confirm({
-        title: 'Periksa Data Kontak',
-        message: `Pastikan Email dan No. WhatsApp sudah benar, karena sistem akan mengirim notifikasi kredensial ke alamat tersebut.\n\nEmail: ${form.email || '—'}\nWhatsApp: ${form.phone || '—'}`,
-        confirmLabel: 'Sudah Benar, Simpan',
+      const confirmed = await new Promise<boolean>((resolve) => {
+        setConfirmData({
+          title: 'Periksa Data Kontak',
+          message: `Pastikan Email dan No. WhatsApp sudah benar, karena sistem akan mengirim notifikasi kredensial ke alamat tersebut.\n\nEmail: ${form.email || '—'}\nWhatsApp: ${form.phone || '—'}`,
+          onConfirm: () => { setConfirmOpen(false); resolve(true) },
+        })
+        setConfirmOpen(true)
       })
-      if (!ok) return
+      if (!confirmed) return
     }
 
     setLoading(true)
@@ -196,7 +201,14 @@ export default function UserFormPage() {
 
   return (
     <>
-      {confirmDialog}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => confirmData?.onConfirm()}
+        title={confirmData?.title || 'Konfirmasi'}
+        message={confirmData?.message || ''}
+        confirmLabel="Sudah Benar, Simpan"
+      />
     <div className="mx-auto max-w-2xl space-y-6 animate-fadeIn">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate('/users')}>

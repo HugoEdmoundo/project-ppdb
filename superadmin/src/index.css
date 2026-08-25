@@ -93,8 +93,17 @@
 .sidebar-nav:hover::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 2px; }
 
 /* Modal scroll overrides (hide scrollbars) */
-.modal-scroll::-webkit-scrollbar { width: 0; height: 0; }
-.modal-scroll { scrollbar-width: none; }
+[role="dialog"],
+[role="dialog"] * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+[role="dialog"]::-webkit-scrollbar,
+[role="dialog"] *::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
 
 /* Animations */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }

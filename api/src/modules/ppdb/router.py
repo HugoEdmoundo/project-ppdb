@@ -180,6 +180,28 @@ def get_all_waves(user: dict = Depends(require_ppdb_read)):
     return execute_raw("SELECT * FROM ppdb_waves ORDER BY registration_start_date ASC, wave_number ASC")
 
 
+@router.get("/waves/active-public")
+def get_active_wave_public():
+    """Endpoint publik (tanpa auth) untuk halaman registrasi:
+    info gelombang aktif + jalur/jenjang yang dibuka."""
+    rows = execute_raw(
+        "SELECT id, name, registration_start_date, registration_end_date, allowed_paths, allowed_levels "
+        "FROM ppdb_waves WHERE status = 'active' LIMIT 1"
+    )
+    if not rows:
+        return {"active": False}
+    w = rows[0]
+    return {
+        "active": True,
+        "id": w["id"],
+        "name": w["name"],
+        "registration_start_date": w["registration_start_date"],
+        "registration_end_date": w["registration_end_date"],
+        "allowed_paths": [p.strip() for p in (w["allowed_paths"] or "").split(",") if p.strip()],
+        "allowed_levels": [l.strip() for l in (w["allowed_levels"] or "").split(",") if l.strip()],
+    }
+
+
 @router.get("/waves/{id}")
 def get_wave_by_id(id: str, user: dict = Depends(require_ppdb_read)):
     wave = execute_raw("SELECT * FROM ppdb_waves WHERE id = :id LIMIT 1", {"id": id})
@@ -210,13 +232,15 @@ def create_wave(body: WaveCreate, user: dict = Depends(require_ppdb_admin)):
         "period_id": body.period_id,
         "wave_number": wave_number,
         "name": body.name,
+        "allowed_paths": body.allowed_paths,
+        "allowed_levels": body.allowed_levels,
         "registration_start_date": body.registration_start_date,
         "registration_end_date": body.registration_end_date,
         "document_upload_end_date": body.document_upload_end_date,
         "selection_date": body.selection_date,
         "quota": body.quota,
         "registration_fee": body.registration_fee,
-        "second_stage_fee": body.second_stage_fee,
+        "second_stage_fee": body.second_stage_fee if body.second_stage_fee is not None else 0,
         "status": "inactive",
     }
     return create_record("ppdb_waves", data)
@@ -226,14 +250,19 @@ def create_wave(body: WaveCreate, user: dict = Depends(require_ppdb_admin)):
 def update_wave(id: str, body: WaveUpdate, user: dict = Depends(require_ppdb_admin)):
     data = {
         "name": body.name,
+        "allowed_paths": body.allowed_paths,
+        "allowed_levels": body.allowed_levels,
         "registration_start_date": body.registration_start_date,
         "registration_end_date": body.registration_end_date,
         "document_upload_end_date": body.document_upload_end_date,
         "selection_date": body.selection_date,
         "quota": body.quota,
         "registration_fee": body.registration_fee,
-        "second_stage_fee": body.second_stage_fee,
     }
+    # Tahap 2 belum dipakai: hanya update jika eksplisit dikirim, agar nilai
+    # lama tidak ikut ter-reset ke 0 dari form yang sudah tidak menampilkannya.
+    if body.second_stage_fee is not None:
+        data["second_stage_fee"] = body.second_stage_fee
     updated = update_record("ppdb_waves", id, data)
     if not updated:
         raise HTTPException(status_code=404, detail="Not found")
@@ -317,12 +346,30 @@ def register_applicant(body: ApplicantRegister):
     pool = get_raw_pool()
     with pool.connect() as conn:
         wave_rows = conn.execute(
-            text('SELECT id, registration_fee FROM ppdb_waves WHERE status = "active" LIMIT 1')
+            text(
+                "SELECT id, name, registration_fee, allowed_paths, allowed_levels "
+                "FROM ppdb_waves WHERE status = 'active' LIMIT 1"
+            )
         ).mappings().all()
         if not wave_rows:
             raise HTTPException(status_code=400, detail="Pendaftaran saat ini sedang ditutup atau belum dibuka.")
         active_wave_id = wave_rows[0]["id"]
         registration_fee = wave_rows[0]["registration_fee"] or 0
+
+        # Gelombang aktif hanya menerima jalur & jenjang yang dibuka (scope).
+        allowed_paths = [p.strip() for p in (wave_rows[0]["allowed_paths"] or "").split(",") if p.strip()]
+        allowed_levels = [l.strip() for l in (wave_rows[0]["allowed_levels"] or "").split(",") if l.strip()]
+        if body.registration_path not in allowed_paths:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Jalur pendaftaran '{body.registration_path}' tidak dibuka pada gelombang ini.",
+            )
+        level_key = body.registration_level.split(" ")[0]
+        if level_key not in allowed_levels:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Jenjang '{level_key}' tidak dibuka pada gelombang ini.",
+            )
 
         existing = conn.execute(
             text('SELECT id FROM ppdb_applicants WHERE email = :email AND status != "expired" LIMIT 1'),
@@ -565,6 +612,8 @@ def get_ppdb_dashboard(user: dict = Depends(require_ppdb_read)):
     }
 
 
+
+
 @router.post("/cron/soft-delete-expired")
 def soft_delete_expired_applicants(x_cron_secret: str = Header(None)):
     """
@@ -706,12 +755,55 @@ def run_reminders(x_cron_secret: str = Header(None)):
             elif days_left == 1:
                 send_notification("document_reminder_d1", r["user_id"], {})
                 doc_reminded_h1 += 1
-                
+
+        # ── Reminder Seleksi H-5 & H-1 ──────────────────────────────────────
+        # Cari applicant dengan status 'selection' yang punya jadwal seleksi di gelombangnya
+        rows_selection = conn.execute(
+            text("""
+                SELECT a.id, a.user_id, w.selection_date, w.name as wave_name
+                FROM ppdb_applicants a
+                JOIN ppdb_waves w ON a.wave_id = w.id
+                WHERE a.status = 'selection'
+                AND w.selection_date IS NOT NULL
+                AND a.deleted_at IS NULL
+            """)
+        ).mappings().all()
+
+        selection_reminded_h5 = 0
+        selection_reminded_h1 = 0
+        for r in rows_selection:
+            sel_date = r["selection_date"]
+            if isinstance(sel_date, str):
+                try:
+                    sel_date = datetime.strptime(sel_date, "%Y-%m-%d %H:%M:%S").date()
+                except ValueError:
+                    sel_date = datetime.strptime(sel_date, "%Y-%m-%d").date()
+            elif hasattr(sel_date, "date"):
+                sel_date = sel_date.date()
+            else:
+                continue
+
+            days_to_selection = (sel_date - now_wib.date()).days
+            if days_to_selection == 5:
+                send_notification("selection_reminder_d5", r["user_id"], {
+                    "tanggal_seleksi": str(sel_date),
+                    "nama_gelombang": r["wave_name"],
+                })
+                selection_reminded_h5 += 1
+            elif days_to_selection == 1:
+                send_notification("selection_reminder_d1", r["user_id"], {
+                    "tanggal_seleksi": str(sel_date),
+                    "nama_gelombang": r["wave_name"],
+                })
+                selection_reminded_h1 += 1
+
     return {
         "success": True,
         "payment_reminded": payment_reminded,
         "doc_reminded_h3": doc_reminded_h3,
-        "doc_reminded_h1": doc_reminded_h1
+        "doc_reminded_h1": doc_reminded_h1,
+        "selection_reminded_h5": selection_reminded_h5,
+        "selection_reminded_h1": selection_reminded_h1,
     }
 
 
@@ -896,21 +988,40 @@ def verify_applicant_documents(id: str, body: DocumentVerify, user: dict = Depen
         if not applicant:
             raise HTTPException(status_code=404, detail="Applicant not found")
             
+        target_status = "selection" if body.status == "document_approved" else body.status
         now = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
         with conn.begin():
             conn.execute(
                 text("""
                     UPDATE ppdb_applicants 
-                    SET status = :status, updated_at = :now, rejection_reason = :reason
+                    SET status = :status, rejection_reason = :reason, updated_at = :now 
                     WHERE id = :id
                 """),
                 {
-                    "status": body.status,
+                    "status": target_status,
+                    "reason": body.rejection_reason if target_status == "document_rejected" else None,
                     "now": now,
-                    "reason": (body.rejection_reason or "").strip() if body.status == "document_rejected" else None,
-                    "id": id,
+                    "id": id
                 }
             )
+
+            # Buat record selection_results awal (jika belum ada) saat move ke selection
+            if target_status == "selection":
+                existing = conn.execute(
+                    text("SELECT id FROM selection_results WHERE applicant_id = :aid"),
+                    {"aid": id}
+                ).first()
+                if not existing:
+                    import uuid as _uuid
+                    conn.execute(
+                        text("""
+                            INSERT INTO selection_results
+                              (id, applicant_id, session_id, score, notes, graduation_status, graduation_notes, created_at, updated_at)
+                            VALUES
+                              (:id, :aid, NULL, NULL, NULL, NULL, NULL, :now, :now)
+                        """),
+                        {"id": str(_uuid.uuid4()), "aid": id, "now": now}
+                    )
             
     if body.status == "document_approved":
         send_notifications([("document_approved", {})], applicant["user_id"])

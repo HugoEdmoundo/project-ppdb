@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Edit, Trash2, UserCheck, UserX, UserRound } from 'lucide-react'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
-import { useConfirm } from '../components/ConfirmDialog'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import type { User, Role } from '../types'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/button'
@@ -20,7 +20,6 @@ import { EmptyState } from '../components/ui/EmptyState'
 export default function UsersPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { confirm, dialog: confirmDialog } = useConfirm()
   const { user: currentUser, loading: authLoading } = useAuth()
   
   const canCrud = currentUser?.user_type === 'superadmin'
@@ -31,6 +30,9 @@ export default function UsersPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
+
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmData, setConfirmData] = useState<{ title: string; message: string; variant?: 'danger' | 'primary'; onConfirm: () => void } | null>(null)
 
   useEffect(() => {
     if (!authLoading && currentUser && !canView) {
@@ -69,23 +71,25 @@ export default function UsersPage() {
   async function handleDelete(user: User) {
     if (!canCrud) return
     if (user.user_type === 'superadmin') return
-    const ok = await confirm({
+    setConfirmData({
       title: 'Hapus User',
       message: `Yakin ingin menghapus user "${user.username}"?`,
-      confirmLabel: 'Ya, hapus',
-      danger: true,
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmOpen(false)
+        setDeleting(user.id)
+        try {
+          await api.deleteUser(user.id)
+          toast('success', 'User berhasil dihapus')
+          fetchData()
+        } catch (e: any) {
+          toast('error', e.message || 'Gagal menghapus')
+        } finally {
+          setDeleting(null)
+        }
+      },
     })
-    if (!ok) return
-    setDeleting(user.id)
-    try {
-      await api.deleteUser(user.id)
-      toast('success', 'User berhasil dihapus')
-      fetchData()
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal menghapus')
-    } finally {
-      setDeleting(null)
-    }
+    setConfirmOpen(true)
   }
 
   function getRoleName(roleId: string) {
@@ -103,7 +107,15 @@ export default function UsersPage() {
 
   return (
     <>
-      {confirmDialog}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => confirmData?.onConfirm()}
+        title={confirmData?.title || 'Konfirmasi'}
+        message={confirmData?.message || ''}
+        variant={confirmData?.variant}
+        confirmLabel="Ya, hapus"
+      />
       <div className="space-y-6 animate-fadeIn">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

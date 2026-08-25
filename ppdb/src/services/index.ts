@@ -10,6 +10,7 @@ export const ppdbService = {
   activatePeriod: (id: string) => apiFetch<void>(`/ppdb/periods/${id}/activate`, { method: 'PUT' }),
   deactivatePeriod: (id: string) => apiFetch<void>(`/ppdb/periods/${id}/deactivate`, { method: 'PUT' }),
   getWaves: (params?: any) => apiFetch<any>(`/ppdb/waves${params ? '?' + new URLSearchParams(params) : ''}`),
+  getActiveWavePublic: () => apiFetch<any>('/ppdb/waves/active-public'),
   getAllWaves: (periodId?: string) => apiFetch<any[]>(`/ppdb/waves/all${periodId ? '?period_id=' + periodId : ''}`),
   getWave: (id: string) => apiFetch<any>(`/ppdb/waves/${id}`),
   createWave: (body: any) => apiFetch<any>('/ppdb/waves', { method: 'POST', body: JSON.stringify(body) }),

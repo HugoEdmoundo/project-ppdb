@@ -3,7 +3,6 @@ from pydantic import BaseModel, Field
 
 
 class SessionCreate(BaseModel):
-    wave_id: str
     name: str = Field(min_length=1, max_length=100)
     session_date: Optional[str] = None   # "YYYY-MM-DD"
     start_time: Optional[str] = None     # "HH:MM"
@@ -32,7 +31,6 @@ class BroadcastSession(BaseModel):
 
 
 class CategoryCreate(BaseModel):
-    wave_id: str
     name: str = Field(min_length=1, max_length=100)
 
 

@@ -8,7 +8,7 @@ import { Button, buttonVariants } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Search, GraduationCap, UserRoundSearch, FileText, CheckCircle, XCircle } from 'lucide-react'
+import { Search, GraduationCap, UserRoundSearch, FileText, CheckCircle, XCircle, Waves } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { Textarea } from '@/components/ui/Textarea'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
@@ -21,6 +21,7 @@ export default function ApplicantsPage() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [hasActiveWave, setHasActiveWave] = useState<boolean | null>(null)
   
   // Document verification modal state
   const [verifyApplicant, setVerifyApplicant] = useState<any>(null)
@@ -35,8 +36,10 @@ export default function ApplicantsPage() {
       if (q) qs.append('search', q)
       if (status && status !== 'all') qs.append('status', status)
       
+      // Backend secara otomatis scope ke gelombang aktif.
       const res = await api.apiFetch<any>(`/ppdb/applicants?${qs.toString()}`)
       setApplicants(res.data || [])
+      setHasActiveWave(res.active_wave !== null && res.active_wave !== undefined)
     } catch (e: any) {
       toast('error', e.message || 'Gagal memuat pendaftar')
     } finally {
@@ -47,6 +50,7 @@ export default function ApplicantsPage() {
   useEffect(() => {
     fetchApplicants()
   }, [])
+
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -104,6 +108,16 @@ export default function ApplicantsPage() {
         </p>
       </div>
 
+      {/* Banner tidak ada gelombang aktif */}
+      {!loading && hasActiveWave === false && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <Waves className="h-5 w-5 shrink-0 text-amber-500" />
+          <span>
+            Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk menampilkan data dokumen pendaftar.
+          </span>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
         <form onSubmit={handleSearch} className="flex gap-2 w-full sm:w-auto">
           <div className="relative w-full sm:w-64">
@@ -148,13 +162,18 @@ export default function ApplicantsPage() {
                 <TableRow>
                   <TableCell colSpan={6} className="py-8">
                     <EmptyState
-                      icon={UserRoundSearch}
-                      title="Belum Ada Pendaftar"
-                      description="Belum ada pendaftar yang sesuai kriteria pencarian."
+                      icon={hasActiveWave === false ? Waves : UserRoundSearch}
+                      title={hasActiveWave === false ? "Tidak Ada Gelombang Aktif" : "Belum Ada Pendaftar"}
+                      description={
+                        hasActiveWave === false
+                          ? "Aktifkan gelombang terlebih dahulu untuk menampilkan data."
+                          : "Belum ada pendaftar yang sesuai kriteria pencarian."
+                      }
                       className="bg-transparent border-transparent"
                     />
                   </TableCell>
                 </TableRow>
+
               ) : (
                 applicants.map((a) => (
                   <TableRow 

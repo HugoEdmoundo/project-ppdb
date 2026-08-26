@@ -47,30 +47,32 @@ def _now_wib() -> datetime:
     return datetime.now(WIB).replace(tzinfo=None)
 
 
+def _get_active_wave_id(conn) -> str:
+    row = conn.execute(text("SELECT id FROM ppdb_waves WHERE status = 'active' LIMIT 1")).first()
+    if not row:
+        raise HTTPException(status_code=400, detail="Tidak ada gelombang yang sedang aktif.")
+    return row[0]
+
 # ---------------------------------------------------------------------------
 # Sessions (Admin)
 # ---------------------------------------------------------------------------
 
 @router.get("/sessions")
 def get_sessions(
-    wave_id: Optional[str] = Query(None),
     user: dict = Depends(require_ppdb_read),
 ):
     pool = get_raw_pool()
     with pool.connect() as conn:
+        active_wave_id = _get_active_wave_id(conn)
         sql = """
             SELECT s.*, w.name as wave_name,
                    (SELECT COUNT(*) FROM selection_results sr WHERE sr.session_id = s.id) as booked_count
             FROM selection_sessions s
             LEFT JOIN ppdb_waves w ON s.wave_id = w.id
-            WHERE 1=1
+            WHERE s.wave_id = :wave_id
+            ORDER BY s.session_date ASC, s.start_time ASC
         """
-        params: dict = {}
-        if wave_id:
-            sql += " AND s.wave_id = :wave_id"
-            params["wave_id"] = wave_id
-        sql += " ORDER BY s.session_date ASC, s.start_time ASC"
-        rows = conn.execute(text(sql), params).mappings().all()
+        rows = conn.execute(text(sql), {"wave_id": active_wave_id}).mappings().all()
     return [dict(r) for r in rows]
 
 
@@ -80,6 +82,7 @@ def create_session(body: SessionCreate, user: dict = Depends(require_ppdb_admin)
     sid = str(uuid4())
     pool = get_raw_pool()
     with pool.connect() as conn:
+        active_wave_id = _get_active_wave_id(conn)
         conn.execute(
             text("""
                 INSERT INTO selection_sessions
@@ -89,7 +92,7 @@ def create_session(body: SessionCreate, user: dict = Depends(require_ppdb_admin)
             """),
             {
                 "id": sid,
-                "wave_id": body.wave_id,
+                "wave_id": active_wave_id,
                 "name": body.name,
                 "session_date": body.session_date,
                 "start_time": body.start_time,
@@ -187,19 +190,14 @@ def broadcast_session(session_id: str, body: BroadcastSession, user: dict = Depe
 
 @router.get("/categories")
 def get_categories(
-    wave_id: Optional[str] = Query(None),
     user: dict = Depends(require_ppdb_read)
 ):
     pool = get_raw_pool()
     with pool.connect() as conn:
-        sql = "SELECT * FROM selection_categories"
-        params = {}
-        if wave_id:
-            sql += " WHERE wave_id = :wave_id"
-            params["wave_id"] = wave_id
-        sql += " ORDER BY created_at ASC"
+        active_wave_id = _get_active_wave_id(conn)
+        sql = "SELECT * FROM selection_categories WHERE wave_id = :wave_id ORDER BY created_at ASC"
         
-        cats = conn.execute(text(sql), params).mappings().all()
+        cats = conn.execute(text(sql), {"wave_id": active_wave_id}).mappings().all()
         result = []
         for c in cats:
             c_dict = dict(c)
@@ -219,9 +217,10 @@ def create_category(body: CategoryCreate, user: dict = Depends(require_ppdb_admi
     cid = str(uuid4())
     pool = get_raw_pool()
     with pool.connect() as conn:
+        active_wave_id = _get_active_wave_id(conn)
         conn.execute(
             text("INSERT INTO selection_categories (id, wave_id, name, created_at, updated_at) VALUES (:id, :wid, :name, :now, :now)"),
-            {"id": cid, "wid": body.wave_id, "name": body.name, "now": now}
+            {"id": cid, "wid": active_wave_id, "name": body.name, "now": now}
         )
         conn.commit()
     return {"id": cid, "message": "Kategori berhasil dibuat"}
@@ -265,12 +264,11 @@ def delete_criteria(id: str, user: dict = Depends(require_ppdb_admin)):
 
 @router.get("/results")
 def get_results(
-    wave_id: Optional[str] = Query(None),
-    session_id: Optional[str] = Query(None),
     user: dict = Depends(require_ppdb_read),
 ):
     pool = get_raw_pool()
     with pool.connect() as conn:
+        active_wave_id = _get_active_wave_id(conn)
         sql = """
             SELECT
                 sr.id as result_id, sr.applicant_id, sr.session_id, sr.notes,
@@ -282,18 +280,11 @@ def get_results(
             JOIN ppdb_applicants a ON sr.applicant_id = a.id
             LEFT JOIN selection_sessions s ON sr.session_id = s.id
             LEFT JOIN ppdb_waves w ON a.wave_id = w.id
-            WHERE 1=1
+            WHERE a.wave_id = :wave_id
+            ORDER BY a.full_name ASC
         """
-        params: dict = {}
-        if wave_id:
-            sql += " AND a.wave_id = :wave_id"
-            params["wave_id"] = wave_id
-        if session_id:
-            sql += " AND sr.session_id = :session_id"
-            params["session_id"] = session_id
-        sql += " ORDER BY a.full_name ASC"
-        
-        rows = conn.execute(text(sql), params).mappings().all()
+        rows = conn.execute(text(sql), {"wave_id": active_wave_id}).mappings().all()
+
         
         # Get dynamic scores for all matched applicants
         results = []

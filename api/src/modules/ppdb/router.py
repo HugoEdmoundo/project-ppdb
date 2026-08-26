@@ -508,19 +508,32 @@ def get_applicants(
 ):
     offset = (page - 1) * perPage
 
+    # Jika wave_id tidak diberikan, default ke gelombang yang sedang aktif.
+    # Jika tidak ada gelombang aktif, kembalikan data kosong.
+    resolved_wave_id = wave_id
+    if not resolved_wave_id:
+        pool = get_raw_pool()
+        with pool.connect() as conn:
+            active_row = conn.execute(
+                text("SELECT id FROM ppdb_waves WHERE status = 'active' LIMIT 1")
+            ).mappings().all()
+        if not active_row:
+            return {"data": [], "total": 0, "active_wave": None}
+        resolved_wave_id = active_row[0]["id"]
+
     sql = "SELECT a.*, w.name as wave_name, u.username FROM ppdb_applicants a LEFT JOIN ppdb_waves w ON a.wave_id = w.id LEFT JOIN users u ON a.user_id = u.id WHERE 1=1"
     count_sql = "SELECT COUNT(*) as cnt FROM ppdb_applicants a WHERE 1=1"
     params: dict = {}
+
+    # Filter berdasarkan gelombang (aktif atau explicit dari param)
+    sql += " AND a.wave_id = :wave_id"
+    count_sql += " AND a.wave_id = :wave_id"
+    params["wave_id"] = resolved_wave_id
 
     if search:
         sql += " AND (a.full_name LIKE :search OR a.email LIKE :search OR a.province LIKE :search OR a.city LIKE :search OR a.district LIKE :search OR a.village LIKE :search)"
         count_sql += " AND (a.full_name LIKE :search OR a.email LIKE :search OR a.province LIKE :search OR a.city LIKE :search OR a.district LIKE :search OR a.village LIKE :search)"
         params["search"] = f"%{search}%"
-
-    if wave_id:
-        sql += " AND a.wave_id = :wave_id"
-        count_sql += " AND a.wave_id = :wave_id"
-        params["wave_id"] = wave_id
 
     if status:
         sql += " AND a.status = :status"
@@ -536,7 +549,7 @@ def get_applicants(
         rows = conn.execute(text(sql), params).mappings().all()
         count_rows = conn.execute(text(count_sql), params).mappings().all()
 
-    return {"data": [dict(r) for r in rows], "total": count_rows[0]["cnt"]}
+    return {"data": [dict(r) for r in rows], "total": count_rows[0]["cnt"], "active_wave": resolved_wave_id}
 
 
 @router.put("/applicants/{id}/password")

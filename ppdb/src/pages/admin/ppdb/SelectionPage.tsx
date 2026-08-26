@@ -69,22 +69,13 @@ export default function SelectionPage() {
 
   const [activeTab, setActiveTab] = useState<'sesi' | 'kategori' | 'nilai'>('sesi')
 
-  // ── Waves for dropdowns ──────────────────────────────────────────────────
-  const [waves, setWaves] = useState<any[]>([])
-  useEffect(() => {
-    api.apiFetch<any>('/ppdb/waves/all')
-      .then(res => setWaves(Array.isArray(res) ? res : res.data || []))
-      .catch(() => {})
-  }, [])
-
-
   // ── Sesi ───────────────────────────────────────────────────────────────────
   const [sessions, setSessions] = useState<Session[]>([])
   const [loadingSessions, setLoadingSessions] = useState(false)
   const [sessionModal, setSessionModal] = useState<'create' | 'edit' | null>(null)
   const [editSession, setEditSession] = useState<Session | null>(null)
   const [sessionForm, setSessionForm] = useState({
-    wave_id: '', name: '', session_date: '', start_time: '', end_time: '', location: '', description: '', quota: 0
+    name: '', session_date: '', start_time: '', end_time: '', location: '', description: '', quota: 0
   })
   const [savingSession, setSavingSession] = useState(false)
   const [broadcastModal, setBroadcastModal] = useState<Session | null>(null)
@@ -105,14 +96,13 @@ export default function SelectionPage() {
 
   const openCreateSession = () => {
     setEditSession(null)
-    setSessionForm({ wave_id: '', name: '', session_date: '', start_time: '', end_time: '', location: '', description: '', quota: 0 })
+    setSessionForm({ name: '', session_date: '', start_time: '', end_time: '', location: '', description: '', quota: 0 })
     setSessionModal('create')
   }
 
   const openEditSession = (s: Session) => {
     setEditSession(s)
     setSessionForm({
-      wave_id: s.wave_id,
       name: s.name,
       session_date: s.session_date || '',
       start_time: s.start_time || '',
@@ -178,7 +168,7 @@ export default function SelectionPage() {
   const [categories, setCategories] = useState<SelectionCategory[]>([])
   const [loadingCategories, setLoadingCategories] = useState(false)
   const [categoryModal, setCategoryModal] = useState(false)
-  const [catForm, setCatForm] = useState({ wave_id: '', name: '' })
+  const [catForm, setCatForm] = useState({ name: '' })
   const [criteriaModal, setCriteriaModal] = useState<string | null>(null) // category_id
   const [critForm, setCritForm] = useState({ name: '', max_score: 100 })
 
@@ -195,7 +185,7 @@ export default function SelectionPage() {
   }, [toast])
 
   const saveCategory = async () => {
-    if(!catForm.name || !catForm.wave_id) { toast('error', 'Nama dan Gelombang wajib diisi'); return }
+    if(!catForm.name) { toast('error', 'Nama kategori wajib diisi'); return }
     try {
       await api.apiFetch('/selection/categories', { method: 'POST', body: JSON.stringify(catForm) })
       toast('success', 'Kategori dibuat')
@@ -371,7 +361,6 @@ export default function SelectionPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nama Sesi</TableHead>
-                    <TableHead>Gelombang</TableHead>
                     <TableHead>Jadwal & Lokasi</TableHead>
                     <TableHead>Kuota Booking</TableHead>
                     {canCrud && <TableHead className="text-right">Aksi</TableHead>}
@@ -393,7 +382,6 @@ export default function SelectionPage() {
                           {s.name}
                           {s.description && <p className="text-xs text-muted-foreground line-clamp-1">{s.description}</p>}
                         </TableCell>
-                        <TableCell>{s.wave_name || '-'}</TableCell>
                         <TableCell>
                           <div className="text-sm">
                             {s.session_date ? new Date(s.session_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
@@ -440,7 +428,7 @@ export default function SelectionPage() {
               Buat struktur penilaian per gelombang secara dinamis.
             </p>
             {canCrud && (
-              <Button size="sm" onClick={() => { setCatForm({ wave_id: '', name: '' }); setCategoryModal(true); }}>
+              <Button size="sm" onClick={() => { setCatForm({ name: '' }); setCategoryModal(true); }}>
                 <Plus className="h-4 w-4 mr-1.5" />
                 Tambah Kategori Utama
               </Button>
@@ -458,7 +446,7 @@ export default function SelectionPage() {
                   <CardHeader className="py-4 flex flex-row justify-between items-center bg-muted/20 border-b">
                     <div>
                       <h3 className="font-semibold text-lg">{cat.name}</h3>
-                      <p className="text-xs text-muted-foreground">Gelombang ID: {cat.wave_id} | {cat.criteria?.length || 0} Kriteria</p>
+                      <p className="text-xs text-muted-foreground">{cat.criteria?.length || 0} Kriteria</p>
                     </div>
                     {canCrud && (
                       <div className="flex gap-2">
@@ -634,18 +622,7 @@ export default function SelectionPage() {
             <DialogTitle>{sessionModal === 'create' ? 'Tambah Sesi Seleksi' : 'Edit Sesi Seleksi'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
-            <div>
-              <label className="text-sm font-medium text-foreground">Gelombang <span className="text-destructive">*</span></label>
-              <select
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={sessionForm.wave_id}
-                onChange={e => setSessionForm(p => ({ ...p, wave_id: e.target.value }))}
-                disabled={sessionModal === 'edit'}
-              >
-                <option value="">— Pilih Gelombang —</option>
-                {waves.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-              </select>
-            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium text-foreground">Nama Sesi <span className="text-destructive">*</span></label>
@@ -726,13 +703,7 @@ export default function SelectionPage() {
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Tambah Kategori Ujian</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
-            <div>
-              <label className="text-sm font-medium">Gelombang</label>
-              <select className="mt-1 w-full rounded-md border border-input px-3 py-2 text-sm" value={catForm.wave_id} onChange={e => setCatForm(p => ({ ...p, wave_id: e.target.value }))}>
-                <option value="">— Pilih Gelombang —</option>
-                {waves.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-              </select>
-            </div>
+
             <div>
               <label className="text-sm font-medium">Nama Kategori</label>
               <Input className="mt-1" placeholder="cth: Ujian Al-Quran" value={catForm.name} onChange={e => setCatForm(p => ({ ...p, name: e.target.value }))} />

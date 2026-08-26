@@ -38,19 +38,32 @@ def get_transactions(
     user: dict = Depends(require_payment_read)
 ):
     offset = (page - 1) * perPage
+
+    # Scope ke gelombang aktif. Jika tidak ada gelombang aktif, kembalikan kosong.
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        active_row = conn.execute(
+            text("SELECT id FROM ppdb_waves WHERE status = 'active' LIMIT 1")
+        ).mappings().all()
+
+    if not active_row:
+        return {"data": [], "total": 0, "active_wave": None}
+
+    active_wave_id = active_row[0]["id"]
+
     sql = """
         SELECT pt.*, a.full_name as applicant_name, a.email as applicant_email 
         FROM ppdb_payment_transactions pt
         JOIN ppdb_applicants a ON pt.applicant_id = a.id
-        WHERE 1=1
+        WHERE a.wave_id = :wave_id
     """
     count_sql = """
         SELECT COUNT(*) as cnt
         FROM ppdb_payment_transactions pt
         JOIN ppdb_applicants a ON pt.applicant_id = a.id
-        WHERE 1=1
+        WHERE a.wave_id = :wave_id
     """
-    params: dict = {}
+    params: dict = {"wave_id": active_wave_id}
 
     if status:
         sql += " AND pt.status = :status"
@@ -66,7 +79,7 @@ def get_transactions(
         rows = conn.execute(text(sql), params).mappings().all()
         count_rows = conn.execute(text(count_sql), params).mappings().all()
 
-    return {"data": [dict(r) for r in rows], "total": count_rows[0]["cnt"]}
+    return {"data": [dict(r) for r in rows], "total": count_rows[0]["cnt"], "active_wave": active_wave_id}
 
 
 @router.get("/my-transaction")

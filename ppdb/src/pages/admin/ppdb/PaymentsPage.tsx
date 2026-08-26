@@ -9,7 +9,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
-import { CreditCard, CheckCircle, XCircle } from 'lucide-react'
+import { CreditCard, CheckCircle, XCircle, Waves } from 'lucide-react'
 import { apiFetch } from '@/api/client'
 
 export default function PaymentsPage() {
@@ -19,6 +19,7 @@ export default function PaymentsPage() {
   const [activeTab, setActiveTab] = useState('all')
   const [transactions, setTransactions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [hasActiveWave, setHasActiveWave] = useState<boolean | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [cancelId, setCancelId] = useState<string | null>(null)
@@ -32,8 +33,11 @@ export default function PaymentsPage() {
         q.append('status', statusFilter)
       }
       
+      // Backend secara otomatis scope ke gelombang aktif.
+      // Jika tidak ada gelombang aktif, active_wave akan null dan data kosong.
       const res = await apiFetch<any>(`/payment/transactions?${q.toString()}`)
       setTransactions(res.data || [])
+      setHasActiveWave(res.active_wave !== null && res.active_wave !== undefined)
     } catch (e: any) {
       toast('error', e.message || 'Gagal memuat transaksi')
     } finally {
@@ -44,6 +48,7 @@ export default function PaymentsPage() {
   useEffect(() => {
     fetchTransactions(activeTab)
   }, [activeTab])
+
 
   const handleConfirm = async () => {
     if (!confirmId) return
@@ -96,9 +101,13 @@ export default function PaymentsPage() {
               <TableRow>
                 <TableCell colSpan={6} className="py-8">
                   <EmptyState
-                    icon={CreditCard}
-                    title="Tidak Ada Transaksi"
-                    description="Belum ada data transaksi pembayaran yang sesuai kriteria."
+                    icon={hasActiveWave === false ? Waves : CreditCard}
+                    title={hasActiveWave === false ? "Tidak Ada Gelombang Aktif" : "Tidak Ada Transaksi"}
+                    description={
+                      hasActiveWave === false
+                        ? "Aktifkan gelombang terlebih dahulu untuk menampilkan data transaksi."
+                        : "Belum ada data transaksi pembayaran yang sesuai kriteria."
+                    }
                     className="bg-transparent border-transparent"
                   />
                 </TableCell>
@@ -154,6 +163,16 @@ export default function PaymentsPage() {
           Manajemen transaksi pembayaran pendaftaran calon santri/murid baru.
         </p>
       </div>
+
+      {/* Banner tidak ada gelombang aktif */}
+      {!loading && hasActiveWave === false && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <Waves className="h-5 w-5 shrink-0 text-amber-500" />
+          <span>
+            Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk menampilkan data transaksi pembayaran.
+          </span>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full overflow-x-auto">
         <TabsList className="inline-flex w-max sm:w-auto">

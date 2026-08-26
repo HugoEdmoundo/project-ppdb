@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import * as api from '../../../api/client'
 import { useToast } from '@/components/Toast'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
-import { Search, UserRoundSearch } from 'lucide-react'
+import { Search, UserRoundSearch, Waves } from 'lucide-react'
 
 export default function DataPendaftarPage() {
   const { toast } = useToast()
@@ -18,15 +18,18 @@ export default function DataPendaftarPage() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedApplicant, setSelectedApplicant] = useState<any>(null)
+  const [hasActiveWave, setHasActiveWave] = useState<boolean | null>(null)
 
   const fetchApplicants = async (q = search) => {
     setLoading(true)
     try {
       const qs = new URLSearchParams()
       if (q) qs.append('search', q)
-      // fetch all applicants ignoring status filter for Data Pendaftar page
+      // Backend secara otomatis scope ke gelombang aktif.
+      // Jika tidak ada gelombang aktif, active_wave akan null dan data kosong.
       const res = await api.apiFetch<any>(`/ppdb/applicants?${qs.toString()}`)
       setApplicants(res.data || [])
+      setHasActiveWave(res.active_wave !== null && res.active_wave !== undefined)
     } catch (e: any) {
       toast('error', e.message || 'Gagal memuat pendaftar')
     } finally {
@@ -54,6 +57,16 @@ export default function DataPendaftarPage() {
           Kelola data biodata lengkap calon santri yang telah mendaftar.
         </p>
       </div>
+
+      {/* Banner tidak ada gelombang aktif */}
+      {!loading && hasActiveWave === false && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <Waves className="h-5 w-5 shrink-0 text-amber-500" />
+          <span>
+            Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk menampilkan data pendaftar.
+          </span>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
         <form onSubmit={handleSearch} className="flex gap-2 w-full sm:w-auto">
@@ -91,9 +104,13 @@ export default function DataPendaftarPage() {
                 <TableRow>
                   <TableCell colSpan={7} className="py-8">
                     <EmptyState
-                      icon={UserRoundSearch}
-                      title="Belum Ada Pendaftar"
-                      description="Belum ada pendaftar yang sesuai kriteria pencarian."
+                      icon={hasActiveWave === false ? Waves : UserRoundSearch}
+                      title={hasActiveWave === false ? "Tidak Ada Gelombang Aktif" : "Belum Ada Pendaftar"}
+                      description={
+                        hasActiveWave === false
+                          ? "Aktifkan gelombang terlebih dahulu untuk menampilkan data."
+                          : "Belum ada pendaftar yang sesuai kriteria pencarian."
+                      }
                       className="bg-transparent border-transparent"
                     />
                   </TableCell>
@@ -158,7 +175,17 @@ export default function DataPendaftarPage() {
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs">Status Pembayaran</p>
-                  <Badge variant={selectedApplicant.payment_status === 'paid' ? 'success' : 'warning'} className="mt-1">
+                  {/* Fix: expired harus merah (destructive), bukan kuning (warning) */}
+                  <Badge
+                    variant={
+                      selectedApplicant.payment_status === 'paid'
+                        ? 'success'
+                        : selectedApplicant.payment_status === 'expired'
+                        ? 'destructive'
+                        : 'warning'
+                    }
+                    className="mt-1"
+                  >
                     {selectedApplicant.payment_status?.toUpperCase() || 'PENDING'}
                   </Badge>
                 </div>

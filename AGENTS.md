@@ -36,8 +36,53 @@ Permissions are defined per-module (`companyprofile`, `ppdb`, `payment`, `select
 ## PPDB Flow
 1. **Registration**: User registers -> receives `payment_status = 'pending'` and a 7-day `payment_deadline`. Nominal biaya pendaftaran (Tahap 1) ditarik otomatis dari konfigurasi `registration_fee` pada tabel `ppdb_waves` yang sedang aktif.
 2. **Paywall**: Users with pending payments are restricted to `/checkout`. No dashboard access.
-3. **Expiration**: If unpaid after 7 days, `payment_status` becomes `expired` and account is soft-deleted.
+3. **Expiration**: If unpaid after 7 days, `payment_status` becomes `expired` and account is soft-deleted (`deleted_at` is set). Expired applicants **tetap tampil** di list admin dengan badge merah "EXPIRED" — tidak dihapus dari tampilan.
 4. **Paid**: On success (manual or webhook), status becomes `paid` -> Dashboard is unlocked for document uploads. Khusus untuk pembayaran manual (offline), admin dapat **membatalkan konfirmasi** yang mengembalikan status user menjadi `pending` dan mengunci kembali dashboard. (Pembayaran online via gateway tidak bisa dibatalkan).
+
+## Wave System (Gelombang)
+
+### Hierarki
+`Periode` → `Gelombang` → `Pendaftar/Transaksi/Dokumen/Seleksi`
+
+Pendaftaran hanya bisa dilakukan jika **tepat 1 Periode DAN 1 Gelombang** berstatus `active` secara bersamaan.
+
+### Gelombang sebagai Induk Data
+**Gelombang adalah induk dari semua data operasional PPDB.** Data yang ditampilkan di halaman admin (pendaftar, dokumen, pembayaran, seleksi) selalu mengacu pada **gelombang yang sedang aktif**:
+- Gelombang **aktif** → tampilkan data milik gelombang tersebut saja.
+- Gelombang **tidak aktif / tidak ada yang aktif** → data tidak ditampilkan (tampil empty state + banner peringatan kuning).
+- **Ganti gelombang aktif** → data berganti ke data milik gelombang baru.
+
+### Aturan Aktivasi (Business Logic)
+- Hanya **1 wave aktif secara global** (system-wide, bukan per-periode).
+- Wave hanya bisa diaktifkan jika **periode induknya `active`** → HTTP 400 jika belum.
+- **Aktivasi wave** → nonaktifkan SEMUA wave lain dulu, baru aktifkan ini.
+- **Aktivasi periode** → nonaktifkan SEMUA wave dari SEMUA periode.
+- **Deaktivasi periode** → nonaktifkan wave dari periode itu saja.
+- **Membuat wave** → selalu `inactive`, tidak bisa langsung aktif.
+- **Hapus periode** → cascade hapus semua waves-nya.
+- **Hapus wave yang ada pendaftarnya** → **diblok** (FK RESTRICT).
+
+### API Wave-Scoping (Backend Convention)
+- **`GET /ppdb/applicants`** — jika tidak ada `wave_id` param, backend **otomatis resolve ke wave aktif**. Jika tidak ada wave aktif → return `{data: [], total: 0, active_wave: null}`.
+- **`GET /payment/transactions`** — backend scope ke wave aktif via JOIN ke `ppdb_applicants.wave_id`. Jika tidak ada wave aktif → return kosong.
+- **`GET /selection/sessions|categories|results`** — backend scope ke wave aktif via helper `_get_active_wave_id()`.
+- **`GET /ppdb/waves/active-public`** — endpoint publik (no auth), return info wave aktif (`id`, `name`, `allowed_paths[]`, `allowed_levels[]`) atau `{active: false}`. Dipakai halaman registrasi publik.
+
+### Frontend Wave-Scoping (Frontend Convention)
+- Semua halaman admin data (`DataPendaftarPage`, `ApplicantsPage`, `PaymentsPage`, `SelectionPage`) hanya menampilkan data dari **gelombang aktif**.
+- Jika API mengembalikan `active_wave: null` → tampilkan **banner kuning** dan **empty state** dengan pesan "Aktifkan gelombang terlebih dahulu".
+- Halaman registrasi publik memanggil `/ppdb/waves/active-public` di awal load untuk menentukan opsi jalur & jenjang yang tersedia.
+
+### Scope Gelombang (allowed_paths / allowed_levels)
+- `allowed_paths`: CSV dari `reguler`, `pindahan` — menentukan jalur pendaftaran yang dibuka.
+- `allowed_levels`: CSV dari `SMP`, `SMK` — menentukan jenjang yang dibuka.
+- Form registrasi publik **otomatis menyembunyikan** opsi yang tidak diizinkan wave aktif.
+- Backend juga **memvalidasi ulang** saat POST register (double validation).
+
+### Expired Applicants (Soft Delete)
+- Cron job harian (`POST /ppdb/cron/soft-delete-expired`) men-set `deleted_at`, `payment_status = 'expired'`, `status = 'expired'` pada pendaftar yang melewati `payment_deadline`.
+- Pendaftar expired **tetap muncul** di list admin selama gelombangnya aktif — tidak disembunyikan.
+- Badge `EXPIRED` selalu ditampilkan dengan warna **merah** (`destructive`) — baik di tabel maupun di modal detail — bukan kuning.
 
 ## Environment & Secrets
 - Uses `.env` files for local development. Never commit secrets.

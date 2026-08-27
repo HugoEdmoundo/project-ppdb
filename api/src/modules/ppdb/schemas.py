@@ -149,3 +149,15 @@ class ApplicantRegister(BaseModel):
 
 class ApplicantPasswordReset(BaseModel):
     password: Optional[str] = None
+
+
+class WaveFeeItemCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    nominal: int = Field(ge=0)
+    order_index: int = Field(default=0, ge=0)
+
+class WaveMouTemplateUpdate(BaseModel):
+    mou_template: str
+
+class MouSignRequest(BaseModel):
+    signature_data: str

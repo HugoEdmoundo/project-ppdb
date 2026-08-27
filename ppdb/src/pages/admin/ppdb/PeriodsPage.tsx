@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { ppdbService } from '@/services'
+import { apiFetch } from '@/api/client'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
 import {
@@ -10,7 +11,7 @@ import {
   EmptyState, Alert, CurrencyInput
 } from '@/components/ui'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
-import { Plus, Edit, Trash2, CalendarDays, CheckCircle, XCircle, Layers, CalendarX2, Waves } from 'lucide-react'
+import { Plus, Edit, Trash2, CalendarDays, CheckCircle, XCircle, Layers, CalendarX2, Waves, DollarSign, Receipt } from 'lucide-react'
 
 export default function PeriodsPage() {
   const { toast } = useToast()
@@ -311,6 +312,66 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
   const [formData, setFormData] = useState<WaveFormData>(emptyWaveForm())
   const colCount = canCrud ? 8 : 7
 
+  const [feeDialogWave, setFeeDialogWave] = useState<any>(null)
+  const [feeItems, setFeeItems] = useState<any[]>([])
+  const [newFeeName, setNewFeeName] = useState('')
+  const [newFeeNominal, setNewFeeNominal] = useState(0)
+  const [mouTemplate, setMouTemplate] = useState('')
+
+  const openFeeDialog = async (w: any) => {
+    setFeeDialogWave(w)
+    setMouTemplate(w.mou_template || '')
+    fetchFeeItems(w.id)
+  }
+
+  const fetchFeeItems = async (waveId: string) => {
+    try {
+      const res = await apiFetch<any>(`/ppdb/waves/${waveId}/fee-items`)
+      setFeeItems(res.data || [])
+    } catch {
+      toast('error', 'Gagal memuat item biaya')
+    }
+  }
+
+  const handleAddFeeItem = async () => {
+    if (!newFeeName || newFeeNominal <= 0) return
+    try {
+      await apiFetch(`/ppdb/waves/${feeDialogWave.id}/fee-items`, {
+        method: 'POST',
+        body: JSON.stringify({ name: newFeeName, nominal: newFeeNominal })
+      })
+      setNewFeeName('')
+      setNewFeeNominal(0)
+      fetchFeeItems(feeDialogWave.id)
+      toast('success', 'Item biaya ditambahkan')
+    } catch (e: any) {
+      toast('error', e.message || 'Gagal menambah item biaya')
+    }
+  }
+
+  const handleDeleteFeeItem = async (id: string) => {
+    try {
+      await apiFetch(`/ppdb/waves/${feeDialogWave.id}/fee-items/${id}`, { method: 'DELETE' })
+      fetchFeeItems(feeDialogWave.id)
+      toast('success', 'Item biaya dihapus')
+    } catch (e: any) {
+      toast('error', e.message || 'Gagal menghapus item biaya')
+    }
+  }
+
+  const handleSaveMou = async () => {
+    try {
+      await apiFetch(`/ppdb/waves/${feeDialogWave.id}/mou-template`, {
+        method: 'PUT',
+        body: JSON.stringify({ mou_template: mouTemplate })
+      })
+      toast('success', 'Template MOU disimpan')
+      setWaves(waves.map(w => w.id === feeDialogWave.id ? { ...w, mou_template: mouTemplate } : w))
+    } catch (e: any) {
+      toast('error', e.message || 'Gagal menyimpan MOU')
+    }
+  }
+
   const fetchWaves = async () => {
     setLoading(true)
     try {
@@ -539,6 +600,9 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
                             <Button variant="ghost" size="icon" onClick={() => openEdit(w)} title="Edit" className="h-8 w-8">
                               <Edit className="h-4 w-4" />
                             </Button>
+                            <Button variant="ghost" size="icon" onClick={() => openFeeDialog(w)} title="Item Biaya" className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10">
+                              <DollarSign className="h-4 w-4" />
+                            </Button>
                             <Button variant="ghost" size="icon" onClick={() => setDeletingId(w.id)} title="Hapus" className="h-8 w-8 text-rose-danger hover:text-rose-danger hover:bg-rose-light">
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -685,6 +749,99 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
         confirmLabel="Ya, Lanjutkan"
         variant={actionId?.type === 'activate' ? 'primary' : 'danger'}
       />
+
+      <Dialog open={!!feeDialogWave} onOpenChange={(v) => !v && setFeeDialogWave(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-primary" />
+              Biaya & MOU — {feeDialogWave?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 pt-4">
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b pb-2">Item Biaya Tahap 2</h3>
+              
+              <div className="flex gap-2 items-end">
+                <div className="space-y-1.5 flex-1">
+                  <Label>Nama Item</Label>
+                  <Input value={newFeeName} onChange={e => setNewFeeName(e.target.value)} placeholder="Misal: SPP Bulan Juli" />
+                </div>
+                <div className="space-y-1.5 flex-1">
+                  <Label>Nominal (Rp)</Label>
+                  <CurrencyInput value={newFeeNominal} onValueChange={setNewFeeNominal} placeholder="Misal: 500000" />
+                </div>
+                <Button onClick={handleAddFeeItem} disabled={!newFeeName || newFeeNominal <= 0} className="mb-0.5">Tambah</Button>
+              </div>
+
+              <div className="rounded-md border mt-3">
+                <Table>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead>Nama Item</TableHead>
+                      <TableHead>Nominal</TableHead>
+                      <TableHead className="w-16"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {feeItems.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-4 text-muted-foreground text-sm">Belum ada item biaya.</TableCell>
+                      </TableRow>
+                    ) : (
+                      feeItems.map(item => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell>Rp {item.nominal.toLocaleString('id-ID')}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={() => handleDeleteFeeItem(item.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b pb-2">Template MOU</h3>
+              <p className="text-xs text-muted-foreground">Template perjanjian yang akan ditandatangani wali santri.</p>
+              <textarea 
+                className="flex min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+                placeholder="Isi template MOU disini... Gunakan variabel seperti {nama_peserta}, {nisn}, dll."
+                value={mouTemplate}
+                onChange={e => setMouTemplate(e.target.value)}
+              />
+              <div className="rounded-md bg-muted/50 border p-3 text-xs space-y-1">
+                <p className="font-semibold text-muted-foreground">Variabel yang tersedia:</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-0.5 text-muted-foreground font-mono">
+                  {[
+                    ['{nama_peserta}', 'Nama lengkap'],
+                    ['{nisn}', 'NISN'],
+                    ['{nik}', 'NIK'],
+                    ['{asal_sekolah}', 'Asal sekolah'],
+                    ['{nama_ortu}', 'Nama orang tua'],
+                    ['{email}', 'Email'],
+                    ['{nomor_wa}', 'No. WhatsApp'],
+                    ['{jalur}', 'Jalur pendaftaran'],
+                    ['{jenjang}', 'Jenjang (SMP/SMK)'],
+                    ['{alamat}', 'Alamat'],
+                    ['{tanggal}', 'Tanggal hari ini'],
+                  ].map(([v, label]) => (
+                    <span key={v}><span className="text-primary">{v}</span> = {label}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={handleSaveMou}>Simpan Template</Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   )
 }

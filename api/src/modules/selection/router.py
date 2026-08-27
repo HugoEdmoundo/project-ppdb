@@ -29,14 +29,14 @@ from typing import Optional
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 
 from src.core.database import execute_raw, get_raw_pool
 from src.core.dependencies import get_current_user, require_ppdb_admin, require_ppdb_read
 from src.core.notif_service import send_notifications
 from src.modules.selection.schemas import (
     SessionCreate, SessionUpdate, BookSession, BroadcastSession,
-    CategoryCreate, CriteriaCreate, ApplicantScoreSave
+    CategoryCreate, CriteriaCreate, ApplicantScoreSave, ApplicantStatusUpdate
 )
 from sqlalchemy import text
 
@@ -232,8 +232,8 @@ def create_criteria(category_id: str, body: CriteriaCreate, user: dict = Depends
     pool = get_raw_pool()
     with pool.connect() as conn:
         conn.execute(
-            text("INSERT INTO selection_criteria (id, category_id, name, max_score, created_at, updated_at) VALUES (:id, :cid, :name, :max, :now, :now)"),
-            {"id": crid, "cid": category_id, "name": body.name, "max": body.max_score, "now": now}
+            text("INSERT INTO selection_criteria (id, category_id, name, created_at, updated_at) VALUES (:id, :cid, :name, :now, :now)"),
+            {"id": crid, "cid": category_id, "name": body.name, "now": now}
         )
         conn.commit()
     return {"id": crid, "message": "Kriteria berhasil ditambahkan"}
@@ -337,6 +337,38 @@ def save_result(body: ApplicantScoreSave, user: dict = Depends(require_ppdb_admi
                 )
         conn.commit()
     return {"message": "Nilai berhasil disimpan"}
+
+
+@router.put("/results/{applicant_id}/status")
+def update_applicant_status(applicant_id: str, body: ApplicantStatusUpdate, user: dict = Depends(require_ppdb_admin)):
+    now = _now_wib()
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        app_row = conn.execute(
+            text("SELECT id FROM ppdb_applicants WHERE id = :id AND deleted_at IS NULL"),
+            {"id": applicant_id}
+        ).first()
+        if not app_row:
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+            
+        if body.status not in ["passed", "failed", "selection"]:
+            raise HTTPException(status_code=400, detail="Status tidak valid")
+            
+        # Update status in ppdb_applicants
+        conn.execute(
+            text("UPDATE ppdb_applicants SET status = :status, updated_at = :now WHERE id = :id"),
+            {"status": body.status, "now": now, "id": applicant_id}
+        )
+        
+        # If there's a reason (especially for failed), save it to selection_results notes
+        if body.reason is not None:
+            conn.execute(
+                text("UPDATE selection_results SET notes = :notes, updated_at = :now WHERE applicant_id = :id"),
+                {"notes": body.reason, "now": now, "id": applicant_id}
+            )
+            
+        conn.commit()
+    return {"message": f"Status pendaftar diubah menjadi {body.status}"}
 
 
 # ---------------------------------------------------------------------------
@@ -446,3 +478,145 @@ def applicant_get_my_results(user: dict = Depends(get_current_user)):
         "notes": res_row["notes"] if res_row else None,
         "scores": [dict(s) for s in scores_rows]
     }
+
+@router.post("/cron/auto-assign-sessions")
+def auto_assign_sessions(x_cron_secret: str = Header(None)):
+    from src.core.config import settings
+    if x_cron_secret != settings.cron_secret:
+        raise HTTPException(status_code=401, detail="Unauthorized cron request")
+    
+    pool = get_raw_pool()
+    now_wib = _now_wib()
+    assigned_count = 0
+    with pool.connect() as conn:
+        active_wave_id = _get_active_wave_id(conn)
+        if not active_wave_id:
+            return {"message": "No active wave", "assigned": 0}
+            
+        today_iso = datetime.now(ZoneInfo("Asia/Jakarta")).date().isoformat()
+        
+        # Get earliest session date for active wave
+        earliest_session = conn.execute(
+            text("""
+                SELECT session_date FROM selection_sessions 
+                WHERE wave_id = :wid AND session_date IS NOT NULL AND session_date >= :today
+                ORDER BY session_date ASC LIMIT 1
+            """),
+            {"wid": active_wave_id, "today": today_iso}
+        ).scalar()
+        
+        if not earliest_session:
+             return {"message": "No upcoming sessions found.", "assigned": 0}
+             
+        if isinstance(earliest_session, str):
+            s_date = datetime.strptime(earliest_session, "%Y-%m-%d").date()
+        else:
+            s_date = earliest_session
+            
+        today = datetime.now(ZoneInfo("Asia/Jakarta")).date()
+        
+        # Check if H-3 (or less)
+        if (s_date - today).days > 3:
+            return {"message": f"Earliest session is {s_date}, >3 days away. Skip.", "assigned": 0}
+            
+        # Get unassigned applicants in selection status
+        unassigned = conn.execute(
+            text("""
+                SELECT sr.applicant_id 
+                FROM selection_results sr
+                JOIN ppdb_applicants a ON sr.applicant_id = a.id
+                WHERE a.wave_id = :wid AND sr.session_id IS NULL AND a.status = "selection"
+            """),
+            {"wid": active_wave_id}
+        ).fetchall()
+        
+        if not unassigned:
+            return {"message": "All assigned", "assigned": 0}
+            
+        sessions = conn.execute(
+            text("""
+                SELECT s.id, s.quota, 
+                       (SELECT COUNT(*) FROM selection_results sr WHERE sr.session_id = s.id) as booked_count
+                FROM selection_sessions s
+                WHERE s.wave_id = :wid AND (s.session_date >= :today OR s.session_date IS NULL)
+                ORDER BY s.session_date ASC, s.start_time ASC
+            """),
+            {"wid": active_wave_id, "today": today_iso}
+        ).mappings().fetchall()
+        
+        avail_sessions = [dict(s) for s in sessions]
+        
+        for app in unassigned:
+            target_session = None
+            for s in avail_sessions:
+                if s["quota"] == 0 or s["booked_count"] < s["quota"]:
+                    target_session = s
+                    break
+            
+            if target_session:
+                conn.execute(
+                    text("UPDATE selection_results SET session_id = :sid, updated_at = :now WHERE applicant_id = :aid"),
+                    {"sid": target_session["id"], "now": now_wib, "aid": app[0]}
+                )
+                target_session["booked_count"] += 1
+                assigned_count += 1
+                
+        conn.commit()
+    
+    return {"message": f"Successfully auto-assigned {assigned_count} applicants", "assigned": assigned_count}
+
+
+@router.post("/cron/h1-reminders")
+def send_h1_reminders(x_cron_secret: str = Header(None)):
+    from src.core.config import settings
+    from datetime import timedelta
+    if x_cron_secret != settings.cron_secret:
+        raise HTTPException(status_code=401, detail="Unauthorized cron request")
+        
+    pool = get_raw_pool()
+    tomorrow = (datetime.now(ZoneInfo("Asia/Jakarta")).date() + timedelta(days=1)).isoformat()
+    
+    with pool.connect() as conn:
+        active_wave_id = _get_active_wave_id(conn)
+        if not active_wave_id:
+            return {"message": "No active wave", "sent": 0}
+            
+        sessions = conn.execute(
+            text("""
+                SELECT id, name, start_time, end_time, location 
+                FROM selection_sessions 
+                WHERE wave_id = :wid AND session_date = :tomorrow
+            """),
+            {"wid": active_wave_id, "tomorrow": tomorrow}
+        ).mappings().fetchall()
+        
+        sent_count = 0
+        from src.core.notif_service import send_notifications
+        
+        for s in sessions:
+            apps = conn.execute(
+                text("""
+                    SELECT a.user_id 
+                    FROM selection_results sr
+                    JOIN ppdb_applicants a ON sr.applicant_id = a.id
+                    WHERE sr.session_id = :sid
+                """),
+                {"sid": s["id"]}
+            ).fetchall()
+            
+            if not apps:
+                continue
+                
+            notif_data = {
+                "session_name": s["name"],
+                "start_time": s["start_time"] or "-",
+                "location": s["location"] or "-"
+            }
+            
+            user_ids = [a[0] for a in apps if a[0]]
+            for uid in user_ids:
+                send_notifications([("selection_reminder", notif_data)], uid)
+                sent_count += 1
+                
+    return {"message": f"Sent {sent_count} reminders", "sent": sent_count}
+

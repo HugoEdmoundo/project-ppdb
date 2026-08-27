@@ -313,3 +313,79 @@ class NotificationLog(Base):
     # Timestamp kirim / gagal
     sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class PPDBWaveFeeItem(Base):
+    """Item biaya Tahap 2 per gelombang (custom list: Uang Pangkal, Uang Gedung, dll)."""
+    __tablename__ = "ppdb_wave_fee_items"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    wave_id: Mapped[str] = mapped_column(String(36), ForeignKey("ppdb_waves.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    nominal: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    order_index: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class PPDBApplicantDiscount(Base):
+    """Konfigurasi diskon + cicilan per peserta per item biaya Tahap 2.
+    
+    discount_type: 'percent' | 'nominal' | None (tidak ada diskon)
+    discount_value: nilai diskon (angka %, atau Rp)
+    discount_amount: nominal diskon hasil hitung (Rp)
+    final_amount: nominal - discount_amount (yang harus dibayar)
+    installment_count: 0 = lump sum, N = dicicil N kali
+    """
+    __tablename__ = "ppdb_applicant_discounts"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    applicant_id: Mapped[str] = mapped_column(String(36), ForeignKey("ppdb_applicants.id", ondelete="CASCADE"))
+    fee_item_id: Mapped[str] = mapped_column(String(36), ForeignKey("ppdb_wave_fee_items.id", ondelete="CASCADE"))
+    discount_type: Mapped[Optional[str]] = mapped_column(String(10))  # 'percent' | 'nominal'
+    discount_value: Mapped[Optional[float]] = mapped_column()  # angka diskon
+    discount_amount: Mapped[int] = mapped_column(BigInteger, default=0)
+    final_amount: Mapped[int] = mapped_column(BigInteger, default=0)
+    installment_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class PPDBStage2Bill(Base):
+    """Tagihan pembayaran Tahap 2 per peserta per item (atau per cicilan).
+    
+    installment_number: 0 = lump sum, 1..N = cicilan ke-N
+    status: pending | paid | cancelled
+    """
+    __tablename__ = "ppdb_stage2_bills"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    applicant_id: Mapped[str] = mapped_column(String(36), ForeignKey("ppdb_applicants.id", ondelete="CASCADE"))
+    fee_item_id: Mapped[str] = mapped_column(String(36), ForeignKey("ppdb_wave_fee_items.id"))
+    discount_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("ppdb_applicant_discounts.id", ondelete="SET NULL"))
+    installment_number: Mapped[int] = mapped_column(Integer, default=0)
+    amount: Mapped[int] = mapped_column(BigInteger, default=0)
+    due_date: Mapped[Optional[date]] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    proof_url: Mapped[Optional[str]] = mapped_column(Text)
+    confirmed_by: Mapped[Optional[str]] = mapped_column(String(36))
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class PPDBBMOU(Base):
+    """MOU per peserta yang lulus seleksi.
+    
+    status: draft | signed
+    draft_content: HTML/markdown template MOU (diisi dari wave.mou_template + data peserta)
+    signature_data: base64 image tanda tangan canvas
+    """
+    __tablename__ = "ppdb_mou"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    applicant_id: Mapped[str] = mapped_column(String(36), ForeignKey("ppdb_applicants.id", ondelete="CASCADE"), unique=True)
+    draft_content: Mapped[Optional[str]] = mapped_column(Text)
+    signature_data: Mapped[Optional[str]] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default="draft")
+    signed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+

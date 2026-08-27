@@ -19,6 +19,16 @@ export const ppdbService = {
   activateWave: (id: string) => apiFetch<void>(`/ppdb/waves/${id}/activate`, { method: 'PUT' }),
   deactivateWave: (id: string) => apiFetch<void>(`/ppdb/waves/${id}/deactivate`, { method: 'PUT' }),
   registerApplicant: (body: any) => apiFetch<any>('/ppdb/register', { method: 'POST', body: JSON.stringify(body) }),
+
+  // Wave Fee Items (Biaya Tahap 2)
+  getWaveFeeItems: (waveId: string) => apiFetch<any[]>(`/ppdb/waves/${waveId}/fee-items`),
+  createWaveFeeItem: (waveId: string, body: any) => apiFetch<any>(`/ppdb/waves/${waveId}/fee-items`, { method: 'POST', body: JSON.stringify(body) }),
+  updateWaveFeeItem: (waveId: string, itemId: string, body: any) => apiFetch<any>(`/ppdb/waves/${waveId}/fee-items/${itemId}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteWaveFeeItem: (waveId: string, itemId: string) => apiFetch<void>(`/ppdb/waves/${waveId}/fee-items/${itemId}`, { method: 'DELETE' }),
+  updateWaveMouTemplate: (waveId: string, template: string) => apiFetch<any>(`/ppdb/waves/${waveId}/mou-template`, { method: 'PUT', body: JSON.stringify({ mou_template: template }) }),
+
+  // MOU (admin generate)
+  generateMouForApplicant: (applicantId: string) => apiFetch<any>(`/ppdb/applicants/${applicantId}/mou/generate`, { method: 'POST' }),
 }
 
 export const applicantService = {
@@ -144,6 +154,18 @@ export const dashboardService = {
   getAuditLogs: (params?: any) => apiFetch<any>(`/dashboard/audit-logs${params ? '?' + new URLSearchParams(params) : ''}`),
   getReportsSummary: () => apiFetch<any>('/dashboard/reports/summary'),
   exportReport: (type: string) => `/dashboard/reports/export/${type}`,
+}
+
+export const stage2Service = {
+  // Admin
+  getPassedApplicants: (params?: any) => apiFetch<any>(`/payment/stage2/applicants${params ? '?' + new URLSearchParams(params) : ''}`),
+  getDiscounts: (applicantId: string) => apiFetch<any>(`/payment/stage2/${applicantId}/discounts`),
+  saveDiscounts: (applicantId: string, body: any) => apiFetch<any>(`/payment/stage2/${applicantId}/discounts`, { method: 'POST', body: JSON.stringify(body) }),
+  getBills: (params?: any) => apiFetch<any>(`/payment/stage2/bills${params ? '?' + new URLSearchParams(params) : ''}`),
+  confirmBill: (billId: string) => apiFetch<any>(`/payment/stage2/bills/${billId}/confirm`, { method: 'PUT' }),
+  cancelBill: (billId: string) => apiFetch<any>(`/payment/stage2/bills/${billId}/cancel`, { method: 'PUT' }),
+  // Applicant
+  getMyBills: () => apiFetch<any>('/payment/stage2/my-bills'),
 }
 
 export const settingsService = {

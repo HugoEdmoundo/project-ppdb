@@ -32,6 +32,9 @@ from src.modules.ppdb.schemas import (
     PeriodUpdate,
     WaveCreate,
     WaveUpdate,
+    WaveFeeItemCreate,
+    WaveMouTemplateUpdate,
+    MouSignRequest,
 )
 
 logger = logging.getLogger("ptdarrahman.ppdb")
@@ -1042,3 +1045,206 @@ def verify_applicant_documents(id: str, body: DocumentVerify, user: dict = Depen
         send_notifications([("document_rejected", {"alasan_penolakan": body.rejection_reason or ""})], applicant["user_id"])
         
     return {"success": True}
+
+
+# ─── Wave Fee Items (Item Biaya Tahap 2) ────────────────────────────────────
+
+@router.get("/waves/{wave_id}/fee-items")
+def get_wave_fee_items(wave_id: str, user: dict = Depends(require_ppdb_read)):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        rows = conn.execute(
+            text("SELECT * FROM ppdb_wave_fee_items WHERE wave_id = :wave_id ORDER BY order_index ASC"),
+            {"wave_id": wave_id}
+        ).mappings().all()
+    return [dict(r) for r in rows]
+
+@router.post("/waves/{wave_id}/fee-items")
+def create_wave_fee_item(wave_id: str, body: WaveFeeItemCreate, user: dict = Depends(require_ppdb_admin)):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        wave_rows = conn.execute(
+            text("SELECT id FROM ppdb_waves WHERE id = :wave_id"),
+            {"wave_id": wave_id}
+        ).mappings().all()
+        if not wave_rows:
+            raise HTTPException(status_code=404, detail="Wave not found")
+
+    new_id = str(uuid.uuid4())
+    data = {
+        "id": new_id,
+        "wave_id": wave_id,
+        "name": body.name,
+        "nominal": body.nominal,
+        "order_index": body.order_index
+    }
+    return create_record("ppdb_wave_fee_items", data)
+
+@router.put("/waves/{wave_id}/fee-items/{item_id}")
+def update_wave_fee_item(wave_id: str, item_id: str, body: WaveFeeItemCreate, user: dict = Depends(require_ppdb_admin)):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        item = conn.execute(
+            text("SELECT id FROM ppdb_wave_fee_items WHERE id = :item_id AND wave_id = :wave_id"),
+            {"item_id": item_id, "wave_id": wave_id}
+        ).mappings().first()
+        if not item:
+            raise HTTPException(status_code=404, detail="Fee item not found in this wave")
+
+    data = {
+        "name": body.name,
+        "nominal": body.nominal,
+        "order_index": body.order_index
+    }
+    updated = update_record("ppdb_wave_fee_items", item_id, data)
+    return updated
+
+@router.delete("/waves/{wave_id}/fee-items/{item_id}")
+def delete_wave_fee_item(wave_id: str, item_id: str, user: dict = Depends(require_ppdb_admin)):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        item = conn.execute(
+            text("SELECT id FROM ppdb_wave_fee_items WHERE id = :item_id AND wave_id = :wave_id"),
+            {"item_id": item_id, "wave_id": wave_id}
+        ).mappings().first()
+        if not item:
+            raise HTTPException(status_code=404, detail="Fee item not found in this wave")
+
+        bills = conn.execute(
+            text("SELECT id FROM ppdb_stage2_bills WHERE fee_item_id = :item_id LIMIT 1"),
+            {"item_id": item_id}
+        ).mappings().first()
+        if bills:
+            raise HTTPException(status_code=400, detail="Tidak dapat menghapus item yang sudah memiliki tagihan")
+
+    delete_record("ppdb_wave_fee_items", item_id)
+    return {"success": True}
+
+@router.put("/waves/{wave_id}/mou-template")
+def update_wave_mou_template(wave_id: str, body: WaveMouTemplateUpdate, user: dict = Depends(require_ppdb_admin)):
+    pool = get_raw_pool()
+    with pool.begin() as conn:
+        wave_rows = conn.execute(
+            text("SELECT id FROM ppdb_waves WHERE id = :wave_id"),
+            {"wave_id": wave_id}
+        ).mappings().first()
+        if not wave_rows:
+            raise HTTPException(status_code=404, detail="Wave not found")
+
+        conn.execute(
+            text("UPDATE ppdb_waves SET mou_template = :template WHERE id = :wave_id"),
+            {"template": body.mou_template, "wave_id": wave_id}
+        )
+    return {"success": True, "wave_id": wave_id}
+
+
+# ─── MOU ────────────────────────────────────────────────────────────────────
+
+@router.post("/applicants/{applicant_id}/mou/generate")
+def generate_mou(applicant_id: str, user: dict = Depends(require_ppdb_admin)):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        applicant = conn.execute(
+            text("""
+                SELECT a.*, sr.graduation_status, w.mou_template 
+                FROM ppdb_applicants a
+                LEFT JOIN selection_results sr ON sr.applicant_id = a.id
+                LEFT JOIN ppdb_waves w ON w.id = a.wave_id
+                WHERE a.id = :applicant_id
+            """),
+            {"applicant_id": applicant_id}
+        ).mappings().first()
+
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Applicant not found")
+        if applicant.get("graduation_status") != "passed":
+            raise HTTPException(status_code=400, detail="Pendaftar belum lulus seleksi")
+
+        template = applicant.get("mou_template") or ""
+        # Simple variable substitution
+        replacements = {
+            "{nama_peserta}": applicant.get("full_name") or "",
+            "{nisn}": applicant.get("nisn") or "",
+            "{nik}": applicant.get("nik") or "",
+            "{asal_sekolah}": applicant.get("previous_school") or "",
+            "{alamat}": applicant.get("address") or "",
+            "{nama_ortu}": applicant.get("parent_name") or "",
+        }
+        for k, v in replacements.items():
+            template = template.replace(k, str(v))
+
+        existing_mou = conn.execute(
+            text("SELECT id FROM ppdb_mou WHERE applicant_id = :applicant_id"),
+            {"applicant_id": applicant_id}
+        ).mappings().first()
+
+    if existing_mou:
+        mou_id = existing_mou["id"]
+        update_record("ppdb_mou", mou_id, {"draft_content": template})
+        return get_by_id("ppdb_mou", mou_id)
+    else:
+        mou_id = str(uuid.uuid4())
+        data = {
+            "id": mou_id,
+            "applicant_id": applicant_id,
+            "draft_content": template,
+            "status": "draft"
+        }
+        return create_record("ppdb_mou", data)
+
+@router.get("/applicants/me/mou")
+def get_my_mou(user: dict = Depends(get_current_user)):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        applicant = conn.execute(
+            text("SELECT id FROM ppdb_applicants WHERE user_id = :user_id"),
+            {"user_id": user["id"]}
+        ).mappings().first()
+
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Applicant not found")
+
+        mou = conn.execute(
+            text("SELECT * FROM ppdb_mou WHERE applicant_id = :applicant_id"),
+            {"applicant_id": applicant["id"]}
+        ).mappings().first()
+
+    if not mou:
+        return {"mou": None}
+    return dict(mou)
+
+@router.post("/applicants/me/mou/sign")
+def sign_my_mou(body: MouSignRequest, user: dict = Depends(get_current_user)):
+    pool = get_raw_pool()
+    now_wib = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
+
+    with pool.connect() as conn:
+        applicant = conn.execute(
+            text("SELECT id FROM ppdb_applicants WHERE user_id = :user_id"),
+            {"user_id": user["id"]}
+        ).mappings().first()
+
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Applicant not found")
+
+        mou = conn.execute(
+            text("SELECT * FROM ppdb_mou WHERE applicant_id = :applicant_id"),
+            {"applicant_id": applicant["id"]}
+        ).mappings().first()
+
+        if not mou:
+            raise HTTPException(status_code=404, detail="MOU not found")
+        if mou.get("status") != "draft":
+            raise HTTPException(status_code=400, detail="MOU sudah ditandatangani")
+
+        with conn.begin():
+            conn.execute(
+                text("""
+                    UPDATE ppdb_mou 
+                    SET signature_data = :sig, status = 'signed', signed_at = :now, updated_at = :now 
+                    WHERE id = :mou_id
+                """),
+                {"sig": body.signature_data, "now": now_wib, "mou_id": mou["id"]}
+            )
+
+    return {"success": True, "signed_at": now_wib}

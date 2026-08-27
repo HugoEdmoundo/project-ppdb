@@ -36,7 +36,7 @@ class CategoryCreate(BaseModel):
 
 class CriteriaCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    max_score: float = 100.0
+    
 
 
 class ScoreInputItem(BaseModel):
@@ -48,3 +48,8 @@ class ApplicantScoreSave(BaseModel):
     applicant_id: str
     scores: List[ScoreInputItem]
     notes: Optional[str] = None  # saved to selection_results
+
+
+class ApplicantStatusUpdate(BaseModel):
+    status: str
+    reason: Optional[str] = None

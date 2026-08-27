@@ -30,6 +30,11 @@ from src.models.ppdb import (
     SPPPayment,
     SPPSetting,
     Student,
+    PPDBWaveFeeItem,
+    PPDBApplicantDiscount,
+    PPDBStage2Bill,
+    PPDBBMOU,
+    PPDBPaymentTransaction,
 )
 
 __all__ = [
@@ -60,4 +65,9 @@ __all__ = [
     "SPPPayment",
     "SPPSetting",
     "Student",
+    "PPDBWaveFeeItem",
+    "PPDBApplicantDiscount",
+    "PPDBStage2Bill",
+    "PPDBBMOU",
+    "PPDBPaymentTransaction",
 ]

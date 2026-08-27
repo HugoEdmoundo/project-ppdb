@@ -48,7 +48,9 @@ Wrapped in `AdminLayout` (`src/layouts/AdminLayout.tsx`):
 ## PPDB Flow
 1. **Registration**: User registers -> receives `payment_status = 'pending'` and a 7-day `payment_deadline`. Nominal biaya ditarik otomatis dari `registration_fee` di konfigurasi gelombang yang aktif.
 2. **Paywall**: Users with pending payments are restricted to `/checkout`.
-3. **Paid**: On success (manual or webhook), status becomes `paid` -> Dashboard is unlocked. Khusus pembayaran manual, admin dapat **membatalkan konfirmasi** (mengunci dashboard kembali).
+3. **Expiration**: If unpaid after 7 days, `payment_status` becomes `expired` and account is soft-deleted (`deleted_at` is set). Expired applicants **tetap tampil** di list admin dengan badge merah "EXPIRED" — tidak dihapus dari tampilan.
+4. **Paid (Tahap 1)**: On success (manual or webhook), status becomes `paid` -> Dashboard is unlocked. Khusus pembayaran manual, admin dapat **membatalkan konfirmasi** (mengunci dashboard kembali).
+5. **Selection & MOU**: Setelah lulus, admin memunculkan MOU dan biaya Tahap 2 (Daftar Ulang) beserta diskon/cicilan (Tabel `ppdb_applicant_discounts` & `ppdb_stage2_bills`).
 
 ## Access Control & Permissions (ATURAN WAJIB)
 - Permissions are strictly enforced on the frontend through `usePermission()` hook in `AuthContext` dan komponen `ProtectedRoute`.
@@ -58,6 +60,14 @@ Wrapped in `AdminLayout` (`src/layouts/AdminLayout.tsx`):
 - **Superadmin Bypass:** User dengan `is_superadmin=true` atau `user_type === 'superadmin'` bypass semua checking permission.
 - **Tombol CRUD & Form:** Semua aksi/tombol (Tambah, Edit, Hapus) dan input form HANYA aktif dirender jika user punya `crud` pada modul terkait. Gunakan helper seperti `hasModuleAccess('modul', 'crud')` (atau JSX Wrapper `<Can module="..." level="crud">` / hook `useCan`). Jika permission hanya `read`, halaman bersifat read-only.
 - **Backend Enforced:** Keamanan absolut selalu divalidasi juga oleh Backend API.
+
+## Wave System (Gelombang) - Frontend Convention
+**Gelombang adalah induk dari semua data operasional PPDB.** Data yang ditampilkan di halaman admin (pendaftar, dokumen, pembayaran, seleksi) selalu mengacu pada **gelombang yang sedang aktif**:
+- Gelombang **aktif** → tampilkan data milik gelombang tersebut saja.
+- Gelombang **tidak aktif / tidak ada yang aktif** → data tidak ditampilkan (tampil empty state + banner peringatan kuning "Aktifkan gelombang terlebih dahulu").
+- **Ganti gelombang aktif** → data berganti ke data milik gelombang baru.
+- Halaman registrasi publik memanggil `/ppdb/waves/active-public` di awal load untuk menentukan opsi jalur & jenjang yang tersedia, serta menyembunyikan yang dilarang.
+- Badge `EXPIRED` untuk pendaftar lewat tenggat bayar tetap ditampilkan dengan warna **merah** (`destructive`) di tabel.
 
 ## Dynamic Branding & Events
 - **Favicon & Logo:** Di-fetch dinamis via `settingsService.getFavicon()` dan `settingsService.getLogo()` dari endpoint `/companyprofile/settings/{key}`.

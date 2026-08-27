@@ -43,7 +43,7 @@ The application is a Single Page Application (SPA) with the following routes:
 
 ## Modules & Permissions
 - Modules available for configuration in Role forms are defined in `src/types/index.ts` under `MODULE_LABELS` (`companyprofile` and `ppdb`).
-- Access levels (`ACCESS_LEVELS`) include: `none`, `dashboard`, `read`, and `crud`.
+- Access levels (`ACCESS_LEVELS`) include: `none` < `dashboard` < `read` < `crud`.
 - Page-level permissions can be directly assigned to users via the `/users/:id/page-permissions` endpoint, managing specific UI capabilities per user based on assigned module roles.
 
 ## Development & Build Commands

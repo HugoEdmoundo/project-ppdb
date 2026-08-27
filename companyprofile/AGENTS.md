@@ -45,6 +45,7 @@ Main public website + admin dashboard for Pesantren Tahfidz Qur'an dan Digital A
 - **File Uploads**: Files are uploaded via `/companyprofile/upload` (forwarded to Cloudinary by backend).
 
 ### ATURAN WAJIB: Access Control & Permissions
+- Access levels for modules follow the hierarchy: `none` < `dashboard` < `read` < `crud`.
 - Users with `user_type === 'superadmin'` or `permissions.companyprofile === 'crud'` can create, edit, and delete.
 - User data (`admin_user`) is retrieved from `localStorage` (populated at login) or via `api.getMe()`.
 - Buttons (Create/Edit/Delete), "Aksi" columns, and forms must check this permission before rendering or allowing edits. Forms should be read-only if the user lacks `crud` access.

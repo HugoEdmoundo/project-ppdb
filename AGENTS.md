@@ -8,7 +8,7 @@ Pesantren Tahfidz Qur'an dan Digital Ar-Rahman — A monorepo containing the com
 | --- | --- | --- | --- |
 | **Company Profile** | `companyprofile/` | Next.js 16 (App Router), React 19, Tailwind v4 | Public-facing website, news, programs, admin CMS dashboard. |
 | **PPDB App** | `ppdb/` | Vite 8, React 19, Tailwind CSS v3 | Student registration, payment gateway wall, applicant dashboard, PPDB admin. |
-| **Superadmin Panel**| `superadmin/` | Vite 5, React 18, Tailwind CSS v3 | System-wide users and roles management, modules access control. |
+| **Superadmin Panel**| `superadmin/` | Vite 8, React 19, Tailwind CSS v3 | System-wide users and roles management, modules access control. |
 | **Backend API** | `api/` | FastAPI 0.141, Python 3.12, SQLAlchemy 2, MySQL | Monolithic backend serving all three frontends. Handles DB, auth, SSE, and uploads. |
 
 ## Backend (`api/`)
@@ -16,19 +16,19 @@ Pesantren Tahfidz Qur'an dan Digital Ar-Rahman — A monorepo containing the com
 A single FastAPI service handling all business logic, database operations, and authentication.
 
 ### Core Structure
-- `src/core/`: Configuration, database connection, JWT security, SSE events, and Cloudinary uploads.
-- `src/models/`: SQLAlchemy ORM models (e.g., `auth.py`, `ppdb.py`, `content.py`).
-- `src/modules/`: Feature-based routers and schemas (`auth`, `companyprofile`, `modules`, `notifications`, `payment`, `ppdb`, `roles`, `superadmin`, `users`).
+- `src/core/`: Configuration, database connection, JWT security, dependencies (permissions), SSE events.
+- `src/models/`: SQLAlchemy ORM models (e.g., `auth.py`, `ppdb.py`, `content.py`, `selection.py`).
+- `src/modules/`: Feature-based routers and schemas (`auth`, `companyprofile`, `modules`, `notifications`, `payment`, `ppdb`, `roles`, `selection`, `superadmin`, `uploads`, `users`).
 - `alembic/`: Database migrations. Use `alembic upgrade head` to apply.
 
 ### Key Conventions
-- **Permissions**: Enforced via `src/core/dependencies.py`. Routers use dependencies like `Depends(require_ppdb_admin)`.
+- **Permissions**: Enforced via `src/core/dependencies.py`. Routers use dependencies like `Depends(require_ppdb_admin)`. Access levels include `none`, `dashboard`, `read`, and `crud`.
 - **Soft Delete**: Applied to records like `ppdb_applicants` (`deleted_at`).
-- **Real-time**: Handled via Server-Sent Events (SSE) in `src/core/events.py` (e.g., `/companyprofile/events`).
-- **File Uploads**: Local storage.
+- **Real-time**: Handled via Server-Sent Events (SSE) in `src/core/events.py`.
+- **File Uploads**: Local storage handled under the `uploads` module.
 
 ## Frontend Access Control
-Permissions are defined per-module (`companyprofile`, `ppdb`, `payment`, `selection`, `notification`, `dashboard`, `applicant_dashboard`) with levels (`none` < `read` < `crud`).
+Permissions are defined per-module (e.g., `companyprofile`, `ppdb`, `dashboard`) with levels (`none` < `dashboard` < `read` < `crud`).
 - Buttons and forms must check permissions before rendering. Form inputs are disabled (read-only) if the user lacks `crud` access.
 - **Superadmin Bypass**: Users with `user_type === 'superadmin'` bypass all module-level permission checks.
 - System roles (`is_system=True`) like "Superadmin" and "Calon Murid" are protected from accidental deletion or modification.
@@ -37,12 +37,13 @@ Permissions are defined per-module (`companyprofile`, `ppdb`, `payment`, `select
 1. **Registration**: User registers -> receives `payment_status = 'pending'` and a 7-day `payment_deadline`. Nominal biaya pendaftaran (Tahap 1) ditarik otomatis dari konfigurasi `registration_fee` pada tabel `ppdb_waves` yang sedang aktif.
 2. **Paywall**: Users with pending payments are restricted to `/checkout`. No dashboard access.
 3. **Expiration**: If unpaid after 7 days, `payment_status` becomes `expired` and account is soft-deleted (`deleted_at` is set). Expired applicants **tetap tampil** di list admin dengan badge merah "EXPIRED" — tidak dihapus dari tampilan.
-4. **Paid**: On success (manual or webhook), status becomes `paid` -> Dashboard is unlocked for document uploads. Khusus untuk pembayaran manual (offline), admin dapat **membatalkan konfirmasi** yang mengembalikan status user menjadi `pending` dan mengunci kembali dashboard. (Pembayaran online via gateway tidak bisa dibatalkan).
+4. **Paid (Tahap 1)**: On success (manual or webhook), status becomes `paid` -> Dashboard is unlocked for document uploads. Khusus untuk pembayaran manual (offline), admin dapat **membatalkan konfirmasi** yang mengembalikan status user menjadi `pending` dan mengunci kembali dashboard. (Pembayaran online via gateway tidak bisa dibatalkan).
+5. **Selection & MOU**: Setelah lulus, admin memunculkan MOU dan biaya Tahap 2 (Daftar Ulang) beserta diskon/cicilan (Tabel `ppdb_applicant_discounts` & `ppdb_stage2_bills`).
 
 ## Wave System (Gelombang)
 
 ### Hierarki
-`Periode` → `Gelombang` → `Pendaftar/Transaksi/Dokumen/Seleksi`
+`Periode` → `Gelombang` → `Pendaftar/Transaksi/Dokumen/Seleksi/Biaya Tahap 2`
 
 Pendaftaran hanya bisa dilakukan jika **tepat 1 Periode DAN 1 Gelombang** berstatus `active` secara bersamaan.
 
@@ -93,4 +94,3 @@ Pendaftaran hanya bisa dilakukan jika **tepat 1 Periode DAN 1 Gelombang** bersta
 - `settingsService.getLogo()` → GET `/companyprofile/settings/logo`
 - `settingsService.getFavicon()` → GET `/companyprofile/settings/favicon`
 - Perubahan brand tampil live via SSE (`/companyprofile/events`).
-

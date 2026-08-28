@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
-import { Percent, Waves, Settings2, CheckCircle, FileText, AlertCircle } from 'lucide-react'
+import { Percent, Waves, Settings2 } from 'lucide-react'
 import { apiFetch } from '@/api/client'
 
 const formatRp = (n: number) => 'Rp ' + n.toLocaleString('id-ID')
@@ -34,7 +34,6 @@ export default function DiskonasiPage() {
   
   const [selectedApplicant, setSelectedApplicant] = useState<any>(null)
   const [discountItems, setDiscountItems] = useState<DiscountItem[]>([])
-  const [mouStatus, setMouStatus] = useState<string | null>(null)
   const [sheetLoading, setSheetLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -70,7 +69,6 @@ export default function DiskonasiPage() {
         installment_count: item.discount?.installment_count || 0
       }))
       setDiscountItems(items)
-      setMouStatus(res.mou?.status || null)
     } catch (e: any) {
       toast('error', e.message || 'Gagal memuat diskon')
     } finally {
@@ -104,7 +102,7 @@ export default function DiskonasiPage() {
           }))
         })
       })
-      toast('success', 'Diskon disimpan & tagihan dibuat. MOU peserta telah di-generate otomatis.')
+      toast('success', 'Diskon disimpan & tagihan dibuat.')
       setSelectedApplicant(null)
       fetchApplicants()
     } catch (e: any) {
@@ -144,17 +142,16 @@ export default function DiskonasiPage() {
                 <TableHead>Jenjang/Jalur</TableHead>
                 <TableHead>Total Tagihan</TableHead>
                 <TableHead>Status Diskon</TableHead>
-                <TableHead>Status MOU</TableHead>
                 <TableHead>Status Tagihan</TableHead>
                 <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableSkeletonRows cols={7} rows={5} />
+                <TableSkeletonRows cols={6} rows={5} />
               ) : applicants.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8">
+                  <TableCell colSpan={6} className="py-8">
                     <EmptyState
                       icon={hasActiveWave === false ? Waves : Percent}
                       title={hasActiveWave === false ? "Tidak Ada Gelombang Aktif" : "Tidak Ada Data"}
@@ -186,15 +183,6 @@ export default function DiskonasiPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {a.mou_status === 'signed' ? (
-                        <Badge variant="success">Ditandatangani</Badge>
-                      ) : a.mou_status === 'draft' ? (
-                        <Badge variant="info">Menunggu TTD</Badge>
-                      ) : (
-                        <Badge variant="secondary">Belum</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
                       <Badge variant="outline">
                         {a.total_paid_bills} / {a.total_bills} Lunas
                       </Badge>
@@ -203,7 +191,7 @@ export default function DiskonasiPage() {
                       {canCrud && (
                         <Button size="sm" onClick={() => openDiscountSheet(a)} className="gap-2">
                           <Settings2 className="h-4 w-4" />
-                          Atur Diskon & MOU
+                          Atur Diskon & Cicilan
                         </Button>
                       )}
                     </TableCell>
@@ -220,25 +208,6 @@ export default function DiskonasiPage() {
           <SheetHeader className="mb-6">
             <SheetTitle>Diskonasi: {selectedApplicant?.full_name}</SheetTitle>
           </SheetHeader>
-
-          {mouStatus === 'signed' && (
-            <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-800 mb-4">
-              <CheckCircle className="h-4 w-4 text-emerald-600" />
-              MOU sudah ditandatangani oleh peserta
-            </div>
-          )}
-          {mouStatus === 'draft' && (
-            <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-sm text-blue-800 mb-4">
-              <FileText className="h-4 w-4 text-blue-600" />
-              MOU sudah di-generate, menunggu tanda tangan peserta
-            </div>
-          )}
-          {!mouStatus && (
-            <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800 mb-4">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-              MOU belum di-generate. Simpan diskon untuk auto-generate MOU.
-            </div>
-          )}
 
           {sheetLoading ? (
             <div className="space-y-4">

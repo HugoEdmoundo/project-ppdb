@@ -316,18 +316,16 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
   const [feeItems, setFeeItems] = useState<any[]>([])
   const [newFeeName, setNewFeeName] = useState('')
   const [newFeeNominal, setNewFeeNominal] = useState(0)
-  const [mouTemplate, setMouTemplate] = useState('')
 
   const openFeeDialog = async (w: any) => {
     setFeeDialogWave(w)
-    setMouTemplate(w.mou_template || '')
     fetchFeeItems(w.id)
   }
 
-  const fetchFeeItems = async (waveId: string) => {
+  const fetchFeeItems = async (wave_id: string) => {
     try {
-      const res = await apiFetch<any>(`/ppdb/waves/${waveId}/fee-items`)
-      setFeeItems(res.data || [])
+      const res = await apiFetch<any>(`/ppdb/waves/${wave_id}/fee-items`)
+      setFeeItems(res.items || [])
     } catch {
       toast('error', 'Gagal memuat item biaya')
     }
@@ -343,7 +341,6 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
       setNewFeeName('')
       setNewFeeNominal(0)
       fetchFeeItems(feeDialogWave.id)
-      toast('success', 'Item biaya ditambahkan')
     } catch (e: any) {
       toast('error', e.message || 'Gagal menambah item biaya')
     }
@@ -353,22 +350,8 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
     try {
       await apiFetch(`/ppdb/waves/${feeDialogWave.id}/fee-items/${id}`, { method: 'DELETE' })
       fetchFeeItems(feeDialogWave.id)
-      toast('success', 'Item biaya dihapus')
     } catch (e: any) {
       toast('error', e.message || 'Gagal menghapus item biaya')
-    }
-  }
-
-  const handleSaveMou = async () => {
-    try {
-      await apiFetch(`/ppdb/waves/${feeDialogWave.id}/mou-template`, {
-        method: 'PUT',
-        body: JSON.stringify({ mou_template: mouTemplate })
-      })
-      toast('success', 'Template MOU disimpan')
-      setWaves(waves.map(w => w.id === feeDialogWave.id ? { ...w, mou_template: mouTemplate } : w))
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal menyimpan MOU')
     }
   }
 
@@ -755,7 +738,7 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5 text-primary" />
-              Biaya & MOU — {feeDialogWave?.name}
+              Biaya Daftar Ulang (Tahap 2) - {feeDialogWave?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-6 pt-4">
@@ -806,39 +789,6 @@ function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground border-b pb-2">Template MOU</h3>
-              <p className="text-xs text-muted-foreground">Template perjanjian yang akan ditandatangani wali santri.</p>
-              <textarea 
-                className="flex min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
-                placeholder="Isi template MOU disini... Gunakan variabel seperti {nama_peserta}, {nisn}, dll."
-                value={mouTemplate}
-                onChange={e => setMouTemplate(e.target.value)}
-              />
-              <div className="rounded-md bg-muted/50 border p-3 text-xs space-y-1">
-                <p className="font-semibold text-muted-foreground">Variabel yang tersedia:</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-0.5 text-muted-foreground font-mono">
-                  {[
-                    ['{nama_peserta}', 'Nama lengkap'],
-                    ['{nisn}', 'NISN'],
-                    ['{nik}', 'NIK'],
-                    ['{asal_sekolah}', 'Asal sekolah'],
-                    ['{nama_ortu}', 'Nama orang tua'],
-                    ['{email}', 'Email'],
-                    ['{nomor_wa}', 'No. WhatsApp'],
-                    ['{jalur}', 'Jalur pendaftaran'],
-                    ['{jenjang}', 'Jenjang (SMP/SMK)'],
-                    ['{alamat}', 'Alamat'],
-                    ['{tanggal}', 'Tanggal hari ini'],
-                  ].map(([v, label]) => (
-                    <span key={v}><span className="text-primary">{v}</span> = {label}</span>
-                  ))}
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <Button onClick={handleSaveMou}>Simpan Template</Button>
-              </div>
-            </div>
           </div>
         </DialogContent>
       </Dialog>

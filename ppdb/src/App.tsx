@@ -19,6 +19,7 @@ import ApplicantsPage from './pages/admin/ppdb/ApplicantsPage'
 import DataPendaftarPage from './pages/admin/ppdb/DataPendaftarPage'
 import AdminProfilePage from './pages/admin/ProfilePage'
 import SelectionPage from './pages/admin/ppdb/SelectionPage'
+import MouPage from './pages/admin/ppdb/MouPage'
 import DiskonasiPage from './pages/admin/ppdb/DiskonasiPage'
 import Stage2PaymentsPage from './pages/admin/ppdb/Stage2PaymentsPage'
 import * as api from './api/client'
@@ -56,6 +57,7 @@ export default function App() {
               <Route path="payments" element={<PaymentsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="selection" element={<SelectionPage />} />
+              <Route path="mou" element={<MouPage />} />
               <Route path="diskonasi" element={<DiskonasiPage />} />
               <Route path="stage2-pembayaran" element={<Stage2PaymentsPage />} />
               <Route path="profile" element={<AdminProfilePage />} />

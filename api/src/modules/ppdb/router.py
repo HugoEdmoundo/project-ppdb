@@ -1138,7 +1138,20 @@ def update_wave_mou_template(wave_id: str, body: WaveMouTemplateUpdate, user: di
     return {"success": True, "wave_id": wave_id}
 
 
-# ─── MOU ────────────────────────────────────────────────────────────────────
+# ─── MOU ────────────────────────────────────────────────────────────────────# — MOU —
+
+@router.get("/applicants/{applicant_id}/mou")
+def get_applicant_mou(applicant_id: str, user: dict = Depends(require_ppdb_read)):
+    pool = get_raw_pool()
+    with pool.connect() as conn:
+        mou = conn.execute(
+            text("SELECT * FROM ppdb_mou WHERE applicant_id = :aid"),
+            {"aid": applicant_id}
+        ).mappings().first()
+        
+    if not mou:
+        return {"mou": None}
+    return dict(mou)
 
 @router.post("/applicants/{applicant_id}/mou/generate")
 def generate_mou(applicant_id: str, user: dict = Depends(require_ppdb_admin)):
@@ -1172,6 +1185,34 @@ def generate_mou(applicant_id: str, user: dict = Depends(require_ppdb_admin)):
         }
         for k, v in replacements.items():
             template = template.replace(k, str(v))
+            
+        # Wrap the points in a standard document layout
+        formatted_mou = f"""
+        <div style="font-family: serif; max-width: 800px; margin: 0 auto; color: #000;">
+            <h2 style="text-align: center; text-transform: uppercase;">Surat Pernyataan dan Kesepakatan (MOU)</h2>
+            <br/>
+            <p>Yang bertanda tangan di bawah ini:</p>
+            <table style="width: 100%; margin-bottom: 20px;">
+                <tr><td style="width: 200px;">Nama Orang Tua / Wali</td><td>: {replacements['{nama_ortu}']}</td></tr>
+                <tr><td>Alamat</td><td>: {replacements['{alamat}']}</td></tr>
+            </table>
+            <p>Selaku orang tua / wali dari calon siswa:</p>
+            <table style="width: 100%; margin-bottom: 20px;">
+                <tr><td style="width: 200px;">Nama Siswa</td><td>: <b>{replacements['{nama_peserta}']}</b></td></tr>
+                <tr><td>NISN</td><td>: {replacements['{nisn}']}</td></tr>
+                <tr><td>Asal Sekolah</td><td>: {replacements['{asal_sekolah}']}</td></tr>
+            </table>
+            <p>Menyatakan dengan sesungguhnya bahwa kami bersepakat atas poin-poin berikut:</p>
+            <div style="padding-left: 20px; text-align: justify; white-space: pre-wrap; margin-bottom: 30px;">
+                {template}
+            </div>
+            <p style="text-align: justify;">
+                Demikian surat pernyataan ini dibuat dengan sebenar-benarnya tanpa ada paksaan dari pihak manapun, 
+                untuk dipergunakan sebagaimana mestinya. Jika di kemudian hari kami melanggar kesepakatan ini, 
+                kami bersedia menerima sanksi sesuai dengan peraturan sekolah.
+            </p>
+        </div>
+        """
 
         existing_mou = conn.execute(
             text("SELECT id FROM ppdb_mou WHERE applicant_id = :applicant_id"),
@@ -1180,14 +1221,14 @@ def generate_mou(applicant_id: str, user: dict = Depends(require_ppdb_admin)):
 
     if existing_mou:
         mou_id = existing_mou["id"]
-        update_record("ppdb_mou", mou_id, {"draft_content": template})
+        update_record("ppdb_mou", mou_id, {"draft_content": formatted_mou})
         return get_by_id("ppdb_mou", mou_id)
     else:
         mou_id = str(uuid.uuid4())
         data = {
             "id": mou_id,
             "applicant_id": applicant_id,
-            "draft_content": template,
+            "draft_content": formatted_mou,
             "status": "draft"
         }
         return create_record("ppdb_mou", data)

@@ -543,12 +543,12 @@ export default function ApplicantDashboardPage() {
                     {Object.entries(stage2Bills.reduce((acc, b) => { 
                       (acc[b.fee_item_id] = acc[b.fee_item_id] || []).push(b); 
                       return acc; 
-                    }, {} as Record<string, any[]>)).map(([feeId, bills]) => (
+                    }, {} as Record<string, any[]>)).map(([feeId, bills]: any) => (
                       <div key={feeId} className="border rounded-lg overflow-hidden">
                         <div className="bg-muted/30 p-3 border-b">
                           <div className="font-medium text-sm">{bills[0].fee_item_name}</div>
                           <div className="text-xs text-muted-foreground">
-                            Total: {formatRp(bills.reduce((sum, b) => sum + Number(b.amount), 0))}
+                            Total: {formatRp(bills.reduce((sum: number, b: any) => sum + Number(b.amount), 0))}
                           </div>
                         </div>
                         
@@ -584,17 +584,17 @@ export default function ApplicantDashboardPage() {
                           </div>
                         ) : (
                           <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="border-b bg-muted/10">
-                                  <th className="text-left font-medium p-3">Cicilan Ke-</th>
-                                  <th className="text-left font-medium p-3">Nominal</th>
-                                  <th className="text-center font-medium p-3">Status</th>
-                                  <th className="text-right font-medium p-3">Aksi</th>
+                            <table className="w-full text-sm text-left">
+                              <thead className="bg-muted/10 border-b">
+                                <tr>
+                                  <th className="p-3 font-medium text-muted-foreground">Cicilan Ke</th>
+                                  <th className="p-3 font-medium text-muted-foreground">Nominal</th>
+                                  <th className="p-3 font-medium text-muted-foreground text-center">Status</th>
+                                  <th className="p-3 font-medium text-muted-foreground text-right">Aksi</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {bills.sort((a,b) => a.installment_sequence - b.installment_sequence).map(b => (
+                                {bills.sort((a: any, b: any) => a.installment_sequence - b.installment_sequence).map((b: any) => (
                                   <tr key={b.id} className="border-b last:border-0">
                                     <td className="p-3">Cicilan {b.installment_sequence} dari {bills.length}</td>
                                     <td className="p-3 font-medium">{formatRp(Number(b.amount))}</td>

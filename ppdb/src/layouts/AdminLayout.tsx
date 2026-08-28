@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth, useFilteredNav } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, ChevronDown, ChevronLeft, Menu, LogOut, CalendarDays, CreditCard, Bell, User as UserIcon, Users, FileCheck2, ClipboardList, GraduationCap, Receipt
+  LayoutDashboard, ChevronDown, ChevronLeft, Menu, LogOut, CalendarDays, CreditCard, Bell, User as UserIcon, Users, FileCheck2
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -23,12 +23,29 @@ import {
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/admin/dashboard', module: 'dashboard' },
   { label: 'Data Pendaftar', icon: Users, href: '/admin/data-pendaftar', module: 'ppdb', minLevel: 'read' },
-  { label: 'Dokumen Pendaftar', icon: FileCheck2, href: '/admin/applicants', module: 'ppdb', minLevel: 'read' },
-  { label: 'Seleksi', icon: ClipboardList, href: '/admin/selection', module: 'ppdb', minLevel: 'read' },
+  { 
+    label: 'Persyaratan Seleksi', 
+    icon: FileCheck2, 
+    module: 'ppdb', 
+    minLevel: 'read',
+    children: [
+      { label: 'Dokumen Pendaftar', href: '/admin/applicants' },
+      { label: 'Seleksi', href: '/admin/selection' },
+      { label: 'Review MOU', href: '/admin/mou' },
+    ]
+  },
+  { 
+    label: 'Pembayaran', 
+    icon: CreditCard, 
+    module: 'payment', 
+    minLevel: 'read',
+    children: [
+      { label: 'Pembayaran Formulir', href: '/admin/payments' },
+      { label: 'Diskonasi', href: '/admin/diskonasi' },
+      { label: 'Pembayaran Tahap 2', href: '/admin/stage2-pembayaran' },
+    ]
+  },
   { label: 'Periode PPDB', icon: CalendarDays, href: '/admin/periods', module: 'ppdb', minLevel: 'read' },
-  { label: 'Pembayaran Formulir', icon: CreditCard, href: '/admin/payments', module: 'payment', minLevel: 'read' },
-  { label: 'Diskonasi', icon: GraduationCap, href: '/admin/diskonasi', module: 'payment', minLevel: 'read' },
-  { label: 'Pembayaran Tahap 2', icon: Receipt, href: '/admin/stage2-pembayaran', module: 'payment', minLevel: 'read' },
   { label: 'Notifikasi', icon: Bell, href: '/admin/notifications', module: 'notification', minLevel: 'read' },
 ]
 

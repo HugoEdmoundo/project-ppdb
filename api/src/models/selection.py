@@ -45,3 +45,34 @@ class SelectionResult(Base):
     graduation_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class SelectionCategory(Base):
+    __tablename__ = "selection_categories"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    wave_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class SelectionCriteria(Base):
+    __tablename__ = "selection_criteria"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    category_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class SelectionScore(Base):
+    __tablename__ = "selection_scores"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    applicant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    criteria_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

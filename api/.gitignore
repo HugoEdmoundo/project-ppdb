@@ -27,3 +27,13 @@ schema_dump.*
 
 # Vercel
 .vercel/
+
+# Scratch / debug artifacts
+dev.db
+*.db
+temp.py
+test_seed.py
+del_site_name.py
+list_tables.py
+router_new.py
+

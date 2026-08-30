@@ -142,7 +142,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* ── Sidebar ── */}
       <aside
         className={cn(
-          'fixed md:sticky top-0 left-0 z-40 h-dvh glass-sidebar flex flex-col transition-all duration-300',
+          'fixed md:sticky top-0 left-0 z-40 h-dvh bg-white border-r border-slate-200 flex flex-col transition-all duration-300',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
           collapsed ? 'w-16' : 'w-60'
         )}
@@ -229,7 +229,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* ── Main Area ── */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="sticky top-0 z-20 glass-navbar">
+        <header className="sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
           <div className="flex items-center justify-between px-4 md:px-6 h-14">
             <div className="flex items-center gap-3">
               <button

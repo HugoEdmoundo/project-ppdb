@@ -7,12 +7,14 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/Sheet'
 import { useToast } from '@/components/Toast'
+import { useCan } from '@/hooks/useCan'
 import { Waves, FileText, CheckCircle, FileSignature, Save } from 'lucide-react'
 import { apiFetch } from '@/api/client'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 
 export default function MouPage() {
   const { toast } = useToast()
+  const { canCrud } = useCan('ppdb', 'crud')
   
   const [activeWave, setActiveWave] = useState<any>(null)
   const [wavesLoading, setWavesLoading] = useState(false)
@@ -130,15 +132,17 @@ export default function MouPage() {
                   placeholder="Contoh:&#10;1. Wajib menaati seluruh tata tertib sekolah.&#10;2. Biaya yang sudah dibayarkan tidak dapat ditarik kembali."
                   value={mouTemplate}
                   onChange={e => setMouTemplate(e.target.value)}
-                  disabled={!activeWave || savingTemplate}
+                  disabled={!canCrud || !activeWave || savingTemplate}
                 />
 
-                <div className="flex justify-end pt-2">
-                  <Button onClick={handleSaveTemplate} disabled={!activeWave || savingTemplate} className="gap-2">
-                    <Save className="h-4 w-4" />
-                    Simpan Template
-                  </Button>
-                </div>
+                {canCrud && (
+                  <div className="flex justify-end pt-2">
+                    <Button onClick={handleSaveTemplate} disabled={!activeWave || savingTemplate} className="gap-2">
+                      <Save className="h-4 w-4" />
+                      Simpan Template
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

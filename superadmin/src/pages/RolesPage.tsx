@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Edit, Trash2, ShieldCheck } from 'lucide-react'
 import * as api from '../api/client'
@@ -11,18 +11,16 @@ import { Card } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
 import { EmptyState } from '../components/ui/EmptyState'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 export default function RolesPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { user: currentUser, loading: authLoading } = useAuth()
+  const queryClient = useQueryClient()
 
   const canCrud = currentUser?.user_type === 'superadmin'
   const canView = currentUser?.user_type === 'superadmin'
-
-  const [roles, setRoles] = useState<Role[]>([])
-  const [loading, setLoading] = useState(true)
-  const [deleting, setDeleting] = useState<string | null>(null)
 
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmData, setConfirmData] = useState<{ title: string; message: string; variant?: 'danger' | 'primary'; onConfirm: () => void } | null>(null)
@@ -33,38 +31,33 @@ export default function RolesPage() {
     }
   }, [currentUser, authLoading, canView, navigate])
 
-  const fetchData = useCallback(async () => {
-    if (!canView) return
-    setLoading(true)
-    try {
-      const data = await api.getRoles()
-      setRoles(data)
-    } catch { /* ignore */ } finally {
-      setLoading(false)
+  const { data: roles = [], isLoading: loading } = useQuery({
+    queryKey: ['roles'],
+    queryFn: () => api.getRoles(),
+    enabled: canView && !authLoading
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteRole(id),
+    onSuccess: () => {
+      toast('success', 'Role berhasil dihapus')
+      queryClient.invalidateQueries({ queryKey: ['roles'] })
+    },
+    onError: (e: any) => {
+      toast('error', e.message || 'Gagal menghapus')
     }
-  }, [canView])
+  })
 
-  useEffect(() => { fetchData() }, [fetchData])
-
-  async function handleDelete(role: Role) {
+  function handleDelete(role: Role) {
     if (!canCrud) return
     if (role.is_superadmin) return
     setConfirmData({
       title: 'Hapus Role',
       message: `Yakin ingin menghapus role "${role.name}"?`,
       variant: 'danger',
-      onConfirm: async () => {
+      onConfirm: () => {
         setConfirmOpen(false)
-        setDeleting(role.id)
-        try {
-          await api.deleteRole(role.id)
-          toast('success', 'Role berhasil dihapus')
-          fetchData()
-        } catch (e: any) {
-          toast('error', e.message || 'Gagal menghapus')
-        } finally {
-          setDeleting(null)
-        }
+        deleteMutation.mutate(role.id)
       },
     })
     setConfirmOpen(true)
@@ -96,6 +89,7 @@ export default function RolesPage() {
         message={confirmData?.message || ''}
         variant={confirmData?.variant}
         confirmLabel="Ya, hapus"
+        loading={deleteMutation.isPending}
       />
       <div className="space-y-6 animate-fadeIn">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -105,7 +99,7 @@ export default function RolesPage() {
         </div>
         {canCrud && (
           <Button onClick={() => navigate('/roles/new')}>
-            <Plus />
+            <Plus className="mr-2 h-4 w-4" />
             Buat Role
           </Button>
         )}
@@ -132,7 +126,7 @@ export default function RolesPage() {
           description="Belum ada role yang terdaftar. Buat role untuk mengatur hak akses pengguna."
           action={canCrud ? (
             <Button onClick={() => navigate('/roles/new')}>
-              <Plus /> Buat Role
+              <Plus className="mr-2 h-4 w-4" /> Buat Role
             </Button>
           ) : undefined}
         />
@@ -167,16 +161,16 @@ export default function RolesPage() {
                       size="sm"
                       onClick={() => navigate(`/roles/${role.id}`)}
                     >
-                      <Edit /> Edit
+                      <Edit className="mr-2 h-4 w-4" /> Edit
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
                       onClick={() => handleDelete(role)}
-                      disabled={deleting === role.id}
+                      disabled={deleteMutation.isPending}
                     >
-                      <Trash2 /> Hapus
+                      <Trash2 className="mr-2 h-4 w-4" /> Hapus
                     </Button>
                   </div>
                 )}

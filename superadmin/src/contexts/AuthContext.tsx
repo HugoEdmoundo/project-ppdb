@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = api.getStoredUser()
-    if (stored && api.getToken()) {
+    if (stored) {
       setUser(stored)
       // Validate token in background
       api.getMe().then(setUser).catch(() => {

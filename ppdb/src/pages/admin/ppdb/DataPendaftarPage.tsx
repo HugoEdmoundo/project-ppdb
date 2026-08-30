@@ -1,6 +1,5 @@
-﻿import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import * as api from '../../../api/client'
-import { useToast } from '@/components/Toast'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table'
 import { Badge } from '@/components/ui/Badge'
@@ -9,41 +8,38 @@ import { Input } from '@/components/ui/Input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
-import { Search, UserRoundSearch, Waves } from 'lucide-react'
+import { Search, UserRoundSearch, Waves, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import type { Applicant } from '@/types/ppdb'
 
 export default function DataPendaftarPage() {
-  const { toast } = useToast()
-  
-  const [applicants, setApplicants] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [search, setSearch] = useState('')
-  const [selectedApplicant, setSelectedApplicant] = useState<any>(null)
-  const [hasActiveWave, setHasActiveWave] = useState<boolean | null>(null)
+  const [searchInput, setSearchInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [page, setPage] = useState(1)
+  const limit = 20
+  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null)
 
-  const fetchApplicants = async (q = search) => {
-    setLoading(true)
-    try {
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ['applicants', searchQuery, page, limit],
+    queryFn: async () => {
       const qs = new URLSearchParams()
-      if (q) qs.append('search', q)
-      // Backend secara otomatis scope ke gelombang aktif.
-      // Jika tidak ada gelombang aktif, active_wave akan null dan data kosong.
-      const res = await api.apiFetch<any>(`/ppdb/applicants?${qs.toString()}`)
-      setApplicants(res.data || [])
-      setHasActiveWave(res.active_wave !== null && res.active_wave !== undefined)
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal memuat pendaftar')
-    } finally {
-      setLoading(false)
+      if (searchQuery) qs.append('search', searchQuery)
+      qs.append('page', page.toString())
+      qs.append('limit', limit.toString())
+      
+      const res = await api.apiFetch<{ data: Applicant[], total: number, active_wave: any }>(`/ppdb/applicants?${qs.toString()}`)
+      return res
     }
-  }
+  })
 
-  useEffect(() => {
-    fetchApplicants()
-  }, [])
+  const applicants = data?.data || []
+  const hasActiveWave = data?.active_wave !== null && data?.active_wave !== undefined
+  const totalPages = data?.total ? Math.ceil(data.total / limit) : 1
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    fetchApplicants(search)
+    setSearchQuery(searchInput)
+    setPage(1)
   }
 
   return (
@@ -75,8 +71,8 @@ export default function DataPendaftarPage() {
             <Input 
               placeholder="Cari nama / email..." 
               className="pl-9"
-              value={search}
-              onChange={(e: any) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e: any) => setSearchInput(e.target.value)}
             />
           </div>
           <Button type="submit" variant="secondary" className="shrink-0">Cari</Button>
@@ -116,7 +112,7 @@ export default function DataPendaftarPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                applicants.map((a) => (
+                applicants.map((a: Applicant) => (
                   <TableRow 
                     key={a.id} 
                     onClick={() => setSelectedApplicant(a)}
@@ -158,6 +154,35 @@ export default function DataPendaftarPage() {
               )}
             </TableBody>
           </Table>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t">
+              <span className="text-sm text-muted-foreground">
+                Halaman {page} dari {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Prev
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -175,7 +200,6 @@ export default function DataPendaftarPage() {
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs">Status Pembayaran</p>
-                  {/* Fix: expired harus merah (destructive), bukan kuning (warning) */}
                   <Badge
                     variant={
                       selectedApplicant.payment_status === 'paid'

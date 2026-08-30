@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = api.getStoredUser()
-    if (stored && api.getToken()) { setUser(stored); api.getMe().then(setUser).catch(() => setUser(null)).finally(() => setLoading(false)) }
+    if (stored) { setUser(stored); api.getMe().then(setUser).catch(() => setUser(null)).finally(() => setLoading(false)) }
     else setLoading(false)
   }, [])
 

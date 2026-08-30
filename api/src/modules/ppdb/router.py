@@ -1,30 +1,11 @@
-import random
-import string
-import uuid
-from datetime import datetime, timedelta
-from typing import Optional
-from zoneinfo import ZoneInfo
-
 import logging
+from typing import Optional
+from fastapi import APIRouter, Depends, Query, Header, HTTPException
+from sqlalchemy.orm import Session
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Request, Header
-from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
-
-from src.core.database import (
-    audit_log,
-    create_record,
-    delete_record,
-    execute_raw,
-    get_by_id,
-    get_raw_pool,
-    update_record,
-)
-from src.core.config import settings
-from src.core.notif_service import send_notifications
+from src.core.database import get_db, audit_log
 from src.core.dependencies import require_ppdb_admin, require_ppdb_read, get_current_user
-from src.core.uploads import upload_file, delete_upload
-from src.core.security import hash_password
+from src.core.config import settings
 from src.modules.ppdb.schemas import (
     ApplicantPasswordReset,
     ApplicantRegister,
@@ -32,104 +13,48 @@ from src.modules.ppdb.schemas import (
     PeriodUpdate,
     WaveCreate,
     WaveUpdate,
-    WaveFeeItemCreate,
-    WaveMouTemplateUpdate,
-    MouSignRequest,
 )
+from src.repositories.ppdb_repository import PPDBRepository
+from src.services.ppdb_service import PPDBService
 
 logger = logging.getLogger("ptdarrahman.ppdb")
-
 router = APIRouter()
 
+def get_ppdb_service(db: Session = Depends(get_db)) -> PPDBService:
+    return PPDBService(PPDBRepository(db))
 
 # ---------------------------------------------------------------------------
 # Periods
 # ---------------------------------------------------------------------------
-
 @router.get("/periods")
 def get_periods(
     page: int = Query(1),
     perPage: int = Query(20),
     search: str = Query(""),
     user: dict = Depends(require_ppdb_read),
+    service: PPDBService = Depends(get_ppdb_service)
 ):
-    offset = (page - 1) * perPage
-
-    sql = "SELECT p.*, (SELECT COUNT(*) FROM ppdb_waves w WHERE w.period_id = p.id) as wave_count FROM ppdb_periods p"
-    count_sql = "SELECT COUNT(*) as cnt FROM ppdb_periods p"
-    params: dict = {}
-
-    if search:
-        sql += " WHERE p.name LIKE :search"
-        count_sql += " WHERE p.name LIKE :search"
-        params["search"] = f"%{search}%"
-
-    sql += " ORDER BY p.created_at DESC LIMIT :limit OFFSET :offset"
-    params["limit"] = perPage
-    params["offset"] = offset
-
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        rows = conn.execute(text(sql), params).mappings().all()
-        count_rows = conn.execute(text(count_sql), params).mappings().all()
-
-    return {"data": [dict(r) for r in rows], "total": count_rows[0]["cnt"]}
-
+    return service.get_periods(page, perPage, search)
 
 @router.get("/periods/all")
-def get_all_periods(user: dict = Depends(require_ppdb_read)):
-    sql = "SELECT id, name, status, academic_year FROM ppdb_periods ORDER BY created_at DESC"
-    return execute_raw(sql)
-
+def get_all_periods(user: dict = Depends(require_ppdb_read), service: PPDBService = Depends(get_ppdb_service)):
+    return service.get_all_periods()
 
 @router.get("/periods/{id}")
-def get_period_by_id(id: str, user: dict = Depends(require_ppdb_read)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        rows = conn.execute(text("SELECT * FROM ppdb_periods WHERE id = :id LIMIT 1"), {"id": id}).mappings().all()
-        if not rows:
-            raise HTTPException(status_code=404, detail="Not found")
-        period = dict(rows[0])
-        waves = conn.execute(
-            text("SELECT * FROM ppdb_waves WHERE period_id = :id ORDER BY wave_number ASC"), {"id": id}
-        ).mappings().all()
-        period["waves"] = [dict(w) for w in waves]
-    return period
-
+def get_period_by_id(id: str, user: dict = Depends(require_ppdb_read), service: PPDBService = Depends(get_ppdb_service)):
+    return service.get_period_by_id(id)
 
 @router.post("/periods", status_code=201)
-def create_period(body: PeriodCreate, user: dict = Depends(require_ppdb_admin)):
-    data = {
-        "id": f"period-{uuid.uuid4()}",
-        "name": body.name,
-        "academic_year": body.academic_year,
-        "description": body.description,
-        "status": "inactive",
-    }
-    return create_record("ppdb_periods", data)
-
+def create_period(body: PeriodCreate, user: dict = Depends(require_ppdb_admin), service: PPDBService = Depends(get_ppdb_service)):
+    return service.create_period(body)
 
 @router.put("/periods/{id}")
-def update_period(id: str, body: PeriodUpdate, user: dict = Depends(require_ppdb_admin)):
-    data = {
-        "name": body.name,
-        "academic_year": body.academic_year,
-        "description": body.description,
-    }
-    updated = update_record("ppdb_periods", id, data)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Not found")
-    return updated
-
+def update_period(id: str, body: PeriodUpdate, user: dict = Depends(require_ppdb_admin), service: PPDBService = Depends(get_ppdb_service)):
+    return service.update_period(id, body)
 
 @router.put("/periods/{id}/activate")
-def activate_period(id: str, user: dict = Depends(require_ppdb_admin)):
-    pool = get_raw_pool()
-    with pool.begin() as conn:
-        conn.execute(text('UPDATE ppdb_periods SET status = "inactive"'))
-        conn.execute(text('UPDATE ppdb_waves SET status = "inactive"'))
-        conn.execute(text('UPDATE ppdb_periods SET status = "active" WHERE id = :id'), {"id": id})
-
+def activate_period(id: str, user: dict = Depends(require_ppdb_admin), service: PPDBService = Depends(get_ppdb_service)):
+    result = service.activate_period(id)
     audit_log(
         user_id=user.get("id"),
         user_username=user.get("username"),
@@ -137,16 +62,11 @@ def activate_period(id: str, user: dict = Depends(require_ppdb_admin)):
         entity_type="ppdb_periods",
         entity_id=id,
     )
-    return {"success": True}
-
+    return result
 
 @router.put("/periods/{id}/deactivate")
-def deactivate_period(id: str, user: dict = Depends(require_ppdb_admin)):
-    pool = get_raw_pool()
-    with pool.begin() as conn:
-        conn.execute(text('UPDATE ppdb_periods SET status = "inactive" WHERE id = :id'), {"id": id})
-        conn.execute(text('UPDATE ppdb_waves SET status = "inactive" WHERE period_id = :id'), {"id": id})
-
+def deactivate_period(id: str, user: dict = Depends(require_ppdb_admin), service: PPDBService = Depends(get_ppdb_service)):
+    result = service.deactivate_period(id)
     audit_log(
         user_id=user.get("id"),
         user_username=user.get("username"),
@@ -154,143 +74,42 @@ def deactivate_period(id: str, user: dict = Depends(require_ppdb_admin)):
         entity_type="ppdb_periods",
         entity_id=id,
     )
-    return {"success": True}
-
+    return result
 
 @router.delete("/periods/{id}")
-def delete_period_endpoint(id: str, user: dict = Depends(require_ppdb_admin)):
-    delete_record("ppdb_periods", id)
-    return {"success": True}
-
+def delete_period_endpoint(id: str, user: dict = Depends(require_ppdb_admin), service: PPDBService = Depends(get_ppdb_service)):
+    return service.delete_period(id)
 
 # ---------------------------------------------------------------------------
 # Waves
 # ---------------------------------------------------------------------------
-
 @router.get("/waves")
-def get_waves(period_id: Optional[str] = Query(None), user: dict = Depends(require_ppdb_read)):
-    sql = "SELECT * FROM ppdb_waves"
-    params: dict = {}
-    if period_id:
-        sql += " WHERE period_id = :period_id"
-        params["period_id"] = period_id
-    sql += " ORDER BY registration_start_date ASC, wave_number ASC"
-    return execute_raw(sql, params)
-
+def get_waves(period_id: Optional[str] = Query(None), user: dict = Depends(require_ppdb_read), service: PPDBService = Depends(get_ppdb_service)):
+    return service.get_waves(period_id)
 
 @router.get("/waves/all")
-def get_all_waves(user: dict = Depends(require_ppdb_read)):
-    return execute_raw("SELECT * FROM ppdb_waves ORDER BY registration_start_date ASC, wave_number ASC")
-
+def get_all_waves(user: dict = Depends(require_ppdb_read), service: PPDBService = Depends(get_ppdb_service)):
+    return service.get_all_waves()
 
 @router.get("/waves/active-public")
-def get_active_wave_public():
-    """Endpoint publik (tanpa auth) untuk halaman registrasi:
-    info gelombang aktif + jalur/jenjang yang dibuka."""
-    rows = execute_raw(
-        "SELECT id, name, registration_start_date, registration_end_date, allowed_paths, allowed_levels "
-        "FROM ppdb_waves WHERE status = 'active' LIMIT 1"
-    )
-    if not rows:
-        return {"active": False}
-    w = rows[0]
-    return {
-        "active": True,
-        "id": w["id"],
-        "name": w["name"],
-        "registration_start_date": w["registration_start_date"],
-        "registration_end_date": w["registration_end_date"],
-        "allowed_paths": [p.strip() for p in (w["allowed_paths"] or "").split(",") if p.strip()],
-        "allowed_levels": [l.strip() for l in (w["allowed_levels"] or "").split(",") if l.strip()],
-    }
-
+def get_active_wave_public(service: PPDBService = Depends(get_ppdb_service)):
+    return service.get_active_wave_public()
 
 @router.get("/waves/{id}")
-def get_wave_by_id(id: str, user: dict = Depends(require_ppdb_read)):
-    wave = execute_raw("SELECT * FROM ppdb_waves WHERE id = :id LIMIT 1", {"id": id})
-    if not wave:
-        raise HTTPException(status_code=404, detail="Not found")
-    return wave[0]
-
+def get_wave_by_id(id: str, user: dict = Depends(require_ppdb_read), service: PPDBService = Depends(get_ppdb_service)):
+    return service.get_wave_by_id(id)
 
 @router.post("/waves", status_code=201)
-def create_wave(body: WaveCreate, user: dict = Depends(require_ppdb_admin)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        period_rows = conn.execute(
-            text("SELECT id FROM ppdb_periods WHERE id = :id"), {"id": body.period_id}
-        ).mappings().all()
-        if not period_rows:
-            raise HTTPException(status_code=404, detail="Period not found")
-
-        max_rows = conn.execute(
-            text("SELECT MAX(wave_number) as max_num FROM ppdb_waves WHERE period_id = :id"),
-            {"id": body.period_id},
-        ).mappings().all()
-        max_num = max_rows[0]["max_num"] if max_rows and max_rows[0]["max_num"] is not None else 0
-        wave_number = max_num + 1
-
-    data = {
-        "id": f"wave-{uuid.uuid4()}",
-        "period_id": body.period_id,
-        "wave_number": wave_number,
-        "name": body.name,
-        "allowed_paths": body.allowed_paths,
-        "allowed_levels": body.allowed_levels,
-        "registration_start_date": body.registration_start_date,
-        "registration_end_date": body.registration_end_date,
-        "document_upload_end_date": body.document_upload_end_date,
-        "selection_date": body.selection_date,
-        "quota": body.quota,
-        "registration_fee": body.registration_fee,
-        "second_stage_fee": body.second_stage_fee if body.second_stage_fee is not None else 0,
-        "status": "inactive",
-    }
-    return create_record("ppdb_waves", data)
-
+def create_wave(body: WaveCreate, user: dict = Depends(require_ppdb_admin), service: PPDBService = Depends(get_ppdb_service)):
+    return service.create_wave(body)
 
 @router.put("/waves/{id}")
-def update_wave(id: str, body: WaveUpdate, user: dict = Depends(require_ppdb_admin)):
-    data = {
-        "name": body.name,
-        "allowed_paths": body.allowed_paths,
-        "allowed_levels": body.allowed_levels,
-        "registration_start_date": body.registration_start_date,
-        "registration_end_date": body.registration_end_date,
-        "document_upload_end_date": body.document_upload_end_date,
-        "selection_date": body.selection_date,
-        "quota": body.quota,
-        "registration_fee": body.registration_fee,
-    }
-    # Tahap 2 belum dipakai: hanya update jika eksplisit dikirim, agar nilai
-    # lama tidak ikut ter-reset ke 0 dari form yang sudah tidak menampilkannya.
-    if body.second_stage_fee is not None:
-        data["second_stage_fee"] = body.second_stage_fee
-    updated = update_record("ppdb_waves", id, data)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Not found")
-    return updated
-
+def update_wave(id: str, body: WaveUpdate, user: dict = Depends(require_ppdb_admin), service: PPDBService = Depends(get_ppdb_service)):
+    return service.update_wave(id, body)
 
 @router.put("/waves/{id}/activate")
-def activate_wave(id: str, user: dict = Depends(require_ppdb_admin)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        wave_rows = conn.execute(text("SELECT period_id FROM ppdb_waves WHERE id = :id"), {"id": id}).mappings().all()
-        if not wave_rows:
-            raise HTTPException(status_code=404, detail="Wave not found")
-        period_id = wave_rows[0]["period_id"]
-
-        period_rows = conn.execute(
-            text("SELECT status FROM ppdb_periods WHERE id = :id"), {"id": period_id}
-        ).mappings().all()
-        if not period_rows or period_rows[0]["status"] != "active":
-            raise HTTPException(status_code=400, detail="Periode belum aktif")
-
-    with pool.begin() as conn:
-        conn.execute(text('UPDATE ppdb_waves SET status = "inactive"'))
-        conn.execute(text('UPDATE ppdb_waves SET status = "active" WHERE id = :id'), {"id": id})
-
+def activate_wave(id: str, user: dict = Depends(require_ppdb_admin), service: PPDBService = Depends(get_ppdb_service)):
+    result = service.activate_wave(id)
     audit_log(
         user_id=user.get("id"),
         user_username=user.get("username"),
@@ -298,12 +117,11 @@ def activate_wave(id: str, user: dict = Depends(require_ppdb_admin)):
         entity_type="ppdb_waves",
         entity_id=id,
     )
-    return {"success": True}
-
+    return result
 
 @router.put("/waves/{id}/deactivate")
-def deactivate_wave(id: str, user: dict = Depends(require_ppdb_admin)):
-    execute_raw('UPDATE ppdb_waves SET status = "inactive" WHERE id = :id', {"id": id})
+def deactivate_wave(id: str, user: dict = Depends(require_ppdb_admin), service: PPDBService = Depends(get_ppdb_service)):
+    result = service.deactivate_wave(id)
     audit_log(
         user_id=user.get("id"),
         user_username=user.get("username"),
@@ -311,195 +129,22 @@ def deactivate_wave(id: str, user: dict = Depends(require_ppdb_admin)):
         entity_type="ppdb_waves",
         entity_id=id,
     )
-    return {"success": True}
-
+    return result
 
 @router.delete("/waves/{id}")
-def delete_wave_endpoint(id: str, user: dict = Depends(require_ppdb_admin)):
-    delete_record("ppdb_waves", id)
-    return {"success": True}
-
+def delete_wave_endpoint(id: str, user: dict = Depends(require_ppdb_admin), service: PPDBService = Depends(get_ppdb_service)):
+    return service.delete_wave(id)
 
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
-
-def generate_random_password(length: int = 8) -> str:
-    return "".join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
-
-
-def generate_unique_username(full_name: str) -> str:
-    """Generate a username that does not collide with an existing `users` row.
-
-    `users.username` is UNIQUE; the naive 4-digit suffix collides easily once
-    several applicants share the same first name, which raised a duplicate-key
-    500 during registration.
-    """
-    base = "".join(c for c in full_name.split(" ")[0].lower() if c.isalnum()) or "user"
-    for _ in range(10):
-        candidate = f"{base}{''.join(random.choice(string.digits) for _ in range(4))}"
-        rows = execute_raw("SELECT id FROM users WHERE username = :u LIMIT 1", {"u": candidate})
-        if not rows:
-            return candidate
-    return f"{base}{uuid.uuid4().hex[:8]}"
-
-
 @router.post("/register", status_code=201)
-def register_applicant(body: ApplicantRegister):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        wave_rows = conn.execute(
-            text(
-                "SELECT id, name, registration_fee, allowed_paths, allowed_levels "
-                "FROM ppdb_waves WHERE status = 'active' LIMIT 1"
-            )
-        ).mappings().all()
-        if not wave_rows:
-            raise HTTPException(status_code=400, detail="Pendaftaran saat ini sedang ditutup atau belum dibuka.")
-        active_wave_id = wave_rows[0]["id"]
-        registration_fee = wave_rows[0]["registration_fee"] or 0
-
-        # Gelombang aktif hanya menerima jalur & jenjang yang dibuka (scope).
-        allowed_paths = [p.strip() for p in (wave_rows[0]["allowed_paths"] or "").split(",") if p.strip()]
-        allowed_levels = [l.strip() for l in (wave_rows[0]["allowed_levels"] or "").split(",") if l.strip()]
-        if body.registration_path not in allowed_paths:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Jalur pendaftaran '{body.registration_path}' tidak dibuka pada gelombang ini.",
-            )
-        level_key = body.registration_level.split(" ")[0]
-        if level_key not in allowed_levels:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Jenjang '{level_key}' tidak dibuka pada gelombang ini.",
-            )
-
-        existing = conn.execute(
-            text('SELECT id FROM ppdb_applicants WHERE email = :email AND status != "expired" LIMIT 1'),
-            {"email": body.email},
-        ).mappings().all()
-        if existing:
-            raise HTTPException(status_code=400, detail="Email sudah terdaftar. Silakan login atau gunakan email lain.")
-
-        # `users.email` is UNIQUE but never deleted (cron only soft-deletes the
-        # applicant), so also block emails that belong to an expired/old account.
-        existing_user = conn.execute(
-            text("SELECT id FROM users WHERE email = :email LIMIT 1"),
-            {"email": body.email},
-        ).mappings().all()
-        if existing_user:
-            raise HTTPException(
-                status_code=400,
-                detail="Email sudah pernah terdaftar sebelumnya. Hubungi panitia jika ingin mendaftar ulang.",
-            )
-
-    raw_password = generate_random_password()
-    username = generate_unique_username(body.full_name)
-
-    calon_role = execute_raw("SELECT id FROM roles WHERE name = 'Calon Murid' LIMIT 1")
-    calon_role_id = calon_role[0]["id"] if calon_role else None
-
-    try:
-        created_user = create_record(
-            "users",
-            {
-                "id": str(uuid.uuid4()),
-                "username": username,
-                "password_hash": hash_password(raw_password),
-                "email": body.email,
-                "full_name": body.full_name,
-                "user_type": "applicant",
-                "role_id": calon_role_id,
-            },
-            return_row=False,
-        )
-
-        created_applicant = create_record(
-            "ppdb_applicants",
-            {
-                "id": f"applicant-{uuid.uuid4()}",
-                "wave_id": active_wave_id,
-                "user_id": created_user["id"],
-                "full_name": body.full_name,
-                "email": body.email,
-                "phone": body.phone,
-                "registration_path": body.registration_path,
-                "registration_level": body.registration_level,
-                "address": body.address,
-                "province": body.province,
-                "city": body.city,
-                "district": body.district,
-                "village": body.village,
-                "postal_code": body.postal_code,
-                "gender": body.gender,
-                "birth_place": body.birth_place,
-                "birth_date": body.birth_date,
-                "nisn": body.nisn,
-                "nik": body.nik,
-                "parent_name": body.parent_name,
-                "previous_school": body.previous_school,
-                "major_choice": body.major_choice,
-                "status": "pending_payment",
-                "payment_status": "pending",
-                "payment_deadline": (datetime.now(ZoneInfo("Asia/Jakarta")) + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"),
-            },
-            return_row=False,
-        )
-
-        # Buat transaksi pembayaran offline dengan status pending
-        create_record(
-            "ppdb_payment_transactions",
-            {
-                "id": f"pay-{uuid.uuid4()}",
-                "applicant_id": created_applicant["id"],
-                "method": "offline",
-                "amount": registration_fee,
-                "status": "pending",
-            },
-            return_row=False,
-        )
-    except IntegrityError:
-        # Race condition / collision (e.g. email yang baru saja terdaftar).
-        logger.exception("Duplicate on register: email=%s username=%s", body.email, username)
-        raise HTTPException(
-            status_code=400,
-            detail="Email sudah terdaftar. Silakan login atau gunakan email lain.",
-        )
-
-    # Kirim notifikasi welcome + pengingat pembayaran (best-effort; jangan gagalkan
-    # pendaftaran hanya karena logging notifikasi bermasalah).
-    try:
-        send_notifications(
-            [
-                ("welcome", {
-                    "password": raw_password,
-                    "link_login": f"{settings.ppdb_frontend_url}/auth/login",
-                    "batas_waktu_bayar": created_applicant["payment_deadline"],
-                }),
-                ("payment_reminder", {
-                    "link_pembayaran": f"{settings.ppdb_frontend_url}/checkout",
-                    "batas_waktu_bayar": created_applicant["payment_deadline"],
-                }),
-            ],
-            created_user["id"],
-            user_row=created_user,
-            applicant_row=created_applicant,
-        )
-    except Exception:
-        logger.exception("send_notifications failed after registration; continuing")
-
-    return {
-        "success": True,
-        "message": "Pendaftaran berhasil",
-        "applicant_id": created_applicant["id"],
-        "credentials": {"username": username, "password": raw_password},
-    }
-
+def register_applicant(body: ApplicantRegister, service: PPDBService = Depends(get_ppdb_service)):
+    return service.register_applicant(body)
 
 # ---------------------------------------------------------------------------
 # Applicants & dashboard
 # ---------------------------------------------------------------------------
-
 @router.get("/applicants")
 def get_applicants(
     page: int = Query(1),
@@ -508,784 +153,33 @@ def get_applicants(
     wave_id: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     user: dict = Depends(require_ppdb_read),
+    service: PPDBService = Depends(get_ppdb_service)
 ):
-    offset = (page - 1) * perPage
-
-    # Jika wave_id tidak diberikan, default ke gelombang yang sedang aktif.
-    # Jika tidak ada gelombang aktif, kembalikan data kosong.
-    resolved_wave_id = wave_id
-    if not resolved_wave_id:
-        pool = get_raw_pool()
-        with pool.connect() as conn:
-            active_row = conn.execute(
-                text("SELECT id FROM ppdb_waves WHERE status = 'active' LIMIT 1")
-            ).mappings().all()
-        if not active_row:
-            return {"data": [], "total": 0, "active_wave": None}
-        resolved_wave_id = active_row[0]["id"]
-
-    sql = "SELECT a.*, w.name as wave_name, u.username FROM ppdb_applicants a LEFT JOIN ppdb_waves w ON a.wave_id = w.id LEFT JOIN users u ON a.user_id = u.id WHERE 1=1"
-    count_sql = "SELECT COUNT(*) as cnt FROM ppdb_applicants a WHERE 1=1"
-    params: dict = {}
-
-    # Filter berdasarkan gelombang (aktif atau explicit dari param)
-    sql += " AND a.wave_id = :wave_id"
-    count_sql += " AND a.wave_id = :wave_id"
-    params["wave_id"] = resolved_wave_id
-
-    if search:
-        sql += " AND (a.full_name LIKE :search OR a.email LIKE :search OR a.province LIKE :search OR a.city LIKE :search OR a.district LIKE :search OR a.village LIKE :search)"
-        count_sql += " AND (a.full_name LIKE :search OR a.email LIKE :search OR a.province LIKE :search OR a.city LIKE :search OR a.district LIKE :search OR a.village LIKE :search)"
-        params["search"] = f"%{search}%"
-
-    if status:
-        sql += " AND a.status = :status"
-        count_sql += " AND a.status = :status"
-        params["status"] = status
-
-    sql += " ORDER BY a.created_at DESC LIMIT :limit OFFSET :offset"
-    params["limit"] = perPage
-    params["offset"] = offset
-
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        rows = conn.execute(text(sql), params).mappings().all()
-        count_rows = conn.execute(text(count_sql), params).mappings().all()
-
-    return {"data": [dict(r) for r in rows], "total": count_rows[0]["cnt"], "active_wave": resolved_wave_id}
-
+    return service.get_applicants(page, perPage, search, wave_id, status)
 
 @router.put("/applicants/{id}/password")
 def reset_applicant_password(
     id: str,
     body: ApplicantPasswordReset,
     user: dict = Depends(require_ppdb_admin),
+    service: PPDBService = Depends(get_ppdb_service)
 ):
-    """Reset password akun pendaftar. Password wajib dibuat sistem (bukan isian manual
-    dari admin) — kalau body.password kosong maka tidak ada yang berubah (no-op)."""
-    applicant = get_by_id("ppdb_applicants", id)
-    if not applicant:
-        raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
-
-    user_id = applicant.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=400, detail="Akun login pendaftar tidak ditemukan")
-
-    new_password = (body.password or "").strip()
-    if not new_password:
-        return {"changed": False, "message": "Password tidak diubah (field kosong)"}
-
-    user_row = get_by_id("users", user_id)
-    if not user_row:
-        raise HTTPException(status_code=400, detail="Akun login pendaftar tidak ditemukan")
-
-    update_record(
-        "users",
-        user_id,
-        {
-            "password_hash": hash_password(new_password),
-            "failed_login_attempts": 0,
-            "locked_until": None,
-        },
-    )
-
-    # Kirim notif password baru (simulasi: tercatat di notification_logs).
-    try:
-        send_notifications(
-            [("password_reset", {
-                "password": new_password,
-                "link_login": f"{settings.ppdb_frontend_url}/auth/login",
-            })],
-            user_id,
-            user_row=user_row,
-            applicant_row=applicant,
-        )
-    except Exception:
-        logger.exception("send password_reset notification failed; continuing")
-
-    return {
-        "changed": True,
-        "message": "Password berhasil direset",
-        "username": user_row.get("username", ""),
-        "password": new_password,
-    }
-
+    return service.reset_applicant_password(id, body.password)
 
 @router.get("/dashboard/stats")
-def get_ppdb_dashboard(user: dict = Depends(require_ppdb_read)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        periods_count = conn.execute(text("SELECT COUNT(*) as cnt FROM ppdb_periods")).scalar() or 0
-        waves_count = conn.execute(text("SELECT COUNT(*) as cnt FROM ppdb_waves")).scalar() or 0
-        active_period = conn.execute(
-            text('SELECT name FROM ppdb_periods WHERE status = "active" LIMIT 1')
-        ).scalar()
-
-    return {
-        "total_periods": periods_count,
-        "total_waves": waves_count,
-        "active_period_name": active_period,
-    }
-
-
-
+def get_ppdb_dashboard(user: dict = Depends(require_ppdb_read), service: PPDBService = Depends(get_ppdb_service)):
+    return service.get_dashboard_stats()
 
 @router.post("/cron/soft-delete-expired")
-def soft_delete_expired_applicants(x_cron_secret: str = Header(None)):
-    """
-    Cron job run daily to soft delete applicants who haven't paid past their deadline.
-    """
+def soft_delete_expired_applicants(x_cron_secret: str = Header(None), service: PPDBService = Depends(get_ppdb_service)):
     from src.core.config import settings
     if x_cron_secret != settings.cron_secret:
         raise HTTPException(status_code=401, detail="Unauthorized cron request")
-
-    pool = get_raw_pool()
-    now_wib = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
-    
-    with pool.begin() as conn:
-        # Find all expired applicants
-        rows = conn.execute(
-            text("""
-                SELECT id, user_id FROM ppdb_applicants 
-                WHERE payment_status = 'pending' 
-                AND payment_deadline <= :now 
-                AND deleted_at IS NULL
-            """),
-            {"now": now_wib}
-        ).mappings().all()
-        
-        if not rows:
-            return {"deleted": 0}
-            
-        applicant_ids = [r["id"] for r in rows]
-        user_ids = [r["user_id"] for r in rows]
-        
-        a_ph = ", ".join(f":a_{i}" for i in range(len(applicant_ids)))
-        u_ph = ", ".join(f":u_{i}" for i in range(len(user_ids))) if user_ids else ""
-        
-        params = {"now": now_wib}
-        for i, aid in enumerate(applicant_ids):
-            params[f"a_{i}"] = aid
-            
-        u_params = {}
-        for i, uid in enumerate(user_ids):
-            u_params[f"u_{i}"] = uid
-
-        # Soft delete applicants
-        conn.execute(
-            text(f"""
-                UPDATE ppdb_applicants 
-                SET deleted_at = :now, payment_status = 'expired', status = 'expired' 
-                WHERE id IN ({a_ph})
-            """),
-            params
-        )
-        
-        # Disable users so they cannot login
-        if user_ids:
-            conn.execute(
-                text(f"UPDATE users SET is_active = 0 WHERE id IN ({u_ph})"),
-                u_params
-            )
-            
-        # Update pending transactions to expired
-        conn.execute(
-            text(f"""
-                UPDATE ppdb_payment_transactions 
-                SET status = 'expired', updated_at = :now 
-                WHERE applicant_id IN ({a_ph}) AND status = 'pending'
-            """),
-            params
-        )
-        
-    for user_id in user_ids:
-        send_notifications([("payment_expired", {})], user_id)
-        
-    return {"deleted": len(applicant_ids), "applicant_ids": applicant_ids}
-
+    return service.soft_delete_expired_applicants()
 
 @router.post("/cron/reminders")
-def run_reminders(x_cron_secret: str = Header(None)):
-    """
-    Cron job run daily to send reminders.
-    """
+def run_reminders(x_cron_secret: str = Header(None), service: PPDBService = Depends(get_ppdb_service)):
     from src.core.config import settings
     if x_cron_secret != settings.cron_secret:
         raise HTTPException(status_code=401, detail="Unauthorized cron request")
-    
-    pool = get_raw_pool()
-    now_wib = datetime.now(ZoneInfo("Asia/Jakarta"))
-    now_wib_str = now_wib.strftime("%Y-%m-%d %H:%M:%S")
-    
-    with pool.connect() as conn:
-        tomorrow_wib = now_wib + timedelta(days=1)
-        tomorrow_wib_str = tomorrow_wib.strftime("%Y-%m-%d %H:%M:%S")
-        
-        rows_payment = conn.execute(
-            text("""
-                SELECT id, user_id FROM ppdb_applicants 
-                WHERE payment_status = 'pending' 
-                AND payment_deadline > :now 
-                AND payment_deadline <= :tomorrow 
-                AND deleted_at IS NULL
-            """),
-            {"now": now_wib_str, "tomorrow": tomorrow_wib_str}
-        ).mappings().all()
-        
-        from src.core.notif_service import send_notification
-        
-        payment_reminded = 0
-        for r in rows_payment:
-            send_notification("payment_reminder_d7", r["user_id"], {"batas_waktu_bayar": tomorrow_wib_str})
-            payment_reminded += 1
-            
-        rows_docs = conn.execute(
-            text("""
-                SELECT a.id, a.user_id, w.document_upload_end_date
-                FROM ppdb_applicants a 
-                JOIN ppdb_waves w ON a.wave_id = w.id 
-                WHERE a.status IN ('document_uploaded_pending', 'document_rejected') 
-                AND w.document_upload_end_date IS NOT NULL
-                AND a.deleted_at IS NULL
-            """)
-        ).mappings().all()
-        
-        doc_reminded_h3 = 0
-        doc_reminded_h1 = 0
-        for r in rows_docs:
-            end_date = r["document_upload_end_date"]
-            if isinstance(end_date, str):
-                try:
-                    end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
-                except ValueError:
-                    end_date = datetime.strptime(end_date, "%Y-%m-%d")
-            
-            if hasattr(end_date, "date"):
-                days_left = (end_date.date() - now_wib.date()).days
-            else:
-                continue
-                
-            if days_left == 3:
-                send_notification("document_reminder_d3", r["user_id"], {})
-                doc_reminded_h3 += 1
-            elif days_left == 1:
-                send_notification("document_reminder_d1", r["user_id"], {})
-                doc_reminded_h1 += 1
-
-        # ── Reminder Seleksi H-5 & H-1 ──────────────────────────────────────
-        # Cari applicant dengan status 'selection' yang punya jadwal seleksi di gelombangnya
-        rows_selection = conn.execute(
-            text("""
-                SELECT a.id, a.user_id, w.selection_date, w.name as wave_name
-                FROM ppdb_applicants a
-                JOIN ppdb_waves w ON a.wave_id = w.id
-                WHERE a.status = 'selection'
-                AND w.selection_date IS NOT NULL
-                AND a.deleted_at IS NULL
-            """)
-        ).mappings().all()
-
-        selection_reminded_h5 = 0
-        selection_reminded_h1 = 0
-        for r in rows_selection:
-            sel_date = r["selection_date"]
-            if isinstance(sel_date, str):
-                try:
-                    sel_date = datetime.strptime(sel_date, "%Y-%m-%d %H:%M:%S").date()
-                except ValueError:
-                    sel_date = datetime.strptime(sel_date, "%Y-%m-%d").date()
-            elif hasattr(sel_date, "date"):
-                sel_date = sel_date.date()
-            else:
-                continue
-
-            days_to_selection = (sel_date - now_wib.date()).days
-            if days_to_selection == 5:
-                send_notification("selection_reminder_d5", r["user_id"], {
-                    "tanggal_seleksi": str(sel_date),
-                    "nama_gelombang": r["wave_name"],
-                })
-                selection_reminded_h5 += 1
-            elif days_to_selection == 1:
-                send_notification("selection_reminder_d1", r["user_id"], {
-                    "tanggal_seleksi": str(sel_date),
-                    "nama_gelombang": r["wave_name"],
-                })
-                selection_reminded_h1 += 1
-
-    return {
-        "success": True,
-        "payment_reminded": payment_reminded,
-        "doc_reminded_h3": doc_reminded_h3,
-        "doc_reminded_h1": doc_reminded_h1,
-        "selection_reminded_h5": selection_reminded_h5,
-        "selection_reminded_h1": selection_reminded_h1,
-    }
-
-
-# ---------------------------------------------------------------------------
-# Documents
-# ---------------------------------------------------------------------------
-
-@router.get("/documents")
-def get_my_documents(request: Request, user: dict = Depends(get_current_user)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        applicant = conn.execute(
-            text("SELECT id FROM ppdb_applicants WHERE user_id = :user_id LIMIT 1"),
-            {"user_id": user["id"]}
-        ).mappings().first()
-        
-        if not applicant:
-            raise HTTPException(status_code=404, detail="Applicant not found")
-            
-        docs = conn.execute(
-            text("SELECT * FROM file_uploads WHERE entity_id = :entity_id AND entity_type LIKE 'ppdb_document:%'"),
-            {"entity_id": applicant["id"]}
-        ).mappings().all()
-        
-    res = []
-    for d in docs:
-        d_dict = dict(d)
-        if d_dict.get("public_url") and d_dict["public_url"].startswith("/"):
-            d_dict["public_url"] = f"{request.base_url}{d_dict['public_url'].lstrip('/')}"
-        res.append(d_dict)
-        
-    return {"data": res}
-
-
-@router.post("/documents/upload")
-async def upload_document(
-    request: Request,
-    doc_type: str = Form(...),
-    file: UploadFile = File(...),
-    user: dict = Depends(get_current_user)
-):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        applicant = conn.execute(
-            text("SELECT id FROM ppdb_applicants WHERE user_id = :user_id LIMIT 1"),
-            {"user_id": user["id"]}
-        ).mappings().first()
-        
-        if not applicant:
-            raise HTTPException(status_code=404, detail="Applicant not found")
-            
-        applicant_id = applicant["id"]
-        entity_type = f"ppdb_document:{doc_type}"
-        
-        existing = conn.execute(
-            text("SELECT id, storage_path FROM file_uploads WHERE entity_id = :entity_id AND entity_type = :entity_type LIMIT 1"),
-            {"entity_id": applicant_id, "entity_type": entity_type}
-        ).mappings().first()
-        
-    record_id = existing["id"] if existing else str(uuid.uuid4())
-    upload_res = await upload_file(file, record_id)
-    
-    with pool.begin() as conn:
-        if existing:
-            try:
-                delete_upload(existing["storage_path"])
-            except Exception as e:
-                logger.error(f"Failed to delete old upload: {e}")
-                
-            now = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
-            conn.execute(
-                text("""
-                    UPDATE file_uploads 
-                    SET original_name = :oname, stored_name = :sname, mime_type = :mime, 
-                        size_bytes = :size, storage_path = :spath, public_url = :url, created_at = :now
-                    WHERE id = :id
-                """),
-                {
-                    "oname": upload_res.original_name,
-                    "sname": upload_res.storage_path.split('/')[-1],
-                    "mime": upload_res.mime_type,
-                    "size": upload_res.size_bytes,
-                    "spath": upload_res.storage_path,
-                    "url": upload_res.public_url,
-                    "now": now,
-                    "id": existing["id"]
-                }
-            )
-            doc_id = existing["id"]
-        else:
-            now = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
-            conn.execute(
-                text("""
-                    INSERT INTO file_uploads 
-                    (id, uploaded_by, original_name, stored_name, mime_type, size_bytes, storage_path, public_url, entity_type, entity_id, created_at)
-                    VALUES 
-                    (:id, :uid, :oname, :sname, :mime, :size, :spath, :url, :etype, :eid, :now)
-                """),
-                {
-                    "id": record_id,
-                    "uid": user["id"],
-                    "oname": upload_res.original_name,
-                    "sname": upload_res.storage_path.split('/')[-1],
-                    "mime": upload_res.mime_type,
-                    "size": upload_res.size_bytes,
-                    "spath": upload_res.storage_path,
-                    "url": upload_res.public_url,
-                    "etype": entity_type,
-                    "eid": applicant_id,
-                    "now": now
-                }
-            )
-            doc_id = record_id
-            
-    url = upload_res.public_url
-    if url.startswith("/"):
-        url = f"{request.base_url}{url.lstrip('/')}"
-    return {"success": True, "id": doc_id, "url": url, "doc_type": doc_type}
-
-
-@router.post("/documents/submit")
-def submit_documents(user: dict = Depends(get_current_user)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        applicant = conn.execute(
-            text("SELECT id, status FROM ppdb_applicants WHERE user_id = :user_id LIMIT 1"),
-            {"user_id": user["id"]}
-        ).mappings().first()
-        
-        if not applicant:
-            raise HTTPException(status_code=404, detail="Applicant not found")
-            
-        if applicant["status"] not in ("document_uploaded_pending", "document_rejected"):
-            raise HTTPException(status_code=400, detail="Tidak dapat mengirim dokumen pada status ini")
-            
-    now = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
-    update_record("ppdb_applicants", applicant["id"], {"status": "document_uploaded", "updated_at": now})
-    
-    return {"success": True, "message": "Dokumen berhasil dikirim untuk verifikasi"}
-
-
-# ---------------------------------------------------------------------------
-# Admin Verification
-# ---------------------------------------------------------------------------
-
-@router.get("/applicants/{id}/documents")
-def get_applicant_documents(id: str, request: Request, user: dict = Depends(require_ppdb_read)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        docs = conn.execute(
-            text("SELECT * FROM file_uploads WHERE entity_id = :id AND entity_type LIKE 'ppdb_document:%'"),
-            {"id": id}
-        ).mappings().all()
-        
-    res = []
-    for d in docs:
-        d_dict = dict(d)
-        if d_dict.get("public_url") and d_dict["public_url"].startswith("/"):
-            d_dict["public_url"] = f"{request.base_url}{d_dict['public_url'].lstrip('/')}"
-        res.append(d_dict)
-        
-    return {"data": res}
-
-from pydantic import BaseModel
-
-class DocumentVerify(BaseModel):
-    status: str
-    rejection_reason: Optional[str] = None
-
-@router.put("/applicants/{id}/documents/verify")
-def verify_applicant_documents(id: str, body: DocumentVerify, user: dict = Depends(require_ppdb_admin)):
-    if body.status not in ("document_approved", "document_rejected"):
-        raise HTTPException(status_code=400, detail="Status tidak valid")
-        
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        applicant = conn.execute(
-            text("SELECT user_id, status FROM ppdb_applicants WHERE id = :id LIMIT 1"),
-            {"id": id}
-        ).mappings().first()
-        
-        if not applicant:
-            raise HTTPException(status_code=404, detail="Applicant not found")
-            
-        target_status = "selection" if body.status == "document_approved" else body.status
-        now = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
-        with conn.begin():
-            conn.execute(
-                text("""
-                    UPDATE ppdb_applicants 
-                    SET status = :status, rejection_reason = :reason, updated_at = :now 
-                    WHERE id = :id
-                """),
-                {
-                    "status": target_status,
-                    "reason": body.rejection_reason if target_status == "document_rejected" else None,
-                    "now": now,
-                    "id": id
-                }
-            )
-
-            # Buat record selection_results awal (jika belum ada) saat move ke selection
-            if target_status == "selection":
-                existing = conn.execute(
-                    text("SELECT id FROM selection_results WHERE applicant_id = :aid"),
-                    {"aid": id}
-                ).first()
-                if not existing:
-                    import uuid as _uuid
-                    conn.execute(
-                        text("""
-                            INSERT INTO selection_results
-                              (id, applicant_id, session_id, score, notes, graduation_status, graduation_notes, created_at, updated_at)
-                            VALUES
-                              (:id, :aid, NULL, NULL, NULL, NULL, NULL, :now, :now)
-                        """),
-                        {"id": str(_uuid.uuid4()), "aid": id, "now": now}
-                    )
-            
-    if body.status == "document_approved":
-        send_notifications([("document_approved", {})], applicant["user_id"])
-    else:
-        send_notifications([("document_rejected", {"alasan_penolakan": body.rejection_reason or ""})], applicant["user_id"])
-        
-    return {"success": True}
-
-
-# ─── Wave Fee Items (Item Biaya Tahap 2) ────────────────────────────────────
-
-@router.get("/waves/{wave_id}/fee-items")
-def get_wave_fee_items(wave_id: str, user: dict = Depends(require_ppdb_read)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        rows = conn.execute(
-            text("SELECT * FROM ppdb_wave_fee_items WHERE wave_id = :wave_id ORDER BY order_index ASC"),
-            {"wave_id": wave_id}
-        ).mappings().all()
-    return [dict(r) for r in rows]
-
-@router.post("/waves/{wave_id}/fee-items")
-def create_wave_fee_item(wave_id: str, body: WaveFeeItemCreate, user: dict = Depends(require_ppdb_admin)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        wave_rows = conn.execute(
-            text("SELECT id FROM ppdb_waves WHERE id = :wave_id"),
-            {"wave_id": wave_id}
-        ).mappings().all()
-        if not wave_rows:
-            raise HTTPException(status_code=404, detail="Wave not found")
-
-    new_id = str(uuid.uuid4())
-    data = {
-        "id": new_id,
-        "wave_id": wave_id,
-        "name": body.name,
-        "nominal": body.nominal,
-        "order_index": body.order_index
-    }
-    return create_record("ppdb_wave_fee_items", data)
-
-@router.put("/waves/{wave_id}/fee-items/{item_id}")
-def update_wave_fee_item(wave_id: str, item_id: str, body: WaveFeeItemCreate, user: dict = Depends(require_ppdb_admin)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        item = conn.execute(
-            text("SELECT id FROM ppdb_wave_fee_items WHERE id = :item_id AND wave_id = :wave_id"),
-            {"item_id": item_id, "wave_id": wave_id}
-        ).mappings().first()
-        if not item:
-            raise HTTPException(status_code=404, detail="Fee item not found in this wave")
-
-    data = {
-        "name": body.name,
-        "nominal": body.nominal,
-        "order_index": body.order_index
-    }
-    updated = update_record("ppdb_wave_fee_items", item_id, data)
-    return updated
-
-@router.delete("/waves/{wave_id}/fee-items/{item_id}")
-def delete_wave_fee_item(wave_id: str, item_id: str, user: dict = Depends(require_ppdb_admin)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        item = conn.execute(
-            text("SELECT id FROM ppdb_wave_fee_items WHERE id = :item_id AND wave_id = :wave_id"),
-            {"item_id": item_id, "wave_id": wave_id}
-        ).mappings().first()
-        if not item:
-            raise HTTPException(status_code=404, detail="Fee item not found in this wave")
-
-        bills = conn.execute(
-            text("SELECT id FROM ppdb_stage2_bills WHERE fee_item_id = :item_id LIMIT 1"),
-            {"item_id": item_id}
-        ).mappings().first()
-        if bills:
-            raise HTTPException(status_code=400, detail="Tidak dapat menghapus item yang sudah memiliki tagihan")
-
-    delete_record("ppdb_wave_fee_items", item_id)
-    return {"success": True}
-
-@router.put("/waves/{wave_id}/mou-template")
-def update_wave_mou_template(wave_id: str, body: WaveMouTemplateUpdate, user: dict = Depends(require_ppdb_admin)):
-    pool = get_raw_pool()
-    with pool.begin() as conn:
-        wave_rows = conn.execute(
-            text("SELECT id FROM ppdb_waves WHERE id = :wave_id"),
-            {"wave_id": wave_id}
-        ).mappings().first()
-        if not wave_rows:
-            raise HTTPException(status_code=404, detail="Wave not found")
-
-        conn.execute(
-            text("UPDATE ppdb_waves SET mou_template = :template WHERE id = :wave_id"),
-            {"template": body.mou_template, "wave_id": wave_id}
-        )
-    return {"success": True, "wave_id": wave_id}
-
-
-# ─── MOU ────────────────────────────────────────────────────────────────────# — MOU —
-
-@router.get("/applicants/{applicant_id}/mou")
-def get_applicant_mou(applicant_id: str, user: dict = Depends(require_ppdb_read)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        mou = conn.execute(
-            text("SELECT * FROM ppdb_mou WHERE applicant_id = :aid"),
-            {"aid": applicant_id}
-        ).mappings().first()
-        
-    if not mou:
-        return {"mou": None}
-    return dict(mou)
-
-@router.post("/applicants/{applicant_id}/mou/generate")
-def generate_mou(applicant_id: str, user: dict = Depends(require_ppdb_admin)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        applicant = conn.execute(
-            text("""
-                SELECT a.*, sr.graduation_status, w.mou_template 
-                FROM ppdb_applicants a
-                LEFT JOIN selection_results sr ON sr.applicant_id = a.id
-                LEFT JOIN ppdb_waves w ON w.id = a.wave_id
-                WHERE a.id = :applicant_id
-            """),
-            {"applicant_id": applicant_id}
-        ).mappings().first()
-
-        if not applicant:
-            raise HTTPException(status_code=404, detail="Applicant not found")
-        if applicant.get("graduation_status") != "passed":
-            raise HTTPException(status_code=400, detail="Pendaftar belum lulus seleksi")
-
-        template = applicant.get("mou_template") or ""
-        # Simple variable substitution
-        replacements = {
-            "{nama_peserta}": applicant.get("full_name") or "",
-            "{nisn}": applicant.get("nisn") or "",
-            "{nik}": applicant.get("nik") or "",
-            "{asal_sekolah}": applicant.get("previous_school") or "",
-            "{alamat}": applicant.get("address") or "",
-            "{nama_ortu}": applicant.get("parent_name") or "",
-        }
-        for k, v in replacements.items():
-            template = template.replace(k, str(v))
-            
-        # Wrap the points in a standard document layout
-        formatted_mou = f"""
-        <div style="font-family: serif; max-width: 800px; margin: 0 auto; color: #000;">
-            <h2 style="text-align: center; text-transform: uppercase;">Surat Pernyataan dan Kesepakatan (MOU)</h2>
-            <br/>
-            <p>Yang bertanda tangan di bawah ini:</p>
-            <table style="width: 100%; margin-bottom: 20px;">
-                <tr><td style="width: 200px;">Nama Orang Tua / Wali</td><td>: {replacements['{nama_ortu}']}</td></tr>
-                <tr><td>Alamat</td><td>: {replacements['{alamat}']}</td></tr>
-            </table>
-            <p>Selaku orang tua / wali dari calon siswa:</p>
-            <table style="width: 100%; margin-bottom: 20px;">
-                <tr><td style="width: 200px;">Nama Siswa</td><td>: <b>{replacements['{nama_peserta}']}</b></td></tr>
-                <tr><td>NISN</td><td>: {replacements['{nisn}']}</td></tr>
-                <tr><td>Asal Sekolah</td><td>: {replacements['{asal_sekolah}']}</td></tr>
-            </table>
-            <p>Menyatakan dengan sesungguhnya bahwa kami bersepakat atas poin-poin berikut:</p>
-            <div style="padding-left: 20px; text-align: justify; white-space: pre-wrap; margin-bottom: 30px;">
-                {template}
-            </div>
-            <p style="text-align: justify;">
-                Demikian surat pernyataan ini dibuat dengan sebenar-benarnya tanpa ada paksaan dari pihak manapun, 
-                untuk dipergunakan sebagaimana mestinya. Jika di kemudian hari kami melanggar kesepakatan ini, 
-                kami bersedia menerima sanksi sesuai dengan peraturan sekolah.
-            </p>
-        </div>
-        """
-
-        existing_mou = conn.execute(
-            text("SELECT id FROM ppdb_mou WHERE applicant_id = :applicant_id"),
-            {"applicant_id": applicant_id}
-        ).mappings().first()
-
-    if existing_mou:
-        mou_id = existing_mou["id"]
-        update_record("ppdb_mou", mou_id, {"draft_content": formatted_mou})
-        return get_by_id("ppdb_mou", mou_id)
-    else:
-        mou_id = str(uuid.uuid4())
-        data = {
-            "id": mou_id,
-            "applicant_id": applicant_id,
-            "draft_content": formatted_mou,
-            "status": "draft"
-        }
-        return create_record("ppdb_mou", data)
-
-@router.get("/applicants/me/mou")
-def get_my_mou(user: dict = Depends(get_current_user)):
-    pool = get_raw_pool()
-    with pool.connect() as conn:
-        applicant = conn.execute(
-            text("SELECT id FROM ppdb_applicants WHERE user_id = :user_id"),
-            {"user_id": user["id"]}
-        ).mappings().first()
-
-        if not applicant:
-            raise HTTPException(status_code=404, detail="Applicant not found")
-
-        mou = conn.execute(
-            text("SELECT * FROM ppdb_mou WHERE applicant_id = :applicant_id"),
-            {"applicant_id": applicant["id"]}
-        ).mappings().first()
-
-    if not mou:
-        return {"mou": None}
-    return dict(mou)
-
-@router.post("/applicants/me/mou/sign")
-def sign_my_mou(body: MouSignRequest, user: dict = Depends(get_current_user)):
-    pool = get_raw_pool()
-    now_wib = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
-
-    with pool.connect() as conn:
-        applicant = conn.execute(
-            text("SELECT id FROM ppdb_applicants WHERE user_id = :user_id"),
-            {"user_id": user["id"]}
-        ).mappings().first()
-
-        if not applicant:
-            raise HTTPException(status_code=404, detail="Applicant not found")
-
-        mou = conn.execute(
-            text("SELECT * FROM ppdb_mou WHERE applicant_id = :applicant_id"),
-            {"applicant_id": applicant["id"]}
-        ).mappings().first()
-
-        if not mou:
-            raise HTTPException(status_code=404, detail="MOU not found")
-        if mou.get("status") != "draft":
-            raise HTTPException(status_code=400, detail="MOU sudah ditandatangani")
-
-        with conn.begin():
-            conn.execute(
-                text("""
-                    UPDATE ppdb_mou 
-                    SET signature_data = :sig, status = 'signed', signed_at = :now, updated_at = :now 
-                    WHERE id = :mou_id
-                """),
-                {"sig": body.signature_data, "now": now_wib, "mou_id": mou["id"]}
-            )
-
-    return {"success": True, "signed_at": now_wib}
+    return service.run_reminders()

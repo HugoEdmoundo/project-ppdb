@@ -43,3 +43,8 @@ venv/
 .vercel
 .eslintcache
 .wrangler/
+
+# Scratch / debug artifacts
+scratch_*.py
+*.db
+

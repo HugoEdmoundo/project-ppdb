@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Edit, Trash2, UserCheck, UserX, UserRound } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
@@ -21,14 +22,12 @@ export default function UsersPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { user: currentUser, loading: authLoading } = useAuth()
+  const queryClient = useQueryClient()
   
   const canCrud = currentUser?.user_type === 'superadmin'
   const canView = currentUser?.user_type === 'superadmin'
 
-  const [users, setUsers] = useState<User[]>([])
-  const [roles, setRoles] = useState<Role[]>([])
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
 
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -40,26 +39,35 @@ export default function UsersPage() {
     }
   }, [currentUser, authLoading, canView, navigate])
 
-  const fetchData = useCallback(async () => {
-    if (!canView) return
-    setLoading(true)
-    try {
-      const [usersRes, rolesRes] = await Promise.all([
-        api.getUsers({ search: search || undefined }),
-        api.getRoles(),
-      ])
-      const userList = (Array.isArray(usersRes) ? usersRes : (usersRes as any).data || [])
-        .filter((u: User) => u.user_type !== 'superadmin')
-      setUsers(userList)
-      setRoles(rolesRes)
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false)
-    }
-  }, [search, canView])
+  const { data: users = [], isLoading: usersLoading } = useQuery({
+    queryKey: ['users', search],
+    queryFn: async () => {
+      const res = await api.getUsers({ search: search || undefined })
+      const userList = (Array.isArray(res) ? res : (res as any).data || [])
+      return userList.filter((u: User) => u.user_type !== 'superadmin')
+    },
+    enabled: !!canView && !authLoading,
+  })
 
-  useEffect(() => { fetchData() }, [fetchData])
+  const { data: roles = [] } = useQuery({
+    queryKey: ['roles'],
+    queryFn: api.getRoles,
+    enabled: !!canView && !authLoading,
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: api.deleteUser,
+    onSuccess: () => {
+      toast('success', 'User berhasil dihapus')
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError: (e: any) => {
+      toast('error', e.message || 'Gagal menghapus')
+    },
+    onSettled: () => {
+      setDeleting(null)
+    }
+  })
 
   // Debounce search
   const [searchInput, setSearchInput] = useState('')
@@ -78,15 +86,7 @@ export default function UsersPage() {
       onConfirm: async () => {
         setConfirmOpen(false)
         setDeleting(user.id)
-        try {
-          await api.deleteUser(user.id)
-          toast('success', 'User berhasil dihapus')
-          fetchData()
-        } catch (e: any) {
-          toast('error', e.message || 'Gagal menghapus')
-        } finally {
-          setDeleting(null)
-        }
+        deleteMutation.mutate(user.id)
       },
     })
     setConfirmOpen(true)
@@ -144,7 +144,7 @@ export default function UsersPage() {
       </div>
 
       {/* Table */}
-      {loading ? (
+      {usersLoading ? (
         <Card className="p-6">
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map(i => (
@@ -186,7 +186,7 @@ export default function UsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((user) => (
+                  {users.map((user: any) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium text-foreground">
                         <div className="flex items-center gap-2">
@@ -249,7 +249,7 @@ export default function UsersPage() {
 
           {/* Mobile Cards */}
           <div className="md:hidden space-y-3">
-            {users.map((user) => (
+            {users.map((user: any) => (
               <Card key={user.id} className="space-y-3 p-5 shadow-sm">
                 <div className="flex items-center gap-2.5">
                   <Avatar className="h-9 w-9 text-sm">

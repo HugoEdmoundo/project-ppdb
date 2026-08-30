@@ -17,6 +17,31 @@ import {
 } from '../components/ui/select'
 import { cn } from '@/lib/utils'
 
+import { useForm, Controller } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
+
+const userFormSchema = z.object({
+  username: z.string().min(1, 'Username wajib diisi'),
+  email: z.string().email('Email tidak valid').optional().or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')),
+  full_name: z.string().optional().or(z.literal('')),
+  password: z.string().optional(),
+  role_id: z.string().optional(),
+  user_type: z.string().default('admin'),
+  is_active: z.boolean().default(true),
+}).superRefine((data, ctx) => {
+  if (data.user_type !== 'superadmin' && !data.role_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['role_id'],
+      message: 'Role wajib diisi',
+    })
+  }
+})
+
+type UserFormValues = z.input<typeof userFormSchema>
+
 export default function UserFormPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -38,18 +63,24 @@ export default function UserFormPage() {
   const [modules, setModules] = useState<Module[]>([])
   const [restrictedPages, setRestrictedPages] = useState<Record<string, string[]>>({})
   const [hasPageRestrictions, setHasPageRestrictions] = useState(false)
-  const [form, setForm] = useState({
-    username: '',
-    email: '',
-    phone: '',
-    full_name: '',
-    password: '',
-    role_id: '',
-    user_type: 'admin',
-    is_active: true,
-  })
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(isEdit)
+
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue, control } = useForm<UserFormValues>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      username: '',
+      email: '',
+      phone: '',
+      full_name: '',
+      password: '',
+      role_id: '',
+      user_type: 'admin',
+      is_active: true,
+    }
+  })
+
+  const formUserType = watch('user_type')
 
   useEffect(() => {
     let active = true
@@ -69,7 +100,7 @@ export default function UserFormPage() {
             api.getUserPagePermissions(id),
           ])
           if (!active) return
-          setForm({
+          reset({
             username: user.username || '',
             email: user.email || '',
             phone: user.phone || '',
@@ -105,44 +136,50 @@ export default function UserFormPage() {
     return () => {
       active = false
     }
-  }, [id, isEdit, navigate])
+  }, [id, isEdit, navigate, reset])
 
   function generatePassword() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
     let pass = ''
     for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length))
-    setForm(prev => ({ ...prev, password: pass }))
+    setValue('password', pass, { shouldValidate: true })
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-
-    // Alert konfirmasi: email/phone akan dipakai sebagai tujuan notifikasi.
-    if (form.email || form.phone) {
-      const confirmed = await new Promise<boolean>((resolve) => {
-        setConfirmData({
-          title: 'Periksa Data Kontak',
-          message: `Pastikan Email dan No. WhatsApp sudah benar, karena sistem akan mengirim notifikasi kredensial ke alamat tersebut.\n\nEmail: ${form.email || '—'}\nWhatsApp: ${form.phone || '—'}`,
-          onConfirm: () => { setConfirmOpen(false); resolve(true) },
-        })
-        setConfirmOpen(true)
-      })
-      if (!confirmed) return
+  const onSubmit = (data: UserFormValues) => {
+    if (!isEdit && !data.password) {
+      toast('error', 'Klik Generate untuk membuat password terlebih dahulu')
+      return
     }
 
+    if (data.email || data.phone) {
+      setConfirmData({
+        title: 'Periksa Data Kontak',
+        message: `Pastikan Email dan No. WhatsApp sudah benar, karena sistem akan mengirim notifikasi kredensial ke alamat tersebut.\n\nEmail: ${data.email || '—'}\nWhatsApp: ${data.phone || '—'}`,
+        onConfirm: () => { 
+          setConfirmOpen(false)
+          executeSubmit(data)
+        },
+      })
+      setConfirmOpen(true)
+    } else {
+      executeSubmit(data)
+    }
+  }
+
+  async function executeSubmit(data: UserFormValues) {
     setLoading(true)
     try {
       if (isEdit && id) {
         const payload: any = {
-          username: form.username,
-          email: form.email || undefined,
-          phone: form.phone || undefined,
-          full_name: form.full_name || undefined,
-          role_id: form.role_id || undefined,
-          user_type: form.user_type,
-          is_active: form.is_active,
+          username: data.username,
+          email: data.email || undefined,
+          phone: data.phone || undefined,
+          full_name: data.full_name || undefined,
+          role_id: data.role_id || undefined,
+          user_type: data.user_type,
+          is_active: data.is_active,
         }
-        if (form.password) payload.password = form.password
+        if (data.password) payload.password = data.password
         await api.updateUser(id, payload)
 
         if (hasPageRestrictions) {
@@ -152,15 +189,14 @@ export default function UserFormPage() {
           await api.updateUserPagePermissions(id, [])
         }
       } else {
-        if (!form.password) throw new Error('Klik Generate untuk membuat password terlebih dahulu')
         await api.createUser({
-          username: form.username,
-          email: form.email || undefined,
-          phone: form.phone || undefined,
-          full_name: form.full_name || undefined,
-          password: form.password,
-          role_id: form.role_id || undefined,
-          user_type: form.user_type,
+          username: data.username,
+          email: data.email || undefined,
+          phone: data.phone || undefined,
+          full_name: data.full_name || undefined,
+          password: data.password!,
+          role_id: data.role_id || undefined,
+          user_type: data.user_type,
         })
       }
       toast('success', isEdit ? 'User berhasil diperbarui' : 'User berhasil dibuat')
@@ -224,7 +260,7 @@ export default function UserFormPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <Card>
           <CardContent className="space-y-5 p-6 md:p-8">
             <div className="space-y-2">
@@ -232,12 +268,11 @@ export default function UserFormPage() {
               <Input
                 id="username"
                 type="text"
-                value={form.username}
-                onChange={e => setForm({ ...form, username: e.target.value })}
+                {...register('username')}
                 placeholder="Masukkan username"
-                required
-                disabled={form.user_type === 'superadmin'}
+                disabled={formUserType === 'superadmin'}
               />
+              {errors.username && <p className="text-xs text-destructive">{errors.username.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -245,10 +280,10 @@ export default function UserFormPage() {
               <Input
                 id="email"
                 type="email"
-                value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
+                {...register('email')}
                 placeholder="email@example.com"
               />
+              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
               <p className="text-[11px] text-muted-foreground">
                 Notifikasi kredensial akan dikirim ke alamat ini.
               </p>
@@ -259,10 +294,10 @@ export default function UserFormPage() {
               <Input
                 id="phone"
                 type="tel"
-                value={form.phone}
-                onChange={e => setForm({ ...form, phone: e.target.value })}
+                {...register('phone')}
                 placeholder="6281234567890"
               />
+              {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
               <p className="text-[11px] text-muted-foreground">
                 Notifikasi kredensial akan dikirim ke nomor ini.
               </p>
@@ -273,10 +308,10 @@ export default function UserFormPage() {
               <Input
                 id="full_name"
                 type="text"
-                value={form.full_name}
-                onChange={e => setForm({ ...form, full_name: e.target.value })}
+                {...register('full_name')}
                 placeholder="Nama lengkap"
               />
+              {errors.full_name && <p className="text-xs text-destructive">{errors.full_name.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -287,8 +322,7 @@ export default function UserFormPage() {
                 <Input
                   id="password"
                   type="text"
-                  value={form.password}
-                  onChange={e => setForm({ ...form, password: e.target.value })}
+                  {...register('password')}
                   placeholder={isEdit ? '••••••••' : 'Klik Generate untuk membuat password'}
                   readOnly
                   className="select-none"
@@ -304,6 +338,7 @@ export default function UserFormPage() {
                   Generate
                 </Button>
               </div>
+              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
               <p className="text-[11px] text-amber-600 flex items-center gap-1">
                 <KeyRound className="h-3 w-3" />
                 Password dibuat otomatis oleh sistem — tidak bisa diisi manual.
@@ -312,37 +347,50 @@ export default function UserFormPage() {
 
             <div className="space-y-2">
               <Label className="text-xs font-semibold text-foreground">Role</Label>
-              <Select
-                value={form.role_id || undefined}
-                onValueChange={(v) => setForm({ ...form, role_id: v })}
-                disabled={form.user_type === 'superadmin'}
-              >
-                <SelectTrigger className={cn(!form.role_id && 'text-muted-foreground')}>
-                  <SelectValue placeholder="Pilih role..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.filter(r => !r.is_superadmin && !r.is_system).map(r => (
-                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Controller
+                control={control}
+                name="role_id"
+                render={({ field }) => (
+                  <Select
+                    value={field.value || undefined}
+                    onValueChange={field.onChange}
+                    disabled={formUserType === 'superadmin'}
+                  >
+                    <SelectTrigger className={cn(!field.value && 'text-muted-foreground', errors.role_id && 'border-destructive')}>
+                      <SelectValue placeholder="Pilih role..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.filter(r => !r.is_superadmin && !r.is_system).map(r => (
+                        <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.role_id && <p className="text-xs text-destructive">{errors.role_id.message}</p>}
             </div>
 
             <div className="flex items-center gap-3">
               <Label htmlFor="status" className="text-xs font-semibold text-foreground">Status</Label>
-              <Switch
-                id="status"
-                checked={form.is_active}
-                onCheckedChange={(v) => setForm({ ...form, is_active: v })}
-                disabled={form.user_type === 'superadmin'}
+              <Controller
+                control={control}
+                name="is_active"
+                render={({ field }) => (
+                  <Switch
+                    id="status"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    disabled={formUserType === 'superadmin'}
+                  />
+                )}
               />
-              <span className="text-xs text-muted-foreground">{form.is_active ? 'Active' : 'Inactive'}</span>
+              <span className="text-xs text-muted-foreground">{watch('is_active') ? 'Active' : 'Inactive'}</span>
             </div>
           </CardContent>
         </Card>
 
         {/* Page Permissions Section - only on edit */}
-        {isEdit && form.user_type !== 'superadmin' && (
+        {isEdit && formUserType !== 'superadmin' && (
           <Card>
             <CardContent className="space-y-4 p-6 md:p-8">
               <div className="flex items-center gap-2">

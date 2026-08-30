@@ -1,84 +1,69 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
-import { CreditCard, CheckCircle, XCircle, Waves } from 'lucide-react'
+import { CreditCard, CheckCircle, XCircle, Waves, ChevronLeft, ChevronRight } from 'lucide-react'
 import { apiFetch } from '@/api/client'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { Transaction } from '@/types/ppdb'
 
 export default function PaymentsPage() {
   const { toast } = useToast()
   const { canCrud } = useCan('payment', 'crud')
+  const queryClient = useQueryClient()
   
   const [activeTab, setActiveTab] = useState('all')
-  const [transactions, setTransactions] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [hasActiveWave, setHasActiveWave] = useState<boolean | null>(null)
+  const [page, setPage] = useState(1)
+  const limit = 20
+  
   const [confirmId, setConfirmId] = useState<string | null>(null)
-  const [confirming, setConfirming] = useState(false)
   const [cancelId, setCancelId] = useState<string | null>(null)
-  const [cancelling, setCancelling] = useState(false)
 
-  const fetchTransactions = async (statusFilter = activeTab) => {
-    setLoading(true)
-    try {
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ['transactions', activeTab, page, limit],
+    queryFn: async () => {
       const q = new URLSearchParams()
-      if (statusFilter !== 'all') {
-        q.append('status', statusFilter)
+      if (activeTab !== 'all') {
+        q.append('status', activeTab)
       }
+      q.append('page', page.toString())
+      q.append('limit', limit.toString())
       
-      // Backend secara otomatis scope ke gelombang aktif.
-      // Jika tidak ada gelombang aktif, active_wave akan null dan data kosong.
-      const res = await apiFetch<any>(`/payment/transactions?${q.toString()}`)
-      setTransactions(res.data || [])
-      setHasActiveWave(res.active_wave !== null && res.active_wave !== undefined)
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal memuat transaksi')
-    } finally {
-      setLoading(false)
+      const res = await apiFetch<{ data: Transaction[], total: number, active_wave: any }>(`/payment/transactions?${q.toString()}`)
+      return res
     }
-  }
+  })
 
-  useEffect(() => {
-    fetchTransactions(activeTab)
-  }, [activeTab])
+  const transactions = data?.data || []
+  const hasActiveWave = data?.active_wave !== null && data?.active_wave !== undefined
+  const totalPages = data?.total ? Math.ceil(data.total / limit) : 1
 
-
-  const handleConfirm = async () => {
-    if (!confirmId) return
-    setConfirming(true)
-    try {
-      await apiFetch(`/payment/transactions/${confirmId}/confirm`, { method: 'PUT' })
+  const confirmMutation = useMutation({
+    mutationFn: (id: string) => apiFetch(`/payment/transactions/${id}/confirm`, { method: 'PUT' }),
+    onSuccess: () => {
       toast('success', 'Pembayaran berhasil diverifikasi')
-      fetchTransactions()
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal verifikasi')
-    } finally {
-      setConfirming(false)
-      setConfirmId(null)
-    }
-  }
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    },
+    onError: (e: any) => toast('error', e.message || 'Gagal verifikasi'),
+    onSettled: () => setConfirmId(null)
+  })
 
-  const handleCancel = async () => {
-    if (!cancelId) return
-    setCancelling(true)
-    try {
-      await apiFetch(`/payment/transactions/${cancelId}/cancel-confirm`, { method: 'PUT' })
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => apiFetch(`/payment/transactions/${id}/cancel-confirm`, { method: 'PUT' }),
+    onSuccess: () => {
       toast('success', 'Verifikasi berhasil dibatalkan')
-      fetchTransactions()
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal membatalkan verifikasi')
-    } finally {
-      setCancelling(false)
-      setCancelId(null)
-    }
-  }
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    },
+    onError: (e: any) => toast('error', e.message || 'Gagal membatalkan verifikasi'),
+    onSettled: () => setCancelId(null)
+  })
 
   const renderTable = () => (
     <Card>
@@ -102,45 +87,72 @@ export default function PaymentsPage() {
                 <TableCell colSpan={6} className="py-8">
                   <EmptyState
                     icon={hasActiveWave === false ? Waves : CreditCard}
-                    title={hasActiveWave === false ? "Tidak Ada Gelombang Aktif" : "Tidak Ada Transaksi"}
+                    title={hasActiveWave === false ? "Tidak Ada Gelombang Aktif" : "Belum Ada Transaksi"}
                     description={
-                      hasActiveWave === false
-                        ? "Aktifkan gelombang terlebih dahulu untuk menampilkan data transaksi."
-                        : "Belum ada data transaksi pembayaran yang sesuai kriteria."
+                      hasActiveWave === false 
+                        ? "Aktifkan gelombang terlebih dahulu untuk melihat data pembayaran." 
+                        : "Data pembayaran tahap 1 belum tersedia."
                     }
                     className="bg-transparent border-transparent"
                   />
                 </TableCell>
               </TableRow>
             ) : (
-              transactions.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell>
-                    <div className="font-medium">{t.applicant_name}</div>
-                    <div className="text-xs text-muted-foreground">{t.applicant_email}</div>
+              transactions.map((trx: Transaction) => (
+                <TableRow key={trx.id}>
+                  <TableCell className="font-medium">
+                    {trx.full_name || trx.applicant_name || '-'}
+                    <div className="text-xs text-muted-foreground font-normal">{trx.wave_name || '-'}</div>
                   </TableCell>
-                  <TableCell className="uppercase">{t.method}</TableCell>
-                  <TableCell>Rp {t.amount?.toLocaleString('id-ID') || 0}</TableCell>
+                  <TableCell>
+                    {trx.payment_method === 'manual' ? (
+                      <Badge variant="outline">Manual/Transfer</Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50">Gateway</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-medium text-foreground">
+                    Rp {trx.amount.toLocaleString('id-ID')}
+                  </TableCell>
                   <TableCell className="text-sm">
-                    {new Date(t.created_at).toLocaleDateString('id-ID')}
+                    {new Date(trx.created_at).toLocaleDateString('id-ID', {
+                      day: 'numeric', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit'
+                    })}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={t.status === 'success' ? 'success' : t.status === 'expired' || t.status === 'failed' ? 'destructive' : 'warning'}>
-                      {t.status === 'success' ? 'LUNAS' : t.status === 'expired' ? 'EXPIRED' : 'PENDING'}
+                    <Badge 
+                      variant={trx.status === 'paid' ? 'success' : trx.status === 'expired' ? 'destructive' : 'warning'}
+                    >
+                      {trx.status.toUpperCase()}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {canCrud && t.status === 'pending' && (
-                      <Button size="sm" onClick={() => setConfirmId(t.id)} className="gap-2">
-                        <CheckCircle className="h-4 w-4" />
-                        Konfirmasi
-                      </Button>
-                    )}
-                    {canCrud && t.status === 'success' && t.method === 'offline' && (
-                      <Button size="sm" variant="outline" onClick={() => setCancelId(t.id)} className="gap-2 text-rose-500 hover:text-rose-600 hover:bg-rose-50 border-rose-200">
-                        <XCircle className="h-4 w-4" />
-                        Batal Konfirmasi
-                      </Button>
+                    {canCrud && (
+                      <div className="flex justify-end gap-2">
+                        {trx.payment_method === 'manual' && trx.status === 'pending' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="h-8 border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                            onClick={() => setConfirmId(trx.id)}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Verifikasi
+                          </Button>
+                        )}
+                        {trx.payment_method === 'manual' && trx.status === 'paid' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="h-8 border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                            onClick={() => setCancelId(trx.id)}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Batalkan
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -148,6 +160,35 @@ export default function PaymentsPage() {
             )}
           </TableBody>
         </Table>
+        
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t">
+            <span className="text-sm text-muted-foreground">
+              Halaman {page} dari {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Prev
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
@@ -160,55 +201,58 @@ export default function PaymentsPage() {
           Pembayaran PPDB
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manajemen transaksi pembayaran pendaftaran calon santri/murid baru.
+          Kelola pembayaran formulir pendaftaran (Tahap 1).
         </p>
       </div>
 
-      {/* Banner tidak ada gelombang aktif */}
       {!loading && hasActiveWave === false && (
         <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <Waves className="h-5 w-5 shrink-0 text-amber-500" />
           <span>
-            Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk menampilkan data transaksi pembayaran.
+            Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk menampilkan data pembayaran.
           </span>
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full overflow-x-auto">
-        <TabsList className="inline-flex w-max sm:w-auto">
-          <TabsTrigger value="all" className="text-xs sm:text-sm">Semua</TabsTrigger>
-          <TabsTrigger value="success" className="text-xs sm:text-sm">Lunas</TabsTrigger>
-          <TabsTrigger value="pending" className="text-xs sm:text-sm">Menunggu</TabsTrigger>
-          <TabsTrigger value="expired" className="text-xs sm:text-sm">Expired/Gagal</TabsTrigger>
+      <Tabs 
+        value={activeTab} 
+        onValueChange={(val) => {
+          setActiveTab(val)
+          setPage(1)
+        }}
+        className="w-full"
+      >
+        <TabsList className="grid w-full sm:w-[400px] grid-cols-4">
+          <TabsTrigger value="all">Semua</TabsTrigger>
+          <TabsTrigger value="pending">Pending</TabsTrigger>
+          <TabsTrigger value="paid">Lunas</TabsTrigger>
+          <TabsTrigger value="expired">Expired</TabsTrigger>
         </TabsList>
-        
-        <div className="mt-6">
-          <TabsContent value="all">{renderTable()}</TabsContent>
-          <TabsContent value="success">{renderTable()}</TabsContent>
-          <TabsContent value="pending">{renderTable()}</TabsContent>
-          <TabsContent value="expired">{renderTable()}</TabsContent>
+        <div className="mt-4">
+          {renderTable()}
         </div>
       </Tabs>
 
       <ConfirmDialog
         isOpen={!!confirmId}
         onClose={() => setConfirmId(null)}
-        onConfirm={handleConfirm}
-        loading={confirming}
-        title="Konfirmasi Pembayaran"
-        message="Apakah Anda yakin ingin memverifikasi pembayaran ini secara manual?"
+        title="Verifikasi Pembayaran"
+        message="Apakah Anda yakin ingin memverifikasi pembayaran ini? Pendaftar akan mendapatkan akses ke dashboard."
+        onConfirm={() => confirmId && confirmMutation.mutate(confirmId)}
         confirmLabel="Ya, Verifikasi"
+        variant="primary"
+        loading={confirmMutation.isPending}
       />
 
       <ConfirmDialog
         isOpen={!!cancelId}
         onClose={() => setCancelId(null)}
-        onConfirm={handleCancel}
-        loading={cancelling}
         title="Batalkan Verifikasi"
-        message="Apakah Anda yakin ingin membatalkan verifikasi pembayaran ini? Pendaftar akan dikembalikan status pembayarannya menjadi pending dan tidak dapat mengakses dashboard."
+        message="Apakah Anda yakin ingin membatalkan verifikasi pembayaran ini? Status akan kembali menjadi pending."
+        onConfirm={() => cancelId && cancelMutation.mutate(cancelId)}
         confirmLabel="Ya, Batalkan"
         variant="danger"
+        loading={cancelMutation.isPending}
       />
     </div>
   )

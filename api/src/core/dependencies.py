@@ -1,13 +1,13 @@
-import json
 from typing import Any, Callable, Dict
+import json
 
-from fastapi import Depends, HTTPException, Security
+from fastapi import Depends, HTTPException, Security, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from src.core.database import get_by_id
 from src.core.security import verify_token
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 class AccessLevel:
@@ -74,8 +74,14 @@ async def has_module_access(user: Dict[str, Any], module: str, required: str = A
     return False
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict[str, Any]:
-    payload = verify_token(credentials.credentials)
+def get_current_user(request: Request, credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict[str, Any]:
+    token = request.cookies.get("access_token")
+    if not token and credentials:
+        token = credentials.credentials
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    payload = verify_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 

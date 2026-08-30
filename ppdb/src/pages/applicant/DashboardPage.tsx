@@ -674,9 +674,9 @@ export default function ApplicantDashboardPage() {
   if (loading) return <div className="p-8 text-center">Memuat dashboard...</div>
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-slate-50">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-20 glass-navbar">
+      <header className="sticky top-0 z-20 bg-white border-b shadow-sm">
         <div className="flex items-center justify-between px-4 md:px-6 h-14 max-w-6xl mx-auto">
           <h1 className="font-heading text-base font-bold text-foreground">PPDB</h1>
 
@@ -724,7 +724,7 @@ export default function ApplicantDashboardPage() {
           </p>
         </div>
 
-        <div className="space-y-4 relative before:absolute before:inset-0 before:ml-6 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-muted before:to-transparent">
+        <div className="space-y-6 relative before:absolute before:inset-0 before:ml-[1.375rem] before:-translate-x-px before:h-full before:w-0.5 before:bg-slate-200">
           
           {steps.map((step) => {
             const isCompleted = step.status === 'completed'
@@ -732,30 +732,30 @@ export default function ApplicantDashboardPage() {
             const isLocked = step.status === 'locked'
             const isExpanded = expandedStep === step.number
 
-            let iconBg = 'bg-muted border-muted-foreground/30 text-muted-foreground'
-            if (isCompleted) iconBg = 'bg-emerald-500 border-emerald-600 text-white shadow-sm'
-            if (isActive) iconBg = 'bg-blue-500 border-blue-600 text-white shadow-sm ring-4 ring-blue-500/20'
+            let iconBg = 'bg-slate-100 border-slate-200 text-slate-400'
+            if (isCompleted) iconBg = 'bg-emerald-500 border-emerald-600 text-white shadow-sm ring-4 ring-emerald-50'
+            if (isActive) iconBg = 'bg-blue-600 border-blue-700 text-white shadow-md ring-4 ring-blue-50'
 
             return (
-              <div key={step.number} className="relative flex items-center group is-active">
+              <div key={step.number} className="relative flex items-start group">
                 
-                <div className="flex items-center justify-center w-12 h-12 rounded-full border-2 bg-background shrink-0 z-10 mr-4">
-                  <div className={`flex items-center justify-center w-full h-full rounded-full transition-colors ${iconBg}`}>
+                <div className="flex items-center justify-center w-11 h-11 rounded-full border-2 bg-white shrink-0 z-10 mr-5 mt-1">
+                  <div className={`flex items-center justify-center w-full h-full rounded-full transition-all duration-300 ${iconBg}`}>
                     {isCompleted ? <CheckCircle className="w-5 h-5" /> : <span className="font-bold">{step.number}</span>}
                   </div>
                 </div>
 
                 <div className="w-[calc(100%-4rem)]">
                   <Card 
-                    className={`transition-all duration-200 ${isActive ? 'border-blue-300 shadow-md ring-1 ring-blue-100' : isLocked ? 'opacity-70 grayscale-[50%]' : ''}`}
+                    className={`transition-all duration-300 border-slate-200 shadow-sm ${isActive ? 'border-blue-200 shadow-md ring-1 ring-blue-100 bg-white' : isLocked ? 'opacity-60 bg-slate-50/50' : 'bg-white'}`}
                   >
                     <CardHeader 
-                      className={`cursor-pointer p-4 ${isLocked ? 'cursor-not-allowed' : 'hover:bg-muted/50'}`}
+                      className={`cursor-pointer p-5 ${isLocked ? 'cursor-not-allowed' : 'hover:bg-slate-50'}`}
                       onClick={() => !isLocked && toggleStep(step.number)}
                     >
                       <div className="flex justify-between items-center gap-4">
                         <div>
-                          <CardTitle className={`text-base ${isActive ? 'text-blue-700' : isCompleted ? 'text-emerald-700' : ''}`}>
+                          <CardTitle className={`text-lg ${isActive ? 'text-blue-700 font-bold' : isCompleted ? 'text-emerald-700 font-bold' : 'text-slate-800'}`}>
                             {step.title}
                           </CardTitle>
                           <CardDescription className="text-xs mt-1">

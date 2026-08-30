@@ -17,8 +17,29 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Card, CardContent } from '@/components/ui/Card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
+import { CredentialsCard } from '@/components/CredentialsCard'
+import { apiFetch } from '@/api/client'
+import { useToast } from '@/components/Toast'
 import { settingsService } from '../../services/index'
 import { cn } from '@/lib/utils'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+
+const loginSchema = z.object({
+  username: z.string().min(1, 'Username wajib diisi'),
+  password: z.string().min(1, 'Password wajib diisi'),
+})
+
+type LoginData = z.infer<typeof loginSchema>
+
+const recoverSchema = z.object({
+  nik: z.string().min(1, 'NIK wajib diisi'),
+  dob: z.string().min(1, 'Tanggal lahir wajib diisi'),
+})
+
+type RecoverData = z.infer<typeof recoverSchema>
 
 const PATTERN_OVERLAY = {
   backgroundImage:
@@ -62,17 +83,36 @@ function translateLoginError(message: string): string {
 
 export default function LoginPage() {
   const { login, user, logout } = useAuth()
+  const { toast } = useToast()
   const { isAdmin, hasApplicantAccess } = usePermission()
   const navigate = useNavigate()
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
+  
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginData>({
+    resolver: zodResolver(loginSchema),
+  })
+
+  const {
+    register: registerRecover,
+    handleSubmit: handleRecoverSubmit,
+    reset: resetRecover,
+    formState: { errors: recoverErrors, isSubmitting: recoverLoading },
+  } = useForm<RecoverData>({
+    resolver: zodResolver(recoverSchema),
+  })
+
   const [showPw, setShowPw] = useState(false)
-  const [fieldErrors, setFieldErrors] = useState<{ username?: string; password?: string }>({})
   const [shakeKey, setShakeKey] = useState(0)
-  const [loading, setLoading] = useState(false)
   const [loginSuccess, setLoginSuccess] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
+  
+  const [showRecover, setShowRecover] = useState(false)
+  const [recoverResult, setRecoverResult] = useState<{username: string, new_password: string} | null>(null)
 
   useEffect(() => {
     settingsService
@@ -104,29 +144,27 @@ export default function LoginPage() {
     }
   }, [user, navigate, canAdmin, canApplicant, canChoose, logout])
 
-  function clearLoginError() {
-    setErrorMsg('')
-    setFieldErrors({})
+  const onRecover = async (data: RecoverData) => {
+    try {
+      const res = await apiFetch<any>('/auth/recover-applicant', {
+        method: 'POST',
+        body: JSON.stringify({ nik: data.nik, birth_date: data.dob })
+      })
+      setRecoverResult(res)
+    } catch (err: any) {
+      toast('error', err.message || 'Data tidak ditemukan')
+    }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const errors: { username?: string; password?: string } = {}
-    if (!username.trim()) errors.username = 'Username wajib diisi'
-    if (!password) errors.password = 'Password wajib diisi'
-    setFieldErrors(errors)
-    if (Object.keys(errors).length > 0) return
-    setLoading(true)
+  const onSubmit = async (data: LoginData) => {
     try {
-      await login(username, password)
-      setLoginSuccess(true)
       setErrorMsg('')
+      await login(data.username, data.password)
+      setLoginSuccess(true)
     } catch (err) {
       setLoginSuccess(false)
       setErrorMsg(translateLoginError(err instanceof Error ? err.message : 'Login gagal'))
       setShakeKey((k) => k + 1)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -249,7 +287,7 @@ export default function LoginPage() {
                     </Button>
                   </div>
                 ) : !user ? (
-                  <form onSubmit={handleSubmit} className="space-y-5 text-left">
+                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 text-left">
                     <div>
                       <Label htmlFor="username" className="mb-1.5 block text-xs font-semibold text-foreground">
                         Username
@@ -258,16 +296,15 @@ export default function LoginPage() {
                         <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                           id="username"
-                          value={username}
-                          onChange={(e) => { setUsername(e.target.value); setFieldErrors((f) => ({ ...f, username: undefined })); clearLoginError() }}
+                          {...register('username')}
                           placeholder="Masukkan username"
-                          error={fieldErrors.username}
-                          required
+                          error={errors.username?.message}
                           autoFocus
                           autoComplete="username"
                           className="h-11 rounded-xl bg-white/80 pl-9"
                         />
                       </div>
+                      {errors.username && <p className="mt-1 text-xs text-red-500">{errors.username.message}</p>}
                     </div>
 
                     <div>
@@ -278,11 +315,9 @@ export default function LoginPage() {
                         <Input
                           id="password"
                           type={showPw ? 'text' : 'password'}
-                          value={password}
-                          onChange={(e) => { setPassword(e.target.value); setFieldErrors((f) => ({ ...f, password: undefined })); clearLoginError() }}
+                          {...register('password')}
                           placeholder="Masukkan password"
-                          error={fieldErrors.password}
-                          required
+                          error={errors.password?.message}
                           autoComplete="current-password"
                           className="h-11 rounded-xl bg-white/80 pr-10"
                         />
@@ -296,10 +331,11 @@ export default function LoginPage() {
                           {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
+                      {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
                     </div>
 
-                    <Button type="submit" size="lg" className="w-full" disabled={loading} loading={loading}>
-                      {loading ? (
+                    <Button type="submit" size="lg" className="w-full" disabled={isSubmitting} loading={isSubmitting}>
+                      {isSubmitting ? (
                         'Memproses...'
                       ) : (
                         <>
@@ -308,6 +344,13 @@ export default function LoginPage() {
                         </>
                       )}
                     </Button>
+
+                    <div className="pt-2 text-center text-xs text-muted-foreground">
+                      Lupa kredensial?{' '}
+                      <button type="button" onClick={() => setShowRecover(true)} className="font-semibold text-primary hover:underline">
+                        Pulihkan Akun
+                      </button>
+                    </div>
                   </form>
                 ) : null}
               </CardContent>
@@ -319,6 +362,49 @@ export default function LoginPage() {
           </p>
         </div>
       </main>
+
+      <Dialog open={showRecover} onOpenChange={(open) => {
+        setShowRecover(open)
+        if (!open) { setRecoverResult(null); resetRecover() }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pulihkan Kredensial</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            {recoverResult ? (
+              <div className="space-y-4">
+                <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 border border-amber-200">
+                  Mohon simpan dan catat kredensial baru ini dengan baik.
+                </div>
+                <CredentialsCard username={recoverResult.username} password={recoverResult.new_password} />
+                <Button className="w-full" onClick={() => {
+                  setShowRecover(false)
+                  setValue('username', recoverResult.username)
+                  setValue('password', recoverResult.new_password)
+                }}>Masuk Sekarang</Button>
+              </div>
+            ) : (
+              <form onSubmit={handleRecoverSubmit(onRecover)} className="space-y-4">
+                <p className="text-sm text-muted-foreground">Masukkan NIK dan Tanggal Lahir pendaftar untuk mereset dan memulihkan akses login.</p>
+                <div>
+                  <Label htmlFor="rec_nik">NIK Pendaftar</Label>
+                  <Input id="rec_nik" {...registerRecover('nik')} placeholder="320..." error={recoverErrors.nik?.message} />
+                  {recoverErrors.nik && <p className="mt-1 text-xs text-red-500">{recoverErrors.nik.message}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="rec_dob">Tanggal Lahir</Label>
+                  <Input id="rec_dob" type="date" {...registerRecover('dob')} error={recoverErrors.dob?.message} />
+                  {recoverErrors.dob && <p className="mt-1 text-xs text-red-500">{recoverErrors.dob.message}</p>}
+                </div>
+                <Button type="submit" className="w-full" disabled={recoverLoading}>
+                  {recoverLoading ? 'Mencari Data...' : 'Cari Data & Reset Password'}
+                </Button>
+              </form>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

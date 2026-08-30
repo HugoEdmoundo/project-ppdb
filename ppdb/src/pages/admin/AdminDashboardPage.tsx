@@ -1,105 +1,129 @@
-import { useState, useEffect } from 'react'
-import { BarChart3, Layers } from 'lucide-react'
-import { dashboardService, ppdbService } from '../../services/index'
+import { Users, FileText, CreditCard, Activity, CalendarDays, CheckCircle2 } from 'lucide-react'
+import { applicantService, paymentService, ppdbService } from '../../services/index'
 import { useToast } from '../../components/Toast'
-import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
-
-interface DashboardStats {
-  total_periods: number
-  total_waves: number
-  active_period_name?: string | null
-}
+import { useQuery } from '@tanstack/react-query'
 
 export default function AdminDashboardPage() {
   const { toast } = useToast()
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    let cancelled = false
+  const { data: applicantsRes, isLoading: loadingApplicants, isError: errorApplicants } = useQuery({
+    queryKey: ['applicants', 'dashboard'],
+    queryFn: () => applicantService.getApplicants({ limit: 1000 }),
+    // TODO: Backend should provide a /stats endpoint to avoid fetching 1000 rows
+  })
 
-    async function load() {
-      try {
-        const s = await dashboardService.getStats()
-        if (cancelled) return
-        setStats(s as DashboardStats)
-      } catch {
-        // /ppdb/dashboard/stats tidak tersedia di API produksi -> hitung dari data periode & gelombang
-        try {
-          const [periods, waves] = await Promise.all([
-            ppdbService.getAllPeriods(),
-            ppdbService.getAllWaves(),
-          ])
-          if (cancelled) return
-          const active = Array.isArray(periods) ? periods.find((p: any) => p.status === 'active') : undefined
-          setStats({
-            total_periods: Array.isArray(periods) ? periods.length : 0,
-            total_waves: Array.isArray(waves) ? waves.length : 0,
-            active_period_name: active?.name ?? null,
-          })
-        } catch {
-          if (!cancelled) toast('error', 'Gagal memuat data')
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
+  const { data: paymentsRes, isLoading: loadingPayments, isError: errorPayments } = useQuery({
+    queryKey: ['payments', 'dashboard', 'pending'],
+    queryFn: () => paymentService.getTransactions({ status: 'pending', limit: 1000 }),
+  })
 
-    load()
-    return () => { cancelled = true }
-  }, [toast])
+  const { data: periodsRes, isLoading: loadingPeriods, isError: errorPeriods } = useQuery({
+    queryKey: ['periods', 'all'],
+    queryFn: () => ppdbService.getAllPeriods(),
+  })
+
+  const loading = loadingApplicants || loadingPayments || loadingPeriods
+  const isError = errorApplicants || errorPayments || errorPeriods
+
+  if (isError) {
+    toast('error', 'Gagal memuat data dashboard')
+  }
+
+  const activePeriod = Array.isArray(periodsRes) ? periodsRes.find((p: any) => p.status === 'active') : null
+  const activeWaveName = applicantsRes?.active_wave ? applicantsRes.active_wave.name : null
+  
+  const applicantsList = applicantsRes?.data || []
+  const totalApplicants = applicantsList.length
+  const pendingDocuments = applicantsList.filter((a: any) => a.status === 'document_uploaded_pending').length
+  
+  const paymentsList = paymentsRes?.data || []
+  const pendingPayments = paymentsList.length
+
+  const stats = {
+    total_applicants: totalApplicants,
+    pending_documents: pendingDocuments,
+    pending_payments: pendingPayments,
+    active_wave_name: activeWaveName,
+    active_period_name: activePeriod?.name || null,
+  }
 
   const statCards = [
-    { label: 'Periode', value: stats?.total_periods ?? '—', icon: BarChart3, color: 'bg-indigo-500' },
-    { label: 'Gelombang', value: stats?.total_waves ?? '—', icon: Layers, color: 'bg-teal-500' },
+    { label: 'Total Pendaftar', value: stats.total_applicants ?? '—', icon: Users, color: 'bg-blue-500' },
+    { label: 'Dokumen Menunggu', value: stats.pending_documents ?? '—', icon: FileText, color: 'bg-amber-500' },
+    { label: 'Pembayaran Menunggu', value: stats.pending_payments ?? '—', icon: CreditCard, color: 'bg-indigo-500' },
+    { label: 'Status Sistem', value: stats.active_wave_name ? 'Aktif' : 'Standby', icon: Activity, color: stats.active_wave_name ? 'bg-emerald-500' : 'bg-slate-400' },
   ]
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-8 animate-fade-in pb-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Ringkasan data PPDB</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+          <p className="text-slate-500 mt-1">Ringkasan operasional PPDB saat ini.</p>
         </div>
         {!loading && (
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-card/70 px-4 py-2 shadow-sm">
-            <span className="text-xs font-medium text-muted-foreground">Periode Aktif:</span>
-            {stats?.active_period_name ? (
-              <Badge variant="success" className="text-sm font-bold px-2.5 py-0.5">{stats.active_period_name}</Badge>
-            ) : (
-              <Badge variant="danger" className="text-sm font-bold px-2.5 py-0.5">Belum ada periode aktif</Badge>
-            )}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex items-center gap-2 rounded-lg border bg-white px-4 py-2 shadow-sm">
+              <CalendarDays className="h-4 w-4 text-slate-400" />
+              <span className="text-xs font-medium text-slate-500">Periode:</span>
+              <span className="text-sm font-bold text-slate-900">{stats.active_period_name || 'Tidak ada'}</span>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border bg-white px-4 py-2 shadow-sm">
+              <Activity className="h-4 w-4 text-slate-400" />
+              <span className="text-xs font-medium text-slate-500">Gelombang:</span>
+              <span className="text-sm font-bold text-slate-900">{stats.active_wave_name || 'Tidak ada'}</span>
+            </div>
           </div>
         )}
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1, 2].map(i => (
-            <Card key={i} className="p-6">
-              <Skeleton className="mb-3 h-4 w-24" />
-              <Skeleton className="h-8 w-16" />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {loading ? (
+          Array(4).fill(0).map((_, i) => (
+            <Card key={i} className="p-6 border-slate-100 shadow-sm rounded-2xl">
+              <Skeleton className="mb-4 h-5 w-24" />
+              <Skeleton className="h-10 w-16" />
             </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {statCards.map((card) => {
+          ))
+        ) : (
+          statCards.map((card) => {
             const Icon = card.icon
             return (
-              <Card key={card.label} className="glass-card p-6 hover:shadow-glass-hover transition-shadow">
-                <div className="mb-3 flex items-center gap-3">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${card.color}`}>
-                    <Icon className="h-5 w-5 text-white" />
+              <Card key={card.label} className="p-6 border-slate-100 shadow-sm rounded-2xl bg-white hover:shadow-md transition-all">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="text-sm font-semibold text-slate-500">{card.label}</span>
+                  <div className={`p-2.5 rounded-xl ${card.color.replace('500', '100')} bg-opacity-100`}>
+                    <Icon className={`h-5 w-5 ${card.color.replace('bg-', 'text-').replace('500', '600')}`} />
                   </div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{card.label}</span>
                 </div>
-                <p className="font-heading text-3xl font-bold text-foreground">{card.value}</p>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-3xl font-bold text-slate-900">{card.value}</h3>
+                  {typeof card.value === 'number' && card.value > 0 && (
+                     <span className="text-xs font-medium text-emerald-600 flex items-center bg-emerald-50 px-2 py-0.5 rounded-full">
+                       <CheckCircle2 className="w-3 h-3 mr-1" /> Perlu Proses
+                     </span>
+                  )}
+                </div>
               </Card>
             )
-          })}
+          })
+        )}
+      </div>
+
+      {/* Empty State / Notice */}
+      {!loading && !stats.active_wave_name && (
+        <div className="rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50 p-8 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 mb-4">
+            <Activity className="h-8 w-8 text-amber-600" />
+          </div>
+          <h3 className="text-lg font-bold text-amber-900 mb-2">Sistem PPDB Sedang Standby</h3>
+          <p className="text-amber-700 max-w-md mx-auto">
+            Saat ini tidak ada Gelombang yang berstatus aktif. Pendaftaran baru dari publik akan ditutup. Silakan masuk ke menu Pengaturan PPDB untuk mengaktifkan gelombang.
+          </p>
         </div>
       )}
     </div>

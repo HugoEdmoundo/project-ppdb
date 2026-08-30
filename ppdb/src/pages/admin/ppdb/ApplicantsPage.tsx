@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import * as api from '../../../api/client'
 import { useToast } from '@/components/Toast'
+import { useCan } from '@/hooks/useCan'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/Table'
 import { Badge } from '@/components/ui/Badge'
@@ -16,6 +17,7 @@ import { REQUIRED_DOCUMENTS } from '@/constants/documents'
 
 export default function ApplicantsPage() {
   const { toast } = useToast()
+  const { canCrud } = useCan('ppdb', 'crud')
   
   const [applicants, setApplicants] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -264,17 +266,20 @@ export default function ApplicantsPage() {
                     value={rejectionReason}
                     onChange={(e: any) => setRejectionReason(e.target.value)}
                     rows={3}
+                    disabled={!canCrud}
                   />
                 </div>
 
-                <div className="flex justify-end gap-3 pt-2">
-                  <Button variant="danger" onClick={() => handleVerify('document_rejected')} disabled={isVerifying || !rejectionReason.trim()}>
-                    <XCircle className="h-4 w-4 mr-2" /> Tolak Dokumen
-                  </Button>
-                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleVerify('document_approved')} disabled={isVerifying}>
-                    <CheckCircle className="h-4 w-4 mr-2" /> Setujui Dokumen
-                  </Button>
-                </div>
+                {canCrud && (
+                  <div className="flex justify-end gap-3 pt-2">
+                    <Button variant="danger" onClick={() => handleVerify('document_rejected')} disabled={isVerifying || !rejectionReason.trim()}>
+                      <XCircle className="h-4 w-4 mr-2" /> Tolak Dokumen
+                    </Button>
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleVerify('document_approved')} disabled={isVerifying}>
+                      <CheckCircle className="h-4 w-4 mr-2" /> Setujui Dokumen
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}

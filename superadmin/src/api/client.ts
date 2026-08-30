@@ -3,29 +3,13 @@ import type { AuthUser, LoginResponse, User, Role, Module, UserPagePermissions }
 export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 
 async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Response> {
-  return fetch(url, opts)
+  const options = { ...opts, credentials: 'include' as RequestCredentials }
+  return fetch(url, options)
 }
 
-const TOKEN_KEY = 'sa_token'
-const REFRESH_KEY = 'sa_refresh'
 const USER_KEY = 'sa_user'
 
-function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
-}
-
-function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_KEY)
-}
-
-function setTokens(access: string, refresh: string) {
-  localStorage.setItem(TOKEN_KEY, access)
-  localStorage.setItem(REFRESH_KEY, refresh)
-}
-
 function clearAuth() {
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(REFRESH_KEY)
   localStorage.removeItem(USER_KEY)
 }
 
@@ -42,28 +26,24 @@ function setStoredUser(user: AuthUser) {
   localStorage.setItem(USER_KEY, JSON.stringify(user))
 }
 
-let refreshPromise: Promise<string | null> | null = null
+let refreshPromise: Promise<boolean> | null = null
 
-async function tryRefresh(): Promise<string | null> {
+async function tryRefresh(): Promise<boolean> {
   if (refreshPromise) {
     return refreshPromise
   }
 
   refreshPromise = (async () => {
-    const rt = getRefreshToken()
-    if (!rt) return null
     try {
       const res = await fetchWithFallback(`${API_BASE}/companyprofile/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: rt }),
+        body: JSON.stringify({}),
       })
-      if (!res.ok) return null
-      const data = await res.json()
-      setTokens(data.access_token, data.refresh_token)
-      return data.access_token
+      if (!res.ok) return false
+      return true
     } catch {
-      return null
+      return false
     } finally {
       refreshPromise = null
     }
@@ -73,25 +53,24 @@ async function tryRefresh(): Promise<string | null> {
 }
 
 async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Promise<T> {
-  const token = getToken()
   const isFormData = opts.body instanceof FormData
   const headers: Record<string, string> = {
     ...(opts.headers as Record<string, string>),
   }
   if (!isFormData) headers['Content-Type'] = 'application/json'
-  if (token) headers['Authorization'] = `Bearer ${token}`
 
   let res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers })
 
-  if (res.status === 401 && token) {
-    const newToken = await tryRefresh()
-    if (newToken) {
-      headers['Authorization'] = `Bearer ${newToken}`
+  if (res.status === 401) {
+    const refreshed = await tryRefresh()
+    if (refreshed) {
       res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers })
     }
     if (res.status === 401) {
       clearAuth()
-      window.location.href = '/auth/login'
+      if (window.location.pathname !== '/auth/login') {
+        window.location.href = '/auth/login'
+      }
       throw new Error('Unauthorized')
     }
   }
@@ -113,13 +92,15 @@ export async function login(username: string, password: string): Promise<AuthUse
     body: JSON.stringify({ username, password }),
   })
 
-  if (data.user.user_type !== 'superadmin' && !data.user.is_superadmin) {
+  if (data.user && data.user.user_type !== 'superadmin' && !data.user.is_superadmin) {
     throw new Error('Akses ditolak. Hanya superadmin yang diizinkan.')
   }
 
-  setTokens(data.access_token, data.refresh_token)
-  setStoredUser(data.user)
-  return data.user
+  if (data.user) {
+    setStoredUser(data.user)
+    return data.user
+  }
+  throw new Error('Invalid login response')
 }
 
 export async function getMe(): Promise<AuthUser> {
@@ -129,15 +110,12 @@ export async function getMe(): Promise<AuthUser> {
 }
 
 export async function logout() {
-  const token = getToken()
-  if (token) {
-    try {
-      await fetchWithFallback(`${API_BASE}/companyprofile/auth/logout`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-    } catch { /* best effort */ }
-  }
+  try {
+    await fetchWithFallback(`${API_BASE}/companyprofile/auth/logout`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    })
+  } catch { /* best effort */ }
   clearAuth()
 }
 
@@ -314,4 +292,4 @@ export async function getNotificationLogs(params?: any): Promise<any> {
 
 // ── Helpers ───────────────────────────────────────────────
 
-export { getToken, getStoredUser, clearAuth, apiFetch }
+export { getStoredUser, clearAuth, apiFetch }

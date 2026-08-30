@@ -41,6 +41,7 @@ class PPDBWave(Base):
     quota: Mapped[int] = mapped_column(Integer, default=0)
     registration_fee: Mapped[int] = mapped_column(BigInteger, default=0)
     second_stage_fee: Mapped[int] = mapped_column(BigInteger, default=0)
+    mou_template: Mapped[Optional[str]] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="inactive")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

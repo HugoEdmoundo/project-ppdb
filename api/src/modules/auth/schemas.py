@@ -12,7 +12,7 @@ class LoginResponse(BaseModel):
     user: Optional[Dict[str, Any]] = None
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: Optional[str] = None
 
 class RefreshResponse(BaseModel):
     access_token: str
@@ -38,3 +38,11 @@ class RegisterAdminRequest(BaseModel):
     password: str = Field(min_length=8)
     role_id: Optional[str] = None
     user_type: Optional[str] = None
+
+class RecoverApplicantRequest(BaseModel):
+    nik: str
+    birth_date: str
+
+class RecoverApplicantResponse(BaseModel):
+    username: str
+    new_password: str

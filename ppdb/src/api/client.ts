@@ -1,47 +1,45 @@
-const TOKEN_KEY = 'ppdb_token'
-const REFRESH_KEY = 'ppdb_refresh'
 const USER_KEY = 'ppdb_user'
 
 export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 
 async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Response> {
-  return fetch(url, opts)
+  const options = { ...opts, credentials: 'include' as RequestCredentials }
+  return fetch(url, options)
 }
 
-let refreshPromise: Promise<string | null> | null = null
+let refreshPromise: Promise<boolean> | null = null
 
-export function getToken(): string | null { return localStorage.getItem(TOKEN_KEY) }
 export function getStoredUser() { try { const u = localStorage.getItem(USER_KEY); return u ? JSON.parse(u) : null } catch { return null } }
-export function clearAuth() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(REFRESH_KEY); localStorage.removeItem(USER_KEY) }
+export function clearAuth() { localStorage.removeItem(USER_KEY) }
+export function setUser(user: unknown) { localStorage.setItem(USER_KEY, JSON.stringify(user)) }
 
-function setTokens(access: string, refresh: string) { localStorage.setItem(TOKEN_KEY, access); localStorage.setItem(REFRESH_KEY, refresh) }
-function setUser(user: unknown) { localStorage.setItem(USER_KEY, JSON.stringify(user)) }
-
-async function tryRefresh(): Promise<string | null> {
+async function tryRefresh(): Promise<boolean> {
   if (refreshPromise) return refreshPromise
   refreshPromise = (async () => {
-    const rt = localStorage.getItem(REFRESH_KEY); if (!rt) return null
     try {
-      const res = await fetchWithFallback(`${API_BASE}/auth/refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: rt }) })
-      if (!res.ok) return null
-      const data = await res.json(); const { access_token, refresh_token } = data.data || data
-      setTokens(access_token, refresh_token); return access_token
-    } catch { return null } finally { refreshPromise = null }
+      const res = await fetchWithFallback(`${API_BASE}/auth/refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+      if (!res.ok) return false
+      return true
+    } catch { return false } finally { refreshPromise = null }
   })()
   return refreshPromise
 }
 
 export async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Promise<T> {
-  const token = getToken()
   const headers: Record<string, string> = { ...(opts.headers as Record<string, string>) }
   if (!(opts.body instanceof FormData)) headers['Content-Type'] = 'application/json'
-  if (token) headers['Authorization'] = `Bearer ${token}`
 
   let res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers })
-  if (res.status === 401 && token) {
-    const newToken = await tryRefresh()
-    if (newToken) { headers['Authorization'] = `Bearer ${newToken}`; res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers }) }
-    if (res.status === 401) { clearAuth(); window.location.href = '/auth/login'; throw new Error('Unauthorized') }
+  if (res.status === 401) {
+    const refreshed = await tryRefresh()
+    if (refreshed) { res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers }) }
+    if (res.status === 401) { 
+      clearAuth(); 
+      if (window.location.pathname !== '/auth/login') {
+        window.location.href = '/auth/login'; 
+      }
+      throw new Error('Unauthorized') 
+    }
   }
   if (!res.ok) { const body = await res.json().catch(() => ({ detail: res.statusText })); throw new Error(body.detail || `API ${res.status}`) }
   if (res.status === 204) return undefined as T
@@ -49,8 +47,11 @@ export async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Pro
 }
 
 export async function login(username: string, password: string) {
-  const data = await apiFetch<{ access_token: string; refresh_token: string; user: any }>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) })
-  setTokens(data.access_token, data.refresh_token); setUser(data.user); return data.user
+  const data = await apiFetch<{ user: any }>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) })
+  if (data.user) {
+    setUser(data.user); return data.user
+  }
+  return data
 }
 
 export async function getMe() {
@@ -58,8 +59,6 @@ export async function getMe() {
 }
 
 export async function logout() {
-  try { const rt = localStorage.getItem(REFRESH_KEY); if (rt) await apiFetch('/auth/logout', { method: 'POST', body: JSON.stringify({ refresh_token: rt }) }) } catch (e) { void e }
+  try { await fetchWithFallback(`${API_BASE}/auth/logout`, { method: 'POST', body: JSON.stringify({}) }) } catch (e) { void e }
   clearAuth()
 }
-
-export { setTokens, setUser }

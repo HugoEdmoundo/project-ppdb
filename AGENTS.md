@@ -4,14 +4,23 @@ Pesantren Tahfidz Qur'an dan Digital Ar-Rahman — A monorepo containing the com
 
 ## Project Structure & Tech Stack
 
+Managed as a **pnpm workspace + Turborepo** monorepo. Run cross-package scripts from the repo root (e.g. `pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm test`) which delegate to `turbo`.
+
 | Service | Path | Tech Stack | Key Responsibilities |
 | --- | --- | --- | --- |
-| **Company Profile** | `companyprofile/` | Next.js 16 (App Router), React 19, Tailwind v4 | Public-facing website, news, programs, admin CMS dashboard. |
-| **PPDB App** | `ppdb/` | Vite 8, React 19, Tailwind CSS v3 | Student registration, payment gateway wall, applicant dashboard, PPDB admin. |
-| **Superadmin Panel**| `superadmin/` | Vite 8, React 19, Tailwind CSS v3 | System-wide users and roles management, modules access control. |
-| **Backend API** | `api/` | FastAPI 0.141, Python 3.12, SQLAlchemy 2, MySQL | Monolithic backend serving all three frontends. Handles DB, auth, SSE, and uploads. |
+| **Company Profile** | `apps/companyprofile/` | Next.js 16 (App Router), React 19, Tailwind v4 | Public-facing website, news, programs, admin CMS dashboard. |
+| **PPDB App** | `apps/ppdb/` | Vite 8, React 19, Tailwind CSS v3 | Student registration, payment gateway wall, applicant dashboard, PPDB admin. |
+| **Superadmin Panel**| `apps/superadmin/` | Vite 8, React 19, Tailwind CSS v3 | System-wide users and roles management, modules access control. |
+| **Backend API** | `apps/api/` | FastAPI 0.141, Python 3.12, SQLAlchemy 2, MySQL | Monolithic backend serving all three frontends. Handles DB, auth, SSE, and uploads. |
 
-## Backend (`api/`)
+### Workspace Layout
+- `apps/*`: Deployable applications (the four services above).
+- `packages/*`: Shared internal libraries — `ui` (shared React/Tailwind UI components), `types`, `utils`, `typescript-config`, `eslint-config`, `database`.
+- `pnpm-workspace.yaml`: Workspace globs (`apps/*`, `packages/*`).
+- `turbo.json`: Task orchestration for `build`/`dev`/`lint`/`test`.
+- `.pre-commit-config.yaml`: Pre-commit hooks (ruff, mypy, trailing-whitespace, etc.) installed on commit.
+
+## Backend (`apps/api/`)
 
 A single FastAPI service handling all business logic, database operations, and authentication.
 
@@ -87,6 +96,13 @@ Pendaftaran hanya bisa dilakukan jika **tepat 1 Periode DAN 1 Gelombang** bersta
 
 ## Environment & Secrets
 - Uses `.env` files for local development. Never commit secrets.
+- Every app reads its own `.env` from its directory (`apps/api/.env`, `apps/ppdb/.env`, etc.). No secrets are shared across the repo.
+
+## Tooling & Workflows
+- **Package manager**: `pnpm` (workspace root). Frontend deps are hoisted via `pnpm-lock.yaml`.
+- **Orchestration**: `turbo` — run `pnpm build`, `pnpm dev`, `pnpm lint`, `pnpm test` from the repo root to execute across all workspace packages.
+- **Shared UI**: `packages/ui` exports reusable React/Tailwind components; apps import from `@repo/ui` rather than maintaining duplicates.
+- **Python/API**: `apps/api` uses ruff + mypy (see `.pre-commit-config.yaml`) and runs on Python 3.12 with its own dependency files.
 
 ## Dynamic Branding (Frontend Rule)
 - **Logo & Favicon** di semua frontend (PPDB, Superadmin) WAJIB diambil secara **dinamis** dari API via endpoint `/companyprofile/settings/{key}` (key: `logo`, `favicon`, `site_name`, dll).

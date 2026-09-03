@@ -3,12 +3,12 @@ version: '3.8'
 services:
   api:
     build:
-      context: ./api
+      context: ./apps/api
     ports:
       - "8080:8000"
     volumes:
-      - ./api:/app
+      - ./apps/api:/app
     env_file:
-      - ./api/.env
+      - ./apps/api/.env
     extra_hosts:
       - "host.docker.internal:host-gateway"

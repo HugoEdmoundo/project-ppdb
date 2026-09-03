@@ -1,0 +1,38 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.venv_dev
+.venv_linux
+.venv_new
+.venv_new_bash
+.venv_new_bash2
+.venv_temp
+.venv_*/
+venv/
+
+# Uploads (local fallback storage)
+uploads/
+public/uploads/
+
+# Test / tooling
+.pytest_cache/
+.coverage
+schema_dump.*
+
+# Vercel
+.vercel/
+
+# Scratch / debug artifacts
+dev.db
+*.db
+temp.py
+test_seed.py
+del_site_name.py
+list_tables.py
+router_new.py

@@ -22,7 +22,7 @@ npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 
-# Editor / OS
+# Editor / IDE
 .vscode/*
 !.vscode/extensions.json
 .idea/
@@ -32,14 +32,28 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 
-# Python (api)
+# Python
 __pycache__/
 *.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .venv/
+.venv_*/
 venv/
+venv_*/
+
+# Turborepo
+.turbo/
+
+# Uploads (user-generated files)
+apps/api/uploads/
 
 # Misc
 *.pem
+*.key
+*.p12
 .vercel
 .eslintcache
 .wrangler/
@@ -47,4 +61,4 @@ venv/
 # Scratch / debug artifacts
 scratch_*.py
 *.db
-
+*.sqlite

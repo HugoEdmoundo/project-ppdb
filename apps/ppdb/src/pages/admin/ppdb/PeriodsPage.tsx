@@ -253,7 +253,7 @@ export default function PeriodsPage() {
         message={actionId?.type === 'activate' ? 'Mengaktifkan periode ini akan menonaktifkan periode lain yang sedang aktif.' : 'Apakah Anda yakin ingin menonaktifkan periode ini? Semua gelombang di dalamnya juga akan dinonaktifkan.'}
         onConfirm={handleAction}
         confirmLabel="Ya, Lanjutkan"
-        variant={actionId?.type === 'activate' ? 'primary' : 'danger'}
+        variant={actionId?.type === 'activate' ? 'primary' : 'destructive'}
       />
     </div>
   )

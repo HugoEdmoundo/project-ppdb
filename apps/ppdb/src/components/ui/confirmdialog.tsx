@@ -34,7 +34,7 @@ export function ConfirmDialog({
             Batal
           </Button>
           <Button
-            variant={variant === 'danger' ? 'danger' : 'default'}
+            variant={variant === 'danger' ? 'destructive' : 'default'}
             onClick={onConfirm}
             loading={loading}
           >

@@ -1,4 +1,4 @@
-import { ErrorState } from "@repo/ui"
+import { ErrorState } from '@/components/ui';
 
 export default function NotFoundPage() {
   return <ErrorState status={404} />

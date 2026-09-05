@@ -116,11 +116,13 @@ class PaymentRepository:
         transaction.updated_at = datetime.now(WIB)
         self.db.add(transaction)
         self.db.flush()
+        self.db.commit()
 
     def update_applicant(self, applicant: PPDBApplicant):
         applicant.updated_at = datetime.now(WIB)
         self.db.add(applicant)
         self.db.flush()
+        self.db.commit()
 
     def get_applicant_by_id(self, applicant_id: str) -> PPDBApplicant | None:
         stmt = select(PPDBApplicant).where(PPDBApplicant.id == applicant_id)
@@ -237,6 +239,7 @@ class PaymentRepository:
     def save_applicant_discount(self, discount: PPDBApplicantDiscount):
         self.db.add(discount)
         self.db.flush()
+        self.db.commit()
 
     def delete_stage2_bills(self, applicant_id: str, fee_item_id: str):
         stmt = delete(PPDBStage2Bill).where(
@@ -245,10 +248,12 @@ class PaymentRepository:
         )
         self.db.execute(stmt)
         self.db.flush()
+        self.db.commit()
 
     def save_stage2_bill(self, bill: PPDBStage2Bill):
         self.db.add(bill)
         self.db.flush()
+        self.db.commit()
 
     def get_wave_by_id(self, wave_id: str) -> PPDBWave | None:
         stmt = select(PPDBWave).where(PPDBWave.id == wave_id)
@@ -257,6 +262,7 @@ class PaymentRepository:
     def save_mou(self, mou: PPDBBMOU):
         self.db.add(mou)
         self.db.flush()
+        self.db.commit()
 
     def get_stage2_bills(
         self,
@@ -373,3 +379,4 @@ class PaymentRepository:
         bill.updated_at = datetime.now(WIB)
         self.db.add(bill)
         self.db.flush()
+        self.db.commit()

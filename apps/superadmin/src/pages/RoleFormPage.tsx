@@ -6,11 +6,10 @@ import { useToast } from '../components/Toast'
 import { ACCESS_LEVELS } from '../types'
 import type { AccessLevel } from '../types'
 import { useAuth } from '../contexts/AuthContext'
-import { Button } from "@repo/ui"
-import { Input } from "@repo/ui"
-import { Label } from "@repo/ui"
-import { Card, CardContent } from "@repo/ui"
-import { cn } from '@/lib/utils'
+import { Button } from "@/components/ui"
+import { Input } from "@/components/ui"
+import { Label } from "@/components/ui"
+import { Card, CardContent } from "@/components/ui"
 
 export default function RoleFormPage() {
   const navigate = useNavigate()
@@ -63,18 +62,6 @@ export default function RoleFormPage() {
       active = false
     }
   }, [id, isEdit, navigate])
-
-  function setPermission(module: string, level: AccessLevel) {
-    setPermissions(prev => ({ ...prev, [module]: level }))
-  }
-
-  function removePermission(module: string) {
-    setPermissions(prev => {
-      const next = { ...prev }
-      delete next[module]
-      return next
-    })
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

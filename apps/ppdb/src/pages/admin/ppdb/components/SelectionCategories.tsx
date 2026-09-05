@@ -3,12 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as api from '@/api/client'
 import { useToast } from '@/components/Toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { Card, CardContent } from "@repo/ui"
-import { Button } from "@repo/ui"
-import { Input } from "@repo/ui"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@repo/ui"
-import { EmptyState } from "@repo/ui"
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@repo/ui"
+import { Card, CardContent } from "@/components/ui"
+import { Button } from "@/components/ui"
+import { Input } from "@/components/ui"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
+import { EmptyState } from "@/components/ui"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui"
 import { Plus, Trash2, Download, ListTree, XCircle } from 'lucide-react'
 import type { SelectionCategory, Session, SelectionResult } from './types'
 import { downloadCSV } from './utils'

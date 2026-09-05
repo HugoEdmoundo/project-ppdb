@@ -1,6 +1,19 @@
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+import hashlib
+import hmac
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from sqlalchemy.orm import Session
 
+from src.core.config import settings
 from src.core.database import get_db
 from src.core.dependencies import get_current_user
 from src.core.uploads import upload_file
@@ -76,14 +89,47 @@ def cancel_confirm_payment(
     return service.cancel_confirm_payment(id)
 
 
+def _verify_midtrans_signature(
+    payload: dict, signature_key: str | None, server_key: str | None
+) -> None:
+    """
+    Verifikasi signature Midtrans (SHA512) untuk mencegah webhook falsifikasi.
+    http://docs.midtrans.com/en/technical-reference/encryption
+    signature_key = sha512(order_id + status_code + gross_amount + ServerKey)
+    """
+    if not server_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Payment webhook not enabled: MIDTRANS_SERVER_KEY not configured",
+        )
+
+    order_id = payload.get("order_id")
+    status_code = payload.get("status_code")
+    gross_amount = payload.get("gross_amount")
+
+    if not order_id or status_code is None or gross_amount is None:
+        raise HTTPException(status_code=400, detail="Invalid webhook payload")
+
+    raw = f"{order_id}{status_code}{gross_amount}{server_key}"
+    computed = hashlib.sha512(raw.encode("utf-8")).hexdigest()
+
+    if not signature_key or not hmac.compare_digest(computed, signature_key):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+
 @router.post("/webhook")
 async def payment_webhook(
-    request: Request, service: PaymentService = Depends(get_payment_service)
+    request: Request,
+    signature_key: str | None = Header(None),
+    service: PaymentService = Depends(get_payment_service),
 ):
     """
-    Webhook for Payment Gateway (e.g., Midtrans)
+    Webhook for Payment Gateway (e.g., Midtrans).
+    Verifikasi signature Midtrans (sha512) wajib; menolak jika `MIDTRANS_SERVER_KEY`
+    tidak dikonfigurasi (fail-closed) supaya tidak bisa di-forge.
     """
     payload = await request.json()
+    _verify_midtrans_signature(payload, signature_key, settings.midtrans_server_key)
     return service.process_webhook(payload)
 
 

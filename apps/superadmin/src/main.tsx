@@ -14,7 +14,7 @@ const queryClient = new QueryClient({
   },
 })
 
-function ErrorFallback({ error, resetErrorBoundary }: any) {
+export function ErrorFallback({ error, resetErrorBoundary }: any) {
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50 p-4">
       <div className="max-w-md space-y-4 rounded-xl border border-red-200 bg-white p-6 shadow-sm">

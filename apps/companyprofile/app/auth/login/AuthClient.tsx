@@ -12,8 +12,9 @@ export default function AuthClient() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [logoUrl, setLogoUrl] = useState('/logo.png')
+  const [logoUrl, setLogoUrl] = useState<string>('')
 
+  // Load logo dynamis (tidak ada aset logo statis) — fallback ke text mark.
   useEffect(() => {
     getSettings()
       .then((settings) => {
@@ -35,6 +36,7 @@ export default function AuthClient() {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username: email, password }),
       })
       if (!res.ok) {
@@ -70,11 +72,17 @@ export default function AuthClient() {
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[var(--accent)] via-[var(--accent-gold)] to-[var(--accent)]" />
 
         <div className="flex justify-center mb-6">
-          <AnimatedLogo
-            src={logoUrl}
-            alt="PTDARRAHMAN Logo"
-            className="h-12 w-auto"
-          />
+          {logoUrl ? (
+            <AnimatedLogo
+              src={logoUrl}
+              alt="PTDARRAHMAN Logo"
+              className="h-12 w-auto"
+            />
+          ) : (
+            <span className="h-12 w-12 rounded-2xl bg-[var(--accent)] flex items-center justify-center shadow-lg shadow-[var(--accent)]/20">
+              <span className="text-white font-[var(--font-display)] font-bold text-2xl select-none">A</span>
+            </span>
+          )}
         </div>
 
         <h1 className="font-[var(--font-display)] text-2xl font-bold text-[var(--text)] mb-1">

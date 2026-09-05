@@ -6,11 +6,11 @@ import { useToast } from '../components/Toast'
 import { ConfirmDialog } from "../components/ui/confirmdialog"
 import type { Role } from '../types'
 import { useAuth } from '../contexts/AuthContext'
-import { Button } from "@repo/ui"
-import { Card } from "@repo/ui"
-import { Badge } from "@repo/ui"
-import { Skeleton } from "@repo/ui"
-import { EmptyState } from "@repo/ui"
+import { Button } from "@/components/ui"
+import { Card } from "@/components/ui"
+import { Badge } from "@/components/ui"
+import { Skeleton } from "@/components/ui"
+import { EmptyState } from "@/components/ui"
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 export default function RolesPage() {

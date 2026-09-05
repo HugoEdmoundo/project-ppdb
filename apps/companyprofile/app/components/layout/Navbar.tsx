@@ -9,6 +9,9 @@ import AnimatedLogo from '../ui/AnimatedLogo'
 import MagneticButton from '../ui/MagneticButton'
 import { getSettings } from '@/app/lib/api'
 
+const PORTAL_URL =
+  process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:5174'
+
 const navItems = [
   { key: 'home', href: '/', label: 'Beranda', dropdown: false },
   {
@@ -40,7 +43,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
-  const [logoUrl, setLogoUrl] = useState('/logo.png')
+  const [logoUrl, setLogoUrl] = useState<string>('')
   const pathname = usePathname()
   const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -109,11 +112,21 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <nav role="navigation" aria-label="Navigasi utama" className="flex items-center justify-between h-16 md:h-20">
           <Link href="/" className="flex items-center gap-2 md:gap-3 flex-shrink-0 min-w-0">
-            <AnimatedLogo
-              src={logoUrl}
-              alt="PTDARRAHMAN Logo"
-              isTransparent={isTransparent}
-            />
+            {logoUrl ? (
+              <AnimatedLogo
+                src={logoUrl}
+                alt="PTDARRAHMAN Logo"
+                isTransparent={isTransparent}
+              />
+            ) : (
+              <span
+                className={`flex items-center justify-center h-10 w-10 rounded-xl font-[var(--font-display)] font-bold text-xl ${
+                  isTransparent ? 'bg-white/20 text-white' : 'bg-[var(--accent)] text-white'
+                }`}
+              >
+                A
+              </span>
+            )}
           </Link>
 
           {/* Desktop Nav */}
@@ -178,7 +191,7 @@ export default function Navbar() {
           <div className="flex items-center gap-3">
             <MagneticButton strength={0.25}>
             <a
-              href="http://localhost:5174"
+              href={PORTAL_URL}
               target="_blank"
               rel="noopener noreferrer"
               className={`hidden md:inline-flex items-center px-5 py-2.5 text-xs font-bold rounded-full whitespace-nowrap transition-all ${
@@ -261,7 +274,7 @@ export default function Navbar() {
             </div>
           ))}
           <a
-            href="http://localhost:5174"
+            href={PORTAL_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-8 px-10 py-3.5 bg-[var(--accent)] text-white text-sm font-bold rounded-full whitespace-nowrap hover:bg-[#15803D] transition-all"

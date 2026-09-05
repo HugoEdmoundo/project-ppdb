@@ -9,7 +9,7 @@ import {
   DialogDescription, DialogFooter, ConfirmDialog, Sheet, SheetContent, SheetHeader, SheetTitle,
   EmptyState, Alert, CurrencyInput
 } from '@/components/ui'
-import { TableSkeletonRows } from "@repo/ui"
+import { TableSkeletonRows } from "@/components/ui"
 import { Plus, Edit, Trash2, CheckCircle, XCircle, Waves, DollarSign, Receipt } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -445,7 +445,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
         message="Apakah Anda yakin ingin menghapus gelombang ini secara permanen?"
         onConfirm={handleDelete}
         confirmLabel="Ya, Hapus"
-        variant="danger"
+        variant="destructive"
       />
 
       <ConfirmDialog
@@ -455,7 +455,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
         message={actionId?.type === 'activate' ? 'Mengaktifkan gelombang ini akan menonaktifkan gelombang lain yang sedang aktif.' : 'Apakah Anda yakin ingin menonaktifkan gelombang ini?'}
         onConfirm={handleAction}
         confirmLabel="Ya, Lanjutkan"
-        variant={actionId?.type === 'activate' ? 'primary' : 'danger'}
+        variant={actionId?.type === 'activate' ? 'primary' : 'destructive'}
       />
 
       <Dialog open={!!feeDialogWave} onOpenChange={(v) => !v && setFeeDialogWave(null)}>

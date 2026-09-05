@@ -17,7 +17,11 @@ from src.core.middleware import ServerErrorJSONMiddleware
 
 def build_app() -> FastAPI:
     # Deterministic CORS config (ignore api/.env which may set CORS_ORIGINS=*).
-    settings = Settings(_env_file=None, cors_origins="", cors_origin_regex="")
+    settings = Settings(
+        _env_file=None,
+        cors_origins="https://ppdb-cct.pages.dev",
+        cors_origin_regex="",
+    )
     app = FastAPI()
     app.add_middleware(ServerErrorJSONMiddleware)
     setup_cors(app, settings)

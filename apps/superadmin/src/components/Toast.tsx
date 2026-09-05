@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { toast as sonnerToast } from 'sonner'
-import { Toaster } from '@repo/ui'
+import { Toaster } from '@/components/ui'
 
 type ToastType = 'success' | 'error' | 'warning'
 
@@ -27,6 +27,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useToast() {
   return useContext(ToastContext)
 }

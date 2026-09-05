@@ -3,15 +3,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as api from '@/api/client'
 import { useToast } from '@/components/Toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { Card, CardContent, CardHeader } from "@repo/ui"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@repo/ui"
-import { Badge } from "@repo/ui"
-import { Button } from "@repo/ui"
-import { Input } from "@repo/ui"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@repo/ui"
-import { EmptyState } from "@repo/ui"
-import { Textarea } from "@repo/ui"
-import { TableSkeletonRows } from "@repo/ui"
+import { Card, CardContent, CardHeader } from "@/components/ui"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
+import { Badge } from "@/components/ui"
+import { Button } from "@/components/ui"
+import { Input } from "@/components/ui"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
+import { EmptyState } from "@/components/ui"
+import { Textarea } from "@/components/ui"
+import { TableSkeletonRows } from "@/components/ui"
 import { CalendarDays, Plus, Pencil, Trash2, MessageSquare } from 'lucide-react'
 import type { Session } from './types'
 

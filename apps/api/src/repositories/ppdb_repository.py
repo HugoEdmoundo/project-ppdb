@@ -273,7 +273,7 @@ class PPDBRepository:
             .filter(
                 PPDBApplicant.payment_status == "pending",
                 PPDBApplicant.payment_deadline <= limit_time_str,
-                PPDBApplicant.deleted_at == None,
+                PPDBApplicant.deleted_at.is_(None),
             )
             .all()
         )
@@ -310,7 +310,7 @@ class PPDBRepository:
                 PPDBApplicant.payment_status == "pending",
                 PPDBApplicant.payment_deadline > now_str,
                 PPDBApplicant.payment_deadline <= tomorrow_str,
-                PPDBApplicant.deleted_at == None,
+                PPDBApplicant.deleted_at.is_(None),
             )
             .all()
         )
@@ -325,8 +325,8 @@ class PPDBRepository:
                 PPDBApplicant.status.in_(
                     ["document_uploaded_pending", "document_rejected"]
                 ),
-                PPDBWave.document_upload_end_date != None,
-                PPDBApplicant.deleted_at == None,
+                PPDBWave.document_upload_end_date.is_not(None),
+                PPDBApplicant.deleted_at.is_(None),
             )
             .all()
         )
@@ -339,8 +339,8 @@ class PPDBRepository:
             .join(PPDBWave, PPDBApplicant.wave_id == PPDBWave.id)
             .filter(
                 PPDBApplicant.status == "selection",
-                PPDBWave.selection_date != None,
-                PPDBApplicant.deleted_at == None,
+                PPDBWave.selection_date.is_not(None),
+                PPDBApplicant.deleted_at.is_(None),
             )
             .all()
         )

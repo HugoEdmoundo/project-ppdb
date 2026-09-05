@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Card, CardContent } from "@repo/ui"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@repo/ui"
-import { Badge } from "@repo/ui"
-import { Button } from "@repo/ui"
-import { EmptyState } from "@repo/ui"
-import { TableSkeletonRows } from "@repo/ui"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@repo/ui"
+import { Card, CardContent } from "@/components/ui"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
+import { Badge } from "@/components/ui"
+import { Button } from "@/components/ui"
+import { EmptyState } from "@/components/ui"
+import { TableSkeletonRows } from "@/components/ui"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui"
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
 import { Waves, FileText, CheckCircle, FileSignature, Save } from 'lucide-react'
 import { apiFetch } from '@/api/client'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/ui"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui"
 
 export default function MouPage() {
   const { toast } = useToast()
@@ -37,7 +37,7 @@ export default function MouPage() {
         setActiveWave(active)
         setMouTemplate(active.mou_template || '')
       }
-    } catch (e: any) {
+    } catch {
       toast('error', 'Gagal memuat gelombang')
     } finally {
       setWavesLoading(false)

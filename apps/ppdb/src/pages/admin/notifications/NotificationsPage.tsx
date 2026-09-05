@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react'
-import { Card, CardContent } from "@repo/ui"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@repo/ui"
-import { Button } from "@repo/ui"
-import { Badge } from "@repo/ui"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@repo/ui"
-import { Input } from "@repo/ui"
-import { Label } from "@repo/ui"
-import { Textarea } from "@repo/ui"
-import { EmptyState } from "@repo/ui"
+import { Card, CardContent } from "@/components/ui"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
+import { Button } from "@/components/ui"
+import { Badge } from "@/components/ui"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui"
+import { Input } from "@/components/ui"
+import { Label } from "@/components/ui"
+import { Textarea } from "@/components/ui"
+import { EmptyState } from "@/components/ui"
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
 import { notificationService } from '@/services/index'
-import { TableSkeletonRows } from "@repo/ui"
+import { TableSkeletonRows } from "@/components/ui"
 import { Bell, Edit } from 'lucide-react'
 
 const VARS = ['{nama_peserta}', '{username}', '{email}', '{phone}', '{password}', '{link_login}', '{batas_waktu_bayar}', '{nama_gelombang}', '{tanggal_seleksi}', '{alasan_penolakan}', '{link_pembayaran}', '{nominal_bayar}']

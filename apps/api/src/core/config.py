@@ -16,11 +16,20 @@ class Settings(BaseSettings):
     mysql_ssl: bool = False
 
     # --- JWT ---
-    jwt_secret: str = "dev-only-secret-change-me"
+    jwt_secret: str = ""
     jwt_expiry_hours: int = 24
 
     # --- Cron ---
-    cron_secret: str = "dev-only-cron-secret-change-me"
+    cron_secret: str = ""
+
+    # --- Cookies ---
+    # Set "true" di produksi (HTTPS) supaya cookie tidak dikirim via HTTP.
+    cookie_secure: bool = False
+
+    # --- Payment gateway (Midtrans) ---
+    # Server key Midtrans untuk verifikasi signature webhook. Kosongkan jika
+    # pembayaran hanya offline/manual.
+    midtrans_server_key: str | None = None
 
     # --- CORS ---
     # "*" = allow all (dev only). Empty = default allowlist + regex (see core/cors.py).

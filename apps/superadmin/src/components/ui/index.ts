@@ -1,7 +1,5 @@
-export { Alert } from './alert';
 export { ConfirmDialog } from './confirmdialog';
 export { ErrorState } from './errorstate';
 export { SuccessState } from './successstate';
-export { PageLoader } from './pageloader';
 
 export * from '@repo/ui';

@@ -13,7 +13,7 @@ from src.core.security import (
     hash_refresh_token,
     verify_password,
 )
-from src.models.auth import RefreshToken
+from src.models.auth import RefreshToken, Role, User
 from src.repositories.auth_repository import AuthRepository
 
 LOCKOUT_THRESHOLD = 5

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@repo/ui"
-import { Button } from "@repo/ui"
-import { Alert } from "@repo/ui"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui"
+import { Button } from "@/components/ui"
+import { Alert } from "@/components/ui"
 import { useToast } from '@/components/Toast'
 import * as api from '../../api/client'
 

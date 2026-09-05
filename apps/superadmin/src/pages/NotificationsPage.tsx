@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
 import { ConfirmDialog } from "../components/ui/confirmdialog"
-import { Card, CardContent } from "@repo/ui"
-import { Badge } from "@repo/ui"
-import { Button } from "@repo/ui"
-import { Input } from "@repo/ui"
-import { Label } from "@repo/ui"
-import { Checkbox } from "@repo/ui"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@repo/ui"
-import { EmptyState } from "@repo/ui"
+import { Card, CardContent } from "@/components/ui"
+import { Badge } from "@/components/ui"
+import { Button } from "@/components/ui"
+import { Input } from "@/components/ui"
+import { Label } from "@/components/ui"
+import { Checkbox } from "@/components/ui"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
+import { EmptyState } from "@/components/ui"
 import { Bell, Send, Search, Inbox } from 'lucide-react'
 
 interface Recipient {
@@ -78,7 +78,9 @@ export default function NotificationsPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAll()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const eligible = recipients.filter(r => r.email || r.phone)

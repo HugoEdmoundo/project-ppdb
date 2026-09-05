@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import * as api from '../../../api/client'
-import { Card, CardContent } from "@repo/ui"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@repo/ui"
-import { Badge } from "@repo/ui"
-import { Button } from "@repo/ui"
-import { Input } from "@repo/ui"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@repo/ui"
-import { EmptyState } from "@repo/ui"
-import { TableSkeletonRows } from "@repo/ui"
+import { Card, CardContent } from "@/components/ui"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
+import { Badge } from "@/components/ui"
+import { Button } from "@/components/ui"
+import { Input } from "@/components/ui"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
+import { EmptyState } from "@/components/ui"
+import { TableSkeletonRows } from "@/components/ui"
 import { Search, UserRoundSearch, Waves, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import type { Applicant } from '@/types/ppdb'

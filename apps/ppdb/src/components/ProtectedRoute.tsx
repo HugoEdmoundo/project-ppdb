@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth, usePermission } from '../contexts/AuthContext'
-import { PageLoader } from "@repo/ui"
+import { PageLoader } from "@/components/ui"
 
 export default function ProtectedRoute({
   children,
@@ -38,7 +38,7 @@ export default function ProtectedRoute({
     }
 
     // Paywall strict check
-    if (user.user_type === 'calon_murid') {
+    if (user.user_type === 'calon_murid' || user.user_type === 'applicant') {
       const isPaid = user.payment_status === 'paid'
       const isCheckoutPage = location.pathname === '/checkout'
 

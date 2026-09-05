@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Users, Shield, GraduationCap, Bell } from 'lucide-react'
 import * as api from '../api/client'
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui"
-import { Skeleton } from "@repo/ui"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui"
+import { Skeleton } from "@/components/ui"
 
 interface Stats {
   total_users: number

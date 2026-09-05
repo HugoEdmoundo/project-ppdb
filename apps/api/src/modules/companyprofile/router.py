@@ -4,6 +4,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from src.core.database import (
     create_record,
@@ -12,20 +13,17 @@ from src.core.database import (
     get_by_column,
     get_by_id,
     get_by_slug,
+    get_db,
     get_first,
     list_all,
     update_record,
 )
 from src.core.dependencies import get_current_user, require_cp_crud
 from src.core.events import companyprofile_hub
-from src.core.security import (
-    create_access_token,
-    generate_refresh_token,
-    hash_password,
-    hash_refresh_token,
-    verify_password,
-)
+from src.core.security import hash_password, verify_password
 from src.core.uploads import delete_upload, upload_file
+from src.repositories.auth_repository import AuthRepository
+from src.services.auth_service import AuthService
 
 router = APIRouter()
 
@@ -109,72 +107,55 @@ class ProfileUpdateReq(BaseModel):
     new_password: str | None = None
 
 
+def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
+    repo = AuthRepository(db)
+    return AuthService(repo)
+
+
+def _strip_permission_fields(user: dict) -> dict:
+    """Keep login/me payload contract for the companyprofile admin dashboard."""
+    return {
+        k: v
+        for k, v in user.items()
+        if k not in ("page_permissions", "payment_status", "payment_deadline")
+    }
+
+
 @router.post("/auth/login")
-async def cp_login(body: LoginReq):
+async def cp_login(body: LoginReq, service: AuthService = Depends(get_auth_service)):
     from src.core.dependencies import AccessLevel, Module, has_module_access
 
-    user = get_by_column("users", "username", body.username)
-    if not user or not user.get("is_active"):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    if not verify_password(body.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    result = service.login(body.username, body.password)
+    user = result["user"]
 
-    role = get_by_id("roles", user["role_id"]) if user.get("role_id") else None
-    user["role_permissions"] = _parse_permissions(role["permissions"] if role else None)
-    if not await has_module_access(user, Module.COMPANYPROFILE, AccessLevel.DASHBOARD):
+    # Per-user profile overrides need the raw users row (has_module_access
+    # reads user["profile"]); enrich from DB so overrides keep working.
+    raw_user = get_by_id("users", user["id"]) or {}
+    raw_user["role_permissions"] = user.get("permissions", {})
+    raw_user["permissions"] = user.get("permissions", {})
+    raw_user["is_superadmin"] = user.get("is_superadmin", False)
+
+    if not await has_module_access(
+        raw_user, Module.COMPANYPROFILE, AccessLevel.DASHBOARD
+    ):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    access_token = create_access_token({"sub": user["id"]})
-    raw_refresh, new_hash, expires_at = generate_refresh_token()
-    create_record(
-        "refresh_tokens",
-        {
-            "user_id": user["id"],
-            "token_hash": new_hash,
-            "expires_at": expires_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "revoked": False,
-        },
-    )
-
     return {
-        "access_token": access_token,
-        "refresh_token": raw_refresh,
+        "access_token": result["access_token"],
+        "refresh_token": result["refresh_token"],
         "token_type": "bearer",
-        "user": {
-            "id": user["id"],
-            "username": user["username"],
-            "role_id": user.get("role_id"),
-            "user_type": user.get("user_type", "admin"),
-        },
+        "user": _strip_permission_fields(user),
     }
 
 
 @router.post("/auth/refresh")
-async def cp_refresh(body: RefreshReq):
-    token_hash = hash_refresh_token(body.refresh_token)
-    stored = get_by_column("refresh_tokens", "token_hash", token_hash)
-    if not stored or stored.get("revoked"):
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
-
-    user = get_by_id("users", stored["user_id"])
-    if not user or not user.get("is_active"):
-        raise HTTPException(status_code=401, detail="User not found or inactive")
-
-    update_record("refresh_tokens", stored["id"], {"revoked": True})
-    new_access = create_access_token({"sub": user["id"]})
-    raw_refresh, new_hash, new_expires = generate_refresh_token()
-    create_record(
-        "refresh_tokens",
-        {
-            "user_id": user["id"],
-            "token_hash": new_hash,
-            "expires_at": new_expires.strftime("%Y-%m-%d %H:%M:%S"),
-            "revoked": False,
-        },
-    )
+async def cp_refresh(
+    body: RefreshReq, service: AuthService = Depends(get_auth_service)
+):
+    result = service.refresh(body.refresh_token)
     return {
-        "access_token": new_access,
-        "refresh_token": raw_refresh,
+        "access_token": result["access_token"],
+        "refresh_token": result["refresh_token"],
         "token_type": "bearer",
     }
 
@@ -189,41 +170,18 @@ async def cp_logout(user: dict[str, Any] = Depends(get_current_user)):
 
 
 @router.get("/auth/me")
-async def cp_me(user: dict[str, Any] = Depends(get_current_user)):
-    import json
-
-    role_name = ""
-    role_permissions: dict = {}
-    is_superadmin = False
-    role_id = user.get("role_id")
-    if role_id:
-        role = get_by_id("roles", role_id)
-        if role:
-            role_name = role.get("name", "")
-            raw = role.get("permissions")
-            role_permissions = (
-                json.loads(raw) if isinstance(raw, str) and raw else (raw or {})
-            )
-            is_superadmin = bool(role.get("is_superadmin"))
-
+async def cp_me(
+    user: dict[str, Any] = Depends(get_current_user),
+    service: AuthService = Depends(get_auth_service),
+):
+    data = service.get_me(user)
+    # Preserve the dashboard's page_permissions contract (raw page ids).
     page_rows = execute_raw(
         "SELECT page_id FROM user_page_permissions WHERE user_id = :uid",
         {"uid": user["id"]},
     )
-    return {
-        "id": user["id"],
-        "username": user["username"],
-        "email": user.get("email", ""),
-        "full_name": user.get("full_name", ""),
-        "avatar_url": user.get("avatar_url", ""),
-        "role_id": role_id,
-        "role_name": role_name,
-        "permissions": role_permissions,
-        "page_permissions": [r["page_id"] for r in page_rows] if page_rows else [],
-        "user_type": user.get("user_type", "admin"),
-        "is_active": user.get("is_active", True),
-        "is_superadmin": is_superadmin or user.get("user_type") == "superadmin",
-    }
+    data["page_permissions"] = [r["page_id"] for r in page_rows] if page_rows else []
+    return data
 
 
 @router.put("/auth/profile")

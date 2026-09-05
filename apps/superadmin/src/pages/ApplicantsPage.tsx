@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
-import { Card, CardContent } from "@repo/ui"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@repo/ui"
-import { Badge } from "@repo/ui"
-import { Button } from "@repo/ui"
-import { Input } from "@repo/ui"
-import { Modal } from "@repo/ui"
-import { EmptyState } from "@repo/ui"
+import { Card, CardContent } from "@/components/ui"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
+import { Badge } from "@/components/ui"
+import { Button } from "@/components/ui"
+import { Input } from "@/components/ui"
+import { Modal } from "@/components/ui"
+import { EmptyState } from "@/components/ui"
 import { Search, GraduationCap, UserRoundSearch, KeyRound, CheckCircle2 } from 'lucide-react'
 
 export default function ApplicantsPage() {
@@ -37,7 +37,9 @@ export default function ApplicantsPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchApplicants()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSearch = (e: React.FormEvent) => {

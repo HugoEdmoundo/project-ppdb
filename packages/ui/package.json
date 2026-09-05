@@ -21,11 +21,11 @@
     "@radix-ui/react-slot": "^1.3.3",
     "@radix-ui/react-switch": "^1.3.7",
     "@radix-ui/react-tabs": "^1.1.21",
-    "class-variance-authority": "^0.7.0",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^0.428.0",
+    "lucide-react": "^1.24.0",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^2.5.2"
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",

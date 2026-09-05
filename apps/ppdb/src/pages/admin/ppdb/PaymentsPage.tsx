@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Card, CardContent } from "@repo/ui"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@repo/ui"
-import { Badge } from "@repo/ui"
-import { Button } from "@repo/ui"
-import { Tabs, TabsList, TabsTrigger } from "@repo/ui"
-import { EmptyState } from "@repo/ui"
-import { ConfirmDialog } from "@repo/ui"
-import { TableSkeletonRows } from "@repo/ui"
+import { Card, CardContent } from "@/components/ui"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
+import { Badge } from "@/components/ui"
+import { Button } from "@/components/ui"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui"
+import { EmptyState } from "@/components/ui"
+import { ConfirmDialog } from "@/components/ui"
+import { TableSkeletonRows } from "@/components/ui"
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
 import { CreditCard, CheckCircle, XCircle, Waves, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -251,7 +251,7 @@ export default function PaymentsPage() {
         message="Apakah Anda yakin ingin membatalkan verifikasi pembayaran ini? Status akan kembali menjadi pending."
         onConfirm={() => cancelId && cancelMutation.mutate(cancelId)}
         confirmLabel="Ya, Batalkan"
-        variant="danger"
+        variant="destructive"
         loading={cancelMutation.isPending}
       />
     </div>

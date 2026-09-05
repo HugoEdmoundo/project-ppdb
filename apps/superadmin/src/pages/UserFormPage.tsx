@@ -6,15 +6,15 @@ import { useToast } from '../components/Toast'
 import { ConfirmDialog } from "../components/ui/confirmdialog"
 import type { Role, Module } from '../types'
 import { useAuth } from '../contexts/AuthContext'
-import { Button } from "@repo/ui"
-import { Input } from "@repo/ui"
-import { Label } from "@repo/ui"
-import { Card, CardContent } from "@repo/ui"
-import { Switch } from "@repo/ui"
-import { Checkbox } from "@repo/ui"
+import { Button } from "@/components/ui"
+import { Input } from "@/components/ui"
+import { Label } from "@/components/ui"
+import { Card, CardContent } from "@/components/ui"
+import { Switch } from "@/components/ui"
+import { Checkbox } from "@/components/ui"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@repo/ui"
+} from "@/components/ui"
 import { cn } from '@/lib/utils'
 
 import { useForm, Controller } from 'react-hook-form'
@@ -80,6 +80,7 @@ export default function UserFormPage() {
     }
   })
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const formUserType = watch('user_type')
 
   useEffect(() => {

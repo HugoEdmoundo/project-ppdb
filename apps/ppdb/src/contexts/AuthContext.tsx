@@ -70,7 +70,7 @@ export function usePermission() {
     },
     hasApplicantAccess: () => {
       if (!user) return false
-      if (user.user_type === 'applicant') return true
+      if (user.user_type === 'applicant' || user.user_type === 'calon_murid') return true
       if (user.is_superadmin || user.user_type === 'superadmin') return true
       return (user.permissions?.['applicant_dashboard'] || 'none') !== 'none'
     },

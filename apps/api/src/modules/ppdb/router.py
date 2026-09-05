@@ -9,6 +9,7 @@ from src.core.dependencies import (
     require_ppdb_admin,
     require_ppdb_read,
 )
+from src.core.rate_limit import rate_limit_dependency
 from src.modules.ppdb.schemas import (
     ApplicantPasswordReset,
     ApplicantRegister,
@@ -222,7 +223,9 @@ def delete_wave_endpoint(
 # ---------------------------------------------------------------------------
 @router.post("/register", status_code=201)
 def register_applicant(
-    body: ApplicantRegister, service: PPDBService = Depends(get_ppdb_service)
+    body: ApplicantRegister,
+    service: PPDBService = Depends(get_ppdb_service),
+    _: None = Depends(rate_limit_dependency("register")),
 ):
     return service.register_applicant(body)
 

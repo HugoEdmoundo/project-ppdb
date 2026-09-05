@@ -14,7 +14,7 @@ class UserRepository:
         self, search: str, page: int, per_page: int
     ) -> tuple[list[User], int]:
         query = self.db.query(User).filter(
-            or_(User.user_type == None, User.user_type != "applicant")
+            or_(User.user_type.is_(None), User.user_type != "applicant")
         )
 
         if search:

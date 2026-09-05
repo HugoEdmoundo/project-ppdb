@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ClipboardList, CalendarDays, ListTree, Star } from 'lucide-react'
-import { Tabs, TabsList, TabsTrigger } from "@repo/ui"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui"
 import SelectionSessions from './components/SelectionSessions'
 import SelectionCategories from './components/SelectionCategories'
 import SelectionResults from './components/SelectionResults'

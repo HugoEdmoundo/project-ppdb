@@ -5,7 +5,6 @@ import Image from 'next/image'
 import { X, Upload, Link2 } from 'lucide-react'
 import { getMe, updateProfile, uploadImage } from '@/app/lib/api'
 import { toast } from './ui/AdminToast'
-import { useFocusTrap } from '@/app/hooks/useFocusTrap'
 
 const ALLOWED_AVATAR_DOMAINS = [
   'dkynlzmpwndadmbqokry.supabase.co',

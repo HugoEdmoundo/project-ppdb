@@ -22,6 +22,20 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
 
 
+def validate_password(password: str) -> None:
+    """Validate password strength. Raises HTTPException 400 if invalid."""
+    from fastapi import HTTPException
+
+    if not password or len(password) < 8:
+        raise HTTPException(400, "Password harus minimal 8 karakter")
+    if not any(c.isupper() for c in password):
+        raise HTTPException(400, "Password harus mengandung minimal 1 huruf besar")
+    if not any(c.islower() for c in password):
+        raise HTTPException(400, "Password harus mengandung minimal 1 huruf kecil")
+    if not any(c.isdigit() for c in password):
+        raise HTTPException(400, "Password harus mengandung minimal 1 angka")
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plaintext password against a stored bcrypt hash."""
     try:

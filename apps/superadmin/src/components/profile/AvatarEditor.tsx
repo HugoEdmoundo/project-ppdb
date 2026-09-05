@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
 import { Link2, UploadCloud, X } from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from '@repo/ui'
-import { Button } from '@repo/ui'
-import { Input } from '@repo/ui'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui'
+import { Button } from '@/components/ui'
+import { Input } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
 interface AvatarEditorProps {

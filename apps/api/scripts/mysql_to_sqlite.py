@@ -10,12 +10,12 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-MYSQL_HOST = "srv1322.hstgr.io"
-MYSQL_PORT = 3306
-MYSQL_USER = "u868325204_devptd"
-MYSQL_PASSWORD = "Tahfiz_IT100%!!"
-MYSQL_DATABASE = "u868325204_ptdarrahman"
-SQLITE_URL = "sqlite:///./dev.db"
+MYSQL_HOST = os.environ["MYSQL_HOST"]
+MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3306"))
+MYSQL_USER = os.environ["MYSQL_USER"]
+MYSQL_PASSWORD = os.environ["MYSQL_PASSWORD"]
+MYSQL_DATABASE = os.environ["MYSQL_DATABASE"]
+SQLITE_URL = os.environ.get("SQLITE_URL", "sqlite:///./dev.db")
 
 SKIP_TABLES = {"refresh_tokens", "rate_limits", "audit_log"}
 

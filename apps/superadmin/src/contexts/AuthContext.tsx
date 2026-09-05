@@ -19,19 +19,15 @@ const AuthContext = createContext<AuthContextType>({
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<AuthUser | null>(() => api.getStoredUser())
+  const [loading, setLoading] = useState(() => !api.getStoredUser())
 
   useEffect(() => {
-    const stored = api.getStoredUser()
-    if (stored) {
-      setUser(stored)
+    if (api.getStoredUser()) {
       // Validate token in background
-      api.getMe().then(setUser).catch(() => {
+      api.getMe().then((u) => setUser(u)).catch(() => {
         setUser(null)
       }).finally(() => setLoading(false))
-    } else {
-      setLoading(false)
     }
   }, [])
 

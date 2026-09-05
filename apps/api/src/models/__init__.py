@@ -36,6 +36,13 @@ from src.models.ppdb import (
     SPPSetting,
     Student,
 )
+from src.models.selection import (
+    SelectionCategory,
+    SelectionCriteria,
+    SelectionResult,
+    SelectionScore,
+    SelectionSession,
+)
 
 __all__ = [
     "Base",
@@ -70,4 +77,9 @@ __all__ = [
     "PPDBStage2Bill",
     "PPDBBMOU",
     "PPDBPaymentTransaction",
+    "SelectionCategory",
+    "SelectionCriteria",
+    "SelectionResult",
+    "SelectionScore",
+    "SelectionSession",
 ]

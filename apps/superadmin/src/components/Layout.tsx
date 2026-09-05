@@ -4,10 +4,10 @@ import {
   LayoutDashboard, Users, Shield, LogOut, User as UserIcon,
   ChevronLeft, Menu, GraduationCap, Bell
 } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { getSettings, API_BASE } from '../api/client'
-import { Avatar, AvatarFallback, AvatarImage } from '@repo/ui'
-import { Button } from '@repo/ui'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui'
+import { Button } from '@/components/ui'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@repo/ui'
+} from '@/components/ui'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
@@ -57,6 +57,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }, [])
 
   // Close mobile sidebar on route change
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
 
   async function handleLogout() {

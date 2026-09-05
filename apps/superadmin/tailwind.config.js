@@ -59,6 +59,10 @@ export default {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
+        emerald: {
+          primary: '#1A6B47',
+          light: '#E8F3EE',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

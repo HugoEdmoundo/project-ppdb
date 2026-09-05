@@ -14,11 +14,11 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import * as api from '../api/client'
-import { Button } from "@repo/ui"
-import { Input } from "@repo/ui"
-import { Label } from "@repo/ui"
-import { Card, CardContent } from "@repo/ui"
-import { Badge } from "@repo/ui"
+import { Button } from "@/components/ui"
+import { Input } from "@/components/ui"
+import { Label } from "@/components/ui"
+import { Card, CardContent } from "@/components/ui"
+import { Badge } from "@/components/ui"
 import { AvatarEditor } from '../components/profile/AvatarEditor'
 import { SectionCard } from '../components/profile/SectionCard'
 import { useToast } from '../components/Toast'

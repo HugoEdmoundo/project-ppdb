@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { Card, CardContent } from '@repo/ui'
+import { Card, CardContent } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
 interface SectionCardProps {

@@ -11,8 +11,10 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
+from src.core.config import settings
 from src.core.database import get_db
 from src.core.dependencies import get_current_user, require_superadmin
+from src.core.rate_limit import rate_limit_dependency
 from src.modules.auth.schemas import (
     LoginRequest,
     LoginResponse,
@@ -35,15 +37,29 @@ def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     return AuthService(repo)
 
 
+def _cookie_secure(request: Request) -> bool:
+    if settings.cookie_secure:
+        return True
+    forwarded = (request.headers.get("x-forwarded-proto") or "").lower()
+    return forwarded == "https"
+
+
 @router.post("/login", response_model=LoginResponse)
 def login(
     body: LoginRequest,
+    request: Request,
     response: Response,
     service: AuthService = Depends(get_auth_service),
+    _: None = Depends(rate_limit_dependency("login")),
 ):
     result = service.login(body.username, body.password)
+    secure = _cookie_secure(request)
     response.set_cookie(
-        key="access_token", value=result.access_token, httponly=True, samesite="lax"
+        key="access_token",
+        value=result.access_token,
+        httponly=True,
+        samesite="lax",
+        secure=secure,
     )
     if result.refresh_token:
         response.set_cookie(
@@ -51,6 +67,7 @@ def login(
             value=result.refresh_token,
             httponly=True,
             samesite="lax",
+            secure=secure,
             max_age=30 * 24 * 60 * 60,
         )
     return result
@@ -67,14 +84,20 @@ def refresh(
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token missing")
     result = service.refresh(refresh_token)
+    secure = _cookie_secure(request)
     response.set_cookie(
-        key="access_token", value=result.access_token, httponly=True, samesite="lax"
+        key="access_token",
+        value=result.access_token,
+        httponly=True,
+        samesite="lax",
+        secure=secure,
     )
     response.set_cookie(
         key="refresh_token",
         value=result.refresh_token,
         httponly=True,
         samesite="lax",
+        secure=secure,
         max_age=30 * 24 * 60 * 60,
     )
     return result
@@ -118,7 +141,9 @@ def update_profile(
 
 @router.post("/register-applicant")
 def register_applicant(
-    body: RegisterApplicantRequest, service: AuthService = Depends(get_auth_service)
+    body: RegisterApplicantRequest,
+    service: AuthService = Depends(get_auth_service),
+    _: None = Depends(rate_limit_dependency("register_applicant")),
 ):
     from src.core.security import validate_password
 

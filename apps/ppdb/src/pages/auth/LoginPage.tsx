@@ -13,11 +13,11 @@ import {
   MonitorSmartphone,
   HeartHandshake,
 } from 'lucide-react'
-import { Button } from "@repo/ui"
-import { Input } from "@repo/ui"
-import { Label } from "@repo/ui"
-import { Card, CardContent } from "@repo/ui"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@repo/ui"
+import { Button } from "@/components/ui"
+import { Input } from "@/components/ui"
+import { Label } from "@/components/ui"
+import { Card, CardContent } from "@/components/ui"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
 import { CredentialsCard } from '@/components/CredentialsCard'
 import { apiFetch } from '@/api/client'
 import { useToast } from '@/components/Toast'

@@ -34,15 +34,45 @@ FAVICON_SVG = (
 )
 
 
+def _validate_secrets() -> None:
+    weak_secrets = {
+        "dev-only-secret-change-me",
+        "dev-only-cron-secret-change-me",
+        "change-me",
+    }
+    if (
+        not settings.jwt_secret
+        or len(settings.jwt_secret) < 32
+        or settings.jwt_secret in weak_secrets
+    ):
+        raise RuntimeError(
+            "JWT_SECRET belum diatur aman. "
+            "Set JWT_SECRET di .env (min 32 karakter random)."
+        )
+    if (
+        not settings.cron_secret
+        or len(settings.cron_secret) < 16
+        or settings.cron_secret in weak_secrets
+    ):
+        raise RuntimeError(
+            "CRON_SECRET belum diatur aman. "
+            "Set CRON_SECRET di .env (min 16 karakter random)."
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Pesantren Tahfidz Qur'an dan Digital Arrahman API starting")
+    _validate_secrets()
     yield
 
 
 app = FastAPI(
     title="Pesantren Tahfidz Qur'an dan Digital Arrahman API",
-    description="Backend API (FastAPI) for the PTDARRAHMAN company profile, PPDB, auth, and user/role management.",
+    description=(
+        "Backend API (FastAPI) for the PTDARRAHMAN company profile, PPDB, auth, "
+        "and user/role management."
+    ),
     version="0.1.0",
     docs_url=None,
     redoc_url=None,
@@ -75,7 +105,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # --- Utility routes ---
 @app.get("/health")
 def health():
-    return {"status": "gwenchana", "service": "geprek-service-engine-machine-wkwk"}
+    return {"status": "ok", "service": "ptdarrahman-api"}
 
 
 @app.get("/scalar", include_in_schema=False)

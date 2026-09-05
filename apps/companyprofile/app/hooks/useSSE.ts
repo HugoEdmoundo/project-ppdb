@@ -13,7 +13,6 @@ export function useSSE(module: string) {
     function connect() {
       const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
       const url = `${API_BASE.replace(/\/$/, '')}/companyprofile/events`
-
       es = new EventSource(url)
 
       const handler = () => {

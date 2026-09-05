@@ -8,7 +8,7 @@ import {
   Badge, Button, Input, Label, Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogFooter, ConfirmDialog, EmptyState
 } from '@/components/ui'
-import { TableSkeletonRows } from "@repo/ui"
+import { TableSkeletonRows } from "@/components/ui"
 import { Plus, Edit, Trash2, CalendarDays, CheckCircle, XCircle, Layers, CalendarX2 } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -243,7 +243,7 @@ export default function PeriodsPage() {
         message="Apakah Anda yakin ingin menghapus periode ini? Semua gelombang di dalamnya juga akan terhapus secara permanen."
         onConfirm={handleDelete}
         confirmLabel="Ya, Hapus"
-        variant="danger"
+        variant="destructive"
       />
 
       <ConfirmDialog

@@ -23,7 +23,7 @@ class AuthRepository:
         return self.db.query(Role).filter(Role.id == role_id).first()
 
     def get_page_permissions(self, user_id: str) -> list[str]:
-        perms = (
+        (
             self.db.query(UserPagePermission)
             .filter(UserPagePermission.user_id == user_id)
             .all()

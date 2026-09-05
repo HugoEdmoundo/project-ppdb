@@ -23,15 +23,12 @@ export default function App() {
       fetch(`${api.API_BASE}/companyprofile/settings/favicon`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
-          if (data && data.value) {
-            if (link) { link.href = data.value; link.type = '' }
-          } else if (link) {
-            link.href = '/download.png'
+          if (data && data.value && link) {
+            link.href = data.value
+            link.type = ''
           }
         })
-        .catch(() => {
-          if (link) link.href = '/download.png'
-        })
+        .catch(() => { /* keep default favicon if unavailable */ })
     }
     loadFavicon()
     const es = new EventSource(`${api.API_BASE}/companyprofile/events`)

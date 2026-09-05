@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Card, CardContent } from "@repo/ui"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@repo/ui"
-import { Badge } from "@repo/ui"
-import { Button } from "@repo/ui"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@repo/ui"
-import { EmptyState } from "@repo/ui"
-import { ConfirmDialog } from "@repo/ui"
-import { TableSkeletonRows } from "@repo/ui"
+import { Card, CardContent } from "@/components/ui"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
+import { Badge } from "@/components/ui"
+import { Button } from "@/components/ui"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui"
+import { EmptyState } from "@/components/ui"
+import { ConfirmDialog } from "@/components/ui"
+import { TableSkeletonRows } from "@/components/ui"
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
 import { CreditCard, CheckCircle, XCircle, Waves, Eye } from 'lucide-react'
@@ -214,7 +214,7 @@ export default function Stage2PaymentsPage() {
         title="Batalkan Verifikasi"
         message="Apakah Anda yakin ingin membatalkan verifikasi pembayaran ini?"
         confirmLabel="Ya, Batalkan"
-        variant="danger"
+        variant="destructive"
       />
     </div>
   )

@@ -14,6 +14,7 @@ const queryClient = new QueryClient({
   },
 })
 
+// eslint-disable-next-line react-refresh/only-export-components
 function ErrorFallback({ error, resetErrorBoundary }: any) {
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50 p-4">

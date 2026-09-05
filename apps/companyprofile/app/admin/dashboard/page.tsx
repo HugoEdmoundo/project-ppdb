@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import * as api from '@/app/lib/api'
 import { eventBus } from '@/app/lib/event-bus'
 import { useSSE } from '@/app/hooks/useSSE'
-import { useFocusTrap } from '@/app/hooks/useFocusTrap'
 import AdminToast, { toast } from '@/app/components/ui/AdminToast'
 import AdminConfirm from '@/app/components/ui/AdminConfirm'
 import Image from 'next/image'
@@ -686,6 +685,7 @@ export default function AdminDashboard() {
 
   function handleLogout() {
     localStorage.removeItem('admin_token')
+    localStorage.removeItem('admin_refresh')
     localStorage.removeItem('admin_user')
     router.push('/admin/login')
   }
@@ -696,8 +696,6 @@ export default function AdminDashboard() {
   const [galleryInputMode, setGalleryInputMode] = useState<'upload' | 'url'>('upload')
   const [galleryInputValue, setGalleryInputValue] = useState('')
   const [galleryUploading, setGalleryUploading] = useState(false)
-
-  const formTrapRef = useFocusTrap(!!formMode, closeForm)
 
   function renderForm() {
     const fields = FORM_FIELDS[activeTab] || []

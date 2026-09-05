@@ -2,17 +2,17 @@ import { useState, useEffect } from 'react'
 import * as api from '../../../api/client'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
-import { Card, CardContent } from "@repo/ui"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@repo/ui"
-import { Badge } from "@repo/ui"
-import { Button, buttonVariants } from "@repo/ui"
-import { Input } from "@repo/ui"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@repo/ui"
-import { EmptyState } from "@repo/ui"
+import { Card, CardContent } from "@/components/ui"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
+import { Badge } from "@/components/ui"
+import { Button, buttonVariants } from "@/components/ui"
+import { Input } from "@/components/ui"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
+import { EmptyState } from "@/components/ui"
 import { Search, GraduationCap, UserRoundSearch, FileText, CheckCircle, XCircle, Waves } from 'lucide-react'
-import { Tabs, TabsList, TabsTrigger } from "@repo/ui"
-import { Textarea } from "@repo/ui"
-import { TableSkeletonRows } from "@repo/ui"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui"
+import { Textarea } from "@/components/ui"
+import { TableSkeletonRows } from "@/components/ui"
 import { REQUIRED_DOCUMENTS } from '@/constants/documents'
 
 export default function ApplicantsPage() {
@@ -272,7 +272,7 @@ export default function ApplicantsPage() {
 
                 {canCrud && (
                   <div className="flex justify-end gap-3 pt-2">
-                    <Button variant="danger" onClick={() => handleVerify('document_rejected')} disabled={isVerifying || !rejectionReason.trim()}>
+                    <Button variant="destructive" onClick={() => handleVerify('document_rejected')} disabled={isVerifying || !rejectionReason.trim()}>
                       <XCircle className="h-4 w-4 mr-2" /> Tolak Dokumen
                     </Button>
                     <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleVerify('document_approved')} disabled={isVerifying}>

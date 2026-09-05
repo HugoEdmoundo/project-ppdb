@@ -5,18 +5,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
 import { ConfirmDialog } from "../components/ui/confirmdialog"
-import type { User, Role } from '../types'
+import type { User } from '../types'
 import { useAuth } from '../contexts/AuthContext'
-import { Button } from "@repo/ui"
-import { Input } from "@repo/ui"
-import { Card } from "@repo/ui"
-import { Badge } from "@repo/ui"
+import { Button } from "@/components/ui"
+import { Input } from "@/components/ui"
+import { Card } from "@/components/ui"
+import { Badge } from "@/components/ui"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@repo/ui"
-import { Avatar, AvatarFallback, AvatarImage } from "@repo/ui"
-import { Skeleton } from "@repo/ui"
-import { EmptyState } from "@repo/ui"
+} from "@/components/ui"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui"
+import { Skeleton } from "@/components/ui"
+import { EmptyState } from "@/components/ui"
 
 export default function UsersPage() {
   const navigate = useNavigate()

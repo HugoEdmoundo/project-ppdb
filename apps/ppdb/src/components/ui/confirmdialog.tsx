@@ -1,5 +1,5 @@
-import { Modal } from "@repo/ui"
-import { Button } from "@repo/ui"
+import { Modal } from "@/components/ui"
+import { Button } from "@/components/ui"
 
 interface ConfirmDialogProps {
   isOpen: boolean
@@ -8,7 +8,7 @@ interface ConfirmDialogProps {
   title: string
   message: string
   confirmLabel?: string
-  variant?: 'danger' | 'primary'
+  variant?: 'primary' | 'destructive'
   loading?: boolean
 }
 
@@ -34,7 +34,7 @@ export function ConfirmDialog({
             Batal
           </Button>
           <Button
-            variant={variant === 'danger' ? 'destructive' : 'default'}
+            variant={variant === 'destructive' ? 'destructive' : 'default'}
             onClick={onConfirm}
             loading={loading}
           >

@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    LargeBinary,
     String,
     Text,
 )
@@ -59,7 +60,7 @@ class PPDBWave(Base):
 class PPDBApplicant(Base):
     __tablename__ = "ppdb_applicants"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
     wave_id: Mapped[str] = mapped_column(String(36), ForeignKey("ppdb_waves.id"))
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="CASCADE")
@@ -93,7 +94,8 @@ class PPDBApplicant(Base):
     payment_deadline: Mapped[datetime | None] = mapped_column(DateTime)
     # ── Soft Delete (Hari ke-8 belum bayar → cron job set deleted_at) ────────
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    # Alasan penolakan dokumen (diisi admin saat verifikasi; NULL saat belum/sudah disetujui)
+    # Alasan penolakan dokumen (diisi admin saat verifikasi; NULL saat
+    # belum/sudah disetujui)
     rejection_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -114,6 +116,7 @@ class FileUpload(Base):
     public_url: Mapped[str | None] = mapped_column(String(500))
     entity_type: Mapped[str | None] = mapped_column(String(50))
     entity_id: Mapped[str | None] = mapped_column(String(50))
+    data: Mapped[bytes | None] = mapped_column(LargeBinary(length=16777215))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
@@ -231,9 +234,9 @@ class PPDBPaymentTransaction(Base):
 
     __tablename__ = "ppdb_payment_transactions"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
     applicant_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("ppdb_applicants.id", ondelete="CASCADE")
+        String(64), ForeignKey("ppdb_applicants.id", ondelete="CASCADE")
     )
     # Metode: offline (cash ke panitia) | online (payment gateway / simulator)
     method: Mapped[str] = mapped_column(String(20), default="offline")
@@ -343,7 +346,8 @@ class NotificationLog(Base):
 
 
 class PPDBWaveFeeItem(Base):
-    """Item biaya Tahap 2 per gelombang (custom list: Uang Pangkal, Uang Gedung, dll)."""
+    """Item biaya Tahap 2 per gelombang (custom list: Uang Pangkal, Uang Gedung,
+    dll)."""
 
     __tablename__ = "ppdb_wave_fee_items"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -370,7 +374,7 @@ class PPDBApplicantDiscount(Base):
     __tablename__ = "ppdb_applicant_discounts"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     applicant_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("ppdb_applicants.id", ondelete="CASCADE")
+        String(64), ForeignKey("ppdb_applicants.id", ondelete="CASCADE")
     )
     fee_item_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("ppdb_wave_fee_items.id", ondelete="CASCADE")
@@ -396,7 +400,7 @@ class PPDBStage2Bill(Base):
     __tablename__ = "ppdb_stage2_bills"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     applicant_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("ppdb_applicants.id", ondelete="CASCADE")
+        String(64), ForeignKey("ppdb_applicants.id", ondelete="CASCADE")
     )
     fee_item_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("ppdb_wave_fee_items.id")
@@ -420,14 +424,15 @@ class PPDBBMOU(Base):
     """MOU per peserta yang lulus seleksi.
 
     status: draft | signed
-    draft_content: HTML/markdown template MOU (diisi dari wave.mou_template + data peserta)
+    draft_content: HTML/markdown template MOU (diisi dari wave.mou_template +
+    data peserta)
     signature_data: base64 image tanda tangan canvas
     """
 
     __tablename__ = "ppdb_mou"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     applicant_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("ppdb_applicants.id", ondelete="CASCADE"), unique=True
+        String(64), ForeignKey("ppdb_applicants.id", ondelete="CASCADE"), unique=True
     )
     draft_content: Mapped[str | None] = mapped_column(Text)
     signature_data: Mapped[str | None] = mapped_column(Text)

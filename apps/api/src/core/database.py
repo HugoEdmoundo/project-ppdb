@@ -149,7 +149,7 @@ def _pk_col(table: str) -> str:
 def _prepare_value(val: Any) -> Any:
     if val is None:
         return None
-    if isinstance(val, (dict, list, tuple)):
+    if isinstance(val, dict | list | tuple):
         return json.dumps(val, ensure_ascii=False)
     if isinstance(val, bool):
         return 1 if val else 0
@@ -271,7 +271,7 @@ def search_paginated(
         filter_clauses = []
         for i, (col, val) in enumerate(filters.items()):
             if val is not None:
-                if isinstance(val, (list, tuple)):
+                if isinstance(val, list | tuple):
                     if val:
                         ph_list = []
                         for j, item in enumerate(val):

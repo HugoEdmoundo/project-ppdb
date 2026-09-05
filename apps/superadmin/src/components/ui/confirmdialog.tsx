@@ -1,5 +1,5 @@
-import { Modal } from "@repo/ui"
-import { Button } from "@repo/ui"
+import { Modal } from "@/components/ui"
+import { Button } from "@/components/ui"
 
 interface ConfirmDialogProps {
   isOpen: boolean

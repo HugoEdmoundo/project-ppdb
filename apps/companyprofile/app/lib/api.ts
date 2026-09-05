@@ -12,7 +12,9 @@ import type {
 } from './types'
 
 export const PRIMARY_API = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/+$/, '')
-export const FALLBACK_API = 'http://localhost:8000'
+// Fallback API opsional (mis. darurat ke server kedua). Kosongkan untuk
+// menonaktifkan mekanisme fallback; JANGAN fallback ke localhost di produksi.
+export const FALLBACK_API = (process.env.NEXT_PUBLIC_FALLBACK_API_URL || '').replace(/\/+$/, '')
 export const API_BASE = PRIMARY_API
 const TOKEN_KEY = 'admin_token'
 const REFRESH_KEY = 'admin_refresh'
@@ -23,7 +25,7 @@ function isRetryableStatus(status: number): boolean {
 }
 
 async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Response> {
-  if (API_BASE === FALLBACK_API) return fetch(url, opts)
+  if (!FALLBACK_API || API_BASE === FALLBACK_API) return fetch(url, opts)
 
   const fallbackUrl = url.replace(PRIMARY_API, FALLBACK_API)
 

@@ -7,6 +7,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 
 from src.core.notif_service import send_notification, send_notifications
 from src.core.security import hash_password
@@ -132,7 +133,9 @@ class PPDBService:
                 p.strip() for p in (wave.allowed_paths or "").split(",") if p.strip()
             ],
             "allowed_levels": [
-                l.strip() for l in (wave.allowed_levels or "").split(",") if l.strip()
+                lvl.strip()
+                for lvl in (wave.allowed_levels or "").split(",")
+                if lvl.strip()
             ],
         }
 
@@ -250,7 +253,7 @@ class PPDBService:
             p.strip() for p in (wave.allowed_paths or "").split(",") if p.strip()
         ]
         allowed_levels = [
-            l.strip() for l in (wave.allowed_levels or "").split(",") if l.strip()
+            lvl.strip() for lvl in (wave.allowed_levels or "").split(",") if lvl.strip()
         ]
 
         if body.registration_path not in allowed_paths:

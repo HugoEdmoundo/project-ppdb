@@ -15,9 +15,10 @@ export default function LoginPage() {
   const [success, setSuccess] = useState(false)
   const [showPw, setShowPw] = useState(false)
   const [redirecting, setRedirecting] = useState(false)
-  const [logoUrl, setLogoUrl] = useState('/logo.png')
+  const [logoUrl, setLogoUrl] = useState<string>('')
 
-  // Load logo dynamically (login pakai logo, bukan favicon)
+  // Load logo dynamically (login pakai logo, bukan favicon).
+  // Tidak ada aset logo statis — fallback ke text mark jika belum tersedia.
   useEffect(() => {
     getSettings()
       .then((settings) => {
@@ -75,7 +76,13 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="mb-6 flex justify-center">
-          <AnimatedLogo src={logoUrl} alt="PTDARRAHMAN Logo" className="h-12 w-auto" />
+          {logoUrl ? (
+            <AnimatedLogo src={logoUrl} alt="PTDARRAHMAN Logo" className="h-12 w-auto" />
+          ) : (
+            <span className="h-12 w-12 rounded-2xl bg-[var(--color-emerald)] flex items-center justify-center shadow-lg shadow-[var(--color-emerald)]/20">
+              <span className="text-white font-[var(--font-display)] font-bold text-2xl select-none">A</span>
+            </span>
+          )}
         </div>
 
         <h1 className="font-[var(--font-display)] text-2xl font-bold text-[var(--text)] mb-1">Selamat Datang</h1>

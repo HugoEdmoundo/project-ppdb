@@ -1,8 +1,9 @@
+import { useEffect } from 'react'
 import { Users, FileText, CreditCard, Activity, CalendarDays, CheckCircle2 } from 'lucide-react'
 import { applicantService, paymentService, ppdbService } from '../../services/index'
 import { useToast } from '../../components/Toast'
-import { Card } from "@repo/ui"
-import { Skeleton } from "@repo/ui"
+import { Card } from "@/components/ui"
+import { Skeleton } from "@/components/ui"
 import { useQuery } from '@tanstack/react-query'
 
 export default function AdminDashboardPage() {
@@ -27,9 +28,11 @@ export default function AdminDashboardPage() {
   const loading = loadingApplicants || loadingPayments || loadingPeriods
   const isError = errorApplicants || errorPayments || errorPeriods
 
-  if (isError) {
-    toast('error', 'Gagal memuat data dashboard')
-  }
+  useEffect(() => {
+    if (isError) {
+      toast('error', 'Gagal memuat data dashboard')
+    }
+  }, [isError, toast])
 
   const activePeriod = Array.isArray(periodsRes) ? periodsRes.find((p: any) => p.status === 'active') : null
   const activeWaveName = applicantsRes?.active_wave ? applicantsRes.active_wave.name : null

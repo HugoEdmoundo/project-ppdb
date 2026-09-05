@@ -3,17 +3,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as api from '@/api/client'
 import { useToast } from '@/components/Toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@repo/ui"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@repo/ui"
-import { Badge } from "@repo/ui"
-import { Button } from "@repo/ui"
-import { Input } from "@repo/ui"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@repo/ui"
-import { EmptyState } from "@repo/ui"
-import { Textarea } from "@repo/ui"
-import { TableSkeletonRows } from "@repo/ui"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@repo/ui"
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@repo/ui"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
+import { Badge } from "@/components/ui"
+import { Button } from "@/components/ui"
+import { Input } from "@/components/ui"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
+import { EmptyState } from "@/components/ui"
+import { Textarea } from "@/components/ui"
+import { TableSkeletonRows } from "@/components/ui"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui"
 import { Upload, Star, FileSpreadsheet, AlertCircle } from 'lucide-react'
 import type { SelectionResult, SelectionCategory, Session } from './types'
 
@@ -263,7 +263,7 @@ export default function SelectionResults() {
                     </TableCell>
                     <TableCell>
                       {r.applicant_status === 'passed' ? <Badge className="bg-green-600">Lulus</Badge> :
-                       r.applicant_status === 'failed' ? <Badge variant="danger">Tidak Lulus</Badge> :
+                       r.applicant_status === 'failed' ? <Badge variant="destructive">Tidak Lulus</Badge> :
                        <Badge variant="secondary">Belum Dinilai</Badge>}
                     </TableCell>
                   </TableRow>
@@ -292,7 +292,7 @@ export default function SelectionResults() {
                 <div className="flex justify-between items-center">
                   <h3 className="font-semibold text-sm">Status Seleksi (Final)</h3>
                   {selectedApplicant.applicant_status === 'passed' ? <Badge className="bg-green-600">Lulus</Badge> :
-                   selectedApplicant.applicant_status === 'failed' ? <Badge variant="danger">Tidak Lulus</Badge> :
+                   selectedApplicant.applicant_status === 'failed' ? <Badge variant="destructive">Tidak Lulus</Badge> :
                    <Badge variant="secondary">Belum Dinilai</Badge>}
                 </div>
 
@@ -307,7 +307,7 @@ export default function SelectionResults() {
                       Luluskan
                     </Button>
                     <Button
-                      variant={selectedApplicant.applicant_status === 'failed' ? 'danger' : 'outline'}
+                      variant={selectedApplicant.applicant_status === 'failed' ? 'destructive' : 'outline'}
                       className="flex-1"
                       onClick={() => setShowReason(!showReason)}
                       disabled={updateStatusMutation.isPending}
@@ -328,7 +328,7 @@ export default function SelectionResults() {
                       disabled={!canCrud}
                     />
                     {canCrud && selectedApplicant.applicant_status !== 'failed' && (
-                       <Button size="sm" variant="danger" className="w-full" onClick={() => updateApplicantStatus('failed')} disabled={updateStatusMutation.isPending || !reasonText.trim()}>
+                       <Button size="sm" variant="destructive" className="w-full" onClick={() => updateApplicantStatus('failed')} disabled={updateStatusMutation.isPending || !reasonText.trim()}>
                          Simpan & Tolak Pendaftar
                        </Button>
                     )}

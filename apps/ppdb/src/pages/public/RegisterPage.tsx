@@ -8,12 +8,30 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Textarea
 } from '@/components/ui'
-import { SuccessState } from "@repo/ui"
+import { SuccessState } from "@/components/ui"
 import { CredentialsCard } from '@/components/CredentialsCard'
 import { ArrowLeft, ArrowRight, LogIn, BookOpen, GraduationCap } from 'lucide-react'
 
 // Batas maksimal tanggal lahir = hari ini (tidak boleh lahir di masa depan)
 const todayStr = new Date().toISOString().split('T')[0]
+
+const WILAYAH_SOURCES = [
+  'https://www.emsifa.com/api-wilayah-indonesia/api',
+  'https://raw.githubusercontent.com/emsifa/api-wilayah-indonesia/master/public/api',
+]
+
+async function fetchWilayah(rel: string): Promise<any[]> {
+  for (const base of WILAYAH_SOURCES) {
+    try {
+      const res = await fetch(`${base}/${rel}`)
+      if (!res.ok) continue
+      return await res.json()
+    } catch {
+      /* coba sumber fallback */
+    }
+  }
+  return []
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -74,10 +92,7 @@ export default function RegisterPage() {
   const [selectedDistrictId, setSelectedDistrictId] = useState('')
 
   useEffect(() => {
-    fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json')
-      .then(res => res.json())
-      .then(data => setProvinces(data))
-      .catch(() => {})
+    fetchWilayah('provinces.json').then(setProvinces)
   }, [])
 
   const handleProvinceChange = (id: string) => {
@@ -91,10 +106,7 @@ export default function RegisterPage() {
     setDistricts([])
     setVillages([])
 
-    fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${id}.json`)
-      .then(res => res.json())
-      .then(data => setCities(data))
-      .catch(() => {})
+    fetchWilayah(`regencies/${id}.json`).then(setCities)
   }
 
   const handleCityChange = (id: string) => {
@@ -106,10 +118,7 @@ export default function RegisterPage() {
     setDistricts([])
     setVillages([])
 
-    fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${id}.json`)
-      .then(res => res.json())
-      .then(data => setDistricts(data))
-      .catch(() => {})
+    fetchWilayah(`districts/${id}.json`).then(setDistricts)
   }
 
   const handleDistrictChange = (id: string) => {
@@ -119,10 +128,7 @@ export default function RegisterPage() {
 
     setVillages([])
 
-    fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${id}.json`)
-      .then(res => res.json())
-      .then(data => setVillages(data))
-      .catch(() => {})
+    fetchWilayah(`villages/${id}.json`).then(setVillages)
   }
 
   const handleVillageChange = (id: string) => {

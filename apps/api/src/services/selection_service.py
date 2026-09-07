@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -81,7 +81,9 @@ class SelectionService:
             raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
 
         session.name = body.name
-        session.session_date = body.session_date
+        session.session_date = (
+            date.fromisoformat(body.session_date) if body.session_date else None
+        )
         session.start_time = body.start_time
         session.end_time = body.end_time
         session.location = body.location

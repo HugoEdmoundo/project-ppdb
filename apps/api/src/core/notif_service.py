@@ -45,7 +45,8 @@ def _sync_send_notifications(
             rows = (
                 conn.execute(
                     text(
-                        f"SELECT * FROM notification_templates WHERE event_key IN ({placeholders})"
+                        "SELECT * FROM notification_templates "
+                        f"WHERE event_key IN ({placeholders})"
                     ),
                     params,
                 )
@@ -90,7 +91,8 @@ def _sync_send_notifications(
                 template = templates.get(event_key)
                 if not template or not template.get("is_active"):
                     logger.info(
-                        f"Template {event_key} not found or inactive. Skipping notification."
+                        f"Template {event_key} not found or inactive. "
+                        "Skipping notification."
                     )
                     continue
 
@@ -109,7 +111,7 @@ def _sync_send_notifications(
                     subject = subject.replace(f"{{{k}}}", str(v))
                     body = body.replace(f"{{{k}}}", str(v))
 
-                # Log ke notification_logs (langsung berstatus sent; "kirim" masih placeholder)
+                # Log ke notification_logs (status sent; "kirim" masih placeholder)
                 now_wib = datetime.datetime.now(ZoneInfo("Asia/Jakarta")).strftime(
                     "%Y-%m-%d %H:%M:%S"
                 )
@@ -132,7 +134,8 @@ def _sync_send_notifications(
 
                 create_record("notification_logs", log_data, return_row=False)
                 logger.info(
-                    f"Sending {template.get('channel')} to {user.get('email')} : {subject}"
+                    f"Sending {template.get('channel')} to "
+                    f"{user.get('email')} : {subject}"
                 )
     except Exception:
         logger.exception("Background notification task failed")
@@ -141,8 +144,8 @@ def _sync_send_notifications(
 def send_custom_notifications(
     recipient_user_ids, channel: str, subject: str, body: str, event_key: str = "custom"
 ):
-    """Kirim pesan bebas (tanpa template) ke daftar user, lalu catat di notification_logs.
-    Diesksekusi secara asinkron di background thread.
+    """Kirim pesan bebas (tanpa template) ke daftar user, lalu catat di
+    notification_logs. Diesksekusi secara asinkron di background thread.
     """
     if not recipient_user_ids:
         return {"message": "Queued 0 notifications"}

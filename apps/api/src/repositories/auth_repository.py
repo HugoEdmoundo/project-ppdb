@@ -29,8 +29,10 @@ class AuthRepository:
             .all()
         )
         # To match the exact legacy behavior where it joins pages:
-        # SELECT p.`key` FROM user_page_permissions up JOIN pages p ON up.page_id = p.id WHERE up.user_id = :user_id
-        # We can just return the keys. But wait, `page_id` is the id of the page. The previous code joined with pages table to get `key`.
+        # SELECT p.`key` FROM user_page_permissions up
+        #   JOIN pages p ON up.page_id = p.id WHERE up.user_id = :user_id
+        # We can just return the keys. But wait, `page_id` is the id of the page.
+        # The previous code joined pages table to get `key`.
         # Assuming `page_id` is the `id` of the page, we need the `Page` model.
         from src.models.auth import Page
 

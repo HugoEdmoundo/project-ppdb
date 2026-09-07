@@ -61,7 +61,8 @@ class WaveBase(BaseModel):
     def check_schedule_order(self):
         if self.registration_end_date < self.registration_start_date:
             raise ValueError(
-                "Tanggal akhir pendaftaran tidak boleh sebelum tanggal mulai pendaftaran"
+                "Tanggal akhir pendaftaran tidak boleh sebelum "
+                "tanggal mulai pendaftaran"
             )
         if self.document_upload_end_date < self.registration_end_date:
             raise ValueError(
@@ -151,7 +152,7 @@ class ApplicantRegister(BaseModel):
 
 
 class ApplicantPasswordReset(BaseModel):
-    password: str | None = None
+    password: str
 
 
 class WaveFeeItemCreate(BaseModel):

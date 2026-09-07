@@ -198,7 +198,8 @@ class UserService:
         except IntegrityError:
             raise HTTPException(
                 status_code=409,
-                detail="Cannot delete user because they are still referenced by other records",
+                detail="Cannot delete user; they are still referenced "
+                "by other records",
             )
 
     def get_page_permissions(self, user_id: str) -> dict:

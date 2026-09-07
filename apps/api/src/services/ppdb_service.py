@@ -259,7 +259,8 @@ class PPDBService:
         if body.registration_path not in allowed_paths:
             raise HTTPException(
                 status_code=400,
-                detail=f"Jalur pendaftaran '{body.registration_path}' tidak dibuka pada gelombang ini.",
+                detail=f"Jalur pendaftaran '{body.registration_path}' "
+                "tidak dibuka pada gelombang ini.",
             )
 
         level_key = body.registration_level.split(" ")[0]
@@ -278,7 +279,8 @@ class PPDBService:
         if self.repository.get_user_by_email(body.email):
             raise HTTPException(
                 status_code=400,
-                detail="Email sudah pernah terdaftar sebelumnya. Hubungi panitia jika ingin mendaftar ulang.",
+                detail="Email sudah terdaftar. "
+                "Hubungi panitia jika ingin mendaftar ulang.",
             )
 
         raw_password = self.generate_random_password()

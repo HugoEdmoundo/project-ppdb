@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from datetime import date, datetime
+from typing import Any, cast
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
@@ -40,7 +41,7 @@ class SelectionRepository:
                 SelectionSession.session_date.asc(), SelectionSession.start_time.asc()
             )
         )
-        return self.db.execute(stmt).all()
+        return cast(Sequence[tuple[Any, ...]], self.db.execute(stmt).all())
 
     def create_session(self, session: SelectionSession) -> SelectionSession:
         self.db.add(session)
@@ -58,7 +59,7 @@ class SelectionRepository:
             .scalar_subquery()
             .label("booked_count"),
         ).where(SelectionSession.id == session_id)
-        return self.db.execute(stmt).first()
+        return cast(tuple[Any, ...] | None, self.db.execute(stmt).first())
 
     def update_session(self, session: SelectionSession) -> SelectionSession:
         self.db.add(session)
@@ -157,7 +158,7 @@ class SelectionRepository:
             .where(PPDBApplicant.wave_id == wave_id)
             .order_by(PPDBApplicant.full_name.asc())
         )
-        return self.db.execute(stmt).all()
+        return cast(Sequence[tuple[Any, ...]], self.db.execute(stmt).all())
 
     def get_applicant_scores(self, applicant_id: str) -> Sequence[SelectionScore]:
         stmt = select(SelectionScore).where(SelectionScore.applicant_id == applicant_id)
@@ -182,7 +183,7 @@ class SelectionRepository:
         return self.db.scalar(stmt)
 
     def update_selection_result_notes(
-        self, applicant_id: str, notes: str, now: datetime
+        self, applicant_id: str, notes: str | None, now: datetime
     ):
         stmt = (
             update(SelectionResult)
@@ -238,7 +239,7 @@ class SelectionRepository:
             .where(SelectionScore.applicant_id == applicant_id)
             .order_by(SelectionCategory.created_at, SelectionCriteria.created_at)
         )
-        return self.db.execute(stmt).all()
+        return cast(Sequence[tuple[Any, ...]], self.db.execute(stmt).all())
 
     def get_earliest_session_date(self, wave_id: str, today_iso: str) -> date | None:
         stmt = (
@@ -283,7 +284,7 @@ class SelectionRepository:
                 SelectionSession.session_date.asc(), SelectionSession.start_time.asc()
             )
         )
-        return self.db.execute(stmt).all()
+        return cast(Sequence[tuple[Any, ...]], self.db.execute(stmt).all())
 
     def get_sessions_by_date(
         self, wave_id: str, target_date: str

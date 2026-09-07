@@ -5,7 +5,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # --- Database ---
-    # Set DATABASE_URL to override MySQL settings entirely (e.g. sqlite:///./dev.db for local dev)
+    # Set DATABASE_URL to override MySQL settings entirely
+    # (e.g. sqlite:///./dev.db for local dev)
     database_url: str | None = None
 
     mysql_host: str = "127.0.0.1"

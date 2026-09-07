@@ -71,12 +71,16 @@ async def cp_events(request: Request) -> StreamingResponse:
     return await companyprofile_hub.stream(request)
 
 
-def _parse_permissions(raw) -> dict:
+def _parse_permissions(raw) -> dict[str, Any]:
     import json
 
     if isinstance(raw, str):
         try:
-            return json.loads(raw) if raw else {}
+            if raw:
+                parsed = json.loads(raw)
+                if isinstance(parsed, dict):
+                    return parsed
+            return {}
         except (json.JSONDecodeError, TypeError):
             return {}
     if isinstance(raw, dict):

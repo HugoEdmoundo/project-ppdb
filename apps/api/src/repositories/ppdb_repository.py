@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import or_, text
 from sqlalchemy.orm import Session
@@ -125,7 +125,7 @@ class PPDBRepository:
             .filter(PPDBWave.period_id == period_id)
             .scalar()
         )
-        return max_num if max_num is not None else 0
+        return cast(int, max_num) if max_num is not None else 0
 
     def create_wave(self, wave: PPDBWave) -> PPDBWave:
         self.db.add(wave)
@@ -318,7 +318,8 @@ class PPDBRepository:
     def get_applicants_for_document_reminder(
         self,
     ) -> list[tuple[PPDBApplicant, PPDBWave]]:
-        return (
+        return cast(
+            list[tuple[PPDBApplicant, PPDBWave]],
             self.db.query(PPDBApplicant, PPDBWave)
             .join(PPDBWave, PPDBApplicant.wave_id == PPDBWave.id)
             .filter(
@@ -328,13 +329,14 @@ class PPDBRepository:
                 PPDBWave.document_upload_end_date.is_not(None),
                 PPDBApplicant.deleted_at.is_(None),
             )
-            .all()
+            .all(),
         )
 
     def get_applicants_for_selection_reminder(
         self,
     ) -> list[tuple[PPDBApplicant, PPDBWave]]:
-        return (
+        return cast(
+            list[tuple[PPDBApplicant, PPDBWave]],
             self.db.query(PPDBApplicant, PPDBWave)
             .join(PPDBWave, PPDBApplicant.wave_id == PPDBWave.id)
             .filter(
@@ -342,5 +344,5 @@ class PPDBRepository:
                 PPDBWave.selection_date.is_not(None),
                 PPDBApplicant.deleted_at.is_(None),
             )
-            .all()
+            .all(),
         )

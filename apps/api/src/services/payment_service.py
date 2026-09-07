@@ -106,7 +106,7 @@ class PaymentService:
         if tx.method != "offline":
             raise HTTPException(
                 status_code=400,
-                detail="Cannot cancel confirmation for online payment gateway transactions",
+                detail="Cannot cancel confirmation for online payment transactions",
             )
 
         tx.status = "pending"
@@ -127,6 +127,8 @@ class PaymentService:
 
     def process_webhook(self, payload: dict) -> dict:
         order_id = payload.get("order_id")
+        if not isinstance(order_id, str) or not order_id:
+            return {"status": "ignored", "message": "Missing order_id"}
         transaction_status = payload.get("transaction_status")
         fraud_status = payload.get("fraud_status")
 
@@ -179,7 +181,8 @@ class PaymentService:
                         "payment_failed",
                         applicant.user_id,
                         {
-                            "alasan_kegagalan": "Pembayaran ditolak atau dibatalkan dari sistem."
+                            "alasan_kegagalan": "Pembayaran ditolak atau dibatalkan"
+                            " dari sistem."
                         },
                     )
                 elif new_status == "expired":
@@ -232,6 +235,8 @@ class PaymentService:
 
         for item in items:
             fee_item_id = item.get("fee_item_id")
+            if not isinstance(fee_item_id, str):
+                continue
             dtype = item.get("discount_type")
             dvalue = item.get("discount_value")
             icount = int(item.get("installment_count") or 0)

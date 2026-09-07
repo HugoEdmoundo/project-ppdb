@@ -49,9 +49,16 @@ class AuthService:
             if role:
                 role_name = role.name
                 raw = role.permissions
-                role_permissions = (
-                    json.loads(raw) if isinstance(raw, str) and raw else (raw or {})
-                )
+                if raw:
+                    if isinstance(raw, str):
+                        try:
+                            parsed = json.loads(raw)
+                            if isinstance(parsed, dict):
+                                role_permissions = parsed
+                        except json.JSONDecodeError:
+                            pass
+                    elif isinstance(raw, dict):
+                        role_permissions = raw
                 is_superadmin = bool(role.is_superadmin)
 
         page_keys = self.repository.get_page_permissions(user.id)
@@ -120,7 +127,8 @@ class AuthService:
                 self.repository.update_user(user)
                 raise HTTPException(
                     429,
-                    f"Account locked due to {LOCKOUT_THRESHOLD} failed attempts. Try again in {LOCKOUT_MINUTES} minute(s)",
+                    f"Account locked due to {LOCKOUT_THRESHOLD} failed attempts. "
+                    f"Try again in {LOCKOUT_MINUTES} minute(s)",
                 )
 
             user.failed_login_attempts = attempts

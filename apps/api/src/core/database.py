@@ -3,7 +3,7 @@ import logging
 import os
 import re
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -166,7 +166,7 @@ def list_all(
         direction = "DESC" if len(parts) > 1 and parts[1] == "desc" else "ASC"
         sql += f" ORDER BY `{_require_ident(col)}` {direction}"
     sql += f" LIMIT {int(limit)} OFFSET {int(skip)}"
-    return _run(sql)
+    return cast(list[dict[str, Any]], _run(sql))
 
 
 def get_by_id(table: str, id: str) -> dict[str, Any] | None:
@@ -179,7 +179,10 @@ def get_by_id(table: str, id: str) -> dict[str, Any] | None:
 
 
 def get_by_column(table: str, column: str, value: Any) -> dict[str, Any] | None:
-    sql = f"SELECT * FROM `{_require_ident(table)}` WHERE `{_require_ident(column)}` = :value LIMIT 1"
+    sql = (
+        f"SELECT * FROM `{_require_ident(table)}` "
+        f"WHERE `{_require_ident(column)}` = :value LIMIT 1"
+    )
     rows = _run(sql, {"value": value})
     return rows[0] if rows else None
 
@@ -218,7 +221,10 @@ def create_record(
 
     if table in PK_TABLES or not return_row:
         return cleaned
-    return get_by_id(table, cleaned["id"])
+    row = get_by_id(table, cleaned["id"])
+    if row is None:
+        return cleaned
+    return row
 
 
 def update_record(table: str, id: str, data: dict[str, Any]) -> dict[str, Any] | None:
@@ -243,7 +249,7 @@ def delete_record(table: str, id: str) -> bool:
         return False
     col = _pk_col(table)
     sql = f"DELETE FROM `{_require_ident(table)}` WHERE {col} = :id"
-    return _run(sql, {"id": id}) > 0
+    return cast(bool, _run(sql, {"id": id}) > 0)
 
 
 def search_paginated(

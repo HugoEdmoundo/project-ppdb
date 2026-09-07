@@ -3,7 +3,7 @@
 Env vars (see api/.env.example):
 
   CORS_ORIGINS       comma-separated explicit allowlist.
-                     "*"            = allow every origin (dev only; credentials disabled).
+                     "*"            = allow every origin (dev only; disabled creds).
                      empty/unset    = DEFAULT_ORIGINS + DEFAULT_ORIGIN_REGEX.
   CORS_ORIGIN_REGEX  optional extra origin regex (e.g. dynamic preview domains).
 
@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 logger = logging.getLogger("ptdarrahman.cors")
 
 # Explicit allowlist used when CORS_ORIGINS is empty/unset.
-DEFAULT_ORIGINS = []
+DEFAULT_ORIGINS: list[str] = []
 
 # Covers every local dev port
 DEFAULT_ORIGIN_REGEX = re.compile(r"^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$")

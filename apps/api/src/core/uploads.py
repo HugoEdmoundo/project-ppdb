@@ -96,7 +96,7 @@ def _upload_cloudinary(
 def _upload_db(
     content: bytes, original_name: str, content_type: str, record_id: str
 ) -> UploadResult:
-    """Store file bytes in the file_uploads.data column (served via GET /uploads/{id})."""
+    """Store file bytes in the file_uploads.data column (GET /uploads/{id})."""
     Path(original_name).suffix or ".bin"
     return UploadResult(
         public_url=f"/uploads/{record_id}",

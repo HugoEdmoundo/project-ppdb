@@ -14,7 +14,7 @@ BCRYPT_ROUNDS = 12
 
 
 def hash_password(password: str) -> str:
-    """Hash a password with bcrypt (cost 12, matches bcryptjs used by legacy clients)."""
+    """Hash a password with bcrypt (cost 12, matches bcryptjs legacy)."""
     if password is None:
         raise ValueError("password cannot be None")
     password_bytes = password.encode("utf-8")[:72]

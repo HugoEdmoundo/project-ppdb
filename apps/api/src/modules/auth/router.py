@@ -56,15 +56,15 @@ def login(
     secure = _cookie_secure(request)
     response.set_cookie(
         key="access_token",
-        value=result.access_token,
+        value=result["access_token"],
         httponly=True,
         samesite="lax",
         secure=secure,
     )
-    if result.refresh_token:
+    if result.get("refresh_token"):
         response.set_cookie(
             key="refresh_token",
-            value=result.refresh_token,
+            value=result["refresh_token"],
             httponly=True,
             samesite="lax",
             secure=secure,
@@ -77,7 +77,7 @@ def login(
 def refresh(
     request: Request,
     response: Response,
-    body: RefreshRequest = None,
+    body: RefreshRequest | None = None,
     service: AuthService = Depends(get_auth_service),
 ):
     refresh_token = body.refresh_token if body else request.cookies.get("refresh_token")
@@ -87,14 +87,14 @@ def refresh(
     secure = _cookie_secure(request)
     response.set_cookie(
         key="access_token",
-        value=result.access_token,
+        value=result["access_token"],
         httponly=True,
         samesite="lax",
         secure=secure,
     )
     response.set_cookie(
         key="refresh_token",
-        value=result.refresh_token,
+        value=result["refresh_token"],
         httponly=True,
         samesite="lax",
         secure=secure,
@@ -107,7 +107,7 @@ def refresh(
 def logout(
     request: Request,
     response: Response,
-    body: RefreshRequest = None,
+    body: RefreshRequest | None = None,
     service: AuthService = Depends(get_auth_service),
 ):
     refresh_token = body.refresh_token if body else request.cookies.get("refresh_token")

@@ -1,3 +1,33 @@
+[project]
+name = "ptdarrahman-api"
+version = "0.1.0"
+description = "Backend API (FastAPI) for the PTDARRAHMAN company profile, PPDB, auth, and user/role management."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.141.1",
+    "uvicorn==0.52.2",
+    "pydantic==2.13.4",
+    "pydantic-settings==2.15.0",
+    "python-multipart>=0.0.18",
+    "scalar-fastapi==1.8.2",
+    "sqlalchemy==2.0.52",
+    "alembic==1.19.1",
+    "pyjwt==2.13.0",
+    "bcrypt==5.0.0",
+    "email-validator==2.3.0",
+    "cloudinary==1.45.0",
+    "httpx==0.28.1",
+    "tzdata",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.4.2",
+    "ruff==0.6.5",
+    "mypy==1.11.2",
+    "pre-commit==3.8.0",
+]
+
 [tool.ruff]
 line-length = 88
 target-version = "py312"

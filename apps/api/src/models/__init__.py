@@ -23,6 +23,8 @@ from src.models.content import (
 from src.models.ppdb import (
     PPDBBMOU,
     FileUpload,
+    NotificationLog,
+    NotificationTemplate,
     PPDBApplicant,
     PPDBApplicantDiscount,
     PPDBPaymentTransaction,
@@ -77,6 +79,8 @@ __all__ = [
     "PPDBStage2Bill",
     "PPDBBMOU",
     "PPDBPaymentTransaction",
+    "NotificationLog",
+    "NotificationTemplate",
     "SelectionCategory",
     "SelectionCriteria",
     "SelectionResult",

@@ -12,7 +12,7 @@ import {
   Newspaper, GraduationCap, Building2, Users, Trophy,
   Image as ImageIcon, MessageSquare, Link, Phone, Settings,
   Plus, Menu, X, ChevronLeft, LogOut, User as UserIcon,
-  LayoutDashboard, Upload, ImagePlus, Link2,
+  LayoutDashboard, Upload, ImagePlus, Link2, Loader2,
 } from 'lucide-react'
 import ProfileModal from '@/app/components/ProfileModal'
 import CrossTabSync from '@/app/components/CrossTabSync'
@@ -182,11 +182,11 @@ const TABLE_COLS: Record<string, { label: string; accessor: (item: RowRecord) =>
   ],
 }
 
-const FORM_FIELDS: Record<string, { name: string; label: string; type: 'text' | 'textarea' | 'number' }[]> = {
+const FORM_FIELDS: Record<string, { name: string; label: string; type: 'text' | 'textarea' | 'number' | 'date' }[]> = {
   news: [
     { name: 'slug', label: 'Slug', type: 'text' },
     { name: 'category', label: 'Kategori', type: 'text' },
-    { name: 'date', label: 'Tanggal', type: 'text' },
+    { name: 'date', label: 'Tanggal', type: 'date' },
   ],
   programs: [
     { name: 'slug', label: 'Slug', type: 'text' },
@@ -366,6 +366,9 @@ export default function AdminDashboard() {
   const [items, setItems] = useState<RowRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null)
   const [editingItem, setEditingItem] = useState<RowRecord | null>(null)
   const [formData, setFormData] = useState<FormState>({})
@@ -437,6 +440,8 @@ export default function AdminDashboard() {
     router.push('/admin/login')
   }, [router])
 
+  const ADMIN_PAGE_SIZE = 25
+
   const fetchData = useCallback(async () => {
     const currentTabs = pagePermissions && pagePermissions.length > 0
       ? TABS.filter(tab => pagePermissions.some(p => `page-cp-${tab.key}` === p))
@@ -453,8 +458,17 @@ export default function AdminDashboard() {
         setLoading(false)
         return
       }
-      const data = await tab.fetch()
-      setItems(Array.isArray(data) ? data : data ? [data as RowRecord] : [])
+      if (activeTab === 'contact' || activeTab === 'settings') {
+        const data = await tab.fetch()
+        setItems(Array.isArray(data) ? data : data ? [data as RowRecord] : [])
+        setHasMore(false)
+      } else {
+        const data = await api.getEntityPage(tab.endpoint, 1, ADMIN_PAGE_SIZE)
+        const rows = data as unknown as RowRecord[]
+        setItems(rows)
+        setPage(1)
+        setHasMore(rows.length === ADMIN_PAGE_SIZE)
+      }
     } catch (e: unknown) {
       if (e instanceof Error && (e.message?.includes('401') || e.message?.includes('Unauthorized'))) {
         handle401()
@@ -462,10 +476,33 @@ export default function AdminDashboard() {
       }
       setError(e instanceof Error ? e.message : 'Gagal memuat data')
       setItems([])
+      setHasMore(false)
     } finally {
       setLoading(false)
     }
   }, [activeTab, handle401, pagePermissions])
+
+  const loadMore = useCallback(async () => {
+    const tab = TABS.find((t) => t.key === activeTab)
+    if (!tab || loadingMore || !hasMore) return
+    setLoadingMore(true)
+    try {
+      const next = page + 1
+      const data = await api.getEntityPage(tab.endpoint, next, ADMIN_PAGE_SIZE)
+      const rows = data as unknown as RowRecord[]
+      setItems((prev) => [...prev, ...rows])
+      setPage(next)
+      setHasMore(rows.length === ADMIN_PAGE_SIZE)
+    } catch (e: unknown) {
+      if (e instanceof Error && (e.message?.includes('401') || e.message?.includes('Unauthorized'))) {
+        handle401()
+        return
+      }
+      setError(e instanceof Error ? e.message : 'Gagal memuat lebih banyak data')
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [activeTab, handle401, hasMore, loadingMore, page])
 
   useEffect(() => {
     eventBus.on('companyprofile:refresh', fetchData)
@@ -756,9 +793,16 @@ export default function AdminDashboard() {
                           rows={4}
                           maxLength={10000}
                         />
+                      ) : f.type === 'number' || f.type === 'date' ? (
+                        <Input
+                          type={f.type}
+                          maxLength={255}
+                          value={String(formData[f.name] ?? '')}
+                          onChange={(e) => setFormData({ ...formData, [f.name]: e.target.value })}
+                        />
                       ) : (
                         <Input
-                          type={f.type === 'number' ? 'number' : 'text'}
+                          type="text"
                           maxLength={255}
                           value={String(formData[f.name] ?? '')}
                           onChange={(e) => setFormData({ ...formData, [f.name]: e.target.value })}
@@ -1263,6 +1307,16 @@ export default function AdminDashboard() {
                 </Table>
               </div>
             </Card>
+          )}
+
+          {/* Load more (pagination) */}
+          {activeTab !== 'settings' && activeTab !== 'contact' && !loading && hasMore && (
+            <div className="flex justify-center mt-6 mb-2">
+              <Button variant="outline" onClick={loadMore} disabled={loadingMore} className="gap-2">
+                <Loader2 className={`w-4 h-4 ${loadingMore ? 'animate-spin' : ''}`} />
+                {loadingMore ? 'Memuat...' : 'Muat Lebih Banyak'}
+              </Button>
+            </div>
           )}
         </main>
       </div>

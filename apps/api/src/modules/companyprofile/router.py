@@ -257,17 +257,22 @@ async def cp_upload(
 ):
     record_id = str(uuid.uuid4())
     result = await upload_file(file, record_id)
+    if result.public_url.startswith("/uploads/"):
+        stored_name = result.public_url.rsplit("/", 1)[-1]
+    else:
+        stored_name = result.storage_path.split("/")[-1]
     record = create_record(
         "file_uploads",
         {
             "id": record_id,
             "uploaded_by": user["id"],
             "original_name": result.original_name,
-            "stored_name": result.storage_path.split("/")[-1],
+            "stored_name": stored_name,
             "mime_type": result.mime_type,
             "size_bytes": result.size_bytes,
             "storage_path": result.storage_path,
             "public_url": result.public_url,
+            "data": result.data,
         },
     )
     url = result.public_url
@@ -396,8 +401,17 @@ async def cp_entity_get(entity: str, slug: str):
 async def cp_entity_create(
     entity: str, request: Request, user: dict[str, Any] = Depends(require_cp_crud())
 ):
+    from src.modules.companyprofile.schemas import sanitize_entity_payload
+
     body = await request.json()
-    record = create_record(get_table(entity), body)
+    table = get_table(entity)
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="Request body must be an object")
+    try:
+        payload = sanitize_entity_payload(entity, body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    record = create_record(table, payload)
     companyprofile_hub.broadcast()
     return record
 
@@ -409,11 +423,19 @@ async def cp_entity_update(
     request: Request,
     user: dict[str, Any] = Depends(require_cp_crud()),
 ):
+    from src.modules.companyprofile.schemas import sanitize_entity_payload
+
     table = get_table(entity)
     if not get_by_id(table, id):
         raise HTTPException(status_code=404, detail=f"{entity} not found")
     body = await request.json()
-    record = update_record(table, id, body)
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="Request body must be an object")
+    try:
+        payload = sanitize_entity_payload(entity, body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    record = update_record(table, id, payload)
     companyprofile_hub.broadcast()
     return record
 

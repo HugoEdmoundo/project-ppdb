@@ -272,6 +272,22 @@ export async function getSocialLinks(): Promise<SocialLink[]> {
   )
 }
 
+// Paginated variant used by the admin dashboard list views. Each page holds up
+// to `perPage` rows; the backend applies the same `mapContent` normalization.
+const ADMIN_PAGE_SIZE = 25
+
+export async function getEntityPage(
+  endpoint: string,
+  page: number,
+  perPage: number = ADMIN_PAGE_SIZE
+): Promise<JsonValue[]> {
+  const skip = (page - 1) * perPage
+  const items = await fetchApi<JsonValue[]>(
+    `/${endpoint}?skip=${skip}&limit=${perPage}`
+  )
+  return items.map((item) => mapContent(item) as JsonValue)
+}
+
 export async function getContactInfo(): Promise<ContactInfo | null> {
   const item = await fetchApi<JsonValue | null>('/contact-info')
   return (item ?? null) as unknown as ContactInfo | null

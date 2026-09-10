@@ -333,7 +333,7 @@ export default function RegisterPage() {
                     <Input
                       id="full_name" required maxLength={100}
                       value={formData.full_name}
-                      onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, full_name: e.target.value})}
                     />
                   </div>
 
@@ -343,7 +343,7 @@ export default function RegisterPage() {
                       id="nisn" required inputMode="numeric" minLength={10} maxLength={10}
                       placeholder="10 digit"
                       value={formData.nisn}
-                      onChange={(e) => setFormData({...formData, nisn: e.target.value.replace(/\D/g, '')})}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, nisn: e.target.value.replace(/\D/g, '')})}
                     />
                     <p className="text-xs text-muted-foreground">Nomor Induk Siswa Nasional (10 digit angka).</p>
                   </div>
@@ -354,7 +354,7 @@ export default function RegisterPage() {
                       id="nik" required inputMode="numeric" minLength={16} maxLength={16}
                       placeholder="16 digit"
                       value={formData.nik}
-                      onChange={(e) => setFormData({...formData, nik: e.target.value.replace(/\D/g, '')})}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, nik: e.target.value.replace(/\D/g, '')})}
                     />
                     <p className="text-xs text-muted-foreground">NIK sesuai Kartu Keluarga / KTP (16 digit angka).</p>
                   </div>
@@ -364,7 +364,7 @@ export default function RegisterPage() {
                     <Input
                       id="birth_place" required maxLength={100}
                       value={formData.birth_place}
-                      onChange={(e) => setFormData({...formData, birth_place: e.target.value})}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, birth_place: e.target.value})}
                     />
                   </div>
 
@@ -373,7 +373,7 @@ export default function RegisterPage() {
                     <Input
                       id="birth_date" type="date" required max={todayStr}
                       value={formData.birth_date}
-                      onChange={(e) => setFormData({...formData, birth_date: e.target.value})}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, birth_date: e.target.value})}
                     />
                   </div>
 
@@ -383,7 +383,7 @@ export default function RegisterPage() {
                       id="email" type="email" required maxLength={100}
                       placeholder="nama@email.com"
                       value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, email: e.target.value})}
                     />
                   </div>
 
@@ -393,7 +393,7 @@ export default function RegisterPage() {
                       id="phone" type="tel" required inputMode="numeric" minLength={9} maxLength={16}
                       placeholder="08xxxxxxxxxx"
                       value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})}
                     />
                     <p className="text-xs text-muted-foreground">Hanya angka, awali dengan 08 (9–16 digit).</p>
                   </div>
@@ -403,7 +403,7 @@ export default function RegisterPage() {
                     <Input
                       id="parent_name" required maxLength={150}
                       value={formData.parent_name}
-                      onChange={(e) => setFormData({...formData, parent_name: e.target.value})}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, parent_name: e.target.value})}
                     />
                   </div>
 
@@ -412,7 +412,7 @@ export default function RegisterPage() {
                     <Input
                       id="previous_school" required maxLength={150}
                       value={formData.previous_school}
-                      onChange={(e) => setFormData({...formData, previous_school: e.target.value})}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, previous_school: e.target.value})}
                     />
                   </div>
 
@@ -464,7 +464,7 @@ export default function RegisterPage() {
                     <Label htmlFor="postal_code">Kode Pos</Label>
                     <Input id="postal_code" inputMode="numeric" maxLength={5} placeholder="5 digit"
                       value={formData.postal_code}
-                      onChange={(e) => setFormData({...formData, postal_code: e.target.value.replace(/\D/g, '')})} />
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, postal_code: e.target.value.replace(/\D/g, '')})} />
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
@@ -473,7 +473,7 @@ export default function RegisterPage() {
                       id="address" required maxLength={500}
                       placeholder="Contoh: Jl. Ahmad Yani No. 12 RT 01/RW 03, Perumahan ABC Blok C5"
                       value={formData.address}
-                      onChange={(e) => setFormData({...formData, address: e.target.value})}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({...formData, address: e.target.value})}
                       className="min-h-[80px]"
                     />
                   </div>

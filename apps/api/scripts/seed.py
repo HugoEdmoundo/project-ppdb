@@ -5,8 +5,7 @@ Run from the `api/` directory:
 
 Creates (only if missing):
   - modules & pages for the superadmin/ppdb permission system
-  - default roles ("Superadmin", "Calon Murid", "Admin PPDB")
-  - the superadmin user (credentials from SEED_SUPERADMIN_* env vars)
+  - default roles ("Superadmin", "Pendaftar", "Admin PPDB")
   - default site_settings keys
 
 Safe to run repeatedly.
@@ -41,7 +40,7 @@ MODULES = {
 PAGES = {
     "ppdb": [
         ("ppdb-periods", "Periode PPDB", "CalendarDays", 10),
-        ("ppdb-applicants", "Calon Murid", "Users", 20),
+        ("ppdb-applicants", "Pendaftar", "Users", 20),
         ("ppdb-payments", "Pembayaran", "Wallet", 30),
         ("ppdb-selection", "Seleksi", "ClipboardCheck", 40),
     ],
@@ -64,7 +63,7 @@ DEFAULT_ROLES = [
         "permissions": {},
     },
     {
-        "name": "Calon Murid",
+        "name": "Pendaftar",
         "description": "Default role for PPDB applicants.",
         "is_superadmin": False,
         "is_system": True,
@@ -409,8 +408,8 @@ def ensure_roles() -> None:
 
 
 def ensure_applicant_roles() -> None:
-    """Assign the default 'Calon Murid' role to applicant users missing a role."""
-    role = get_by_column("roles", "name", "Calon Murid")
+    """Assign the default 'Pendaftar' role to applicant users missing a role."""
+    role = get_by_column("roles", "name", "Pendaftar")
     if not role:
         return
     rows = execute_raw(
@@ -418,42 +417,7 @@ def ensure_applicant_roles() -> None:
     )
     for row in rows:
         update_record("users", row["id"], {"role_id": role["id"]})
-        print(f"  applicant role:  {row['id']} -> Calon Murid")
-
-
-def ensure_superadmin() -> None:
-    username = settings.seed_superadmin_username
-    password = settings.seed_superadmin_password
-    if not username or not password:
-        print("  superadmin: skipped (SEED_SUPERADMIN_USERNAME/PASSWORD not set)")
-        return
-
-    existing = get_by_column("users", "username", username)
-    if existing:
-        print(f"  superadmin: exists ({username}) — password tidak diubah")
-        return
-
-    role = get_by_column("roles", "name", "Superadmin")
-    role_id = role["id"] if role else None
-    now = _now()
-    create_record(
-        "users",
-        {
-            "id": str(uuid4()),
-            "username": username,
-            "email": settings.seed_superadmin_email or "",
-            "password_hash": hash_password(password),
-            "role_id": role_id,
-            "user_type": "superadmin",
-            "full_name": "Super Admin",
-            "avatar_url": "",
-            "phone": None,
-            "is_active": 1,
-            "created_at": now,
-            "updated_at": now,
-        },
-    )
-    print(f"  superadmin: created ({username})")
+        print(f"  applicant role:  {row['id']} -> Pendaftar")
 
 
 def ensure_site_settings() -> None:
@@ -494,7 +458,6 @@ def main() -> None:
     ensure_modules_and_pages()
     ensure_roles()
     ensure_applicant_roles()
-    ensure_superadmin()
     ensure_site_settings()
     ensure_notification_templates()
     print("Done.")

@@ -285,7 +285,7 @@ class PPDBService:
 
         raw_password = self.generate_random_password()
         username = self.generate_unique_username(body.full_name)
-        role_id = self.repository.get_role_id_by_name("Calon Murid")
+        role_id = self.repository.get_role_id_by_name("Pendaftar")
 
         now = datetime.now()
         payment_deadline = datetime.now(ZoneInfo("Asia/Jakarta")) + timedelta(days=7)

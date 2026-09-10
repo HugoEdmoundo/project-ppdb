@@ -234,7 +234,7 @@ class AuthService:
         if self.repository.get_user_by_username_or_email(data["email"]):
             raise HTTPException(400, "Email already exists")
 
-        role = self.repository.db.query(Role).filter(Role.name == "Calon Murid").first()
+        role = self.repository.db.query(Role).filter(Role.name == "Pendaftar").first()
         if not role:
             raise HTTPException(
                 500, "Default applicant role not found. Run seed first."

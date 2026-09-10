@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Inter, DM_Sans, Playfair_Display, Amiri } from "next/font/google"
 import "./globals.css"
 import { Providers } from "./context/Providers"
+import ServiceWorkerCleanup from "./components/ServiceWorkerCleanup"
 import { API_BASE } from "./lib/api"
 import type { SettingsItem } from "./lib/types"
 
@@ -125,6 +126,7 @@ export default function RootLayout({
       className={`${inter.variable} ${dmSans.variable} ${playfair.variable} ${amiri.variable}`}
     >
       <body className="min-h-screen flex flex-col">
+        <ServiceWorkerCleanup />
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:z-[100] focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-white focus:text-[var(--text)] focus:rounded-xl focus:shadow-xl focus:outline-none focus:text-sm focus:font-medium">
           Langsung ke konten utama
         </a>

@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,7 +43,7 @@ class Settings(BaseSettings):
     superadmin_frontend_url: str = "http://localhost:5173"
 
     # --- Uploads ---
-    upload_provider: str = "local"  # local
+    upload_provider: str = "local"  # local | cloudinary | db
     upload_dir: str = "uploads"
 
     cloudinary_cloud_name: str | None = None
@@ -51,10 +52,7 @@ class Settings(BaseSettings):
     cloudinary_folder: str = "ptdarrahman"
     cloudinary_secure: bool = True
 
-    # --- Seeding ---
-    seed_superadmin_username: str | None = None
-    seed_superadmin_password: str | None = None
-    seed_superadmin_email: str | None = None
+
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -73,6 +71,15 @@ class Settings(BaseSettings):
             and self.cloudinary_api_key
             and self.cloudinary_api_secret
         )
+
+    @field_validator("upload_provider")
+    @classmethod
+    def _validate_upload_provider(cls, value: str) -> str:
+        if value not in ("local", "cloudinary", "db"):
+            raise ValueError(
+                f"UPLOAD_PROVIDER must be 'local', 'cloudinary', or 'db', got '{value}'"
+            )
+        return value
 
 
 @lru_cache

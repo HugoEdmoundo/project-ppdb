@@ -1,11 +1,15 @@
 """File upload service.
 
 `UPLOAD_PROVIDER=local` saves to a local folder.
+`UPLOAD_PROVIDER=cloudinary` uploads to Cloudinary (falls back to local when
+Cloudinary is not configured).
+`UPLOAD_PROVIDER=db` stores the bytes in the `file_uploads.data` column (served
+via `GET /uploads/{id}`).
 """
 
 import logging
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
@@ -33,7 +37,7 @@ class UploadResult:
     original_name: str
     mime_type: str
     size_bytes: int
-    data: bytes | None = field(default=None)
+    data: bytes | None = None
 
 
 def _validate(file: UploadFile) -> None:
@@ -93,21 +97,6 @@ def _upload_cloudinary(
     )
 
 
-def _upload_db(
-    content: bytes, original_name: str, content_type: str, record_id: str
-) -> UploadResult:
-    """Store file bytes in the file_uploads.data column (GET /uploads/{id})."""
-    Path(original_name).suffix or ".bin"
-    return UploadResult(
-        public_url=f"/uploads/{record_id}",
-        storage_path=f"db://{record_id}",
-        original_name=original_name,
-        mime_type=content_type,
-        size_bytes=len(content),
-        data=content,
-    )
-
-
 def _upload_local(
     content: bytes, original_name: str, content_type: str
 ) -> UploadResult:
@@ -122,6 +111,19 @@ def _upload_local(
         original_name=original_name,
         mime_type=content_type,
         size_bytes=len(content),
+    )
+
+
+def _upload_db(
+    content: bytes, original_name: str, content_type: str, record_id: str
+) -> UploadResult:
+    return UploadResult(
+        public_url=f"/uploads/{record_id}",
+        storage_path=f"db://{record_id}",
+        original_name=original_name,
+        mime_type=content_type,
+        size_bytes=len(content),
+        data=content,
     )
 
 
@@ -142,7 +144,7 @@ async def upload_file(file: UploadFile, record_id: str | None = None) -> UploadR
     elif provider == "db":
         if not record_id:
             raise HTTPException(
-                status_code=500, detail="db storage requires a record id"
+                status_code=500, detail="db upload requires a record id"
             )
         result = _upload_db(
             content,
@@ -164,7 +166,6 @@ def delete_upload(storage_path: str) -> None:
     if not storage_path:
         return
     if storage_path.startswith("db://"):
-        # Stored inside file_uploads.data; row cleanup is handled by the caller.
         return
     if settings.upload_provider == "cloudinary" and settings.cloudinary_configured:
         try:

@@ -220,7 +220,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
   }
 
   return (
-    <Sheet open={!!period} onOpenChange={(v) => !v && onClose()}>
+    <Sheet open={!!period} onOpenChange={(v: boolean) => !v && onClose()}>
       <SheetContent side="right" className="w-full sm:max-w-2xl sm:w-[600px] overflow-y-auto">
         <SheetHeader className="mb-6">
           <SheetTitle className="text-xl">Gelombang — {period?.name}</SheetTitle>
@@ -329,7 +329,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
         </div>
       </SheetContent>
 
-      <Dialog open={showForm} onOpenChange={(v) => { setShowForm(v); if (!v) setFormError(null) }}>
+      <Dialog open={showForm} onOpenChange={(v: boolean) => { setShowForm(v); if (!v) setFormError(null) }}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>{editingWave ? 'Edit Gelombang' : 'Tambah Gelombang'}</DialogTitle>
@@ -458,7 +458,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
         variant={actionId?.type === 'activate' ? 'primary' : 'destructive'}
       />
 
-      <Dialog open={!!feeDialogWave} onOpenChange={(v) => !v && setFeeDialogWave(null)}>
+      <Dialog open={!!feeDialogWave} onOpenChange={(v: boolean) => !v && setFeeDialogWave(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -473,7 +473,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
               <div className="flex gap-2 items-end">
                 <div className="space-y-1.5 flex-1">
                   <Label>Nama Item</Label>
-                  <Input value={newFeeName} onChange={e => setNewFeeName(e.target.value)} placeholder="Misal: SPP Bulan Juli" />
+                  <Input value={newFeeName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFeeName(e.target.value)} placeholder="Misal: SPP Bulan Juli" />
                 </div>
                 <div className="space-y-1.5 flex-1">
                   <Label>Nominal (Rp)</Label>

@@ -167,3 +167,8 @@ class WaveMouTemplateUpdate(BaseModel):
 
 class MouSignRequest(BaseModel):
     signature_data: str
+
+
+class DocumentVerify(BaseModel):
+    status: str = Field(pattern=r"^document_(approved|rejected)$")
+    rejection_reason: str | None = None

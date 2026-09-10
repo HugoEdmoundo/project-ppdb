@@ -1,11 +1,20 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from src.core.config import settings
 from src.core.database import (
     create_record,
     delete_record,
@@ -93,13 +102,20 @@ def _parse_permissions(raw) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _cookie_secure(request: Request) -> bool:
+    if settings.cookie_secure:
+        return True
+    forwarded = (request.headers.get("x-forwarded-proto") or "").lower()
+    return forwarded == "https"
+
+
 class LoginReq(BaseModel):
     username: str
     password: str
 
 
 class RefreshReq(BaseModel):
-    refresh_token: str
+    refresh_token: str | None = None
 
 
 class ProfileUpdateReq(BaseModel):
@@ -126,7 +142,12 @@ def _strip_permission_fields(user: dict) -> dict:
 
 
 @router.post("/auth/login")
-async def cp_login(body: LoginReq, service: AuthService = Depends(get_auth_service)):
+async def cp_login(
+    body: LoginReq,
+    request: Request,
+    response: Response,
+    service: AuthService = Depends(get_auth_service),
+):
     from src.core.dependencies import AccessLevel, Module, has_module_access
 
     result = service.login(body.username, body.password)
@@ -144,6 +165,24 @@ async def cp_login(body: LoginReq, service: AuthService = Depends(get_auth_servi
     ):
         raise HTTPException(status_code=403, detail="Access denied")
 
+    secure = _cookie_secure(request)
+    response.set_cookie(
+        key="access_token",
+        value=result["access_token"],
+        httponly=True,
+        samesite="lax",
+        secure=secure,
+    )
+    if result.get("refresh_token"):
+        response.set_cookie(
+            key="refresh_token",
+            value=result["refresh_token"],
+            httponly=True,
+            samesite="lax",
+            secure=secure,
+            max_age=30 * 24 * 60 * 60,
+        )
+
     return {
         "access_token": result["access_token"],
         "refresh_token": result["refresh_token"],
@@ -154,9 +193,33 @@ async def cp_login(body: LoginReq, service: AuthService = Depends(get_auth_servi
 
 @router.post("/auth/refresh")
 async def cp_refresh(
-    body: RefreshReq, service: AuthService = Depends(get_auth_service)
+    request: Request,
+    response: Response,
+    body: RefreshReq | None = None,
+    service: AuthService = Depends(get_auth_service),
 ):
-    result = service.refresh(body.refresh_token)
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token and body and body.refresh_token:
+        refresh_token = body.refresh_token
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token missing")
+    result = service.refresh(refresh_token)
+    secure = _cookie_secure(request)
+    response.set_cookie(
+        key="access_token",
+        value=result["access_token"],
+        httponly=True,
+        samesite="lax",
+        secure=secure,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=result["refresh_token"],
+        httponly=True,
+        samesite="lax",
+        secure=secure,
+        max_age=30 * 24 * 60 * 60,
+    )
     return {
         "access_token": result["access_token"],
         "refresh_token": result["refresh_token"],
@@ -165,11 +228,22 @@ async def cp_refresh(
 
 
 @router.post("/auth/logout")
-async def cp_logout(user: dict[str, Any] = Depends(get_current_user)):
-    execute_raw(
-        "UPDATE refresh_tokens SET revoked = 1 WHERE user_id = :uid",
-        {"uid": user["id"]},
-    )
+async def cp_logout(
+    request: Request,
+    response: Response,
+    body: RefreshReq | None = None,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token and body and body.refresh_token:
+        refresh_token = body.refresh_token
+    if refresh_token:
+        execute_raw(
+            "UPDATE refresh_tokens SET revoked = 1 WHERE user_id = :uid",
+            {"uid": user["id"]},
+        )
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
     return {"message": "Logged out"}
 
 

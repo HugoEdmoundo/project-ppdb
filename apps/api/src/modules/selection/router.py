@@ -64,6 +64,9 @@ def get_sessions(
     user: dict = Depends(require_ppdb_read),
     svc: SelectionService = Depends(get_selection_service),
 ):
+    wave_id = svc.repo.get_active_wave_id()
+    if not wave_id:
+        return {"data": [], "total": 0, "active_wave": None}
     return svc.get_sessions()
 
 
@@ -115,6 +118,9 @@ def get_categories(
     user: dict = Depends(require_ppdb_read),
     svc: SelectionService = Depends(get_selection_service),
 ):
+    wave_id = svc.repo.get_active_wave_id()
+    if not wave_id:
+        return {"data": [], "total": 0, "active_wave": None}
     return svc.get_categories()
 
 
@@ -165,6 +171,9 @@ def get_results(
     user: dict = Depends(require_ppdb_read),
     svc: SelectionService = Depends(get_selection_service),
 ):
+    wave_id = svc.repo.get_active_wave_id()
+    if not wave_id:
+        return {"data": [], "total": 0, "active_wave": None}
     return svc.get_results()
 
 

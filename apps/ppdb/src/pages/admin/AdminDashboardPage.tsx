@@ -11,13 +11,13 @@ export default function AdminDashboardPage() {
 
   const { data: applicantsRes, isLoading: loadingApplicants, isError: errorApplicants } = useQuery({
     queryKey: ['applicants', 'dashboard'],
-    queryFn: () => applicantService.getApplicants({ limit: 1000 }),
+    queryFn: () => applicantService.getApplicants({ perPage: 1000 }),
     // TODO: Backend should provide a /stats endpoint to avoid fetching 1000 rows
   })
 
   const { data: paymentsRes, isLoading: loadingPayments, isError: errorPayments } = useQuery({
     queryKey: ['payments', 'dashboard', 'pending'],
-    queryFn: () => paymentService.getTransactions({ status: 'pending', limit: 1000 }),
+    queryFn: () => paymentService.getTransactions({ status: 'pending', perPage: 1000 }),
   })
 
   const { data: periodsRes, isLoading: loadingPeriods, isError: errorPeriods } = useQuery({
@@ -35,7 +35,7 @@ export default function AdminDashboardPage() {
   }, [isError, toast])
 
   const activePeriod = Array.isArray(periodsRes) ? periodsRes.find((p: any) => p.status === 'active') : null
-  const activeWaveName = applicantsRes?.active_wave ? applicantsRes.active_wave.name : null
+  const activeWaveId = applicantsRes?.active_wave || null
 
   const applicantsList = applicantsRes?.data || []
   const totalApplicants = applicantsList.length
@@ -48,7 +48,7 @@ export default function AdminDashboardPage() {
     total_applicants: totalApplicants,
     pending_documents: pendingDocuments,
     pending_payments: pendingPayments,
-    active_wave_name: activeWaveName,
+    active_wave_name: activeWaveId ? 'Aktif' : null,
     active_period_name: activePeriod?.name || null,
   }
 
@@ -77,7 +77,7 @@ export default function AdminDashboardPage() {
             <div className="flex items-center gap-2 rounded-lg border bg-white px-4 py-2 shadow-sm">
               <Activity className="h-4 w-4 text-slate-400" />
               <span className="text-xs font-medium text-slate-500">Gelombang:</span>
-              <span className="text-sm font-bold text-slate-900">{stats.active_wave_name || 'Tidak ada'}</span>
+              <span className="text-sm font-bold text-slate-900">{activeWaveId ? 'Aktif' : 'Tidak ada'}</span>
             </div>
           </div>
         )}

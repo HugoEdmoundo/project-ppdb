@@ -25,7 +25,7 @@ export default function DataPendaftarPage() {
       const qs = new URLSearchParams()
       if (searchQuery) qs.append('search', searchQuery)
       qs.append('page', page.toString())
-      qs.append('limit', limit.toString())
+      qs.append('perPage', limit.toString())
 
       const res = await api.apiFetch<{ data: Applicant[], total: number, active_wave: any }>(`/ppdb/applicants?${qs.toString()}`)
       return res

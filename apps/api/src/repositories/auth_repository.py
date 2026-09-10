@@ -1,3 +1,5 @@
+from typing import cast
+
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -10,17 +12,18 @@ class AuthRepository:
         self.db = db
 
     def get_user_by_username_or_email(self, identifier: str) -> User | None:
-        return (
+        return cast(
+            User | None,
             self.db.query(User)
             .filter(or_(User.username == identifier, User.email == identifier))
-            .first()
+            .first(),
         )
 
     def get_user_by_id(self, user_id: str) -> User | None:
-        return self.db.query(User).filter(User.id == user_id).first()
+        return cast(User | None, self.db.query(User).filter(User.id == user_id).first())
 
     def get_role_by_id(self, role_id: str) -> Role | None:
-        return self.db.query(Role).filter(Role.id == role_id).first()
+        return cast(Role | None, self.db.query(Role).filter(Role.id == role_id).first())
 
     def get_page_permissions(self, user_id: str) -> list[str]:
         (
@@ -45,10 +48,11 @@ class AuthRepository:
         return [p[0] for p in pages]
 
     def get_applicant_by_user_id(self, user_id: str) -> PPDBApplicant | None:
-        return (
+        return cast(
+            PPDBApplicant | None,
             self.db.query(PPDBApplicant)
             .filter(PPDBApplicant.user_id == user_id)
-            .first()
+            .first(),
         )
 
     def update_user(self, user: User) -> User:
@@ -63,10 +67,11 @@ class AuthRepository:
         return token
 
     def get_refresh_token(self, token_hash: str) -> RefreshToken | None:
-        return (
+        return cast(
+            RefreshToken | None,
             self.db.query(RefreshToken)
             .filter(RefreshToken.token_hash == token_hash)
-            .first()
+            .first(),
         )
 
     def update_refresh_token(self, token: RefreshToken) -> RefreshToken:

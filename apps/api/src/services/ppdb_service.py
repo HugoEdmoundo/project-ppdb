@@ -3,7 +3,7 @@ import random
 import string
 import uuid
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
@@ -415,7 +415,7 @@ class PPDBService:
             resolved_wave_id = active_wave.id
 
         data, total = self.repository.get_applicants_paginated(
-            resolved_wave_id, search, status, page, per_page
+            cast(str, resolved_wave_id), search, status, page, per_page
         )
         return {"data": data, "total": total, "active_wave": resolved_wave_id}
 
@@ -557,3 +557,70 @@ class PPDBService:
                 send_notification("selection_reminder_d1", app.user_id, {})
 
         return {"success": True}
+
+    # -------------------------------------------------------------------------
+    # Documents & MOU
+    # -------------------------------------------------------------------------
+    def get_applicant_documents(self, applicant_id: str) -> dict[str, Any]:
+        applicant = self.repository.get_applicant_by_id(applicant_id)
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+
+        docs = self.repository.get_documents_by_applicant(applicant_id)
+        return {
+            "data": [
+                {
+                    "id": d.id,
+                    "original_name": d.original_name,
+                    "stored_name": d.stored_name,
+                    "mime_type": d.mime_type,
+                    "size_bytes": d.size_bytes,
+                    "public_url": d.public_url,
+                    "entity_type": d.entity_type,
+                    "entity_id": d.entity_id,
+                    "created_at": d.created_at.isoformat() if d.created_at else None,
+                }
+                for d in docs
+            ]
+        }
+
+    def verify_applicant_documents(
+        self, applicant_id: str, status: str, rejection_reason: str | None
+    ) -> dict[str, Any]:
+        applicant = self.repository.get_applicant_by_id(applicant_id)
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+
+        if status not in ("document_approved", "document_rejected"):
+            raise HTTPException(status_code=400, detail="Status tidak valid")
+
+        applicant.status = status
+        applicant.rejection_reason = (
+            rejection_reason if status == "document_rejected" else None
+        )
+        applicant.updated_at = datetime.now()
+        self.repository.db.commit()
+
+        return {"success": True, "status": status}
+
+    def get_applicant_mou(self, applicant_id: str) -> dict[str, Any]:
+        applicant = self.repository.get_applicant_by_id(applicant_id)
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+
+        mou = self.repository.get_mou_by_applicant(applicant_id)
+        if not mou:
+            return {"mou": None}
+
+        return {
+            "mou": {
+                "id": mou.id,
+                "applicant_id": mou.applicant_id,
+                "draft_content": mou.draft_content,
+                "signature_data": mou.signature_data,
+                "status": mou.status,
+                "signed_at": mou.signed_at.isoformat() if mou.signed_at else None,
+                "created_at": mou.created_at.isoformat() if mou.created_at else None,
+                "updated_at": mou.updated_at.isoformat() if mou.updated_at else None,
+            }
+        }

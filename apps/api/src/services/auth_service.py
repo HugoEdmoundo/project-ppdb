@@ -65,7 +65,7 @@ class AuthService:
 
         payment_status = None
         payment_deadline = None
-        if user.user_type in ["calon_murid", "applicant"]:
+        if user.user_type == "applicant":
             applicant = self.repository.get_applicant_by_user_id(user.id)
             if applicant:
                 payment_status = applicant.payment_status
@@ -247,7 +247,7 @@ class AuthService:
             full_name=data["full_name"],
             password_hash=hash_password(data["password"]),
             role_id=role.id,
-            user_type="calon_murid",
+            user_type="applicant",
             is_active=True,
             created_at=datetime.now(WIB),
             updated_at=datetime.now(WIB),
@@ -280,7 +280,7 @@ class AuthService:
                 "full_name": user.full_name or "",
                 "role_id": role.id,
                 "role_name": role.name,
-                "user_type": "calon_murid",
+                "user_type": "applicant",
             },
         }
 

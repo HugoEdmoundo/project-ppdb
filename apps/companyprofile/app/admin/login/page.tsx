@@ -24,7 +24,6 @@ export default function AdminLogin() {
     setLoading(true)
     try {
       const res = await login(username, password)
-      localStorage.setItem('admin_token', res.access_token)
       setSuccess(true)
       setTimeout(() => router.push('/admin/dashboard'), 900)
     } catch (e: unknown) {

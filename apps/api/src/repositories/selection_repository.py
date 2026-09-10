@@ -21,7 +21,7 @@ class SelectionRepository:
 
     def get_active_wave_id(self) -> str | None:
         stmt = select(PPDBWave.id).where(PPDBWave.status == "active").limit(1)
-        return self.db.execute(stmt).scalar_one_or_none()
+        return cast(str | None, self.db.execute(stmt).scalar_one_or_none())
 
     def get_sessions(self, wave_id: str) -> Sequence[tuple]:
         # Returns tuples of (SelectionSession, wave_name, booked_count)
@@ -49,7 +49,7 @@ class SelectionRepository:
         return session
 
     def get_session_by_id(self, session_id: str) -> SelectionSession | None:
-        return self.db.get(SelectionSession, session_id)
+        return cast(SelectionSession | None, self.db.get(SelectionSession, session_id))
 
     def get_session_with_booked_count(self, session_id: str) -> tuple | None:
         stmt = select(
@@ -85,7 +85,7 @@ class SelectionRepository:
             .join(SelectionResult, SelectionResult.applicant_id == PPDBApplicant.id)
             .where(SelectionResult.session_id == session_id)
         )
-        return self.db.scalars(stmt).all()
+        return cast(Sequence[PPDBApplicant], self.db.scalars(stmt).all())
 
     def get_categories(self, wave_id: str) -> Sequence[SelectionCategory]:
         stmt = (
@@ -93,7 +93,7 @@ class SelectionRepository:
             .where(SelectionCategory.wave_id == wave_id)
             .order_by(SelectionCategory.created_at.asc())
         )
-        return self.db.scalars(stmt).all()
+        return cast(Sequence[SelectionCategory], self.db.scalars(stmt).all())
 
     def get_criteria_by_category(self, category_id: str) -> Sequence[SelectionCriteria]:
         stmt = (
@@ -101,7 +101,7 @@ class SelectionRepository:
             .where(SelectionCriteria.category_id == category_id)
             .order_by(SelectionCriteria.created_at.asc())
         )
-        return self.db.scalars(stmt).all()
+        return cast(Sequence[SelectionCriteria], self.db.scalars(stmt).all())
 
     def create_category(self, category: SelectionCategory) -> SelectionCategory:
         self.db.add(category)
@@ -162,17 +162,17 @@ class SelectionRepository:
 
     def get_applicant_scores(self, applicant_id: str) -> Sequence[SelectionScore]:
         stmt = select(SelectionScore).where(SelectionScore.applicant_id == applicant_id)
-        return self.db.scalars(stmt).all()
+        return cast(Sequence[SelectionScore], self.db.scalars(stmt).all())
 
     def get_applicant_by_id(self, applicant_id: str) -> PPDBApplicant | None:
         stmt = select(PPDBApplicant).where(
             PPDBApplicant.id == applicant_id, PPDBApplicant.deleted_at.is_(None)
         )
-        return self.db.scalar(stmt)
+        return cast(PPDBApplicant | None, self.db.scalar(stmt))
 
     def get_applicant_by_user_id(self, user_id: str) -> PPDBApplicant | None:
         stmt = select(PPDBApplicant).where(PPDBApplicant.user_id == user_id).limit(1)
-        return self.db.scalar(stmt)
+        return cast(PPDBApplicant | None, self.db.scalar(stmt))
 
     def get_selection_result_by_applicant(
         self, applicant_id: str
@@ -180,7 +180,7 @@ class SelectionRepository:
         stmt = select(SelectionResult).where(
             SelectionResult.applicant_id == applicant_id
         )
-        return self.db.scalar(stmt)
+        return cast(SelectionResult | None, self.db.scalar(stmt))
 
     def update_selection_result_notes(
         self, applicant_id: str, notes: str | None, now: datetime
@@ -200,7 +200,7 @@ class SelectionRepository:
             SelectionScore.applicant_id == applicant_id,
             SelectionScore.criteria_id == criteria_id,
         )
-        return self.db.scalar(stmt)
+        return cast(SelectionScore | None, self.db.scalar(stmt))
 
     def add_selection_score(self, score: SelectionScore):
         self.db.add(score)
@@ -252,7 +252,7 @@ class SelectionRepository:
             .order_by(SelectionSession.session_date.asc())
             .limit(1)
         )
-        return self.db.scalar(stmt)
+        return cast(date | None, self.db.scalar(stmt))
 
     def get_unassigned_applicants(self, wave_id: str) -> Sequence[str]:
         stmt = (
@@ -264,7 +264,7 @@ class SelectionRepository:
                 PPDBApplicant.status == "selection",
             )
         )
-        return self.db.scalars(stmt).all()
+        return cast(Sequence[str], self.db.scalars(stmt).all())
 
     def get_available_sessions(self, wave_id: str, today_iso: str) -> Sequence[tuple]:
         stmt = (
@@ -293,4 +293,4 @@ class SelectionRepository:
             SelectionSession.wave_id == wave_id,
             SelectionSession.session_date == target_date,
         )
-        return self.db.scalars(stmt).all()
+        return cast(Sequence[SelectionSession], self.db.scalars(stmt).all())

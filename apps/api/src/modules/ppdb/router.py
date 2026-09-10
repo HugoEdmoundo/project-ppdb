@@ -13,6 +13,7 @@ from src.core.rate_limit import rate_limit_dependency
 from src.modules.ppdb.schemas import (
     ApplicantPasswordReset,
     ApplicantRegister,
+    DocumentVerify,
     PeriodCreate,
     PeriodUpdate,
     WaveCreate,
@@ -254,6 +255,34 @@ def reset_applicant_password(
     service: PPDBService = Depends(get_ppdb_service),
 ):
     return service.reset_applicant_password(id, body.password)
+
+
+@router.get("/applicants/{id}/documents")
+def get_applicant_documents(
+    id: str,
+    user: dict = Depends(require_ppdb_read),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    return service.get_applicant_documents(id)
+
+
+@router.put("/applicants/{id}/documents/verify")
+def verify_applicant_documents(
+    id: str,
+    body: DocumentVerify,
+    user: dict = Depends(require_ppdb_admin),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    return service.verify_applicant_documents(id, body.status, body.rejection_reason)
+
+
+@router.get("/applicants/{id}/mou")
+def get_applicant_mou(
+    id: str,
+    user: dict = Depends(require_ppdb_read),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    return service.get_applicant_mou(id)
 
 
 @router.get("/dashboard/stats")

@@ -28,7 +28,7 @@ The application is a Single Page Application (SPA) with the following routes:
   - The panel is **STRICTLY** for superadmin users.
   - Access is granted **only** if `user.user_type === 'superadmin'` or `user.is_superadmin === true`. Any other user attempting to access protected routes will be forcibly redirected to `/login`.
 - **CRUD Operations Guarding:** Actions like creating or editing users/roles require `canCrud = currentUser?.user_type === 'superadmin'`.
-- **System Roles (`is_system = true`):** Protected system roles (e.g., Superadmin, Calon Murid) have specific UI safeguards in `RoleFormPage` to prevent unauthorized modification or deletion.
+- **System Roles (`is_system = true`):** Protected system roles (e.g., Superadmin, Pendaftar) have specific UI safeguards in `RoleFormPage` to prevent unauthorized modification or deletion.
 
 ## API Integration (`src/api/client.ts`)
 - The `apiFetch` wrapper handles automatic token injection and token refresh logic.

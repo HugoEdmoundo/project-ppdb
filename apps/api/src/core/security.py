@@ -1,6 +1,6 @@
 import hashlib
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -19,7 +19,7 @@ def hash_password(password: str) -> str:
         raise ValueError("password cannot be None")
     password_bytes = password.encode("utf-8")[:72]
     salt = bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
-    return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
+    return cast(str, bcrypt.hashpw(password_bytes, salt).decode("utf-8"))
 
 
 def validate_password(password: str) -> None:
@@ -46,7 +46,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         )
         if not stored.startswith(b"$2"):
             return False
-        return bcrypt.checkpw(plain_password.encode("utf-8")[:72], stored)
+        return cast(bool, bcrypt.checkpw(plain_password.encode("utf-8")[:72], stored))
     except (ValueError, TypeError):
         return False
 
@@ -56,12 +56,15 @@ def create_access_token(data: dict[str, Any]) -> str:
     now = datetime.now(UTC)
     expire = now + timedelta(hours=settings.jwt_expiry_hours)
     to_encode.update({"exp": expire, "iat": now, "jti": str(uuid4())})
-    return jwt.encode(to_encode, settings.jwt_secret, algorithm="HS256")
+    return cast(str, jwt.encode(to_encode, settings.jwt_secret, algorithm="HS256"))
 
 
 def verify_token(token: str) -> dict[str, Any] | None:
     try:
-        return jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+        return cast(
+            dict[str, Any] | None,
+            jwt.decode(token, settings.jwt_secret, algorithms=["HS256"]),
+        )
     except jwt.PyJWTError:
         return None
 

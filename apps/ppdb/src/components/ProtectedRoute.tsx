@@ -38,7 +38,7 @@ export default function ProtectedRoute({
     }
 
     // Paywall strict check
-    if (user.user_type === 'calon_murid' || user.user_type === 'applicant') {
+    if (user.user_type === 'applicant') {
       const isPaid = user.payment_status === 'paid'
       const isCheckoutPage = location.pathname === '/checkout'
 

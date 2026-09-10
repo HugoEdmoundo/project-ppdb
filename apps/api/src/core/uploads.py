@@ -54,7 +54,7 @@ async def _read_with_limit(file: UploadFile) -> bytes:
     content = await file.read(MAX_SIZE_BYTES + 1)
     if len(content) > MAX_SIZE_BYTES:
         raise HTTPException(status_code=400, detail="File too large (max 10 MB)")
-    return content
+    return bytes(content)
 
 
 def _upload_cloudinary(

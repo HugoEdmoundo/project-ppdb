@@ -691,7 +691,7 @@ export default function ApplicantDashboardPage() {
                 </Avatar>
                 <div className="hidden sm:block text-left">
                   <div className="text-sm font-semibold text-foreground leading-tight">{user?.full_name || user?.username}</div>
-                  <div className="text-[11px] text-muted-foreground">{user?.role_name || 'Calon Murid'}</div>
+                  <div className="text-[11px] text-muted-foreground">{user?.role_name || 'Pendaftar'}</div>
                 </div>
               </Button>
             </DropdownMenuTrigger>

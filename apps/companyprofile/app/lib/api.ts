@@ -16,8 +16,6 @@ export const PRIMARY_API = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost
 // menonaktifkan mekanisme fallback; JANGAN fallback ke localhost di produksi.
 export const FALLBACK_API = (process.env.NEXT_PUBLIC_FALLBACK_API_URL || '').replace(/\/+$/, '')
 export const API_BASE = PRIMARY_API
-const TOKEN_KEY = 'admin_token'
-const REFRESH_KEY = 'admin_refresh'
 const USER_KEY = 'admin_user'
 
 function isRetryableStatus(status: number): boolean {
@@ -50,8 +48,6 @@ async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Respo
 
 function _redirectLogin() {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(REFRESH_KEY)
     localStorage.removeItem(USER_KEY)
     window.location.href = '/admin/login'
   }
@@ -61,20 +57,17 @@ let _pendingRefresh: Promise<string | null> | null = null
 
 async function tryRefresh(): Promise<string | null> {
   if (_pendingRefresh) return _pendingRefresh
-  const refreshToken = typeof window !== 'undefined' ? localStorage.getItem(REFRESH_KEY) : null
-  if (!refreshToken) return null
   _pendingRefresh = (async () => {
     try {
       const res = await fetchWithFallback(`${API_BASE}/companyprofile/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        body: JSON.stringify({}),
+        credentials: 'include' as RequestCredentials,
       })
       if (!res.ok) return null
       const data = await res.json()
-      localStorage.setItem(TOKEN_KEY, data.access_token)
-      if (data.refresh_token) localStorage.setItem(REFRESH_KEY, data.refresh_token)
-      return data.access_token
+      return data.access_token as string
     } catch {
       return null
     } finally {
@@ -150,6 +143,7 @@ export async function login(username: string, password: string) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
+    credentials: 'include' as RequestCredentials,
   })
   if (!res.ok) {
     const text = await res.text()
@@ -158,21 +152,8 @@ export async function login(username: string, password: string) {
     throw new Error(msg || 'Login failed')
   }
   const data = await res.json()
-  if (data.refresh_token) localStorage.setItem(REFRESH_KEY, data.refresh_token)
   if (data.user) {
     localStorage.setItem(USER_KEY, JSON.stringify(data.user))
-  } else {
-    try {
-      const meRes = await fetchWithFallback(`${API_BASE}/companyprofile/auth/me`, {
-        headers: { Authorization: `Bearer ${data.access_token}` },
-      })
-      if (meRes.ok) {
-        const me = await meRes.json()
-        localStorage.setItem(USER_KEY, JSON.stringify(me))
-      }
-    } catch {
-      // Silent fail - user can still access with token
-    }
   }
   return data as unknown as { access_token: string; refresh_token: string; token_type: string }
 }
@@ -180,20 +161,16 @@ export async function login(username: string, password: string) {
 // ── Logout ────────────────────────────────────────────────────
 
 export async function logout() {
-  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null
-  if (token) {
-    try {
-      await fetchWithFallback(`${API_BASE}/companyprofile/auth/logout`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-    } catch {
-      // Best-effort; proceed with local cleanup
-    }
+  try {
+    await fetchWithFallback(`${API_BASE}/companyprofile/auth/logout`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+      credentials: 'include' as RequestCredentials,
+    })
+  } catch {
+    // Best-effort; proceed with local cleanup
   }
   if (typeof window !== 'undefined') {
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(REFRESH_KEY)
     localStorage.removeItem(USER_KEY)
   }
 }
@@ -201,12 +178,11 @@ export async function logout() {
 // ── Mutations (protected) ───────────────────────────────────
 
 async function fetchApiWithAuth<T>(endpoint: string, opts: RequestInit): Promise<T> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null
   let res = await fetchWithFallback(`${API_BASE}/companyprofile${endpoint}`, {
     ...opts,
+    credentials: 'include' as RequestCredentials,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(opts.headers as Record<string, string>),
     },
   })
@@ -215,9 +191,9 @@ async function fetchApiWithAuth<T>(endpoint: string, opts: RequestInit): Promise
     if (newToken) {
       res = await fetchWithFallback(`${API_BASE}/companyprofile${endpoint}`, {
         ...opts,
+        credentials: 'include' as RequestCredentials,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${newToken}`,
           ...(opts.headers as Record<string, string>),
         },
       })
@@ -301,12 +277,11 @@ export async function updateContactInfo(data: JsonValue) {
 }
 
 async function fetchAuthApi<T>(endpoint: string, opts?: RequestInit): Promise<T> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null
   let res = await fetchWithFallback(`${API_BASE}${endpoint}`, {
     ...opts,
+    credentials: 'include' as RequestCredentials,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(opts?.headers as Record<string, string>),
     },
   })
@@ -315,9 +290,9 @@ async function fetchAuthApi<T>(endpoint: string, opts?: RequestInit): Promise<T>
     if (newToken) {
       res = await fetchWithFallback(`${API_BASE}${endpoint}`, {
         ...opts,
+        credentials: 'include' as RequestCredentials,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${newToken}`,
           ...(opts?.headers as Record<string, string>),
         },
       })
@@ -355,13 +330,12 @@ export async function updateProfile(data: {
 }
 
 export async function uploadImage(file: File) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null
   const form = new FormData()
   form.append('file', file)
   let res = await fetchWithFallback(`${API_BASE}/companyprofile/upload`, {
     method: 'POST',
     body: form,
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: 'include' as RequestCredentials,
   })
   if (res.status === 401) {
     const newToken = await tryRefresh()
@@ -369,7 +343,7 @@ export async function uploadImage(file: File) {
       res = await fetchWithFallback(`${API_BASE}/companyprofile/upload`, {
         method: 'POST',
         body: form,
-        headers: { Authorization: `Bearer ${newToken}` },
+        credentials: 'include' as RequestCredentials,
       })
       if (res.ok) return (await res.json()).url as string
     }

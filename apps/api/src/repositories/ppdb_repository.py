@@ -4,7 +4,14 @@ from sqlalchemy import or_, text
 from sqlalchemy.orm import Session
 
 from src.models.auth import User
-from src.models.ppdb import PPDBApplicant, PPDBPaymentTransaction, PPDBPeriod, PPDBWave
+from src.models.ppdb import (
+    PPDBBMOU,
+    FileUpload,
+    PPDBApplicant,
+    PPDBPaymentTransaction,
+    PPDBPeriod,
+    PPDBWave,
+)
 
 
 class PPDBRepository:
@@ -53,17 +60,24 @@ class PPDBRepository:
         return result, total
 
     def get_all_periods(self) -> list[PPDBPeriod]:
-        return self.db.query(PPDBPeriod).order_by(PPDBPeriod.created_at.desc()).all()
+        return cast(
+            list[PPDBPeriod],
+            self.db.query(PPDBPeriod).order_by(PPDBPeriod.created_at.desc()).all(),
+        )
 
     def get_period_by_id(self, period_id: str) -> PPDBPeriod | None:
-        return self.db.query(PPDBPeriod).filter(PPDBPeriod.id == period_id).first()
+        return cast(
+            PPDBPeriod | None,
+            self.db.query(PPDBPeriod).filter(PPDBPeriod.id == period_id).first(),
+        )
 
     def get_waves_by_period(self, period_id: str) -> list[PPDBWave]:
-        return (
+        return cast(
+            list[PPDBWave],
             self.db.query(PPDBWave)
             .filter(PPDBWave.period_id == period_id)
             .order_by(PPDBWave.wave_number.asc())
-            .all()
+            .all(),
         )
 
     def create_period(self, period: PPDBPeriod) -> PPDBPeriod:
@@ -107,15 +121,24 @@ class PPDBRepository:
         query = self.db.query(PPDBWave)
         if period_id:
             query = query.filter(PPDBWave.period_id == period_id)
-        return query.order_by(
-            PPDBWave.registration_start_date.asc(), PPDBWave.wave_number.asc()
-        ).all()
+        return cast(
+            list[PPDBWave],
+            query.order_by(
+                PPDBWave.registration_start_date.asc(), PPDBWave.wave_number.asc()
+            ).all(),
+        )
 
     def get_active_wave(self) -> PPDBWave | None:
-        return self.db.query(PPDBWave).filter(PPDBWave.status == "active").first()
+        return cast(
+            PPDBWave | None,
+            self.db.query(PPDBWave).filter(PPDBWave.status == "active").first(),
+        )
 
     def get_wave_by_id(self, wave_id: str) -> PPDBWave | None:
-        return self.db.query(PPDBWave).filter(PPDBWave.id == wave_id).first()
+        return cast(
+            PPDBWave | None,
+            self.db.query(PPDBWave).filter(PPDBWave.id == wave_id).first(),
+        )
 
     def get_max_wave_number(self, period_id: str) -> int:
         from sqlalchemy import func
@@ -164,29 +187,35 @@ class PPDBRepository:
         result = self.db.execute(
             text("SELECT id FROM roles WHERE name = :name LIMIT 1"), {"name": role_name}
         ).scalar()
-        return result
+        return cast(str | None, result)
 
     def get_user_by_username(self, username: str) -> User | None:
-        return self.db.query(User).filter(User.username == username).first()
+        return cast(
+            User | None, self.db.query(User).filter(User.username == username).first()
+        )
 
     def get_user_by_id(self, user_id: str) -> User | None:
-        return self.db.query(User).filter(User.id == user_id).first()
+        return cast(User | None, self.db.query(User).filter(User.id == user_id).first())
 
     def get_user_by_email(self, email: str) -> User | None:
-        return self.db.query(User).filter(User.email == email).first()
+        return cast(
+            User | None, self.db.query(User).filter(User.email == email).first()
+        )
 
     def get_applicant_by_email_active(self, email: str) -> PPDBApplicant | None:
-        return (
+        return cast(
+            PPDBApplicant | None,
             self.db.query(PPDBApplicant)
             .filter(PPDBApplicant.email == email, PPDBApplicant.status != "expired")
-            .first()
+            .first(),
         )
 
     def get_applicant_by_id(self, applicant_id: str) -> PPDBApplicant | None:
-        return (
+        return cast(
+            PPDBApplicant | None,
             self.db.query(PPDBApplicant)
             .filter(PPDBApplicant.id == applicant_id)
-            .first()
+            .first(),
         )
 
     def create_user_and_applicant(
@@ -256,10 +285,10 @@ class PPDBRepository:
     # Dashboard & Cron
     # -------------------------------------------------------------------------
     def count_periods(self) -> int:
-        return self.db.query(PPDBPeriod).count()
+        return cast(int, self.db.query(PPDBPeriod).count())
 
     def count_waves(self) -> int:
-        return self.db.query(PPDBWave).count()
+        return cast(int, self.db.query(PPDBWave).count())
 
     def get_active_period_name(self) -> str | None:
         period = self.db.query(PPDBPeriod).filter(PPDBPeriod.status == "active").first()
@@ -268,14 +297,15 @@ class PPDBRepository:
     def get_expired_pending_applicants(
         self, limit_time_str: str
     ) -> list[PPDBApplicant]:
-        return (
+        return cast(
+            list[PPDBApplicant],
             self.db.query(PPDBApplicant)
             .filter(
                 PPDBApplicant.payment_status == "pending",
                 PPDBApplicant.payment_deadline <= limit_time_str,
                 PPDBApplicant.deleted_at.is_(None),
             )
-            .all()
+            .all(),
         )
 
     def soft_delete_applicants(self, applicants: list[PPDBApplicant], now_str: str):
@@ -304,7 +334,8 @@ class PPDBRepository:
     def get_applicants_for_payment_reminder(
         self, now_str: str, tomorrow_str: str
     ) -> list[PPDBApplicant]:
-        return (
+        return cast(
+            list[PPDBApplicant],
             self.db.query(PPDBApplicant)
             .filter(
                 PPDBApplicant.payment_status == "pending",
@@ -312,7 +343,7 @@ class PPDBRepository:
                 PPDBApplicant.payment_deadline <= tomorrow_str,
                 PPDBApplicant.deleted_at.is_(None),
             )
-            .all()
+            .all(),
         )
 
     def get_applicants_for_document_reminder(
@@ -345,4 +376,27 @@ class PPDBRepository:
                 PPDBApplicant.deleted_at.is_(None),
             )
             .all(),
+        )
+
+    # -------------------------------------------------------------------------
+    # Documents & MOU
+    # -------------------------------------------------------------------------
+    def get_documents_by_applicant(self, applicant_id: str) -> list[FileUpload]:
+        return cast(
+            list[FileUpload],
+            self.db.query(FileUpload)
+            .filter(
+                FileUpload.entity_type == "ppdb_document",
+                FileUpload.entity_id == applicant_id,
+            )
+            .order_by(FileUpload.created_at.desc())
+            .all(),
+        )
+
+    def get_mou_by_applicant(self, applicant_id: str) -> PPDBBMOU | None:
+        return cast(
+            PPDBBMOU | None,
+            self.db.query(PPDBBMOU)
+            .filter(PPDBBMOU.applicant_id == applicant_id)
+            .first(),
         )

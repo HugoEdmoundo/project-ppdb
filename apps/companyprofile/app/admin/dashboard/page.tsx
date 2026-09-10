@@ -393,11 +393,9 @@ export default function AdminDashboard() {
     const userId = adminUser?.id
     if (!userId) return
     const API_BASE = api.API_BASE
-    const token = localStorage.getItem('admin_token')
-    if (!token) return
-    const url = `${API_BASE.replace(/\/$/, '')}/users/${userId}/events?token=${encodeURIComponent(token)}`
+    const url = `${API_BASE.replace(/\/$/, '')}/users/${userId}/events`
 
-    const es = new EventSource(url)
+    const es = new EventSource(url, { withCredentials: true })
 
     es.addEventListener('open', () => {
       // SSE connected
@@ -436,7 +434,7 @@ export default function AdminDashboard() {
   }, [])
 
   const handle401 = useCallback(() => {
-    localStorage.removeItem('admin_token')
+    localStorage.removeItem('admin_user')
     router.push('/admin/login')
   }, [router])
 
@@ -514,40 +512,39 @@ export default function AdminDashboard() {
     if (saved) {
       requestAnimationFrame(() => setCollapsed(saved === 'true'))
     }
-    const token = localStorage.getItem('admin_token')
-    if (!token) return
-    try {
-      const u = localStorage.getItem('admin_user')
-      if (u) {
-        const parsed = JSON.parse(u)
-        requestAnimationFrame(() => {
-          setAdminUser(parsed)
-          if (parsed.page_permissions && parsed.page_permissions.length > 0) {
-            setPagePermissions(parsed.page_permissions)
+    const user = localStorage.getItem('admin_user')
+    if (!user) {
+      ;(async () => {
+        try {
+          const me = await api.getMe()
+          if (me) {
+            localStorage.setItem('admin_user', JSON.stringify(me))
+            setAdminUser(me)
           }
-        })
-        return
-      }
+        } catch {
+          localStorage.removeItem('admin_user')
+          router.replace('/admin/login')
+        }
+      })()
+      return
+    }
+    try {
+      const parsed = JSON.parse(user)
+      requestAnimationFrame(() => {
+        setAdminUser(parsed)
+        if (parsed.page_permissions && parsed.page_permissions.length > 0) {
+          setPagePermissions(parsed.page_permissions)
+        }
+      })
+      return
     } catch {
       localStorage.removeItem('admin_user')
     }
-    ;(async () => {
-      try {
-        const me = await api.getMe()
-        if (me) {
-          localStorage.setItem('admin_user', JSON.stringify(me))
-          setAdminUser(me)
-        }
-      } catch {
-        localStorage.removeItem('admin_token')
-        localStorage.removeItem('admin_user')
-      }
-    })()
   }, [])
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token')
-    if (!token) {
+    const user = localStorage.getItem('admin_user')
+    if (!user) {
       router.replace('/admin/login')
       return
     }
@@ -721,8 +718,7 @@ export default function AdminDashboard() {
   }
 
   function handleLogout() {
-    localStorage.removeItem('admin_token')
-    localStorage.removeItem('admin_refresh')
+    api.logout()
     localStorage.removeItem('admin_user')
     router.push('/admin/login')
   }

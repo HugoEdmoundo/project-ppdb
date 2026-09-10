@@ -8,7 +8,7 @@ Create Date: 2026-08-16
 
 import sqlalchemy as sa
 
-from alembic import op
+import alembic.op as op
 
 revision = "0004"
 down_revision = "0003"
@@ -27,9 +27,9 @@ def upgrade() -> None:
                 sa.Column("is_system", sa.Boolean, nullable=False, server_default="0")
             )
 
-        # Backfill is_system=1 for 'Superadmin' and 'Calon Murid'
+        # Backfill is_system=1 for 'Superadmin' and 'Pendaftar'
         op.execute(
-            "UPDATE roles SET is_system = 1 WHERE name IN ('Superadmin', 'Calon Murid')"
+            "UPDATE roles SET is_system = 1 WHERE name IN ('Superadmin', 'Pendaftar')"
         )
 
 

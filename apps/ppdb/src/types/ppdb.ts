@@ -30,7 +30,7 @@ export interface Transaction {
   full_name?: string
   applicant_email?: string
   wave_name?: string
-  payment_method: string
+  method: string
   amount: number
   created_at: string
   status: 'pending' | 'paid' | 'expired'

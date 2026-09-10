@@ -40,7 +40,7 @@ A single FastAPI service handling all business logic, database operations, and a
 Permissions are defined per-module (e.g., `companyprofile`, `ppdb`, `dashboard`) with levels (`none` < `dashboard` < `read` < `crud`).
 - Buttons and forms must check permissions before rendering. Form inputs are disabled (read-only) if the user lacks `crud` access.
 - **Superadmin Bypass**: Users with `user_type === 'superadmin'` bypass all module-level permission checks.
-- System roles (`is_system=True`) like "Superadmin" and "Calon Murid" are protected from accidental deletion or modification.
+- System roles (`is_system=True`) like "Superadmin" and "Pendaftar" are protected from accidental deletion or modification.
 
 ## PPDB Flow
 1. **Registration**: User registers -> receives `payment_status = 'pending'` and a 7-day `payment_deadline`. Nominal biaya pendaftaran (Tahap 1) ditarik otomatis dari konfigurasi `registration_fee` pada tabel `ppdb_waves` yang sedang aktif.

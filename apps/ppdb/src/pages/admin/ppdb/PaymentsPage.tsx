@@ -34,7 +34,7 @@ export default function PaymentsPage() {
         q.append('status', activeTab)
       }
       q.append('page', page.toString())
-      q.append('limit', limit.toString())
+      q.append('perPage', limit.toString())
 
       const res = await apiFetch<{ data: Transaction[], total: number, active_wave: any }>(`/payment/transactions?${q.toString()}`)
       return res
@@ -105,7 +105,7 @@ export default function PaymentsPage() {
                     <div className="text-xs text-muted-foreground font-normal">{trx.wave_name || '-'}</div>
                   </TableCell>
                   <TableCell>
-                    {trx.payment_method === 'manual' ? (
+                    {trx.method === 'offline' ? (
                       <Badge variant="outline">Manual/Transfer</Badge>
                     ) : (
                       <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50">Gateway</Badge>
@@ -130,7 +130,7 @@ export default function PaymentsPage() {
                   <TableCell className="text-right">
                     {canCrud && (
                       <div className="flex justify-end gap-2">
-                        {trx.payment_method === 'manual' && trx.status === 'pending' && (
+                        {trx.method === 'offline' && trx.status === 'pending' && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -141,7 +141,7 @@ export default function PaymentsPage() {
                             Verifikasi
                           </Button>
                         )}
-                        {trx.payment_method === 'manual' && trx.status === 'paid' && (
+                        {trx.method === 'offline' && trx.status === 'paid' && (
                           <Button
                             variant="outline"
                             size="sm"

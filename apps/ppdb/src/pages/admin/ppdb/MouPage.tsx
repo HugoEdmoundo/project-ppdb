@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { Card, CardContent } from "@/components/ui"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
 import { Badge } from "@/components/ui"
@@ -8,75 +9,65 @@ import { TableSkeletonRows } from "@/components/ui"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui"
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
-import { Waves, FileText, CheckCircle, FileSignature, Save } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Waves, FileText, CheckCircle, Save, ArrowRight, Activity, Users } from 'lucide-react'
 import { apiFetch } from '@/api/client'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui"
+import { TabsTrigger } from "@/components/ui"
+import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
+import PageHeaderCard from '@/components/shared/PageHeaderCard'
+import TabsBarCard from '@/components/shared/TabsBarCard'
 
 export default function MouPage() {
   const { toast } = useToast()
   const { canCrud } = useCan('ppdb', 'crud')
+  const queryClient = useQueryClient()
 
-  const [activeWave, setActiveWave] = useState<any>(null)
-  const [wavesLoading, setWavesLoading] = useState(false)
   const [mouTemplate, setMouTemplate] = useState('')
   const [savingTemplate, setSavingTemplate] = useState(false)
-
-  const [applicants, setApplicants] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
 
   const [selectedApplicant, setSelectedApplicant] = useState<any>(null)
   const [mouData, setMouData] = useState<any>(null)
   const [sheetLoading, setSheetLoading] = useState(false)
+  const [tab, setTab] = useState<'review' | 'template'>('review')
 
-  const fetchActiveWave = async () => {
-    setWavesLoading(true)
-    try {
+  const activeWaveQuery = useQuery({
+    queryKey: ['waves'],
+    queryFn: async () => {
       const res = await apiFetch<any[]>('/ppdb/waves')
       const active = res.find(w => w.status === 'active')
-      if (active) {
-        setActiveWave(active)
-        setMouTemplate(active.mou_template || '')
-      }
-    } catch {
-      toast('error', 'Gagal memuat gelombang')
-    } finally {
-      setWavesLoading(false)
+      return active || null
     }
-  }
+  })
 
-  const fetchApplicants = async () => {
-    setLoading(true)
-    try {
+  const activeWave = activeWaveQuery.data ?? null
+  const wavesLoading = activeWaveQuery.isLoading
+
+  const applicantsQuery = useQuery({
+    queryKey: ['mou-applicants'],
+    queryFn: async () => {
       const res = await apiFetch<any>('/payment/stage2/applicants')
       const passed = (res.data || []).filter((a: any) => a.mou_status)
-      setApplicants(passed)
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal memuat data')
-    } finally {
-      setLoading(false)
+      return passed
     }
-  }
+  })
 
-  useEffect(() => {
-    fetchActiveWave()
-    fetchApplicants()
-  }, [])
+  const applicants = applicantsQuery.data || []
+  const loading = applicantsQuery.isLoading
 
-  const handleSaveTemplate = async () => {
-    if (!activeWave) return
-    setSavingTemplate(true)
-    try {
+  const saveTemplateMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeWave) return
       await apiFetch(`/ppdb/waves/${activeWave.id}/mou-template`, {
         method: 'PUT',
         body: JSON.stringify({ mou_template: mouTemplate })
       })
+    },
+    onSuccess: () => {
       toast('success', 'Template MOU berhasil disimpan')
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal menyimpan template MOU')
-    } finally {
-      setSavingTemplate(false)
-    }
-  }
+      queryClient.invalidateQueries({ queryKey: ['waves'] })
+    },
+    onError: (e: any) => toast('error', e.message || 'Gagal menyimpan template MOU')
+  })
 
   const openMouSheet = async (applicant: any) => {
     setSelectedApplicant(applicant)
@@ -91,34 +82,53 @@ export default function MouPage() {
     }
   }
 
+  const oldMouTemplate = useRef('')
+  useEffect(() => {
+    if (activeWave && activeWave.mou_template !== oldMouTemplate.current) {
+      oldMouTemplate.current = activeWave.mou_template || ''
+      setMouTemplate(oldMouTemplate.current)
+    }
+  }, [activeWave])
+
+  const handleSaveTemplate = async () => {
+    setSavingTemplate(true)
+    try {
+      await saveTemplateMutation.mutateAsync()
+    } finally {
+      setSavingTemplate(false)
+    }
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <FileSignature className="h-6 w-6 text-primary" />
-          Manajemen MOU
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Kelola template dokumen persetujuan (MOU) dan tinjau status penandatanganan dari peserta.
-        </p>
-      </div>
+      <PageHeaderCard
+        title="Review MOU"
+        description="Tinjau template draft dan status penandatanganan persetujuan peserta."
+        loading={wavesLoading}
+        action={
+          <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
+            <Link to="/admin/periods" className="gap-1.5">
+              Kelola Gelombang <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        }
+        blocks={[
+          { icon: Activity, label: 'Gelombang Aktif', value: activeWave?.name || 'Tidak ada', active: !!activeWave, pulse: !!activeWave },
+          { icon: Users, label: 'Persetujuan', value: loading ? '…' : `${applicants.length} dokumen`, active: true },
+        ]}
+      />
 
       {!wavesLoading && !activeWave && (
-        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <Waves className="h-5 w-5 shrink-0 text-amber-500" />
-          <span>
-            Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu.
-          </span>
-        </div>
+        <NoActiveWaveBanner message="Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu." />
       )}
 
-      <Tabs defaultValue="review" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="review">Daftar Persetujuan</TabsTrigger>
-          <TabsTrigger value="template">Edit Draft Persyaratan</TabsTrigger>
-        </TabsList>
+      <TabsBarCard defaultValue="review" onValueChange={(v) => setTab(v as any)} className="max-w-md">
+        <TabsTrigger value="review" className="flex-1 rounded-full text-xs sm:text-sm">Daftar Persetujuan</TabsTrigger>
+        <TabsTrigger value="template" className="flex-1 rounded-full text-xs sm:text-sm">Edit Draft Persyaratan</TabsTrigger>
+      </TabsBarCard>
 
-        <TabsContent value="template" className="space-y-4">
+      {tab === 'template' && (
+        <div className="space-y-4">
           <Card>
             <CardContent className="p-6">
               <div className="space-y-4">
@@ -146,18 +156,19 @@ export default function MouPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="review">
-          <Card>
+      {tab === 'review' && (
+        <Card>
             <CardContent className="p-0">
               <Table>
-                <TableHeader className="bg-primary/5">
-                  <TableRow>
-                    <TableHead>Nama Peserta</TableHead>
-                    <TableHead>Jenjang / Jalur</TableHead>
-                    <TableHead>Status MOU</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
+                <TableHeader className="bg-emerald-primary/5">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Peserta</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Jenjang / Jalur</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Status MOU</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -182,10 +193,17 @@ export default function MouPage() {
                     applicants.map((a) => (
                       <TableRow key={a.id}>
                         <TableCell>
-                          <div className="font-medium">{a.full_name}</div>
-                          <div className="text-xs text-muted-foreground">{a.email}</div>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-primary to-emerald-dark text-xs font-bold text-white">
+                              {(a.full_name || 'A').split(' ').filter(Boolean).slice(0, 2).map((n: string) => n[0]).join('').toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-slate-800">{a.full_name}</div>
+                              <div className="text-xs text-muted-foreground">{a.email}</div>
+                            </div>
+                          </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-sm capitalize text-slate-600">
                           {a.registration_level} / {a.registration_path}
                         </TableCell>
                         <TableCell>
@@ -196,7 +214,7 @@ export default function MouPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="outline" size="sm" onClick={() => openMouSheet(a)}>
+                          <Button variant="outline" size="sm" className="rounded-full px-4" onClick={() => openMouSheet(a)}>
                             Lihat Dokumen
                           </Button>
                         </TableCell>
@@ -207,8 +225,7 @@ export default function MouPage() {
               </Table>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+      )}
 
       <Sheet open={selectedApplicant !== null} onOpenChange={(open) => !open && setSelectedApplicant(null)}>
         <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">

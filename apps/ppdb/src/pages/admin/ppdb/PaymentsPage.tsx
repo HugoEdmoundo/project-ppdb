@@ -1,25 +1,31 @@
 import { useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Card, CardContent } from "@/components/ui"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
 import { Badge } from "@/components/ui"
 import { Button } from "@/components/ui"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui"
+import { TabsTrigger } from "@/components/ui"
 import { EmptyState } from "@/components/ui"
 import { ConfirmDialog } from "@/components/ui"
 import { TableSkeletonRows } from "@/components/ui"
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
-import { CreditCard, CheckCircle, XCircle, Waves, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CreditCard, CheckCircle, XCircle, Waves, ArrowRight, Activity, Users } from 'lucide-react'
 import { apiFetch } from '@/api/client'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Transaction } from '@/types/ppdb'
+import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
+import PaginationControls from '@/components/shared/PaginationControls'
+import PageHeaderCard from '@/components/shared/PageHeaderCard'
+import TabsBarCard from '@/components/shared/TabsBarCard'
 
 export default function PaymentsPage() {
   const { toast } = useToast()
   const { canCrud } = useCan('payment', 'crud')
   const queryClient = useQueryClient()
 
-  const [activeTab, setActiveTab] = useState('all')
+  const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') ?? 'all')
   const [page, setPage] = useState(1)
   const limit = 20
 
@@ -42,7 +48,8 @@ export default function PaymentsPage() {
   })
 
   const transactions = data?.data || []
-  const hasActiveWave = data?.active_wave !== null && data?.active_wave !== undefined
+  const activeWaveData = data?.active_wave && typeof data.active_wave === 'object' ? data.active_wave : null
+  const hasActiveWave = !!activeWaveData
   const totalPages = data?.total ? Math.ceil(data.total / limit) : 1
 
   const confirmMutation = useMutation({
@@ -161,77 +168,51 @@ export default function PaymentsPage() {
           </TableBody>
         </Table>
 
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t">
-            <span className="text-sm text-muted-foreground">
-              Halaman {page} dari {totalPages}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Prev
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-              >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-          </div>
-        )}
+        <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} />
       </CardContent>
     </Card>
   )
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <CreditCard className="h-6 w-6 text-primary" />
-          Pembayaran PPDB
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Kelola pembayaran formulir pendaftaran (Tahap 1).
-        </p>
-      </div>
+      <PageHeaderCard
+        title="Pembayaran PPDB"
+        description="Kelola pembayaran formulir pendaftaran (Tahap 1)."
+        loading={loading}
+        action={
+          <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
+            <Link to="/admin/periods" className="gap-1.5">
+              Kelola Gelombang <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        }
+        blocks={[
+          { icon: Activity, label: 'Gelombang Aktif', value: activeWaveData?.name || 'Tidak ada', active: hasActiveWave, pulse: hasActiveWave },
+          { icon: Users, label: 'Total Transaksi', value: data?.total != null ? `${data.total} transaksi` : '—', active: true },
+        ]}
+      />
 
       {!loading && hasActiveWave === false && (
-        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <Waves className="h-5 w-5 shrink-0 text-amber-500" />
-          <span>
-            Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk menampilkan data pembayaran.
-          </span>
-        </div>
+        <NoActiveWaveBanner message="Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk menampilkan data pembayaran." />
       )}
 
-      <Tabs
+      <TabsBarCard
         value={activeTab}
         onValueChange={(val) => {
           setActiveTab(val)
           setPage(1)
         }}
-        className="w-full"
+        className="max-w-md"
       >
-        <TabsList className="grid w-full sm:w-[400px] grid-cols-4">
-          <TabsTrigger value="all">Semua</TabsTrigger>
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="paid">Lunas</TabsTrigger>
-          <TabsTrigger value="expired">Expired</TabsTrigger>
-        </TabsList>
-        <div className="mt-4">
-          {renderTable()}
-        </div>
-      </Tabs>
+        <TabsTrigger value="all" className="flex-1 rounded-full text-xs sm:text-sm">Semua</TabsTrigger>
+        <TabsTrigger value="pending" className="flex-1 rounded-full text-xs sm:text-sm">Pending</TabsTrigger>
+        <TabsTrigger value="paid" className="flex-1 rounded-full text-xs sm:text-sm">Lunas</TabsTrigger>
+        <TabsTrigger value="expired" className="flex-1 rounded-full text-xs sm:text-sm">Expired</TabsTrigger>
+      </TabsBarCard>
+
+      <div className="mt-4">
+        {renderTable()}
+      </div>
 
       <ConfirmDialog
         isOpen={!!confirmId}

@@ -9,12 +9,13 @@ import {
   DialogFooter, ConfirmDialog, EmptyState
 } from '@/components/ui'
 import { TableSkeletonRows } from "@/components/ui"
-import { Plus, Edit, Trash2, CalendarDays, CheckCircle, XCircle, Layers, CalendarX2 } from 'lucide-react'
+import { Plus, Edit, Trash2, CheckCircle, XCircle, Layers, CalendarX2, Activity } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import WavesSheet from './components/WavesSheet'
+import PageHeaderCard from '@/components/shared/PageHeaderCard'
 
 const periodSchema = z.object({
   name: z.string().min(1, 'Nama periode wajib diisi'),
@@ -113,20 +114,28 @@ export default function PeriodsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold text-foreground flex items-center gap-2">
-            <CalendarDays className="h-6 w-6 text-emerald-primary" />
-            Periode PPDB
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">Kelola data periode dan gelombang pendaftaran.</p>
-        </div>
-        {canCrud && (
-          <Button onClick={openCreate} className="gap-2">
-            <Plus className="h-4 w-4" /> Tambah Periode
-          </Button>
-        )}
-      </div>
+      <PageHeaderCard
+        title="Periode PPDB"
+        description="Kelola data periode dan gelombang pendaftaran."
+        loading={loading}
+        action={
+          canCrud ? (
+            <Button onClick={openCreate} className="gap-2">
+              <Plus className="h-4 w-4" /> Tambah Periode
+            </Button>
+          ) : undefined
+        }
+        blocks={[
+          { icon: Layers, label: 'Total Periode', value: `${periods.length} periode`, active: true },
+          {
+            icon: Activity,
+            label: 'Periode Aktif',
+            value: `${periods.filter((p: any) => p.status === 'active').length} periode`,
+            active: periods.some((p: any) => p.status === 'active'),
+            pulse: periods.some((p: any) => p.status === 'active'),
+          },
+        ]}
+      />
 
       <Card className="glass-card">
         <CardContent className="p-0">

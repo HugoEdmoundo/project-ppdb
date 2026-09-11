@@ -1,29 +1,31 @@
-import { useState, useEffect } from 'react'
-import * as api from '../../../api/client'
+import { useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import * as api from '@/api/client'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
 import { Card, CardContent } from "@/components/ui"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
-import { Badge } from "@/components/ui"
 import { Button, buttonVariants } from "@/components/ui"
-import { Input } from "@/components/ui"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
-import { EmptyState } from "@/components/ui"
-import { Search, GraduationCap, UserRoundSearch, FileText, CheckCircle, XCircle, Waves } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui"
 import { Textarea } from "@/components/ui"
-import { TableSkeletonRows } from "@/components/ui"
+import { ArrowRight, Activity, Users, FileText, CheckCircle, XCircle } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
+import PaymentStatusBadge from '@/components/shared/PaymentStatusBadge'
+import ApplicantsTable from '@/components/shared/ApplicantsTable'
+import PageHeaderCard from '@/components/shared/PageHeaderCard'
+import ToolbarCard from '@/components/shared/ToolbarCard'
 import { REQUIRED_DOCUMENTS } from '@/constants/documents'
 
 export default function ApplicantsPage() {
   const { toast } = useToast()
   const { canCrud } = useCan('ppdb', 'crud')
+  const queryClient = useQueryClient()
 
-  const [applicants, setApplicants] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [hasActiveWave, setHasActiveWave] = useState<boolean | null>(null)
+  const [searchInput, setSearchInput] = useState('')
+  const [searchParams] = useSearchParams()
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') ?? 'all')
 
   // Document verification modal state
   const [verifyApplicant, setVerifyApplicant] = useState<any>(null)
@@ -31,40 +33,24 @@ export default function ApplicantsPage() {
   const [rejectionReason, setRejectionReason] = useState('')
   const [isVerifying, setIsVerifying] = useState(false)
 
-  const fetchApplicants = async (q = search, status = statusFilter) => {
-    setLoading(true)
-    try {
+  const { data, isLoading: loading, refetch, isFetching } = useQuery({
+    queryKey: ['applicants', search, statusFilter],
+    queryFn: async () => {
       const qs = new URLSearchParams()
-      if (q) qs.append('search', q)
-      if (status && status !== 'all') qs.append('status', status)
+      if (search) qs.append('search', search)
+      if (statusFilter && statusFilter !== 'all') qs.append('status', statusFilter)
 
       // Backend secara otomatis scope ke gelombang aktif.
       const res = await api.apiFetch<any>(`/ppdb/applicants?${qs.toString()}`)
-      setApplicants(res.data || [])
-      setHasActiveWave(res.active_wave !== null && res.active_wave !== undefined)
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal memuat pendaftar')
-    } finally {
-      setLoading(false)
+      return res
     }
-  }
+  })
 
-  useEffect(() => {
-    fetchApplicants()
-  }, [])
+  const applicants = data?.data || []
+  const activeWaveData = data?.active_wave && typeof data.active_wave === 'object' ? data.active_wave : null
+  const hasActiveWave = !!activeWaveData
 
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    fetchApplicants(search, statusFilter)
-  }
-
-  const handleStatusChange = (val: string) => {
-    setStatusFilter(val)
-    fetchApplicants(search, val)
-  }
-
-  const openVerifyModal = async (applicant: any) => {
+  const fetchApplicantDocs = async (applicant: any) => {
     setVerifyApplicant(applicant)
     setApplicantDocs([])
     setRejectionReason('')
@@ -76,141 +62,99 @@ export default function ApplicantsPage() {
     }
   }
 
+  const verifyMutation = useMutation({
+    mutationFn: async ({ id, status, reason }: { id: string, status: 'document_approved' | 'document_rejected', reason: string }) => {
+      if (status === 'document_rejected' && !reason.trim()) {
+        throw new Error('Alasan penolakan wajib diisi')
+      }
+      await api.apiFetch(`/ppdb/applicants/${id}/documents/verify`, {
+        method: 'PUT',
+        body: JSON.stringify({ status, rejection_reason: reason })
+      })
+    },
+    onSuccess: (_, variables) => {
+      toast('success', `Dokumen berhasil ${variables.status === 'document_approved' ? 'disetujui' : 'ditolak'}`)
+      setVerifyApplicant(null)
+      queryClient.invalidateQueries({ queryKey: ['applicants'] })
+    },
+    onError: (e: any) => toast('error', e.message || 'Gagal memverifikasi dokumen')
+  })
+
   const handleVerify = async (status: 'document_approved' | 'document_rejected') => {
     if (status === 'document_rejected' && !rejectionReason.trim()) {
       toast('error', 'Alasan penolakan wajib diisi')
       return
     }
-
     setIsVerifying(true)
     try {
-      await api.apiFetch(`/ppdb/applicants/${verifyApplicant.id}/documents/verify`, {
-        method: 'PUT',
-        body: JSON.stringify({ status, rejection_reason: rejectionReason })
-      })
-      toast('success', `Dokumen berhasil ${status === 'document_approved' ? 'disetujui' : 'ditolak'}`)
-      setVerifyApplicant(null)
-      fetchApplicants()
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal memverifikasi dokumen')
+      await verifyMutation.mutateAsync({ id: verifyApplicant.id, status, reason: rejectionReason })
     } finally {
       setIsVerifying(false)
     }
   }
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setSearch(searchInput)
+  }
+
+  const handleStatusChange = (val: string) => {
+    setStatusFilter(val)
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <GraduationCap className="h-6 w-6 text-emerald-600" />
-          Dokumen Pendaftar
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Verifikasi dokumen kelengkapan calon santri yang telah mendaftar.
-        </p>
-      </div>
+      <PageHeaderCard
+        title="Dokumen Pendaftar"
+        description="Verifikasi dokumen kelengkapan calon santri yang telah mendaftar."
+        loading={loading}
+        action={
+          <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
+            <Link to="/admin/periods" className="gap-1.5">
+              Kelola Gelombang <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        }
+        blocks={[
+          { icon: Activity, label: 'Gelombang Aktif', value: activeWaveData?.name || 'Tidak ada', active: hasActiveWave, pulse: hasActiveWave },
+          { icon: Users, label: 'Total Pendaftar', value: data?.total != null ? `${data.total} terdaftar` : '—', active: true },
+        ]}
+      />
 
-      {/* Banner tidak ada gelombang aktif */}
       {!loading && hasActiveWave === false && (
-        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <Waves className="h-5 w-5 shrink-0 text-amber-500" />
-          <span>
-            Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk menampilkan data dokumen pendaftar.
-          </span>
-        </div>
+        <NoActiveWaveBanner message="Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk menampilkan data dokumen pendaftar." />
       )}
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <form onSubmit={handleSearch} className="flex gap-2 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Cari nama / email..."
-              className="pl-9"
-              value={search}
-              onChange={(e: any) => setSearch(e.target.value)}
-            />
-          </div>
-          <Tabs value={statusFilter} onValueChange={handleStatusChange} className="w-full sm:w-auto overflow-x-auto">
-            <TabsList className="inline-flex w-max sm:w-auto">
-              <TabsTrigger value="all" className="text-xs sm:text-sm">Semua</TabsTrigger>
-              <TabsTrigger value="document_uploaded" className="text-xs sm:text-sm">Menunggu Verifikasi</TabsTrigger>
-              <TabsTrigger value="document_approved" className="text-xs sm:text-sm">Disetujui</TabsTrigger>
-              <TabsTrigger value="document_rejected" className="text-xs sm:text-sm">Ditolak</TabsTrigger>
-              <TabsTrigger value="expired" className="text-xs sm:text-sm">Expired</TabsTrigger>
+      <ToolbarCard
+        searchValue={searchInput}
+        onSearchChange={setSearchInput}
+        onSearchSubmit={handleSearch}
+        onRefresh={() => refetch()}
+        refreshing={isFetching}
+      >
+        {!loading && (
+          <Tabs value={statusFilter} onValueChange={handleStatusChange}>
+            <TabsList className="inline-flex h-10 w-max rounded-full bg-slate-100/80 p-1">
+              <TabsTrigger value="all" className="rounded-full text-xs sm:text-sm">Semua</TabsTrigger>
+              <TabsTrigger value="document_uploaded" className="rounded-full text-xs sm:text-sm">Menunggu Verifikasi</TabsTrigger>
+              <TabsTrigger value="document_approved" className="rounded-full text-xs sm:text-sm">Disetujui</TabsTrigger>
+              <TabsTrigger value="document_rejected" className="rounded-full text-xs sm:text-sm">Ditolak</TabsTrigger>
+              <TabsTrigger value="expired" className="rounded-full text-xs sm:text-sm">Expired</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button type="submit" variant="secondary" className="shrink-0">Cari</Button>
-        </form>
-      </div>
+        )}
+      </ToolbarCard>
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-primary/5">
-              <TableRow>
-                <TableHead>Nama Pendaftar</TableHead>
-                <TableHead>Email / No. WA</TableHead>
-                <TableHead>Gelombang</TableHead>
-                <TableHead>Jalur / Jenjang</TableHead>
-                <TableHead>Status Pembayaran</TableHead>
-                <TableHead>Status Dokumen</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableSkeletonRows cols={6} rows={6} />
-              ) : applicants.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-8">
-                    <EmptyState
-                      icon={hasActiveWave === false ? Waves : UserRoundSearch}
-                      title={hasActiveWave === false ? "Tidak Ada Gelombang Aktif" : "Belum Ada Pendaftar"}
-                      description={
-                        hasActiveWave === false
-                          ? "Aktifkan gelombang terlebih dahulu untuk menampilkan data."
-                          : "Belum ada pendaftar yang sesuai kriteria pencarian."
-                      }
-                      className="bg-transparent border-transparent"
-                    />
-                  </TableCell>
-                </TableRow>
-
-              ) : (
-                applicants.map((a) => (
-                  <TableRow
-                    key={a.id}
-                    onClick={() => openVerifyModal(a)}
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
-                  >
-                    <TableCell className="font-medium">{a.full_name}</TableCell>
-                    <TableCell className="text-sm">
-                      {a.email} <br/>
-                      <span className="text-muted-foreground">{a.phone}</span>
-                    </TableCell>
-                    <TableCell>{a.wave_name || '-'}</TableCell>
-                    <TableCell className="text-sm capitalize">
-                      {a.registration_path} <br/>
-                      <span className="font-medium">{a.registration_level}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={a.payment_status === 'paid' ? 'success' : a.payment_status === 'expired' ? 'destructive' : 'warning'}>
-                        {a.payment_status?.toUpperCase() || 'PENDING'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="uppercase text-[10px]">
-                        {a.status.replace('_', ' ')}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <ApplicantsTable
+            applicants={applicants}
+            loading={loading}
+            hasActiveWave={hasActiveWave}
+            onRowClick={fetchApplicantDocs}
+          />
         </CardContent>
       </Card>
-
 
       <Dialog open={!!verifyApplicant} onOpenChange={(v) => !v && setVerifyApplicant(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -225,9 +169,7 @@ export default function ApplicantsPage() {
                   <h4 className="font-medium">{verifyApplicant.full_name}</h4>
                   <p className="text-sm text-muted-foreground">{verifyApplicant.registration_path} - {verifyApplicant.registration_level}</p>
                 </div>
-                <Badge variant="secondary">
-                  {applicantDocs.length} Dokumen Terunggah
-                </Badge>
+                <PaymentStatusBadge status={verifyApplicant.payment_status} />
               </div>
 
               <div className="grid gap-3">

@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui"
 import { Button } from "@/components/ui"
 import { Alert } from "@/components/ui"
 import { useToast } from '@/components/Toast'
-import * as api from '../../api/client'
 
 export default function CheckoutPage() {
-  const { user, refreshUser } = useAuth()
+  const { user, refreshUser, logout } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
@@ -57,7 +56,6 @@ export default function CheckoutPage() {
       setLoading(false)
     }
   }
-
 
   return (
     <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
@@ -129,7 +127,7 @@ export default function CheckoutPage() {
         </Card>
 
         <div className="text-center">
-          <Button variant="ghost" onClick={() => api.logout().then(() => navigate('/auth/login'))}>
+          <Button variant="ghost" onClick={() => logout().then(() => navigate('/auth/login'))}>
             Keluar (Logout)
           </Button>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card, CardContent } from "@/components/ui"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
 import { Button } from "@/components/ui"
@@ -11,20 +11,20 @@ import { EmptyState } from "@/components/ui"
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
 import { notificationService } from '@/services/index'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { TableSkeletonRows } from "@/components/ui"
 import { Bell, Edit } from 'lucide-react'
+import PageHeaderCard from '@/components/shared/PageHeaderCard'
 
 const VARS = ['{nama_peserta}', '{username}', '{email}', '{phone}', '{password}', '{link_login}', '{batas_waktu_bayar}', '{nama_gelombang}', '{tanggal_seleksi}', '{alasan_penolakan}', '{link_pembayaran}', '{nominal_bayar}']
 
 export default function NotificationsPage() {
   const { toast } = useToast()
   const { canCrud } = useCan('notification', 'crud')
+  const queryClient = useQueryClient()
 
-  const [templates, setTemplates] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
-  const [saving, setSaving] = useState(false)
 
   const [formData, setFormData] = useState({
     label: '',
@@ -34,62 +34,39 @@ export default function NotificationsPage() {
     is_active: true
   })
 
-  const fetchTemplates = async () => {
-    setLoading(true)
-    try {
-      const res = await notificationService.getTemplates()
-      setTemplates(res || [])
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal memuat template')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: templates, isLoading: loading } = useQuery({
+    queryKey: ['notification-templates'],
+    queryFn: () => notificationService.getTemplates()
+  })
 
-  useEffect(() => {
-    fetchTemplates()
-  }, [])
-
-  const handleEdit = (tmpl: any) => {
-    setSelected(tmpl)
-    setFormData({
-      label: tmpl.label || '',
-      channel: tmpl.channel || 'email',
-      email_subject: tmpl.email_subject || '',
-      body: tmpl.body || '',
-      is_active: tmpl.is_active
-    })
-    setIsEditing(true)
-  }
-
-  const handleSave = async () => {
-    if (!selected) return
-    setSaving(true)
-    try {
-      await notificationService.updateTemplate(selected.id, formData)
+  const saveMutation = useMutation({
+    mutationFn: (id: string) => notificationService.updateTemplate(id, formData),
+    onSuccess: () => {
       toast('success', 'Template berhasil disimpan')
       setIsEditing(false)
-      fetchTemplates()
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal menyimpan template')
-    } finally {
-      setSaving(false)
-    }
+      queryClient.invalidateQueries({ queryKey: ['notification-templates'] })
+    },
+    onError: (e: any) => toast('error', e.message || 'Gagal menyimpan template')
+  })
+
+  const handleSave = () => {
+    if (!selected) return
+    saveMutation.mutate(selected.id)
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Bell className="h-6 w-6 text-indigo-500" />
-          Template Notifikasi
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Konfigurasi pesan yang dikirim ke pendaftar via Email / WhatsApp. Variabel tersedia: {VARS.map(v => (
-            <code key={v} className="text-xs bg-muted px-1 rounded mx-0.5">{v}</code>
-          ))}
-        </p>
-      </div>
+      <PageHeaderCard
+        title="Template Notifikasi"
+        description={
+          <>
+            Konfigurasi pesan yang dikirim ke pendaftar via Email / WhatsApp. Variabel tersedia:{' '}
+            {VARS.map(v => (
+              <code key={v} className="text-xs bg-muted px-1 rounded mx-0.5">{v}</code>
+            ))}
+          </>
+        }
+      />
 
       <Card>
         <CardContent className="p-0">
@@ -106,7 +83,7 @@ export default function NotificationsPage() {
             <TableBody>
               {loading ? (
                 <TableSkeletonRows cols={5} rows={4} />
-              ) : templates.length === 0 ? (
+              ) : (templates || []).length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="py-8">
                     <EmptyState
@@ -118,7 +95,7 @@ export default function NotificationsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                templates.map((t) => (
+                (templates || []).map((t) => (
                   <TableRow key={t.id}>
                     <TableCell className="font-mono text-xs">{t.event_key}</TableCell>
                     <TableCell>{t.label}</TableCell>
@@ -130,7 +107,17 @@ export default function NotificationsPage() {
                     </TableCell>
                     {canCrud && (
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(t)}>
+                        <Button variant="outline" size="sm" onClick={() => {
+                          setSelected(t)
+                          setFormData({
+                            label: t.label || '',
+                            channel: t.channel || 'email',
+                            email_subject: t.email_subject || '',
+                            body: t.body || '',
+                            is_active: t.is_active
+                          })
+                          setIsEditing(true)
+                        }}>
                           <Edit className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
@@ -202,7 +189,7 @@ export default function NotificationsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditing(false)}>Batal</Button>
-            <Button onClick={handleSave} loading={saving}>Simpan Template</Button>
+            <Button onClick={handleSave} loading={saveMutation.isPending}>Simpan Template</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -19,7 +19,7 @@ export interface SelectionCategory {
   criteria: SelectionCriteria[]
 }
 
-export interface SelectionCriteria {
+interface SelectionCriteria {
   id: string
   category_id: string
   name: string

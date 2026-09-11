@@ -212,6 +212,13 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
         toast('success', 'Gelombang berhasil dinonaktifkan')
       }
       queryClient.invalidateQueries({ queryKey: ['waves', period.id] })
+      queryClient.invalidateQueries({ queryKey: ['waves'] })
+      queryClient.invalidateQueries({ queryKey: ['periods'] })
+      queryClient.invalidateQueries({ queryKey: ['applicants'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['stage2-bills'] })
+      queryClient.invalidateQueries({ queryKey: ['stage2-applicants'] })
+      queryClient.invalidateQueries({ queryKey: ['mou-applicants'] })
     } catch (e: any) {
       toast('error', e.message || `Gagal ${actionId.type} gelombang`)
     } finally {

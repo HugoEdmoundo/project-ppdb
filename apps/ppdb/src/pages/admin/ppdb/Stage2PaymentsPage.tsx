@@ -1,81 +1,66 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Card, CardContent } from "@/components/ui"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
 import { Badge } from "@/components/ui"
 import { Button } from "@/components/ui"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui"
+import { TabsTrigger } from "@/components/ui"
 import { EmptyState } from "@/components/ui"
 import { ConfirmDialog } from "@/components/ui"
 import { TableSkeletonRows } from "@/components/ui"
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
-import { CreditCard, CheckCircle, XCircle, Waves, Eye } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { CreditCard, CheckCircle, XCircle, Waves, Eye, ArrowRight, Activity, Users } from 'lucide-react'
 import { apiFetch } from '@/api/client'
+import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
+import PageHeaderCard from '@/components/shared/PageHeaderCard'
+import TabsBarCard from '@/components/shared/TabsBarCard'
 
 export default function Stage2PaymentsPage() {
   const { toast } = useToast()
   const { canCrud } = useCan('payment', 'crud')
+  const queryClient = useQueryClient()
 
   const [activeTab, setActiveTab] = useState('all')
-  const [bills, setBills] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [hasActiveWave, setHasActiveWave] = useState<boolean | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
-  const [confirming, setConfirming] = useState(false)
   const [cancelId, setCancelId] = useState<string | null>(null)
-  const [cancelling, setCancelling] = useState(false)
 
-  const fetchBills = async (statusFilter = activeTab) => {
-    setLoading(true)
-    try {
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ['stage2-bills', activeTab],
+    queryFn: async () => {
       const q = new URLSearchParams()
-      if (statusFilter !== 'all') {
-        q.append('status', statusFilter)
+      if (activeTab !== 'all') {
+        q.append('status', activeTab)
       }
-
       const res = await apiFetch<any>(`/payment/stage2/bills?${q.toString()}`)
-      setBills(res.data || [])
-      setHasActiveWave(res.active_wave !== null && res.active_wave !== undefined)
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal memuat tagihan')
-    } finally {
-      setLoading(false)
+      return res
     }
-  }
+  })
 
-  useEffect(() => {
-    fetchBills(activeTab)
-  }, [activeTab])
+  const bills = data?.data || []
+  const activeWaveData = data?.active_wave && typeof data.active_wave === 'object' ? data.active_wave : null
+  const hasActiveWave = !!activeWaveData
 
-  const handleConfirm = async () => {
-    if (!confirmId) return
-    setConfirming(true)
-    try {
-      await apiFetch(`/payment/stage2/bills/${confirmId}/confirm`, { method: 'PUT' })
+  const confirmMutation = useMutation({
+    mutationFn: (id: string) => apiFetch(`/payment/stage2/bills/${id}/confirm`, { method: 'PUT' }),
+    onSuccess: () => {
       toast('success', 'Pembayaran berhasil diverifikasi')
-      fetchBills()
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal verifikasi')
-    } finally {
-      setConfirming(false)
-      setConfirmId(null)
-    }
-  }
+      queryClient.invalidateQueries({ queryKey: ['stage2-bills'] })
+    },
+    onError: (e: any) => toast('error', e.message || 'Gagal verifikasi'),
+    onSettled: () => setConfirmId(null)
+  })
 
-  const handleCancel = async () => {
-    if (!cancelId) return
-    setCancelling(true)
-    try {
-      await apiFetch(`/payment/stage2/bills/${cancelId}/cancel`, { method: 'PUT' })
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => apiFetch(`/payment/stage2/bills/${id}/cancel`, { method: 'PUT' }),
+    onSuccess: () => {
       toast('success', 'Verifikasi berhasil dibatalkan')
-      fetchBills()
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal membatalkan verifikasi')
-    } finally {
-      setCancelling(false)
-      setCancelId(null)
-    }
-  }
+      queryClient.invalidateQueries({ queryKey: ['stage2-bills'] })
+    },
+    onError: (e: any) => toast('error', e.message || 'Gagal membatalkan verifikasi'),
+    onSettled: () => setCancelId(null)
+  })
 
   const renderTable = () => (
     <Card>
@@ -161,46 +146,43 @@ export default function Stage2PaymentsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <CreditCard className="h-6 w-6 text-primary" />
-          Pembayaran Tahap 2
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manajemen transaksi pembayaran tahap 2 untuk pendaftar yang lulus.
-        </p>
-      </div>
+      <PageHeaderCard
+        title="Pembayaran Tahap 2"
+        description="Manajemen transaksi pembayaran tahap 2 untuk pendaftar yang lulus."
+        loading={loading}
+        action={
+          <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
+            <Link to="/admin/periods" className="gap-1.5">
+              Kelola Gelombang <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        }
+        blocks={[
+          { icon: Activity, label: 'Gelombang Aktif', value: activeWaveData?.name || 'Tidak ada', active: hasActiveWave, pulse: hasActiveWave },
+          { icon: Users, label: 'Total Tagihan', value: `${bills.length} tagihan`, active: true },
+        ]}
+      />
 
       {!loading && hasActiveWave === false && (
-        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <Waves className="h-5 w-5 shrink-0 text-amber-500" />
-          <span>
-            Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu.
-          </span>
-        </div>
+        <NoActiveWaveBanner message="Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu." />
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full overflow-x-auto">
-        <TabsList className="inline-flex w-max sm:w-auto">
-          <TabsTrigger value="all" className="text-xs sm:text-sm">Semua</TabsTrigger>
-          <TabsTrigger value="paid" className="text-xs sm:text-sm">Lunas</TabsTrigger>
-          <TabsTrigger value="pending" className="text-xs sm:text-sm">Menunggu</TabsTrigger>
-          <TabsTrigger value="cancelled" className="text-xs sm:text-sm">Batal</TabsTrigger>
-        </TabsList>
+      <TabsBarCard value={activeTab} onValueChange={setActiveTab}>
+        <TabsTrigger value="all" className="flex-1 rounded-full text-xs sm:text-sm">Semua</TabsTrigger>
+        <TabsTrigger value="paid" className="flex-1 rounded-full text-xs sm:text-sm">Lunas</TabsTrigger>
+        <TabsTrigger value="pending" className="flex-1 rounded-full text-xs sm:text-sm">Menunggu</TabsTrigger>
+        <TabsTrigger value="cancelled" className="flex-1 rounded-full text-xs sm:text-sm">Batal</TabsTrigger>
+      </TabsBarCard>
 
-        <div className="mt-6">
-          <TabsContent value="all">{renderTable()}</TabsContent>
-          <TabsContent value="paid">{renderTable()}</TabsContent>
-          <TabsContent value="pending">{renderTable()}</TabsContent>
-          <TabsContent value="cancelled">{renderTable()}</TabsContent>
-        </div>
-      </Tabs>
+      <div className="mt-4">
+        {renderTable()}
+      </div>
 
       <ConfirmDialog
         isOpen={!!confirmId}
         onClose={() => setConfirmId(null)}
-        onConfirm={handleConfirm}
-        loading={confirming}
+        onConfirm={() => confirmMutation.mutate(confirmId!)}
+        loading={confirmMutation.isPending}
         title="Konfirmasi Pembayaran"
         message="Apakah Anda yakin ingin memverifikasi pembayaran ini secara manual?"
         confirmLabel="Ya, Verifikasi"
@@ -209,8 +191,8 @@ export default function Stage2PaymentsPage() {
       <ConfirmDialog
         isOpen={!!cancelId}
         onClose={() => setCancelId(null)}
-        onConfirm={handleCancel}
-        loading={cancelling}
+        onConfirm={() => cancelMutation.mutate(cancelId!)}
+        loading={cancelMutation.isPending}
         title="Batalkan Verifikasi"
         message="Apakah Anda yakin ingin membatalkan verifikasi pembayaran ini?"
         confirmLabel="Ya, Batalkan"

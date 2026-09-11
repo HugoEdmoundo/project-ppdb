@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Card, CardContent } from "@/components/ui"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
 import { Badge } from "@/components/ui"
@@ -10,8 +11,11 @@ import { Input } from "@/components/ui"
 import { Label } from "@/components/ui"
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
-import { Percent, Waves, Settings2 } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Percent, Waves, Settings2, ArrowRight, Activity, Users } from 'lucide-react'
 import { apiFetch } from '@/api/client'
+import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
+import PageHeaderCard from '@/components/shared/PageHeaderCard'
 
 const formatRp = (n: number) => 'Rp ' + n.toLocaleString('id-ID')
 
@@ -27,32 +31,24 @@ interface DiscountItem {
 export default function DiskonasiPage() {
   const { toast } = useToast()
   const { canCrud } = useCan('payment', 'crud')
-
-  const [applicants, setApplicants] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [hasActiveWave, setHasActiveWave] = useState<boolean | null>(null)
+  const queryClient = useQueryClient()
 
   const [selectedApplicant, setSelectedApplicant] = useState<any>(null)
   const [discountItems, setDiscountItems] = useState<DiscountItem[]>([])
   const [sheetLoading, setSheetLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  const fetchApplicants = async () => {
-    setLoading(true)
-    try {
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ['stage2-applicants'],
+    queryFn: async () => {
       const res = await apiFetch<any>(`/payment/stage2/applicants`)
-      setApplicants(res.data || [])
-      setHasActiveWave(res.active_wave !== null && res.active_wave !== undefined)
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal memuat data')
-    } finally {
-      setLoading(false)
+      return res
     }
-  }
+  })
 
-  useEffect(() => {
-    fetchApplicants()
-  }, [])
+  const applicants = data?.data || []
+  const activeWaveData = data?.active_wave && typeof data.active_wave === 'object' ? data.active_wave : null
+  const hasActiveWave = !!activeWaveData
 
   const openDiscountSheet = async (applicant: any) => {
     setSelectedApplicant(applicant)
@@ -87,26 +83,35 @@ export default function DiskonasiPage() {
     })
   }
 
+  const saveDiscountsMutation = useMutation({
+    mutationFn: async ({ applicantId, items }: { applicantId: string, items: any[] }) => {
+      await apiFetch(`/payment/stage2/${applicantId}/discounts`, {
+        method: 'POST',
+        body: JSON.stringify({ items })
+      })
+    },
+    onSuccess: () => {
+      toast('success', 'Diskon disimpan & tagihan dibuat.')
+      setSelectedApplicant(null)
+      queryClient.invalidateQueries({ queryKey: ['stage2-applicants'] })
+      queryClient.invalidateQueries({ queryKey: ['stage2-bills'] })
+    },
+    onError: (e: any) => toast('error', e.message || 'Gagal menyimpan diskon')
+  })
+
   const handleSaveDiscounts = async () => {
     if (!selectedApplicant) return
     setSaving(true)
     try {
-      await apiFetch(`/payment/stage2/${selectedApplicant.id}/discounts`, {
-        method: 'POST',
-        body: JSON.stringify({
-          items: discountItems.map(d => ({
-            fee_item_id: d.fee_item_id,
-            discount_type: d.discount_type || null,
-            discount_value: d.discount_value || null,
-            installment_count: d.installment_count
-          }))
-        })
+      await saveDiscountsMutation.mutateAsync({
+        applicantId: selectedApplicant.id,
+        items: discountItems.map(d => ({
+          fee_item_id: d.fee_item_id,
+          discount_type: d.discount_type || null,
+          discount_value: d.discount_value || null,
+          installment_count: d.installment_count
+        }))
       })
-      toast('success', 'Diskon disimpan & tagihan dibuat.')
-      setSelectedApplicant(null)
-      fetchApplicants()
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal menyimpan diskon')
     } finally {
       setSaving(false)
     }
@@ -114,23 +119,25 @@ export default function DiskonasiPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Percent className="h-6 w-6 text-primary" />
-          Diskonasi & Cicilan
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Pengaturan diskon dan cicilan pembayaran tahap 2 untuk pendaftar yang lulus.
-        </p>
-      </div>
+      <PageHeaderCard
+        title="Diskonasi & Cicilan"
+        description="Pengaturan diskon dan cicilan pembayaran tahap 2 untuk pendaftar yang lulus."
+        loading={loading}
+        action={
+          <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
+            <Link to="/admin/periods" className="gap-1.5">
+              Kelola Gelombang <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        }
+        blocks={[
+          { icon: Activity, label: 'Gelombang Aktif', value: activeWaveData?.name || 'Tidak ada', active: hasActiveWave, pulse: hasActiveWave },
+          { icon: Users, label: 'Total Pendaftar', value: `${applicants.length} pendaftar`, active: true },
+        ]}
+      />
 
       {!loading && hasActiveWave === false && (
-        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <Waves className="h-5 w-5 shrink-0 text-amber-500" />
-          <span>
-            Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu.
-          </span>
-        </div>
+        <NoActiveWaveBanner message="Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu." />
       )}
 
       <Card>

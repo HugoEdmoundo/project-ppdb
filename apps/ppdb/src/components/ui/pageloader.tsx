@@ -4,8 +4,8 @@ import { settingsService } from '@/services'
 /**
  * PageLoader — Full-screen branded loading screen used during auth check (ProtectedRoute).
  *
- * Logo WAJIB diambil secara dinamis dari API via `settingsService.getLogo()`
- * (endpoint: GET /companyprofile/settings/logo).
+ * Logo WAJIB diambil secara dinamis dari API via `settingsService.getAll()`
+ * (endpoint: GET /companyprofile/settings).
  * DILARANG menggunakan aset logo statis — tidak ada static logo asset di project ini.
  * Konsisten dengan cara favicon diambil di App.tsx.
  *

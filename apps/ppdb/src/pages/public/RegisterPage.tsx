@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ppdbService } from '@/services'
 import { useToast } from '@/components/Toast'
+import { useActiveWave } from '@/hooks/useActiveWave'
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
   Button, Input, Label, Alert, ConfirmDialog,
@@ -69,23 +70,15 @@ export default function RegisterPage() {
   const [districts, setDistricts] = useState<any[]>([])
   const [villages, setVillages] = useState<any[]>([])
 
-  // Scope gelombang aktif: null = belum diketahui (biarkan semua terbuka),
+  // Scope gelombang aktif: null = belum diketahui/biarkan semua terbuka,
   // array kosong = gelombang tidak aktif (semua jalur/jenjang ditutup).
-  const [waveScope, setWaveScope] = useState<{ paths: string[] | null, levels: string[] | null }>({ paths: null, levels: null })
-  const [scopeLoaded, setScopeLoaded] = useState(false)
+  const { isActive: waveIsActive, allowedPaths, allowedLevels, isFetching: scopeLoading, isError } = useActiveWave()
 
-  useEffect(() => {
-    ppdbService.getActiveWavePublic()
-      .then((res) => {
-        if (res?.active) {
-          setWaveScope({ paths: res.allowed_paths || [], levels: res.allowed_levels || [] })
-        } else {
-          setWaveScope({ paths: [], levels: [] })
-        }
-      })
-      .catch(() => {})
-      .finally(() => setScopeLoaded(true))
-  }, [])
+  const waveScope = useMemo(() => ({
+    paths: scopeLoading || isError ? null : (waveIsActive ? allowedPaths : []),
+    levels: scopeLoading || isError ? null : (waveIsActive ? allowedLevels : []),
+  }), [scopeLoading, isError, waveIsActive, allowedPaths, allowedLevels])
+  const scopeLoaded = !scopeLoading
 
   const [selectedProvinceId, setSelectedProvinceId] = useState('')
   const [selectedCityId, setSelectedCityId] = useState('')

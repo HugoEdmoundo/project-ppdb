@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
-import * as api from '../api/client'
+import * as api from '@/api/client'
 
 export interface AuthUser {
   id: string; username: string; email: string; full_name: string; role_id: string; role_name?: string; user_type: string; is_active: boolean

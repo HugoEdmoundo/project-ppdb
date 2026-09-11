@@ -1,6 +1,7 @@
+from datetime import date, datetime, timedelta
 from typing import Any, cast
 
-from sqlalchemy import or_, text
+from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session
 
 from src.models.auth import User
@@ -218,6 +219,11 @@ class PPDBRepository:
             .first(),
         )
 
+    def update_applicant(self, applicant: PPDBApplicant) -> PPDBApplicant:
+        self.db.commit()
+        self.db.refresh(applicant)
+        return applicant
+
     def create_user_and_applicant(
         self, user: User, applicant: PPDBApplicant, transaction: PPDBPaymentTransaction
     ) -> tuple[User, PPDBApplicant]:
@@ -275,6 +281,85 @@ class PPDBRepository:
 
         return result, total
 
+    def get_applicant_by_user_id(self, user_id: str) -> PPDBApplicant | None:
+        return (
+            self.db.query(PPDBApplicant)
+            .filter(
+                PPDBApplicant.user_id == user_id,
+                PPDBApplicant.deleted_at.is_(None),
+            )
+            .first()
+        )
+
+    def get_applicant_documents(self, applicant_id: str) -> list[dict[str, Any]]:
+        rows = (
+            self.db.query(FileUpload)
+            .filter(
+                FileUpload.entity_type.like("ppdb_document:%"),
+                FileUpload.entity_id == applicant_id,
+            )
+            .order_by(FileUpload.created_at.desc())
+            .all()
+        )
+        return [
+            {
+                "id": r.id,
+                "original_name": r.original_name,
+                "mime_type": r.mime_type,
+                "size_bytes": r.size_bytes,
+                "public_url": r.public_url,
+                "entity_type": r.entity_type,
+                "doc_type": r.entity_type.split(":", 1)[1] if r.entity_type else None,
+                "created_at": r.created_at,
+            }
+            for r in rows
+        ]
+
+    def replace_applicant_document(
+        self,
+        applicant_id: str,
+        doc_type: str,
+        upload: Any,
+        file_id: str,
+        uploaded_by: str,
+        now: datetime,
+    ) -> list[str]:
+        """Simpan satu dokumen pendaftar. Dokumen lama sejenis dihapus dulu.
+
+        Return list storage_path lama yang harus dihapus oleh pemanggil.
+        """
+        entity_type = f"ppdb_document:{doc_type}"
+        old = (
+            self.db.query(FileUpload)
+            .filter(
+                FileUpload.entity_type == entity_type,
+                FileUpload.entity_id == applicant_id,
+            )
+            .all()
+        )
+
+        for o in old:
+            self.db.delete(o)
+
+        record = FileUpload(
+            id=file_id,
+            uploaded_by=uploaded_by,
+            original_name=upload.original_name,
+            stored_name=str(upload.storage_path).split("/")[-1],
+            mime_type=upload.mime_type,
+            size_bytes=upload.size_bytes,
+            storage_path=upload.storage_path,
+            public_url=upload.public_url,
+            entity_type=entity_type,
+            entity_id=applicant_id,
+            data=upload.data,
+            created_at=now,
+        )
+        self.db.add(record)
+        self.db.commit()
+        self.db.refresh(record)
+        return [o.storage_path for o in old]
+
     def update_user_password(self, user: User, password_hash: str):
         user.password_hash = password_hash
         user.failed_login_attempts = 0
@@ -293,6 +378,88 @@ class PPDBRepository:
     def get_active_period_name(self) -> str | None:
         period = self.db.query(PPDBPeriod).filter(PPDBPeriod.status == "active").first()
         return period.name if period else None
+
+    def count_applicants_in_wave(self, wave_id: str) -> int:
+        """Total pendaftar di gelombang tertentu (ikut soft-deleted/expired,
+        konsisten dengan GET /ppdb/applicants yang tetap menampilkan expired)."""
+        return (
+            self.db.query(PPDBApplicant)
+            .filter(PPDBApplicant.wave_id == wave_id)
+            .count()
+        )
+
+    def count_applicants_by_status_in_wave(self, wave_id: str) -> dict[str, int]:
+        rows = (
+            self.db.query(PPDBApplicant.status, func.count(PPDBApplicant.id))
+            .filter(PPDBApplicant.wave_id == wave_id)
+            .group_by(PPDBApplicant.status)
+            .all()
+        )
+        return {status: count for status, count in rows}
+
+    def count_payments_by_status_in_wave(self, wave_id: str) -> dict[str, int]:
+        rows = (
+            self.db.query(
+                PPDBPaymentTransaction.status, func.count(PPDBPaymentTransaction.id)
+            )
+            .join(
+                PPDBApplicant,
+                PPDBPaymentTransaction.applicant_id == PPDBApplicant.id,
+            )
+            .filter(PPDBApplicant.wave_id == wave_id)
+            .group_by(PPDBPaymentTransaction.status)
+            .all()
+        )
+        return {status: count for status, count in rows}
+
+    def count_payments_by_method_in_wave(
+        self, wave_id: str
+    ) -> dict[str, dict[str, int]]:
+        rows = (
+            self.db.query(
+                PPDBPaymentTransaction.method,
+                PPDBPaymentTransaction.status,
+                func.count(PPDBPaymentTransaction.id),
+            )
+            .join(
+                PPDBApplicant,
+                PPDBPaymentTransaction.applicant_id == PPDBApplicant.id,
+            )
+            .filter(PPDBApplicant.wave_id == wave_id)
+            .group_by(PPDBPaymentTransaction.method, PPDBPaymentTransaction.status)
+            .all()
+        )
+        result: dict[str, dict[str, int]] = {}
+        for method, status, count in rows:
+            result.setdefault(method, {})[status] = count
+        return result
+
+    def get_registration_trend(
+        self, wave_id: str, days: int = 14
+    ) -> list[dict[str, Any]]:
+        start = datetime.combine(
+            date.today() - timedelta(days=days - 1), datetime.min.time()
+        )
+        rows = (
+            self.db.query(
+                func.date(PPDBApplicant.created_at), func.count(PPDBApplicant.id)
+            )
+            .filter(
+                PPDBApplicant.wave_id == wave_id,
+                PPDBApplicant.created_at >= start,
+            )
+            .group_by(func.date(PPDBApplicant.created_at))
+            .order_by(func.date(PPDBApplicant.created_at))
+            .all()
+        )
+        counts = {str(d): c for d, c in rows}
+        result: list[dict[str, Any]] = []
+        for i in range(days):
+            day = date.today() - timedelta(days=days - 1 - i)
+            result.append(
+                {"date": day.isoformat(), "count": counts.get(day.isoformat(), 0)}
+            )
+        return result
 
     def get_expired_pending_applicants(
         self, limit_time_str: str

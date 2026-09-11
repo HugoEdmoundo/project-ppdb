@@ -1,11 +1,22 @@
 import logging
+from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Query,
+    UploadFile,
+)
 from sqlalchemy.orm import Session
 
 from src.core.config import settings
 from src.core.database import audit_log, get_db
 from src.core.dependencies import (
+    get_current_user,
     require_ppdb_admin,
     require_ppdb_read,
 )
@@ -257,13 +268,42 @@ def reset_applicant_password(
     return service.reset_applicant_password(id, body.password)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Dokumen Pendaftar
+# ─────────────────────────────────────────────────────────────────────────────
+@router.get("/documents")
+def get_my_documents(
+    user: dict[str, Any] = Depends(get_current_user),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    return service.get_my_documents(user["id"])
+
+
+@router.post("/documents/upload")
+async def upload_ppdb_document(
+    file: UploadFile = File(...),
+    doc_type: str = Form(...),
+    user: dict[str, Any] = Depends(get_current_user),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    return await service.upload_document(user, doc_type, file)
+
+
+@router.post("/documents/submit")
+def submit_ppdb_documents(
+    user: dict[str, Any] = Depends(get_current_user),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    return service.submit_documents(user)
+
+
 @router.get("/applicants/{id}/documents")
 def get_applicant_documents(
     id: str,
     user: dict = Depends(require_ppdb_read),
     service: PPDBService = Depends(get_ppdb_service),
 ):
-    return service.get_applicant_documents(id)
+    return service.get_applicant_documents_admin(id)
 
 
 @router.put("/applicants/{id}/documents/verify")

@@ -17,14 +17,14 @@ class PaymentService:
 
     def get_transactions(self, page: int, per_page: int, status: str | None) -> dict:
         offset = (page - 1) * per_page
-        active_wave_id = self.repo.get_active_wave_id()
-        if not active_wave_id:
+        active_wave = self.repo.get_active_wave_info()
+        if not active_wave:
             return {"data": [], "total": 0, "active_wave": None}
 
         data, total = self.repo.get_transactions(
-            active_wave_id, status, per_page, offset
+            active_wave["id"], status, per_page, offset
         )
-        return {"data": data, "total": total, "active_wave": active_wave_id}
+        return {"data": data, "total": total, "active_wave": active_wave}
 
     def get_my_transaction(self, user_id: str) -> dict:
         applicant = self.repo.get_applicant_by_user_id(user_id)
@@ -197,12 +197,12 @@ class PaymentService:
         return {"status": "ok"}
 
     def get_stage2_applicants(self) -> dict:
-        active_wave_id = self.repo.get_active_wave_id()
-        if not active_wave_id:
+        active_wave = self.repo.get_active_wave_info()
+        if not active_wave:
             return {"data": [], "total": 0, "active_wave": None}
 
-        data, total = self.repo.get_stage2_applicants(active_wave_id)
-        return {"data": data, "total": total, "active_wave": active_wave_id}
+        data, total = self.repo.get_stage2_applicants(active_wave["id"])
+        return {"data": data, "total": total, "active_wave": active_wave}
 
     def get_applicant_discounts(self, applicant_id: str) -> dict:
         applicant = self.repo.get_applicant_by_id(applicant_id)
@@ -363,14 +363,14 @@ class PaymentService:
         self, applicant_id: str | None, status: str | None, page: int, per_page: int
     ) -> dict:
         offset = (page - 1) * per_page
-        active_wave_id = self.repo.get_active_wave_id()
-        if not active_wave_id:
+        active_wave = self.repo.get_active_wave_info()
+        if not active_wave:
             return {"data": [], "total": 0, "active_wave": None}
 
         data, total = self.repo.get_stage2_bills(
-            active_wave_id, applicant_id, status, per_page, offset
+            active_wave["id"], applicant_id, status, per_page, offset
         )
-        return {"data": data, "total": total, "active_wave": active_wave_id}
+        return {"data": data, "total": total, "active_wave": active_wave}
 
     def get_my_stage2_bills(self, user_id: str) -> dict:
         applicant = self.repo.get_applicant_by_user_id(user_id)

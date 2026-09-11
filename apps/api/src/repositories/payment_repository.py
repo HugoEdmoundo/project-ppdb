@@ -27,6 +27,11 @@ class PaymentRepository:
         stmt = select(PPDBWave.id).where(PPDBWave.status == "active").limit(1)
         return self.db.scalars(stmt).first()
 
+    def get_active_wave_info(self) -> dict[str, str] | None:
+        stmt = select(PPDBWave).where(PPDBWave.status == "active").limit(1)
+        wave = self.db.scalars(stmt).first()
+        return {"id": wave.id, "name": wave.name} if wave else None
+
     def get_transactions(
         self, wave_id: str, status: str | None, limit: int, offset: int
     ) -> tuple[list[Any], int]:

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any, cast
 from zoneinfo import ZoneInfo
 
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from sqlalchemy.exc import IntegrityError
 
 from src.core.notif_service import send_notification, send_notifications
@@ -23,6 +23,24 @@ from src.modules.ppdb.schemas import (
 from src.repositories.ppdb_repository import PPDBRepository
 
 logger = logging.getLogger("ptdarrahman.ppdb")
+
+# Nama dokumen wajib (disinkronkan dengan REQUIRED_DOCUMENTS di frontend).
+REQUIRED_DOCUMENTS = [
+    "Ijazah atau SKL",
+    "Akta Kelahiran",
+    "Kartu Keluarga (KK)",
+    "KTP Orang Tua/Wali",
+    "Rapor (Semester 3 dari 4 Terakhir)",
+    "Rapor (Semester 4 dari 4 Terakhir)",
+    "Rapor (Semester 5 dari 4 Terakhir)",
+    "Rapor (Semester 6 dari 4 Terakhir)",
+    "Pas Foto",
+    "Surat Pernyataan Orang Tua",
+    "Medical Checkup",
+]
+
+# Status tempat pendaftar boleh mengunggah/kirim dokumen.
+_DOCUMENT_UPLOAD_STATUSES = {"document_uploaded_pending", "document_rejected"}
 
 
 class PPDBService:
@@ -407,17 +425,20 @@ class PPDBService:
         wave_id: str | None,
         status: str | None,
     ):
-        resolved_wave_id = wave_id
+        active_wave = self.repository.get_active_wave()
+        resolved_wave_id = wave_id or (active_wave.id if active_wave else None)
         if not resolved_wave_id:
-            active_wave = self.repository.get_active_wave()
-            if not active_wave:
-                return {"data": [], "total": 0, "active_wave": None}
-            resolved_wave_id = active_wave.id
+            return {"data": [], "total": 0, "active_wave": None}
 
         data, total = self.repository.get_applicants_paginated(
             cast(str, resolved_wave_id), search, status, page, per_page
         )
-        return {"data": data, "total": total, "active_wave": resolved_wave_id}
+        active_wave_info = (
+            {"id": active_wave.id, "name": active_wave.name}
+            if active_wave
+            else None
+        )
+        return {"data": data, "total": total, "active_wave": active_wave_info}
 
     def reset_applicant_password(
         self, applicant_id: str, new_password: str
@@ -475,11 +496,207 @@ class PPDBService:
             "password": new_password,
         }
 
-    def get_dashboard_stats(self) -> dict[str, Any]:
+    # -------------------------------------------------------------------------
+    # Dokumen Pendaftar
+    # -------------------------------------------------------------------------
+    def _get_current_applicant(self, user: dict[str, Any]) -> PPDBApplicant:
+        applicant = self.repository.get_applicant_by_user_id(user["id"])
+        if not applicant:
+            raise HTTPException(
+                status_code=404, detail="Data pendaftaran tidak ditemukan"
+            )
+        return applicant
+
+    def get_my_documents(self, user_id: str) -> dict[str, Any]:
+        applicant = self.repository.get_applicant_by_user_id(user_id)
+        if not applicant:
+            raise HTTPException(
+                status_code=404, detail="Data pendaftaran tidak ditemukan"
+            )
+        return {"data": self.repository.get_applicant_documents(applicant.id)}
+
+    async def upload_document(
+        self, user: dict[str, Any], doc_type: str, file: UploadFile
+    ) -> dict[str, Any]:
+        import uuid
+
+        from src.core.uploads import delete_upload, upload_file
+
+        applicant = self._get_current_applicant(user)
+        if applicant.status not in _DOCUMENT_UPLOAD_STATUSES:
+            raise HTTPException(
+                status_code=400,
+                detail="Dokumen sedang dalam proses verifikasi, tidak dapat diunggah",
+            )
+
+        doc_type = (doc_type or "").strip()
+        if doc_type not in REQUIRED_DOCUMENTS:
+            raise HTTPException(
+                status_code=400, detail="Jenis dokumen tidak dikenal"
+            )
+
+        file_id = str(uuid.uuid4())
+        upload = await upload_file(file, file_id)
+        old_paths = self.repository.replace_applicant_document(
+            applicant_id=applicant.id,
+            doc_type=doc_type,
+            upload=upload,
+            file_id=file_id,
+            uploaded_by=user["id"],
+            now=datetime.now(),
+        )
+        for path in old_paths:
+            delete_upload(path)
+
+        docs = self.repository.get_applicant_documents(applicant.id)
+        document = next(
+            (d for d in docs if d["doc_type"] == doc_type), None
+        )
+        return {"message": "Dokumen berhasil diunggah", "document": document}
+
+    def submit_documents(self, user: dict[str, Any]) -> dict[str, Any]:
+        applicant = self._get_current_applicant(user)
+        if applicant.status not in _DOCUMENT_UPLOAD_STATUSES:
+            raise HTTPException(
+                status_code=400,
+                detail="Dokumen sedang dalam proses verifikasi",
+            )
+
+        docs = self.repository.get_applicant_documents(applicant.id)
+        uploaded_types = {d["doc_type"] for d in docs}
+        missing = [name for name in REQUIRED_DOCUMENTS if name not in uploaded_types]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Lengkapi semua dokumen dahulu. Kurang: {len(missing)} dokumen",
+            )
+
+        applicant.status = "document_uploaded"
+        applicant.updated_at = datetime.now()
+        self.repository.update_applicant(applicant)
+
         return {
-            "total_periods": self.repository.count_periods(),
-            "total_waves": self.repository.count_waves(),
-            "active_period_name": self.repository.get_active_period_name(),
+            "status": "document_uploaded",
+            "message": "Dokumen dikirim untuk verifikasi",
+        }
+
+    def get_applicant_documents_admin(self, applicant_id: str) -> dict[str, Any]:
+        applicant = self.repository.get_applicant_by_id(applicant_id)
+        if not applicant:
+            raise HTTPException(
+                status_code=404, detail="Pendaftar tidak ditemukan"
+            )
+        return {"data": self.repository.get_applicant_documents(applicant.id)}
+
+    def verify_applicant_documents(
+        self, applicant_id: str, status: str, rejection_reason: str | None
+    ) -> dict[str, Any]:
+        from src.core.notif_service import send_notification
+
+        applicant = self.repository.get_applicant_by_id(applicant_id)
+        if not applicant:
+            raise HTTPException(
+                status_code=404, detail="Pendaftar tidak ditemukan"
+            )
+
+        if status not in ("document_approved", "document_rejected"):
+            raise HTTPException(
+                status_code=400, detail="Status verifikasi tidak valid"
+            )
+        if status == "document_rejected" and not (rejection_reason or "").strip():
+            raise HTTPException(
+                status_code=400, detail="Alasan penolakan wajib diisi"
+            )
+
+        applicant.status = status
+        applicant.rejection_reason = (
+            rejection_reason.strip() if rejection_reason else None
+        )
+        applicant.updated_at = datetime.now()
+        self.repository.update_applicant(applicant)
+
+        try:
+            send_notification(
+                status,
+                applicant.user_id,
+                {"alasan_penolakan": applicant.rejection_reason or ""},
+            )
+        except Exception:
+            logger.exception("send document notification failed; continuing")
+
+        return {
+            "status": status,
+            "full_name": applicant.full_name,
+            "message": (
+                "Dokumen disetujui"
+                if status == "document_approved"
+                else "Dokumen ditolak"
+            ),
+        }
+
+    def get_dashboard_stats(self) -> dict[str, Any]:
+        active_wave = self.repository.get_active_wave()
+        active_period_name = self.repository.get_active_period_name()
+
+        if not active_wave:
+            return {
+                "active_wave": None,
+                "active_period_name": active_period_name,
+                "applicants": {
+                    "total": 0,
+                    "document_uploaded": 0,
+                    "document_uploaded_pending": 0,
+                    "document_rejected": 0,
+                    "selection": 0,
+                    "passed": 0,
+                    "failed": 0,
+                    "expired": 0,
+                },
+                "payments": {
+                    "pending": 0,
+                    "success": 0,
+                    "failed": 0,
+                    "expired": 0,
+                    "cancelled": 0,
+                    "by_method": {},
+                },
+                "trend": [],
+            }
+
+        grouped = self.repository.count_applicants_by_status_in_wave(active_wave.id)
+        def g(key: str) -> int:
+            return grouped.get(key, 0)
+
+        payments_by_status = self.repository.count_payments_by_status_in_wave(
+            active_wave.id
+        )
+        def p(key: str) -> int:
+            return payments_by_status.get(key, 0)
+
+        return {
+            "active_wave": {"id": active_wave.id, "name": active_wave.name},
+            "active_period_name": active_period_name,
+            "applicants": {
+                "total": self.repository.count_applicants_in_wave(active_wave.id),
+                "document_uploaded": g("document_uploaded"),
+                "document_uploaded_pending": g("document_uploaded_pending"),
+                "document_rejected": g("document_rejected"),
+                "selection": g("selection"),
+                "passed": g("passed"),
+                "failed": g("failed"),
+                "expired": g("expired"),
+            },
+            "payments": {
+                "pending": p("pending"),
+                "success": p("success"),
+                "failed": p("failed"),
+                "expired": p("expired"),
+                "cancelled": p("cancelled"),
+                "by_method": self.repository.count_payments_by_method_in_wave(
+                    active_wave.id
+                ),
+            },
+            "trend": self.repository.get_registration_trend(active_wave.id),
         }
 
     def soft_delete_expired_applicants(self) -> dict[str, Any]:
@@ -559,50 +776,8 @@ class PPDBService:
         return {"success": True}
 
     # -------------------------------------------------------------------------
-    # Documents & MOU
+    # MOU
     # -------------------------------------------------------------------------
-    def get_applicant_documents(self, applicant_id: str) -> dict[str, Any]:
-        applicant = self.repository.get_applicant_by_id(applicant_id)
-        if not applicant:
-            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
-
-        docs = self.repository.get_documents_by_applicant(applicant_id)
-        return {
-            "data": [
-                {
-                    "id": d.id,
-                    "original_name": d.original_name,
-                    "stored_name": d.stored_name,
-                    "mime_type": d.mime_type,
-                    "size_bytes": d.size_bytes,
-                    "public_url": d.public_url,
-                    "entity_type": d.entity_type,
-                    "entity_id": d.entity_id,
-                    "created_at": d.created_at.isoformat() if d.created_at else None,
-                }
-                for d in docs
-            ]
-        }
-
-    def verify_applicant_documents(
-        self, applicant_id: str, status: str, rejection_reason: str | None
-    ) -> dict[str, Any]:
-        applicant = self.repository.get_applicant_by_id(applicant_id)
-        if not applicant:
-            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
-
-        if status not in ("document_approved", "document_rejected"):
-            raise HTTPException(status_code=400, detail="Status tidak valid")
-
-        applicant.status = status
-        applicant.rejection_reason = (
-            rejection_reason if status == "document_rejected" else None
-        )
-        applicant.updated_at = datetime.now()
-        self.repository.db.commit()
-
-        return {"success": True, "status": status}
-
     def get_applicant_mou(self, applicant_id: str) -> dict[str, Any]:
         applicant = self.repository.get_applicant_by_id(applicant_id)
         if not applicant:

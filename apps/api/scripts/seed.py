@@ -79,7 +79,7 @@ DEFAULT_ROLES = [
         "permissions": {
             "dashboard": "dashboard",
             "ppdb": "crud",
-            "payment": "read",
+            "payment": "crud",
             "selection": "crud",
             "notification": "crud",
         },

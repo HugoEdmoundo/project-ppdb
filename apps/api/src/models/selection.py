@@ -18,7 +18,7 @@ class SelectionSession(Base):
     __tablename__ = "selection_sessions"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    wave_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    wave_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     session_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     start_time: Mapped[str | None] = mapped_column(String(10), nullable=True)  # "08:00"
@@ -53,7 +53,7 @@ class SelectionCategory(Base):
     __tablename__ = "selection_categories"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    wave_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    wave_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

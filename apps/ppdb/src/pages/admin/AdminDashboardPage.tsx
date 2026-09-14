@@ -160,7 +160,7 @@ export default function AdminDashboardPage() {
     { label: 'Lulus', value: data?.applicants.passed ?? 0, icon: ShieldCheck, bar: 'bg-emerald-500' },
     { label: 'Tidak Lulus', value: data?.applicants.failed ?? 0, icon: XCircle, bar: 'bg-red-500' },
   ]
-  const selectionTotal = data?.applicants.selection || data?.applicants.passed || data?.applicants.failed || 0
+  const selectionTotal = (data?.applicants.selection || 0) + (data?.applicants.passed || 0) + (data?.applicants.failed || 0)
 
   return (
     <div className="space-y-8 pb-8">

@@ -67,7 +67,7 @@ def delete_user(
     user_service: UserService = Depends(get_user_service),
     user: dict[str, Any] = Depends(require_superadmin),
 ):
-    user_service.delete_user(id)
+    user_service.delete_user(id, current_user_id=user.get("id"))
     return {"message": "Deleted"}
 
 

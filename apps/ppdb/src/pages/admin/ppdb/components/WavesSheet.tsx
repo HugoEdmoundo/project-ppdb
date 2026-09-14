@@ -1,18 +1,18 @@
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { ppdbService } from '@/services'
 import { apiFetch } from '@/api/client'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
+import { cn } from '@/lib/utils'
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell,
   Badge, Button, Input, Label, Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter, ConfirmDialog, Sheet, SheetContent, SheetHeader, SheetTitle,
   EmptyState, Alert, CurrencyInput
 } from '@/components/ui'
-import { TableSkeletonRows } from "@/components/ui"
-import { Plus, Edit, Trash2, CheckCircle, XCircle, Waves, DollarSign, Receipt } from 'lucide-react'
+import { Plus, Edit, Trash2, CheckCircle, XCircle, Waves, DollarSign, Receipt, Check, Users, Banknote, Layers } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
@@ -61,6 +61,25 @@ const emptyWaveForm = (): WaveFormData => ({
   registration_fee: 0,
 })
 
+const fmtDateShort = (d: string): string =>
+  new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+
+const localIso = (d: string): string => {
+  const dt = new Date(d)
+  const mm = String(dt.getMonth() + 1).padStart(2, '0')
+  const dd = String(dt.getDate()).padStart(2, '0')
+  return `${dt.getFullYear()}-${mm}-${dd}`
+}
+
+const todayIso = (): string => localIso(new Date().toString())
+
+const WAVE_MILESTONES: { step: string; label: string; get: (w: any) => string }[] = [
+  { step: 'registration_start_date', label: 'Mulai Daftar', get: (w) => w.registration_start_date },
+  { step: 'registration_end_date', label: 'Akhir Daftar', get: (w) => w.registration_end_date },
+  { step: 'document_upload_end_date', label: 'Upload Dok', get: (w) => w.document_upload_end_date },
+  { step: 'selection_date', label: 'Seleksi', get: (w) => w.selection_date },
+]
+
 export default function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
   const { toast } = useToast()
   const { canCrud } = useCan('ppdb', 'crud')
@@ -79,12 +98,16 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [actionId, setActionId] = useState<{ id: string, type: 'activate' | 'deactivate' } | null>(null)
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<WaveFormData>({
+  const { register, handleSubmit, setValue, getValues, control, reset, formState: { errors } } = useForm<WaveFormData>({
     resolver: zodResolver(waveSchema),
     defaultValues: emptyWaveForm()
   })
 
-  const colCount = canCrud ? 8 : 7
+  // Subscribe ke field yang dirender sebagai tombol toggle — pakai useWatch
+  // (bukan watch()) agar kompatibel dengan React Compiler.
+  const allowedPaths = useWatch({ control, name: 'allowed_paths' }) ?? []
+  const allowedLevels = useWatch({ control, name: 'allowed_levels' }) ?? []
+  const registrationFee = useWatch({ control, name: 'registration_fee' })
 
   const [feeDialogWave, setFeeDialogWave] = useState<any>(null)
   const [feeItems, setFeeItems] = useState<any[]>([])
@@ -154,7 +177,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
   }
 
   const toggleScope = (key: 'allowed_paths' | 'allowed_levels', value: string) => {
-    const list = watch(key)
+    const list = getValues(key) ?? []
     const next = list.includes(value) ? list.filter((v: string) => v !== value) : [...list, value]
     setValue(key, next, { shouldValidate: true })
   }
@@ -179,6 +202,8 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
       }
       setShowForm(false)
       queryClient.invalidateQueries({ queryKey: ['waves', period.id] })
+      queryClient.invalidateQueries({ queryKey: ['waves'] })
+      queryClient.invalidateQueries({ queryKey: ['periods'] })
     } catch (e: any) {
       const msg = e.message || 'Gagal menyimpan gelombang'
       setFormError(msg)
@@ -194,6 +219,8 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
       await ppdbService.deleteWave(deletingId)
       toast('success', 'Gelombang berhasil dihapus')
       queryClient.invalidateQueries({ queryKey: ['waves', period.id] })
+      queryClient.invalidateQueries({ queryKey: ['waves'] })
+      queryClient.invalidateQueries({ queryKey: ['periods'] })
     } catch (e: any) {
       toast('error', e.message || 'Gagal menghapus gelombang')
     } finally {
@@ -228,12 +255,12 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
 
   return (
     <Sheet open={!!period} onOpenChange={(v: boolean) => !v && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl sm:w-[600px] overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-3xl sm:w-[720px] overflow-y-auto">
         <SheetHeader className="mb-6">
           <SheetTitle className="text-xl">Gelombang — {period?.name}</SheetTitle>
         </SheetHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="flex justify-between items-center">
             <h3 className="font-semibold text-foreground">Daftar Gelombang</h3>
             {canCrud && (
@@ -243,41 +270,140 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
             )}
           </div>
 
-          <div className="rounded-xl border border-border overflow-hidden">
-            <Table>
-              <TableHeader className="bg-muted/50">
-                <TableRow>
-                  <TableHead className="w-12">Gel.</TableHead>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Target</TableHead>
-                  <TableHead>Waktu Daftar</TableHead>
-                  <TableHead>Waktu Lainnya</TableHead>
-                  <TableHead>Kuota</TableHead>
-                  <TableHead>Status</TableHead>
-                  {canCrud && <TableHead className="text-right">Aksi</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableSkeletonRows cols={colCount} rows={4} />
-                ) : waves.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={colCount} className="py-8">
-                      <EmptyState
-                        icon={Waves}
-                        title="Belum Ada Gelombang"
-                        description="Tambahkan gelombang pendaftaran untuk periode ini."
-                        className="bg-transparent border-transparent"
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  waves.map((w: any) => (
-                    <TableRow key={w.id}>
-                      <TableCell className="font-semibold text-center">{w.wave_number}</TableCell>
-                      <TableCell className="font-medium">{w.name}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1 max-w-[170px]">
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-slate-100 animate-pulse" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-40 rounded bg-slate-100 animate-pulse" />
+                      <div className="h-3 w-64 rounded bg-slate-50 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[1, 2, 3].map((j) => <div key={j} className="h-20 rounded-xl bg-slate-50 animate-pulse" />)}
+                  </div>
+                  <div className="h-12 rounded-lg bg-slate-50 animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : waves.length === 0 ? (
+            <EmptyState
+              icon={Waves}
+              title="Belum Ada Gelombang"
+              description="Tambahkan gelombang pertama agar pendaftaran PPDB dapat berjalan untuk periode ini."
+              actionLabel={canCrud ? 'Tambah Gelombang' : undefined}
+              onAction={canCrud ? openCreate : undefined}
+              className="bg-transparent border-transparent"
+            />
+          ) : (
+            <div className="space-y-4">
+              {waves.map((w: any) => {
+                const filled = w.filled ?? 0
+                const pct = w.quota > 0 ? Math.round((filled / w.quota) * 100) : 0
+                const remaining = Math.max(0, w.quota - filled)
+                const today = todayIso()
+                const resolved = WAVE_MILESTONES.map((m) => {
+                  const iso = localIso(m.get(w))
+                  return { ...m, iso, done: today >= iso }
+                })
+                const lastDoneIdx = resolved.reduce((acc, m, i) => (m.done ? i : acc), -1)
+                const activeStep = lastDoneIdx + 1 < resolved.length ? lastDoneIdx + 1 : resolved.length
+
+                return (
+                  <div
+                    key={w.id}
+                    className={cn(
+                      'rounded-2xl border p-5 shadow-sm transition-shadow hover:shadow-md',
+                      w.status === 'active'
+                        ? 'border-emerald-primary/40 ring-1 ring-emerald-primary/10 bg-white'
+                        : 'border-slate-100 bg-white'
+                    )}
+                  >
+                    {/* Header */}
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className={cn(
+                          'flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl font-heading text-xs font-bold leading-none',
+                          w.status === 'active' ? 'bg-emerald-primary text-white shadow-sm' : 'bg-slate-100 text-slate-500'
+                        )}>
+                          <span className="text-[9px] uppercase opacity-80">Gel</span>
+                          {w.wave_number}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-heading text-base font-bold text-foreground">{w.name}</h3>
+                            <Badge variant={w.status === 'active' ? 'success' : 'secondary'} className={w.status === 'active' ? 'bg-emerald-bright text-white' : ''}>
+                              {w.status === 'active' ? 'Aktif' : 'Nonaktif'}
+                            </Badge>
+                          </div>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {w.status === 'active'
+                              ? 'Data pendaftar, pembayaran & seleksi mengacu pada gelombang ini'
+                              : 'Gelombang tidak aktif — belum menerima pendaftar'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {canCrud && (
+                        <div className="flex items-center gap-1.5">
+                          {w.status === 'active' ? (
+                            <Button variant="ghost" size="sm" onClick={() => setActionId({ id: w.id, type: 'deactivate' })} className="h-8 gap-1 px-2.5 text-amber-600 hover:bg-amber-50 hover:text-amber-700">
+                              <XCircle className="h-4 w-4" /> Nonaktifkan
+                            </Button>
+                          ) : (
+                            <Button size="sm" onClick={() => setActionId({ id: w.id, type: 'activate' })} className="h-8 gap-1 bg-emerald-primary px-2.5 text-white hover:bg-emerald-dark shadow-sm">
+                              <CheckCircle className="h-4 w-4" /> Aktifkan
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" onClick={() => openFeeDialog(w)} title="Item Biaya" className="h-8 w-8 text-primary hover:bg-primary/10">
+                            <DollarSign className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(w)} title="Edit" className="h-8 w-8 text-slate-500 hover:text-slate-700 hover:bg-slate-100">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setDeletingId(w.id)} title="Hapus" className="h-8 w-8 text-rose-danger hover:bg-rose-light">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Metrics grid */}
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Users className="h-3.5 w-3.5" /> Kuota</p>
+                        <p className="mt-1 text-lg font-bold text-slate-900 leading-tight">
+                          {filled} <span className="text-sm font-medium text-slate-400">/ {w.quota}</span>
+                        </p>
+                        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                          <div
+                            className={cn(
+                              'h-full rounded-full transition-all',
+                              pct >= 90 ? 'bg-rose-danger' : 'bg-gradient-to-r from-emerald-primary to-emerald-bright'
+                            )}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <p className="mt-1.5 text-[11px] text-slate-500">
+                          {remaining > 0 ? `${remaining} slot tersisa` : 'Penuh'}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Banknote className="h-3.5 w-3.5" /> Biaya Formulir</p>
+                        <p className="mt-1 text-lg font-bold text-slate-900 leading-tight">
+                          {w.registration_fee
+                            ? `Rp ${Number(w.registration_fee).toLocaleString('id-ID')}`
+                            : 'Gratis'}
+                        </p>
+                        <p className="mt-1.5 text-[11px] text-slate-500">Ditarik saat pendaftar terdaftar</p>
+                      </div>
+
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Layers className="h-3.5 w-3.5" /> Jalur & Jenjang</p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
                           {parseCsv(w.allowed_paths).map((p: string) => (
                             <Badge key={p} variant={p === 'reguler' ? 'info' : 'warning'}>
                               {PATH_LABELS[p] || p}
@@ -287,52 +413,56 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                             <Badge key={l} variant="gold">{l}</Badge>
                           ))}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {new Date(w.registration_start_date).toLocaleDateString('id-ID')} <br/>
-                        <span className="text-muted-foreground">s/d</span> <br/>
-                        {new Date(w.registration_end_date).toLocaleDateString('id-ID')}
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
-                        Upload: {new Date(w.document_upload_end_date).toLocaleDateString('id-ID')} <br/>
-                        Seleksi: {new Date(w.selection_date).toLocaleDateString('id-ID')}
-                      </TableCell>
-                      <TableCell>{w.quota}</TableCell>
-                      <TableCell>
-                        <Badge variant={w.status === 'active' ? 'success' : 'secondary'} className={w.status === 'active' ? 'bg-emerald-bright text-white' : ''}>
-                          {w.status === 'active' ? 'Aktif' : 'Nonaktif'}
-                        </Badge>
-                      </TableCell>
-                      {canCrud && (
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            {w.status === 'active' ? (
-                              <Button variant="ghost" size="icon" onClick={() => setActionId({ id: w.id, type: 'deactivate' })} title="Nonaktifkan" className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-50">
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                            ) : (
-                              <Button variant="ghost" size="icon" onClick={() => setActionId({ id: w.id, type: 'activate' })} title="Aktifkan" className="h-8 w-8 text-emerald-primary hover:text-emerald-dark hover:bg-emerald-light">
-                                <CheckCircle className="h-4 w-4" />
-                              </Button>
+                        <p className="mt-2 text-[11px] text-slate-500 leading-snug">
+                          {parseCsv(w.allowed_paths).length} jalur · {parseCsv(w.allowed_levels).length} jenjang
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Timeline strip */}
+                    <div className="mt-4 border-t border-slate-100 pt-3">
+                      <div className="flex items-start">
+                        {resolved.map((m, i) => (
+                          <Fragment key={m.step}>
+                            {i > 0 && (
+                              <div className={cn(
+                                'mx-1 mt-1 h-px flex-1 min-w-[8px]',
+                                i <= activeStep ? 'bg-emerald-primary/40' : 'bg-slate-200'
+                              )} />
                             )}
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(w)} title="Edit" className="h-8 w-8">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => openFeeDialog(w)} title="Item Biaya" className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10">
-                              <DollarSign className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setDeletingId(w.id)} title="Hapus" className="h-8 w-8 text-rose-danger hover:text-rose-danger hover:bg-rose-light">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                            <div className="flex flex-col items-center gap-1 text-center" style={{ minWidth: 0, flex: 1 }}>
+                              <span className={cn(
+                                'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold leading-none shadow-sm',
+                                m.done
+                                  ? 'bg-emerald-primary text-white'
+                                  : i === activeStep
+                                    ? 'bg-gold-accent text-white'
+                                    : 'bg-slate-100 text-slate-400'
+                              )}>
+                                {m.done ? <Check className="h-3 w-3" /> : i + 1}
+                              </span>
+                              <span className={cn(
+                                'text-[10px] leading-tight px-0.5',
+                                m.done || i === activeStep ? 'text-slate-700 font-medium' : 'text-slate-400'
+                              )}>
+                                {m.label}
+                              </span>
+                              <span className={cn(
+                                'text-[10px] leading-tight whitespace-nowrap px-0.5',
+                                m.done || i === activeStep ? 'text-slate-500' : 'text-slate-300'
+                              )}>
+                                {fmtDateShort(m.get(w))}
+                              </span>
+                            </div>
+                          </Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </SheetContent>
 
@@ -358,7 +488,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                 <Label>Jalur Pendaftaran *</Label>
                 <div className="flex flex-wrap gap-2 pt-1">
                   {PATH_OPTIONS.map(opt => {
-                    const active = (watch('allowed_paths') || []).includes(opt.value)
+                    const active = (allowedPaths || []).includes(opt.value)
                     return (
                       <button key={opt.value} type="button" aria-pressed={active} disabled={!canCrud}
                         onClick={() => toggleScope('allowed_paths', opt.value)}
@@ -374,7 +504,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                 <Label>Jenjang *</Label>
                 <div className="flex flex-wrap gap-2 pt-1">
                   {LEVEL_OPTIONS.map(lvl => {
-                    const active = (watch('allowed_levels') || []).includes(lvl)
+                    const active = (allowedLevels || []).includes(lvl)
                     return (
                       <button key={lvl} type="button" aria-pressed={active} disabled={!canCrud}
                         onClick={() => toggleScope('allowed_levels', lvl)}
@@ -424,7 +554,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="wave-fee1">Biaya Formulir</Label>
-                  <CurrencyInput id="wave-fee1" value={watch('registration_fee')}
+                  <CurrencyInput id="wave-fee1" value={registrationFee}
                     onValueChange={(v: number) => setValue('registration_fee', v)}
                     placeholder="Contoh: 350.000" disabled={!canCrud} />
                 </div>

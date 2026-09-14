@@ -165,7 +165,9 @@ def register_admin(
 
 @router.post("/recover-applicant", response_model=RecoverApplicantResponse)
 def recover_applicant(
-    body: RecoverApplicantRequest, service: AuthService = Depends(get_auth_service)
+    body: RecoverApplicantRequest,
+    service: AuthService = Depends(get_auth_service),
+    _: None = Depends(rate_limit_dependency("recover_applicant")),
 ):
     return service.recover_applicant(body.nik, body.birth_date)
 
@@ -194,6 +196,7 @@ async def upload(
             "size_bytes": result.size_bytes,
             "storage_path": result.storage_path,
             "public_url": result.public_url,
+            "data": result.data,
         },
     )
     url = result.public_url

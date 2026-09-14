@@ -21,7 +21,7 @@ export default function SelectionResults() {
   const { toast } = useToast()
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const canCrud = user?.is_superadmin || user?.permissions?.ppdb === 'crud' || user?.permissions?.selection === 'crud'
+  const canCrud = user?.is_superadmin || user?.user_type === 'superadmin' || user?.permissions?.ppdb === 'crud'
 
   const [filterSessionId, setFilterSessionId] = useState<string>('all')
   const [selectedApplicant, setSelectedApplicant] = useState<SelectionResult | null>(null)

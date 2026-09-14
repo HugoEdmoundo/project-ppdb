@@ -233,24 +233,67 @@ class PaymentService:
         generated = 0
         now_wib = datetime.now(WIB)
 
+        # Pra-validasi SEMUA item dulu agar 400 terjadi sebelum ada tulisan.
+        prepared: list[dict] = []
         for item in items:
             fee_item_id = item.get("fee_item_id")
             if not isinstance(fee_item_id, str):
                 continue
+            fi = self.repo.get_fee_item_by_id(fee_item_id)
+            if not fi or fi.wave_id != applicant.wave_id:
+                continue
+            if self.repo.has_paid_stage2_bills(applicant_id, fee_item_id):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Ada tagihan lunas; diskon item ini tidak bisa diubah",
+                )
+            prepared.append(
+                {
+                    "fee_item_id": fee_item_id,
+                    "nominal": fi.nominal,
+                    "item": item,
+                }
+            )
+
+        for entry in prepared:
+            fee_item_id = entry["fee_item_id"]
+            nominal = entry["nominal"]
+            item = entry["item"]
             dtype = item.get("discount_type")
             dvalue = item.get("discount_value")
-            icount = int(item.get("installment_count") or 0)
+            try:
+                icount = int(item.get("installment_count") or 0)
+            except (TypeError, ValueError) as exc:
+                raise HTTPException(
+                    status_code=400, detail="Jumlah cicilan tidak valid"
+                ) from exc
+            if icount < 0:
+                raise HTTPException(
+                    status_code=400, detail="Jumlah cicilan tidak boleh negatif"
+                )
 
-            fi = self.repo.get_fee_item_by_id(fee_item_id)
-            if not fi:
-                continue
+            if dtype not in (None, "", "percent", "nominal"):
+                raise HTTPException(
+                    status_code=400, detail="Tipe diskon tidak valid"
+                )
+            try:
+                dnum = float(dvalue or 0)
+            except (TypeError, ValueError) as exc:
+                raise HTTPException(
+                    status_code=400, detail="Nilai diskon tidak valid"
+                ) from exc
+            if dnum < 0:
+                raise HTTPException(
+                    status_code=400, detail="Nilai diskon tidak boleh negatif"
+                )
 
-            nominal = fi.nominal
+            nominal = int(nominal)
             discount_amount = 0
-            if dtype == "percent" and dvalue:
-                discount_amount = math.floor(nominal * float(dvalue) / 100)
-            elif dtype == "nominal" and dvalue:
-                discount_amount = min(int(dvalue), nominal)
+            if dtype == "percent" and dnum:
+                # Clamp agar tidak melebihi nominal (mencegah tagihan negatif).
+                discount_amount = min(math.floor(nominal * dnum / 100), nominal)
+            elif dtype == "nominal" and dnum:
+                discount_amount = min(int(dnum), nominal)
 
             final_amount = nominal - discount_amount
 
@@ -278,7 +321,7 @@ class PaymentService:
                 self.repo.save_applicant_discount(new_d)
             saved += 1
 
-            # Generate bills
+            # Generate bills (tagihan lunas sudah dicek di pra-validasi).
             self.repo.delete_stage2_bills(applicant_id, fee_item_id)
 
             if icount == 0:
@@ -345,6 +388,9 @@ class PaymentService:
 
         existing_mou = self.repo.get_mou_by_applicant_id(applicant.id)
         if existing_mou:
+            # Jangan timpa MOU yang sudah ditandatangani.
+            if existing_mou.status == "signed":
+                return
             existing_mou.draft_content = template
             existing_mou.updated_at = now_wib
             self.repo.save_mou(existing_mou)

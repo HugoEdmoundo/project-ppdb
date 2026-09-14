@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Edit, Trash2, ShieldCheck } from 'lucide-react'
+import { Plus, Edit, Trash2, ShieldCheck, Shield, Lock } from 'lucide-react'
+import PageHero from '../components/PageHero'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
 import { ConfirmDialog } from "../components/ui/confirmdialog"
@@ -19,8 +20,8 @@ export default function RolesPage() {
   const { user: currentUser, loading: authLoading } = useAuth()
   const queryClient = useQueryClient()
 
-  const canCrud = currentUser?.user_type === 'superadmin'
-  const canView = currentUser?.user_type === 'superadmin'
+  const canCrud = currentUser?.user_type === 'superadmin' || !!currentUser?.is_superadmin
+  const canView = currentUser?.user_type === 'superadmin' || !!currentUser?.is_superadmin
 
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmData, setConfirmData] = useState<{ title: string; message: string; variant?: 'danger' | 'primary'; onConfirm: () => void } | null>(null)
@@ -92,18 +93,25 @@ export default function RolesPage() {
         loading={deleteMutation.isPending}
       />
       <div className="space-y-6 animate-fadeIn">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Roles</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Kelola role dan hak akses pengguna</p>
-        </div>
-        {canCrud && (
-          <Button onClick={() => navigate('/roles/new')}>
-            <Plus className="mr-2 h-4 w-4" />
-            Buat Role
-          </Button>
-        )}
-      </div>
+      <PageHero
+        eyebrow="Manajemen Akses"
+        title="Roles"
+        description="Kelola role dan hak akses pengguna"
+        loading={loading}
+        chips={[
+          { icon: ShieldCheck, label: `${roles.length} Total Role` },
+          { icon: Lock, label: `${roles.filter((r) => r.is_system).length} Sistem` },
+          { icon: Shield, label: `${roles.filter((r) => !r.is_system).length} Khusus` },
+        ]}
+        actions={canCrud ? (
+          <button
+            onClick={() => navigate('/roles/new')}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#D4A853] px-4 py-2 text-xs font-bold text-[#0E3B26] transition-colors hover:bg-[#E2BC6B]"
+          >
+            <Plus className="h-3.5 w-3.5" /> Buat Role
+          </button>
+        ) : undefined}
+      />
 
       {loading ? (
         <div className="grid gap-4">

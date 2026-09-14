@@ -7,6 +7,27 @@ async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Respo
   return fetch(url, options)
 }
 
+/**
+ * Parse JSON dengan aman. Kalau server mengembalikan HTML (mis. index.html
+ * karena URL API nyasar ke dev server / proxy salah), lempar error yang
+ * jelas alih-alih `Unexpected token '<'`.
+ */
+async function parseJsonSafe<T>(res: Response, label: string): Promise<T> {
+  const ct = res.headers.get('content-type') || ''
+  if (!ct.includes('application/json')) {
+    const text = await res.text().catch(() => '')
+    throw new Error(
+      `${label} mengembalikan non-JSON (status ${res.status}). ` +
+        `Kemungkinan URL API salah atau backend tidak jalan. Cuplikan: ${text.slice(0, 120)}`
+    )
+  }
+  try {
+    return (await res.json()) as T
+  } catch {
+    throw new Error(`${label} gagal dibaca sebagai JSON (status ${res.status}).`)
+  }
+}
+
 let refreshPromise: Promise<boolean> | null = null
 
 export function getStoredUser() { try { const u = localStorage.getItem(USER_KEY); return u ? JSON.parse(u) : null } catch { return null } }
@@ -41,9 +62,9 @@ export async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Pro
       throw new Error('Unauthorized')
     }
   }
-  if (!res.ok) { const body = await res.json().catch(() => ({ detail: res.statusText })); throw new Error(body.detail || `API ${res.status}`) }
+  if (!res.ok) { const body = await parseJsonSafe<Record<string, string>>(res, `API ${endpoint}`).catch(() => ({ detail: res.statusText })); throw new Error(body.detail || `API ${res.status}`) }
   if (res.status === 204) return undefined as T
-  return res.json()
+  return parseJsonSafe<T>(res, `API ${endpoint}`)
 }
 
 export async function login(username: string, password: string) {

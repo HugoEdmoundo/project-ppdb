@@ -137,7 +137,9 @@ export default function LoginPage() {
       } else if (canApplicant) {
         navigate('/applicant', { replace: true })
       } else {
-        // No permission to any PPDB module or dashboard
+        // No permission to any PPDB module or dashboard.
+        // Intentional post-login side effect: sync external auth state to local UI.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setErrorMsg('Akses ditolak: Anda tidak memiliki izin untuk modul PPDB.')
         logout()
       }

@@ -95,6 +95,7 @@ export default function DiskonasiPage() {
       setSelectedApplicant(null)
       queryClient.invalidateQueries({ queryKey: ['stage2-applicants'] })
       queryClient.invalidateQueries({ queryKey: ['stage2-bills'] })
+      queryClient.invalidateQueries({ queryKey: ['mou-applicants'] })
     },
     onError: (e: any) => toast('error', e.message || 'Gagal menyimpan diskon')
   })

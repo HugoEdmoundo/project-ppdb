@@ -111,7 +111,11 @@ export default function NewsClient({ news }: { news: NewsArticle[] }) {
                   className="group glass-card rounded-2xl overflow-hidden !no-underline"
                 >
                   <div className="aspect-[16/10] overflow-hidden relative">
-                    <Image src={article.image || ''} alt={info?.title || 'Gambar berita'} fill className="object-cover group-hover:scale-105 transition-transform duration-700" sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" loading="lazy" />
+                    {article.image ? (
+                      <Image src={article.image} alt={info?.title || 'Gambar berita'} fill className="object-cover group-hover:scale-105 transition-transform duration-700" sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" loading="lazy" />
+                    ) : (
+                      <div className="w-full h-full bg-[var(--bg-secondary)]" />
+                    )}
                     <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-[var(--accent)] text-white shadow-sm">
                       {article.category}
                     </span>

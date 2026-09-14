@@ -9,8 +9,10 @@ class PeriodCreate(BaseModel):
     description: str | None = None
 
 
-class PeriodUpdate(PeriodCreate):
-    pass
+class PeriodUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    academic_year: str | None = Field(default=None, min_length=1, max_length=20)
+    description: str | None = None
 
 
 ALLOWED_PATHS = ("reguler", "pindahan")
@@ -77,8 +79,33 @@ class WaveCreate(WaveBase):
     period_id: str
 
 
-class WaveUpdate(WaveBase):
-    pass
+class WaveUpdate(BaseModel):
+    """Update parsial — hanya field yang dikirim yang diubah."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    allowed_paths: str | None = None
+    allowed_levels: str | None = None
+    registration_start_date: date | None = None
+    registration_end_date: date | None = None
+    document_upload_end_date: date | None = None
+    selection_date: date | None = None
+    quota: int | None = Field(default=None, ge=0)
+    registration_fee: int | None = Field(default=None, ge=0)
+    second_stage_fee: int | None = Field(default=None, ge=0)
+
+    @field_validator("allowed_paths")
+    @classmethod
+    def check_allowed_paths(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return normalize_scope_csv(v, ALLOWED_PATHS, "Jalur pendaftaran")
+
+    @field_validator("allowed_levels")
+    @classmethod
+    def check_allowed_levels(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return normalize_scope_csv(v, ALLOWED_LEVELS, "Jenjang")
 
 
 def _digits_or_none(value: str | None, length: int, label: str) -> str | None:

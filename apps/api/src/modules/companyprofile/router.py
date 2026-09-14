@@ -380,6 +380,18 @@ async def cp_settings_list():
     return [s for s in all_settings if s["key"] in PUBLIC_SETTINGS_KEYS]
 
 
+@router.get("/settings-admin")
+async def cp_settings_admin_list(
+    user: dict[str, Any] = Depends(require_cp_crud()),
+):
+    """Semua kunci settings termasuk admin-only (whatsapp_number, to_email).
+
+    Dipakai dashboard admin agar nilai yang disimpan via PUT bisa dibaca kembali.
+    """
+    all_settings = list_all("site_settings")
+    return [s for s in all_settings if s["key"] in ADMIN_SETTINGS_KEYS]
+
+
 @router.get("/settings/{key}")
 async def cp_settings_get(key: str):
     if key not in PUBLIC_SETTINGS_KEYS:
@@ -447,7 +459,7 @@ async def cp_contact_update(
 @router.get("/{entity}")
 async def cp_entity_list(entity: str, skip: int = 0, limit: int = 100):
     if entity in ("settings", "contact-info", "auth", "upload", "events"):
-        return []
+        raise HTTPException(status_code=404, detail="Not found")
     table = get_table(entity)
     order = (
         "date.desc"
@@ -460,7 +472,7 @@ async def cp_entity_list(entity: str, skip: int = 0, limit: int = 100):
 @router.get("/{entity}/{slug}")
 async def cp_entity_get(entity: str, slug: str):
     if entity in ("settings", "contact-info"):
-        return None
+        raise HTTPException(status_code=404, detail="Not found")
     table = get_table(entity)
     if entity in ("news", "programs"):
         item = get_by_slug(table, slug)

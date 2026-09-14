@@ -20,15 +20,16 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => api.getStoredUser())
-  const [loading, setLoading] = useState(() => !api.getStoredUser())
+  // loading hanya true jika ada sesi tersimpan yang perlu divalidasi ke backend.
+  // Tanpa sesi tersimpan, langsung false agar ProtectedRoute redirect ke /auth/login.
+  const [loading, setLoading] = useState(() => !!api.getStoredUser())
 
   useEffect(() => {
-    if (api.getStoredUser()) {
-      // Validate token in background
-      api.getMe().then((u) => setUser(u)).catch(() => {
-        setUser(null)
-      }).finally(() => setLoading(false))
-    }
+    if (!api.getStoredUser()) return
+    // Validate token in background
+    api.getMe().then((u) => setUser(u)).catch(() => {
+      setUser(null)
+    }).finally(() => setLoading(false))
   }, [])
 
   const login = useCallback(async (username: string, password: string) => {

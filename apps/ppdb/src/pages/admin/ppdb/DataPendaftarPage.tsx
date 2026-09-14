@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import * as api from '@/api/client'
 import { Card, CardContent } from "@/components/ui"
 import { Button } from "@/components/ui"
-import { ArrowRight, Activity, Users } from 'lucide-react'
+import { Badge } from "@/components/ui"
+import { ArrowRight, Activity, Users, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import type { Applicant } from '@/types/ppdb'
 import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
@@ -14,6 +15,8 @@ import PageHeaderCard from '@/components/shared/PageHeaderCard'
 import ToolbarCard from '@/components/shared/ToolbarCard'
 
 export default function DataPendaftarPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const statusFilter = searchParams.get('status') || ''
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
@@ -21,10 +24,11 @@ export default function DataPendaftarPage() {
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null)
 
   const { data, isLoading: loading, refetch, isFetching } = useQuery({
-    queryKey: ['applicants', searchQuery, page, limit],
+    queryKey: ['applicants', searchQuery, page, limit, statusFilter],
     queryFn: async () => {
       const qs = new URLSearchParams()
       if (searchQuery) qs.append('search', searchQuery)
+      if (statusFilter) qs.append('status', statusFilter)
       qs.append('page', page.toString())
       qs.append('perPage', limit.toString())
 
@@ -74,6 +78,23 @@ export default function DataPendaftarPage() {
         onRefresh={() => refetch()}
         refreshing={isFetching}
       />
+
+      {statusFilter && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Filter:</span>
+          <Badge variant={statusFilter === 'expired' ? 'destructive' : 'secondary'} className="uppercase">
+            {statusFilter}
+          </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={() => { setSearchParams({}); setPage(1) }}
+          >
+            <X className="h-3.5 w-3.5 mr-1" /> Hapus filter
+          </Button>
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">

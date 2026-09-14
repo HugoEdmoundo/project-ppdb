@@ -5,6 +5,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 
 from src.core.security import (
     create_access_token,
@@ -215,15 +216,52 @@ class AuthService:
         return self._serialize_user(user)
 
     def update_profile(self, user_dict: dict, data: dict) -> dict:
+        from src.core.security import verify_password
+
         user = self.repository.get_user_by_id(user_dict["id"])
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
+        username = data.get("username")
+        if username is not None and username != user.username:
+            existing = self.repository.get_user_by_username_or_email(username)
+            if existing and existing.id != user.id:
+                raise HTTPException(status_code=400, detail="Username already in use")
+            user.username = username
+
+        email = data.get("email")
+        if email is not None and email != (user.email or ""):
+            is_super = user_dict.get("user_type") == "superadmin" or bool(
+                user_dict.get("is_superadmin")
+            )
+            if not is_super:
+                raise HTTPException(
+                    status_code=403, detail="Only superadmin can change email"
+                )
+            existing = self.repository.get_user_by_username_or_email(email)
+            if existing and existing.id != user.id:
+                raise HTTPException(status_code=400, detail="Email already in use")
+            user.email = email
+
         if data.get("full_name") is not None:
             user.full_name = data["full_name"]
 
-        if data.get("password"):
-            user.password_hash = hash_password(data["password"])
+        if data.get("avatar_url") is not None:
+            user.avatar_url = data["avatar_url"]
+
+        new_password = data.get("new_password") or data.get("password")
+        if new_password:
+            if not data.get("old_password"):
+                raise HTTPException(
+                    status_code=400, detail="Old password is required"
+                )
+            if not verify_password(
+                data["old_password"], user_dict.get("password_hash", "")
+            ):
+                raise HTTPException(
+                    status_code=400, detail="Old password is incorrect"
+                )
+            user.password_hash = hash_password(new_password)
 
         self.repository.update_user(user)
         return self._serialize_user(user)
@@ -288,9 +326,14 @@ class AuthService:
         if self.repository.get_user_by_username_or_email(data["username"]):
             raise HTTPException(400, "Username already exists")
 
+        email = data.get("email") or ""
+        if email and self.repository.get_user_by_username_or_email(email):
+            raise HTTPException(400, "Email already exists")
+
         user = User(
             id=str(uuid.uuid4()),
             username=data["username"],
+            email=email,
             password_hash=hash_password(data["password"]),
             role_id=data.get("role_id"),
             user_type=data.get("user_type", "admin"),
@@ -298,8 +341,14 @@ class AuthService:
             created_at=datetime.now(WIB),
             updated_at=datetime.now(WIB),
         )
-        self.repository.db.add(user)
-        self.repository.db.commit()
+        try:
+            self.repository.db.add(user)
+            self.repository.db.commit()
+        except IntegrityError as exc:
+            self.repository.db.rollback()
+            raise HTTPException(
+                400, "Username atau email sudah digunakan"
+            ) from exc
         self.repository.db.refresh(user)
 
         token = create_access_token({"sub": user.id})
@@ -312,12 +361,23 @@ class AuthService:
     def recover_applicant(self, nik: str, birth_date: str) -> dict:
         import random
         import string
+        from datetime import date as date_type
 
         from src.models.ppdb import PPDBApplicant
 
+        try:
+            birth_day = date_type.fromisoformat((birth_date or "").strip())
+        except ValueError as exc:
+            raise HTTPException(
+                400, "Format tanggal lahir tidak valid (YYYY-MM-DD)"
+            ) from exc
+
         applicant = (
             self.repository.db.query(PPDBApplicant)
-            .filter(PPDBApplicant.nik == nik, PPDBApplicant.birth_date == birth_date)
+            .filter(
+                PPDBApplicant.nik == (nik or "").strip(),
+                PPDBApplicant.birth_date == birth_day,
+            )
             .first()
         )
 

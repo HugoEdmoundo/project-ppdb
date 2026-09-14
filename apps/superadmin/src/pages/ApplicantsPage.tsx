@@ -8,7 +8,8 @@ import { Button } from "@/components/ui"
 import { Input } from "@/components/ui"
 import { Modal } from "@/components/ui"
 import { EmptyState } from "@/components/ui"
-import { Search, GraduationCap, UserRoundSearch, KeyRound, CheckCircle2 } from 'lucide-react'
+import { Search, GraduationCap, UserRoundSearch, KeyRound, CheckCircle2, Waves } from 'lucide-react'
+import PageHero from '../components/PageHero'
 
 export default function ApplicantsPage() {
   const { toast } = useToast()
@@ -16,6 +17,10 @@ export default function ApplicantsPage() {
   const [applicants, setApplicants] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [activeWave, setActiveWave] = useState<any>(null)
+  const perPage = 20
   const [selectedApplicant, setSelectedApplicant] = useState<any>(null)
 
   const [resetOpen, setResetOpen] = useState(false)
@@ -24,11 +29,13 @@ export default function ApplicantsPage() {
   const [resetting, setResetting] = useState(false)
   const [resetResult, setResetResult] = useState<any>(null)
 
-  const fetchApplicants = async (q = search) => {
+  const fetchApplicants = async (q = search, p = page) => {
     setLoading(true)
     try {
-      const res = await api.getApplicants({ search: q })
+      const res = await api.getApplicants({ search: q, page: p, per_page: perPage })
       setApplicants((res as any).data || [])
+      setTotal((res as any).total ?? 0)
+      setActiveWave((res as any).active_wave ?? null)
     } catch (e: any) {
       toast('error', e.message || 'Gagal memuat pendaftar')
     } finally {
@@ -42,9 +49,17 @@ export default function ApplicantsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const totalPages = Math.max(1, Math.ceil(total / perPage))
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    fetchApplicants()
+    setPage(1)
+    fetchApplicants(search, 1)
+  }
+
+  const handlePage = (p: number) => {
+    setPage(p)
+    fetchApplicants(search, p)
   }
 
   function generatePassword() {
@@ -88,15 +103,17 @@ export default function ApplicantsPage() {
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <GraduationCap className="h-6 w-6 text-emerald-primary" />
-          Akun Pendaftar (PPDB)
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Daftar akun pendaftar yang otomatis dibuat oleh sistem. Klik baris untuk melihat detail.
-        </p>
-      </div>
+      <PageHero
+        eyebrow="PPDB"
+        title="Akun Pendaftar"
+        description="Daftar akun pendaftar yang otomatis dibuat oleh sistem. Klik baris untuk melihat detail."
+        loading={loading && applicants.length === 0}
+        chips={[
+          { icon: GraduationCap, label: `${total} Pendaftar` },
+          { icon: Waves, label: activeWave?.name ?? 'Tanpa Gelombang Aktif' },
+          { icon: CheckCircle2, label: `${applicants.filter((a) => a.payment_status === 'paid').length} Lunas (halaman ini)` },
+        ]}
+      />
 
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
         <form onSubmit={handleSearch} className="flex gap-2 w-full sm:w-auto">
@@ -112,6 +129,12 @@ export default function ApplicantsPage() {
           <Button type="submit" variant="secondary">Cari</Button>
         </form>
       </div>
+
+      {!loading && activeWave === null && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Tidak ada gelombang aktif. Aktifkan gelombang terlebih dahulu untuk melihat data pendaftar.
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -184,6 +207,19 @@ export default function ApplicantsPage() {
               )}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm text-muted-foreground">
+              <span>Halaman {page} dari {totalPages} ({total} pendaftar)</span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => handlePage(page - 1)}>
+                  Sebelumnya
+                </Button>
+                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => handlePage(page + 1)}>
+                  Berikutnya
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -202,7 +238,7 @@ export default function ApplicantsPage() {
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Status Pembayaran</p>
-                <Badge variant={selectedApplicant.payment_status === 'paid' ? 'success' : 'warning'} className="mt-1">
+                <Badge variant={selectedApplicant.payment_status === 'paid' ? 'success' : selectedApplicant.payment_status === 'expired' ? 'destructive' : 'warning'} className="mt-1">
                   {selectedApplicant.payment_status?.toUpperCase() || 'PENDING'}
                 </Badge>
               </div>

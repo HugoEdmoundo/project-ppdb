@@ -30,7 +30,11 @@ export default function NewsDetailClient({ article, allNews }: { article: NewsAr
       {/* Hero */}
       <section className="relative pt-28 pb-20 md:pt-36 overflow-hidden">
         <div className="absolute inset-0">
-          <Image src={article.image || ''} alt={info?.title || 'Gambar Berita'} fill className="object-cover" sizes="100vw" priority />
+          {article.image ? (
+            <Image src={article.image} alt={info?.title || 'Gambar Berita'} fill className="object-cover" sizes="100vw" priority />
+          ) : (
+            <div className="absolute inset-0 bg-[var(--bg-secondary)]" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/80 to-white/95" />
         </div>
         <div className="absolute top-0 left-0 right-0 verse-strip" />

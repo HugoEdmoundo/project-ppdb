@@ -109,7 +109,7 @@ export default function PaymentsPage() {
                 <TableRow key={trx.id}>
                   <TableCell className="font-medium">
                     {trx.full_name || trx.applicant_name || '-'}
-                    <div className="text-xs text-muted-foreground font-normal">{trx.wave_name || '-'}</div>
+                    <div className="text-xs text-muted-foreground font-normal">{trx.wave_name || activeWaveData?.name || '-'}</div>
                   </TableCell>
                   <TableCell>
                     {trx.method === 'offline' ? (
@@ -129,9 +129,9 @@ export default function PaymentsPage() {
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={trx.status === 'paid' ? 'success' : trx.status === 'expired' ? 'destructive' : 'warning'}
+                      variant={trx.status === 'success' ? 'success' : trx.status === 'expired' ? 'destructive' : 'warning'}
                     >
-                      {trx.status.toUpperCase()}
+                      {trx.status === 'success' ? 'LUNAS' : trx.status.toUpperCase()}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -148,7 +148,7 @@ export default function PaymentsPage() {
                             Verifikasi
                           </Button>
                         )}
-                        {trx.method === 'offline' && trx.status === 'paid' && (
+                        {trx.method === 'offline' && trx.status === 'success' && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -206,7 +206,7 @@ export default function PaymentsPage() {
       >
         <TabsTrigger value="all" className="flex-1 rounded-full text-xs sm:text-sm">Semua</TabsTrigger>
         <TabsTrigger value="pending" className="flex-1 rounded-full text-xs sm:text-sm">Pending</TabsTrigger>
-        <TabsTrigger value="paid" className="flex-1 rounded-full text-xs sm:text-sm">Lunas</TabsTrigger>
+        <TabsTrigger value="success" className="flex-1 rounded-full text-xs sm:text-sm">Lunas</TabsTrigger>
         <TabsTrigger value="expired" className="flex-1 rounded-full text-xs sm:text-sm">Expired</TabsTrigger>
       </TabsBarCard>
 

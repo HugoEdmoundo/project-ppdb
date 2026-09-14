@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from src.core.config import settings
 from src.core.notif_service import send_notifications
 from src.core.security import hash_password
-from src.models.auth import User
+from src.models.auth import Role, User
 from src.repositories.user_repository import UserRepository
 
 logger = logging.getLogger("ptdarrahman.users")
@@ -189,10 +189,19 @@ class UserService:
             "email": updated_user.email,
         }
 
-    def delete_user(self, user_id: str) -> None:
+    def delete_user(self, user_id: str, current_user_id: str | None = None) -> None:
         user = self.repository.get_by_id(user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        if current_user_id and user_id == current_user_id:
+            raise HTTPException(
+                status_code=400, detail="Tidak bisa menghapus akun sendiri"
+            )
+        if self._is_superadmin_user(user) and self._count_superadmins() <= 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Tidak bisa menghapus superadmin terakhir",
+            )
         try:
             self.repository.delete(user)
         except IntegrityError:
@@ -201,6 +210,34 @@ class UserService:
                 detail="Cannot delete user; they are still referenced "
                 "by other records",
             )
+
+    def _is_superadmin_user(self, user) -> bool:
+        if (user.user_type or "") == "superadmin":
+            return True
+        if user.role_id:
+            role = self.repository.db.query(Role).filter(
+                Role.id == user.role_id
+            ).first()
+            return bool(role and role.is_superadmin)
+        return False
+
+    def _count_superadmins(self) -> int:
+        from sqlalchemy import or_
+
+        return (
+            self.repository.db.query(User)
+            .filter(
+                or_(
+                    User.user_type == "superadmin",
+                    User.role_id.in_(
+                        self.repository.db.query(Role.id).filter(
+                            Role.is_superadmin.is_(True)
+                        )
+                    ),
+                )
+            )
+            .count()
+        )
 
     def get_page_permissions(self, user_id: str) -> dict:
         user = self.repository.get_by_id(user_id)

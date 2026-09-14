@@ -43,6 +43,7 @@ class RegisterApplicantRequest(BaseModel):
 
 class RegisterAdminRequest(BaseModel):
     username: str = Field(min_length=3, max_length=50)
+    email: EmailStr | None = None
     password: str = Field(min_length=8)
     role_id: str | None = None
     user_type: str | None = None

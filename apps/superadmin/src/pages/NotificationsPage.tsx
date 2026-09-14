@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
 import { ConfirmDialog } from "../components/ui/confirmdialog"
@@ -10,7 +10,8 @@ import { Label } from "@/components/ui"
 import { Checkbox } from "@/components/ui"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
 import { EmptyState } from "@/components/ui"
-import { Bell, Send, Search, Inbox } from 'lucide-react'
+import { Send, Search, Inbox, Users } from 'lucide-react'
+import PageHero from '../components/PageHero'
 
 interface Recipient {
   user_id: string
@@ -36,6 +37,7 @@ export default function NotificationsPage() {
 
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmData, setConfirmData] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
+  const confirmResolveRef = useRef<((v: boolean) => void) | null>(null)
 
   const fetchAll = async () => {
     setLoading(true)
@@ -126,10 +128,11 @@ export default function NotificationsPage() {
       return
     }
     const confirmed = await new Promise<boolean>((resolve) => {
+      confirmResolveRef.current = resolve
       setConfirmData({
         title: 'Kirim Notifikasi',
         message: `Notifikasi akan dikirim ke ${selected.size} penerima. Pastikan email/nomor WhatsApp penerima sudah benar.\n\nChannel: ${channel}\nSubject: ${subject || '(kosong)'}\n\nYakin ingin mengirim?`,
-        onConfirm: () => { setConfirmOpen(false); resolve(true) },
+        onConfirm: () => { setConfirmOpen(false); confirmResolveRef.current = null; resolve(true) },
       })
       setConfirmOpen(true)
     })
@@ -160,22 +163,24 @@ export default function NotificationsPage() {
     <>
       <ConfirmDialog
         isOpen={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
+        onClose={() => { setConfirmOpen(false); confirmResolveRef.current?.(false); confirmResolveRef.current = null }}
         onConfirm={() => confirmData?.onConfirm()}
         title={confirmData?.title || 'Konfirmasi'}
         message={confirmData?.message || ''}
         confirmLabel="Ya, Kirim"
       />
       <div className="space-y-6 animate-fadeIn">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Bell className="h-6 w-6 text-indigo-500" />
-            Kirim Notifikasi
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Kirim pesan khusus ke user / pendaftar. Saat ini dalam mode simulasi — pesan tercatat di log notifikasi.
-          </p>
-        </div>
+        <PageHero
+          eyebrow="Komunikasi"
+          title="Kirim Notifikasi"
+          description="Kirim pesan khusus ke user / pendaftar. Saat ini dalam mode simulasi — pesan tercatat di log notifikasi."
+          loading={loading && recipients.length === 0}
+          chips={[
+            { icon: Users, label: `${eligible.length} Penerima Eligible` },
+            { icon: Inbox, label: `${logs.length} Log Terakhir` },
+            { icon: Send, label: `${selected.size} Dipilih` },
+          ]}
+        />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
           {/* Pilih penerima */}

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { EmptyState } from "@/components/ui"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui"
 import { Plus, Trash2, Download, ListTree, XCircle } from 'lucide-react'
+import { ConfirmDialog } from "@/components/ui"
 import type { SelectionCategory, Session, SelectionResult } from './types'
 import { downloadCSV } from './utils'
 
@@ -17,7 +18,9 @@ export default function SelectionCategories() {
   const { toast } = useToast()
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const canCrud = user?.is_superadmin || user?.permissions?.ppdb === 'crud' || user?.permissions?.selection === 'crud'
+  const canCrud = user?.is_superadmin || user?.user_type === 'superadmin' || user?.permissions?.ppdb === 'crud'
+
+  const [deleteTarget, setDeleteTarget] = useState<{ kind: 'category' | 'criteria', id: string } | null>(null)
 
   const [categoryModal, setCategoryModal] = useState(false)
   const [catForm, setCatForm] = useState({ name: '' })
@@ -68,7 +71,8 @@ export default function SelectionCategories() {
       toast('success', 'Kategori dihapus')
       queryClient.invalidateQueries({ queryKey: ['selection-categories'] })
     },
-    onError: (e: any) => toast('error', e.message)
+    onError: (e: any) => toast('error', e.message),
+    onSettled: () => setDeleteTarget(null),
   })
 
   const saveCriteriaMutation = useMutation({
@@ -88,7 +92,8 @@ export default function SelectionCategories() {
       toast('success', 'Kriteria dihapus')
       queryClient.invalidateQueries({ queryKey: ['selection-categories'] })
     },
-    onError: (e: any) => toast('error', e.message)
+    onError: (e: any) => toast('error', e.message),
+    onSettled: () => setDeleteTarget(null),
   })
 
   const saveCategory = () => {
@@ -97,8 +102,8 @@ export default function SelectionCategories() {
   }
 
   const deleteCategory = (id: string) => {
-    if(!confirm('Hapus kategori ini beserta seluruh kriterianya?')) return
-    deleteCategoryMutation.mutate(id)
+    if (deleteCategoryMutation.isPending || deleteCriteriaMutation.isPending) return
+    setDeleteTarget({ kind: 'category', id })
   }
 
   const saveCriteria = () => {
@@ -107,8 +112,8 @@ export default function SelectionCategories() {
   }
 
   const deleteCriteria = (id: string) => {
-    if(!confirm('Hapus kriteria ini?')) return
-    deleteCriteriaMutation.mutate(id)
+    if (deleteCategoryMutation.isPending || deleteCriteriaMutation.isPending) return
+    setDeleteTarget({ kind: 'criteria', id })
   }
 
   const handleDownloadTemplate = () => {
@@ -202,6 +207,20 @@ export default function SelectionCategories() {
       )}
 
       {/* Modals */}
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return
+          if (deleteTarget.kind === 'category') deleteCategoryMutation.mutate(deleteTarget.id)
+          else deleteCriteriaMutation.mutate(deleteTarget.id)
+        }}
+        loading={deleteCategoryMutation.isPending || deleteCriteriaMutation.isPending}
+        title={deleteTarget?.kind === 'category' ? 'Hapus Kategori' : 'Hapus Kriteria'}
+        message={deleteTarget?.kind === 'category' ? 'Yakin ingin menghapus kategori ini beserta seluruh kriterianya?' : 'Yakin ingin menghapus kriteria ini?'}
+        confirmLabel="Ya, Hapus"
+        variant="destructive"
+      />
       <Dialog open={categoryModal} onOpenChange={setCategoryModal}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Tambah Kategori Ujian</DialogTitle></DialogHeader>

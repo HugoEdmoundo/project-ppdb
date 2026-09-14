@@ -46,8 +46,7 @@ export default function MouPage() {
     queryKey: ['mou-applicants'],
     queryFn: async () => {
       const res = await apiFetch<any>('/payment/stage2/applicants')
-      const passed = (res.data || []).filter((a: any) => a.mou_status)
-      return passed
+      return (res.data || []) as any[]
     }
   })
 
@@ -183,7 +182,7 @@ export default function MouPage() {
                           description={
                             !activeWave
                               ? "Aktifkan gelombang terlebih dahulu."
-                              : "Belum ada dokumen MOU yang diterbitkan."
+                              : "Belum ada peserta lulus. MOU terbit otomatis setelah diskon Tahap 2 disimpan."
                           }
                           className="bg-transparent border-transparent"
                         />
@@ -209,12 +208,14 @@ export default function MouPage() {
                         <TableCell>
                           {a.mou_status === 'signed' ? (
                             <Badge variant="success">Ditandatangani</Badge>
-                          ) : (
+                          ) : a.mou_status ? (
                             <Badge variant="info">Menunggu TTD</Badge>
+                          ) : (
+                            <Badge variant="secondary">Belum Terbit</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="outline" size="sm" className="rounded-full px-4" onClick={() => openMouSheet(a)}>
+                          <Button variant="outline" size="sm" className="rounded-full px-4" onClick={() => openMouSheet(a)} disabled={!a.mou_status}>
                             Lihat Dokumen
                           </Button>
                         </TableCell>

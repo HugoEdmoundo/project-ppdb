@@ -52,6 +52,19 @@ export default function PeriodsPage() {
     defaultValues: { name: '', academic_year: '', description: '' }
   })
 
+  // Aktivasi/deaktivasi periode menonaktifkan wave global → semua data
+  // wave-scoped ikut basi. Samakan dengan WavesSheet (invalidasi luas).
+  const invalidateWaveScoped = () => {
+    queryClient.invalidateQueries({ queryKey: ['periods'] })
+    queryClient.invalidateQueries({ queryKey: ['waves'] })
+    queryClient.invalidateQueries({ queryKey: ['applicants'] })
+    queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    queryClient.invalidateQueries({ queryKey: ['stage2-applicants'] })
+    queryClient.invalidateQueries({ queryKey: ['stage2-bills'] })
+    queryClient.invalidateQueries({ queryKey: ['mou-applicants'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+  }
+
   const handleSave = async (data: PeriodFormData) => {
     if (!canCrud) return
     try {
@@ -63,7 +76,7 @@ export default function PeriodsPage() {
         toast('success', 'Periode berhasil ditambahkan')
       }
       setShowForm(false)
-      queryClient.invalidateQueries({ queryKey: ['periods'] })
+      invalidateWaveScoped()
     } catch (e: any) {
       toast('error', e.message || 'Gagal menyimpan periode')
     }
@@ -74,7 +87,7 @@ export default function PeriodsPage() {
     try {
       await ppdbService.deletePeriod(deletingId)
       toast('success', 'Periode berhasil dihapus')
-      queryClient.invalidateQueries({ queryKey: ['periods'] })
+      invalidateWaveScoped()
     } catch (e: any) {
       toast('error', e.message || 'Gagal menghapus periode')
     } finally {
@@ -92,7 +105,7 @@ export default function PeriodsPage() {
         await ppdbService.deactivatePeriod(actionId.id)
         toast('success', 'Periode berhasil dinonaktifkan')
       }
-      queryClient.invalidateQueries({ queryKey: ['periods'] })
+      invalidateWaveScoped()
     } catch (e: any) {
       toast('error', e.message || `Gagal ${actionId.type} periode`)
     } finally {

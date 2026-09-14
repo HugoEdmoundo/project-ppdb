@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Edit, Trash2, UserCheck, UserX, UserRound } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, UserCheck, UserX, UserRound, Users } from 'lucide-react'
+import PageHero from '../components/PageHero'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
@@ -24,10 +25,12 @@ export default function UsersPage() {
   const { user: currentUser, loading: authLoading } = useAuth()
   const queryClient = useQueryClient()
 
-  const canCrud = currentUser?.user_type === 'superadmin'
-  const canView = currentUser?.user_type === 'superadmin'
+  const canCrud = currentUser?.user_type === 'superadmin' || !!currentUser?.is_superadmin
+  const canView = currentUser?.user_type === 'superadmin' || !!currentUser?.is_superadmin
 
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const perPage = 20
   const [deleting, setDeleting] = useState<string | null>(null)
 
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -39,15 +42,22 @@ export default function UsersPage() {
     }
   }, [currentUser, authLoading, canView, navigate])
 
-  const { data: users = [], isLoading: usersLoading } = useQuery({
-    queryKey: ['users', search],
+  const { data: usersData, isLoading: usersLoading } = useQuery({
+    queryKey: ['users', search, page],
     queryFn: async () => {
-      const res = await api.getUsers({ search: search || undefined })
-      const userList = (Array.isArray(res) ? res : (res as any).data || [])
-      return userList.filter((u: User) => u.user_type !== 'superadmin')
+      const res = await api.getUsers({ search: search || undefined, page, per_page: perPage })
+      if (Array.isArray(res)) return { users: res, total: res.length }
+      const userList = ((res as any).data || []) as User[]
+      return {
+        users: userList.filter((u: User) => u.user_type !== 'superadmin'),
+        total: (res as any).total ?? userList.length,
+      }
     },
     enabled: !!canView && !authLoading,
   })
+  const users = usersData?.users ?? []
+  const totalUsers = usersData?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalUsers / perPage))
 
   const { data: roles = [] } = useQuery({
     queryKey: ['roles'],
@@ -72,7 +82,7 @@ export default function UsersPage() {
   // Debounce search
   const [searchInput, setSearchInput] = useState('')
   useEffect(() => {
-    const timer = setTimeout(() => setSearch(searchInput), 300)
+    const timer = setTimeout(() => { setSearch(searchInput); setPage(1) }, 300)
     return () => clearTimeout(timer)
   }, [searchInput])
 
@@ -117,19 +127,23 @@ export default function UsersPage() {
         confirmLabel="Ya, hapus"
       />
       <div className="space-y-6 animate-fadeIn">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Users</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Kelola admin dan pengguna sistem</p>
-        </div>
-        {canCrud && (
-          <Button onClick={() => navigate('/users/new')}>
-            <Plus />
-            Buat User
-          </Button>
-        )}
-      </div>
+      <PageHero
+        eyebrow="Manajemen Akses"
+        title="Users"
+        description="Kelola admin dan pengguna sistem"
+        chips={[
+          { icon: Users, label: `${totalUsers} Pengguna Terdaftar` },
+          { icon: UserRound, label: `Halaman ${page} dari ${totalPages}` },
+        ]}
+        actions={canCrud ? (
+          <button
+            onClick={() => navigate('/users/new')}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#D4A853] px-4 py-2 text-xs font-bold text-[#0E3B26] transition-colors hover:bg-[#E2BC6B]"
+          >
+            <Plus className="h-3.5 w-3.5" /> Buat User
+          </button>
+        ) : undefined}
+      />
 
       {/* Search */}
       <div className="relative max-w-md">
@@ -322,6 +336,20 @@ export default function UsersPage() {
               </Card>
             ))}
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-1 text-sm text-muted-foreground">
+              <span>Halaman {page} dari {totalPages} ({totalUsers} user)</span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+                  Sebelumnya
+                </Button>
+                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+                  Berikutnya
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

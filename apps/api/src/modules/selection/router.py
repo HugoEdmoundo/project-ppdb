@@ -64,10 +64,11 @@ def get_sessions(
     user: dict = Depends(require_ppdb_read),
     svc: SelectionService = Depends(get_selection_service),
 ):
-    wave_id = svc.repo.get_active_wave_id()
-    if not wave_id:
+    active_wave = svc.repo.get_active_wave_info()
+    if not active_wave:
         return {"data": [], "total": 0, "active_wave": None}
-    return svc.get_sessions()
+    data = svc.get_sessions()
+    return {"data": data, "total": len(data), "active_wave": active_wave}
 
 
 @router.post("/sessions", status_code=201)
@@ -118,10 +119,11 @@ def get_categories(
     user: dict = Depends(require_ppdb_read),
     svc: SelectionService = Depends(get_selection_service),
 ):
-    wave_id = svc.repo.get_active_wave_id()
-    if not wave_id:
+    active_wave = svc.repo.get_active_wave_info()
+    if not active_wave:
         return {"data": [], "total": 0, "active_wave": None}
-    return svc.get_categories()
+    data = svc.get_categories()
+    return {"data": data, "total": len(data), "active_wave": active_wave}
 
 
 @router.post("/categories")
@@ -171,10 +173,11 @@ def get_results(
     user: dict = Depends(require_ppdb_read),
     svc: SelectionService = Depends(get_selection_service),
 ):
-    wave_id = svc.repo.get_active_wave_id()
-    if not wave_id:
+    active_wave = svc.repo.get_active_wave_info()
+    if not active_wave:
         return {"data": [], "total": 0, "active_wave": None}
-    return svc.get_results()
+    data = svc.get_results()
+    return {"data": data, "total": len(data), "active_wave": active_wave}
 
 
 @router.post("/results", status_code=200)

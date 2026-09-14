@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, KeyRound } from 'lucide-react'
+import { ArrowLeft, KeyRound, UserRound, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import PageHero from '../components/PageHero'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
 import { ConfirmDialog } from "../components/ui/confirmdialog"
@@ -19,6 +20,7 @@ import { cn } from '@/lib/utils'
 
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
 import * as z from 'zod'
 
 const userFormSchema = z.object({
@@ -48,7 +50,8 @@ export default function UserFormPage() {
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id)
   const { user: currentUser, loading: authLoading } = useAuth()
-  const canCrud = currentUser?.user_type === 'superadmin'
+  const canCrud = currentUser?.user_type === 'superadmin' || !!currentUser?.is_superadmin
+  const queryClient = useQueryClient()
 
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmData, setConfirmData] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
@@ -82,6 +85,8 @@ export default function UserFormPage() {
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const formUserType = watch('user_type')
+  const formUsername = watch('username')
+  const formIsActive = watch('is_active')
 
   useEffect(() => {
     let active = true
@@ -201,6 +206,7 @@ export default function UserFormPage() {
         })
       }
       toast('success', isEdit ? 'User berhasil diperbarui' : 'User berhasil dibuat')
+      queryClient.invalidateQueries({ queryKey: ['users'] })
       navigate('/users')
     } catch (e: any) {
       toast('error', e.message || 'Gagal menyimpan')
@@ -247,19 +253,25 @@ export default function UserFormPage() {
         confirmLabel="Sudah Benar, Simpan"
       />
     <div className="mx-auto max-w-2xl space-y-6 animate-fadeIn">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/users')}>
-          <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {isEdit ? 'Edit User' : 'Buat User Baru'}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {isEdit ? 'Ubah informasi user' : 'Tambah admin baru ke sistem'}
-          </p>
-        </div>
-      </div>
+      <PageHero
+        eyebrow="Manajemen Akses"
+        title={isEdit ? 'Edit User' : 'Buat User Baru'}
+        description={isEdit ? 'Ubah informasi user' : 'Tambah admin baru ke sistem'}
+        loading={fetching}
+        chips={[
+          { icon: UserRound, label: formUsername || 'Username baru' },
+          { icon: ShieldCheck, label: formUserType === 'superadmin' ? 'Superadmin' : `Tipe: ${formUserType}` },
+          { icon: CheckCircle2, label: formIsActive ? 'Aktif' : 'Nonaktif' },
+        ]}
+        actions={
+          <button
+            onClick={() => navigate('/users')}
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-xs font-semibold text-white ring-1 ring-white/25 transition-colors hover:bg-white/25"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Kembali
+          </button>
+        }
+      />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <Card>

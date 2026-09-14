@@ -4,17 +4,54 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { MapPin, Phone, Mail, ArrowUpRight } from 'lucide-react'
 import VerseStrip from '../ui/VerseStrip'
-import { socialLinks } from '@/app/data/social'
-import { getSettings } from '@/app/lib/api'
+import { socialLinks as staticSocialLinks } from '@/app/data/social'
+import { getContactInfo, getSettings, getSocialLinks } from '@/app/lib/api'
+
+interface SocialItem {
+  label: string
+  href: string
+  path: string
+}
+
+interface ContactState {
+  address: string
+  phone: string
+  email: string
+}
+
+const FALLBACK_CONTACT: ContactState = {
+  address: 'Rukan Hexa Green Kalimalang, Jl. Inspeksi Kalimalang C8-C9, Jatimulya, Tambun Selatan, Bekasi 175106',
+  phone: '(021) 812-8361-2352',
+  email: 'info@ptdarrahman.sch.id',
+}
 
 export default function Footer() {
   const [logoUrl, setLogoUrl] = useState('')
+  const [socials, setSocials] = useState<SocialItem[]>(staticSocialLinks)
+  const [contact, setContact] = useState<ContactState>(FALLBACK_CONTACT)
 
   useEffect(() => {
     getSettings()
       .then((settings) => {
         const logo = settings.find((s) => s.key === 'logo')?.value
         if (logo) setLogoUrl(logo)
+      })
+      .catch(() => {})
+    // Tautan sosial & info kontak dinamis dari API; fallback statis jika kosong/error.
+    getSocialLinks()
+      .then((items) => {
+        const valid = (items || []).filter((s) => s?.href && s?.path)
+        if (valid.length > 0) setSocials(valid as unknown as SocialItem[])
+      })
+      .catch(() => {})
+    getContactInfo()
+      .then((info) => {
+        if (!info) return
+        setContact({
+          address: info.address || FALLBACK_CONTACT.address,
+          phone: info.phone_primary || FALLBACK_CONTACT.phone,
+          email: info.email_primary || FALLBACK_CONTACT.email,
+        })
       })
       .catch(() => {})
   }, [])
@@ -58,7 +95,7 @@ export default function Footer() {
               {'Where Divine Knowledge Meets Digital Excellence. Pesantren premium yang mengintegrasikan hafalan Al-Quran dengan teknologi modern.'}
             </p>
             <div className="flex gap-3">
-              {socialLinks.map((s) => (
+              {socials.map((s) => (
                 <a
                   key={s.label}
                   href={s.href}
@@ -131,16 +168,16 @@ export default function Footer() {
               <li className="flex items-start gap-3 text-sm text-[var(--text-secondary)]">
                 <MapPin className="w-4 h-4 mt-0.5 text-[var(--accent)] flex-shrink-0" />
                 <span>
-                  {'Rukan Hexa Green Kalimalang, Jl. Inspeksi Kalimalang C8-C9, Jatimulya, Tambun Selatan, Bekasi 175106'}
+                  {contact.address}
                 </span>
               </li>
               <li className="flex items-center gap-3 text-sm text-[var(--text-secondary)]">
                 <Phone className="w-4 h-4 text-[var(--accent)] flex-shrink-0" />
-                <span>(021) 812-8361-2352</span>
+                <span>{contact.phone}</span>
               </li>
               <li className="flex items-center gap-3 text-sm text-[var(--text-secondary)]">
                 <Mail className="w-4 h-4 text-[var(--accent)] flex-shrink-0" />
-                <span>info@ptdarrahman.sch.id</span>
+                <span>{contact.email}</span>
               </li>
             </ul>
           </div>

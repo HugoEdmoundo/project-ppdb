@@ -14,6 +14,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CreditCard, CheckCircle, XCircle, Waves, Eye, ArrowRight, Activity, Users } from 'lucide-react'
 import { apiFetch } from '@/api/client'
 import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
+import PaginationControls from '@/components/shared/PaginationControls'
 import PageHeaderCard from '@/components/shared/PageHeaderCard'
 import TabsBarCard from '@/components/shared/TabsBarCard'
 
@@ -23,16 +24,20 @@ export default function Stage2PaymentsPage() {
   const queryClient = useQueryClient()
 
   const [activeTab, setActiveTab] = useState('all')
+  const [page, setPage] = useState(1)
+  const limit = 20
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [cancelId, setCancelId] = useState<string | null>(null)
 
   const { data, isLoading: loading } = useQuery({
-    queryKey: ['stage2-bills', activeTab],
+    queryKey: ['stage2-bills', activeTab, page, limit],
     queryFn: async () => {
       const q = new URLSearchParams()
       if (activeTab !== 'all') {
         q.append('status', activeTab)
       }
+      q.append('page', page.toString())
+      q.append('perPage', limit.toString())
       const res = await apiFetch<any>(`/payment/stage2/bills?${q.toString()}`)
       return res
     }
@@ -41,6 +46,7 @@ export default function Stage2PaymentsPage() {
   const bills = data?.data || []
   const activeWaveData = data?.active_wave && typeof data.active_wave === 'object' ? data.active_wave : null
   const hasActiveWave = !!activeWaveData
+  const totalPages = data?.total ? Math.ceil(data.total / limit) : 1
 
   const confirmMutation = useMutation({
     mutationFn: (id: string) => apiFetch(`/payment/stage2/bills/${id}/confirm`, { method: 'PUT' }),
@@ -140,6 +146,11 @@ export default function Stage2PaymentsPage() {
             )}
           </TableBody>
         </Table>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
       </CardContent>
     </Card>
   )
@@ -159,7 +170,7 @@ export default function Stage2PaymentsPage() {
         }
         blocks={[
           { icon: Activity, label: 'Gelombang Aktif', value: activeWaveData?.name || 'Tidak ada', active: hasActiveWave, pulse: hasActiveWave },
-          { icon: Users, label: 'Total Tagihan', value: `${bills.length} tagihan`, active: true },
+          { icon: Users, label: 'Total Tagihan', value: data?.total != null ? `${data.total} tagihan` : '—', active: true },
         ]}
       />
 
@@ -167,7 +178,7 @@ export default function Stage2PaymentsPage() {
         <NoActiveWaveBanner message="Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu." />
       )}
 
-      <TabsBarCard value={activeTab} onValueChange={setActiveTab}>
+      <TabsBarCard value={activeTab} onValueChange={(val) => { setActiveTab(val); setPage(1) }}>
         <TabsTrigger value="all" className="flex-1 rounded-full text-xs sm:text-sm">Semua</TabsTrigger>
         <TabsTrigger value="paid" className="flex-1 rounded-full text-xs sm:text-sm">Lunas</TabsTrigger>
         <TabsTrigger value="pending" className="flex-1 rounded-full text-xs sm:text-sm">Menunggu</TabsTrigger>

@@ -19,7 +19,9 @@ export const API_BASE = PRIMARY_API
 const USER_KEY = 'admin_user'
 
 function isRetryableStatus(status: number): boolean {
-  return status === 404 || status >= 500
+  // Hanya 5xx yang boleh fallback. 404 berarti "tidak ada" — fallback ke
+  // server lain hanya menyia-nyiakan request dan menutupi error asli.
+  return status >= 500
 }
 
 async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Response> {
@@ -53,6 +55,27 @@ function _redirectLogin() {
   }
 }
 
+/**
+ * Parse JSON dengan aman. Kalau server mengembalikan HTML (mis. halaman
+ * error Next / URL API salah), lempar error yang jelas alih-alih
+ * `Unexpected token '<'`.
+ */
+async function parseJsonSafe<T>(res: Response, label: string): Promise<T> {
+  const ct = res.headers.get('content-type') || ''
+  if (!ct.includes('application/json')) {
+    const text = await res.text().catch(() => '')
+    throw new Error(
+      `${label} mengembalikan non-JSON (status ${res.status}). ` +
+        `Kemungkinan URL API salah atau backend tidak jalan. Cuplikan: ${text.slice(0, 120)}`
+    )
+  }
+  try {
+    return (await res.json()) as T
+  } catch {
+    throw new Error(`${label} gagal dibaca sebagai JSON (status ${res.status}).`)
+  }
+}
+
 let _pendingRefresh: Promise<string | null> | null = null
 
 async function tryRefresh(): Promise<string | null> {
@@ -66,7 +89,7 @@ async function tryRefresh(): Promise<string | null> {
         credentials: 'include' as RequestCredentials,
       })
       if (!res.ok) return null
-      const data = await res.json()
+      const data = await parseJsonSafe<{ access_token: string }>(res, 'Auth refresh')
       return data.access_token as string
     } catch {
       return null
@@ -83,7 +106,7 @@ async function fetchApi<T>(endpoint: string, opts?: RequestInit): Promise<T> {
     ...opts,
   })
   if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`)
-  return res.json()
+  return parseJsonSafe<T>(res, `API ${endpoint}`)
 }
 
 export async function safeFetch<T>(endpoint: string, fallback?: T): Promise<T> {
@@ -151,7 +174,7 @@ export async function login(username: string, password: string) {
     try { const j = JSON.parse(text); msg = j.detail || j.message || j.error || text } catch { msg = text }
     throw new Error(msg || 'Login failed')
   }
-  const data = await res.json()
+  const data = await parseJsonSafe<{ user?: unknown }>(res, 'Login')
   if (data.user) {
     localStorage.setItem(USER_KEY, JSON.stringify(data.user))
   }
@@ -199,7 +222,7 @@ async function fetchApiWithAuth<T>(endpoint: string, opts: RequestInit): Promise
       })
       if (res.ok) {
         if (res.status === 204) return undefined as T
-        return res.json()
+        return parseJsonSafe<T>(res, `API ${endpoint}`)
       }
     }
     _redirectLogin()
@@ -212,7 +235,7 @@ async function fetchApiWithAuth<T>(endpoint: string, opts: RequestInit): Promise
     throw new Error(msg || `API ${res.status}`)
   }
   if (res.status === 204) return undefined as T
-  return res.json()
+  return parseJsonSafe<T>(res, `API ${endpoint}`)
 }
 
 export async function createItem(endpoint: string, data: JsonValue) {
@@ -258,8 +281,9 @@ export async function getEntityPage(
   perPage: number = ADMIN_PAGE_SIZE
 ): Promise<JsonValue[]> {
   const skip = (page - 1) * perPage
+  const clean = endpoint.replace(/^\/+/, '')
   const items = await fetchApi<JsonValue[]>(
-    `/${endpoint}?skip=${skip}&limit=${perPage}`
+    `/${clean}?skip=${skip}&limit=${perPage}`
   )
   return items.map((item) => mapContent(item) as JsonValue)
 }
@@ -298,18 +322,23 @@ async function fetchAuthApi<T>(endpoint: string, opts?: RequestInit): Promise<T>
       })
       if (res.ok) {
         if (res.status === 204) return undefined as T
-        return res.json()
+        return parseJsonSafe<T>(res, `API ${endpoint}`)
       }
     }
     _redirectLogin()
     throw new Error('Unauthorized')
   }
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.detail || body.error || `API ${res.status}`)
+    const text = await res.text().catch(() => '')
+    let msg = `API ${res.status}`
+    try {
+      const body = JSON.parse(text)
+      msg = body.detail || body.error || msg
+    } catch { if (text) msg = text.slice(0, 200) }
+    throw new Error(msg)
   }
   if (res.status === 204) return undefined as T
-  return res.json()
+  return parseJsonSafe<T>(res, `API ${endpoint}`)
 }
 
 export async function getMe() {
@@ -345,12 +374,12 @@ export async function uploadImage(file: File) {
         body: form,
         credentials: 'include' as RequestCredentials,
       })
-      if (res.ok) return (await res.json()).url as string
+      if (res.ok) return (await parseJsonSafe<{ url: string }>(res, 'Upload')).url as string
     }
     _redirectLogin(); throw new Error('Unauthorized')
   }
   if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
-  const data = await res.json()
+  const data = await parseJsonSafe<{ url: string }>(res, 'Upload')
   return data.url as string
 }
 
@@ -361,6 +390,10 @@ export interface SiteSetting {
 
 export async function getSettings(): Promise<SettingsItem[]> {
   return fetchApi<SettingsItem[]>('/settings')
+}
+
+export async function getAdminSettings(): Promise<SettingsItem[]> {
+  return fetchApiWithAuth<SettingsItem[]>('/settings-admin')
 }
 
 export async function updateSetting(key: string, value: string) {

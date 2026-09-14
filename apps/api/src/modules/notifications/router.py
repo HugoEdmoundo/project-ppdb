@@ -13,11 +13,11 @@ router = APIRouter()
 
 
 class TemplateUpdate(BaseModel):
-    label: str
-    channel: str
+    label: str | None = None
+    channel: str | None = None
     email_subject: str | None = None
-    body: str
-    is_active: bool
+    body: str | None = None
+    is_active: bool | None = None
 
 
 class CustomSend(BaseModel):
@@ -46,12 +46,18 @@ def update_template(
     id: str, body: TemplateUpdate, user: dict = Depends(require_notification_admin)
 ):
     data = {
-        "label": body.label,
-        "channel": body.channel,
-        "email_subject": body.email_subject,
-        "body": body.body,
-        "is_active": body.is_active,
+        k: v
+        for k, v in {
+            "label": body.label,
+            "channel": body.channel,
+            "email_subject": body.email_subject,
+            "body": body.body,
+            "is_active": body.is_active,
+        }.items()
+        if v is not None
     }
+    if not data:
+        raise HTTPException(status_code=400, detail="Tidak ada field untuk diubah")
     updated = update_record("notification_templates", id, data)
     if not updated:
         raise HTTPException(status_code=404, detail="Template not found")

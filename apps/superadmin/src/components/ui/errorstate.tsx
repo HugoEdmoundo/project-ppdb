@@ -155,39 +155,39 @@ function ErrorActions({ actions, retry }: { actions: ErrorActions; retry?: () =>
               Coba Lagi
             </Button>
           )}
-          <Link to="/" className="inline-flex w-full sm:w-auto">
-            <Button variant="outline" className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 border-2 border-slate-200 text-slate-700 bg-white hover:border-emerald-primary hover:text-emerald-primary hover:bg-emerald-light/20 active:scale-[0.98]">
+          <Button asChild variant="outline" className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 border-2 border-slate-200 text-slate-700 bg-white hover:border-emerald-primary hover:text-emerald-primary hover:bg-emerald-light/20 active:scale-[0.98]">
+            <Link to="/">
               <Home className="h-4 w-4" />
               Ke Beranda
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </>
       )
     case 'signin-home':
       return (
         <>
-          <Link to="/auth/login" className="inline-flex w-full sm:w-auto">
-            <Button className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-emerald-primary to-gold-accent text-white shadow-lg shadow-emerald-primary/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0">
+          <Button asChild className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-emerald-primary to-gold-accent text-white shadow-lg shadow-emerald-primary/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0">
+            <Link to="/auth/login">
               <LogIn className="h-4 w-4" />
               Masuk
-            </Button>
-          </Link>
-          <Link to="/" className="inline-flex w-full sm:w-auto">
-            <Button variant="outline" className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 border-2 border-slate-200 text-slate-700 bg-white hover:border-emerald-primary hover:text-emerald-primary hover:bg-emerald-light/20 active:scale-[0.98]">
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 border-2 border-slate-200 text-slate-700 bg-white hover:border-emerald-primary hover:text-emerald-primary hover:bg-emerald-light/20 active:scale-[0.98]">
+            <Link to="/">
               <Home className="h-4 w-4" />
               Ke Beranda
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </>
       )
     default:
       return (
-        <Link to="/" className="inline-flex w-full sm:w-auto">
-          <Button className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-emerald-primary to-gold-accent text-white shadow-lg shadow-emerald-primary/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0">
+        <Button asChild className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-emerald-primary to-gold-accent text-white shadow-lg shadow-emerald-primary/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0">
+          <Link to="/">
             <ArrowRight className="h-4 w-4" />
             Ke Beranda
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       )
   }
 }

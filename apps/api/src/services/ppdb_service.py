@@ -12,12 +12,22 @@ from sqlalchemy.exc import IntegrityError
 from src.core.notif_service import send_notification, send_notifications
 from src.core.security import hash_password
 from src.models.auth import User
-from src.models.ppdb import PPDBApplicant, PPDBPaymentTransaction, PPDBPeriod, PPDBWave
+from src.models.ppdb import (
+    PPDBBMOU,
+    PPDBApplicant,
+    PPDBPaymentTransaction,
+    PPDBPeriod,
+    PPDBWave,
+    PPDBWaveFeeItem,
+)
 from src.modules.ppdb.schemas import (
     ApplicantRegister,
+    MouSignRequest,
     PeriodCreate,
     PeriodUpdate,
     WaveCreate,
+    WaveFeeItemCreate,
+    WaveMouTemplateUpdate,
     WaveUpdate,
 )
 from src.repositories.ppdb_repository import PPDBRepository
@@ -98,26 +108,43 @@ class PPDBService:
         if not period:
             raise HTTPException(status_code=404, detail="Not found")
 
-        period.name = body.name
-        period.academic_year = body.academic_year
-        period.description = body.description
+        provided = body.model_dump(exclude_unset=True)
+        if not provided:
+            raise HTTPException(status_code=400, detail="Tidak ada field untuk diubah")
+        if provided.get("name") is not None:
+            period.name = provided["name"]
+        if provided.get("academic_year") is not None:
+            period.academic_year = provided["academic_year"]
+        if "description" in provided:
+            period.description = provided["description"]
         period.updated_at = datetime.now()
 
         self.repository.update_period(period)
         return {c.name: getattr(period, c.name) for c in period.__table__.columns}
 
     def activate_period(self, period_id: str):
+        period = self.repository.get_period_by_id(period_id)
+        if not period:
+            raise HTTPException(status_code=404, detail="Periode tidak ditemukan")
         self.repository.set_all_periods_inactive()
         self.repository.activate_period(period_id)
         return {"success": True}
 
     def deactivate_period(self, period_id: str):
+        period = self.repository.get_period_by_id(period_id)
+        if not period:
+            raise HTTPException(status_code=404, detail="Periode tidak ditemukan")
         self.repository.deactivate_period(period_id)
         return {"success": True}
 
     def delete_period(self, period_id: str):
         period = self.repository.get_period_by_id(period_id)
         if period:
+            if self.repository.count_applicants_in_period(period_id) > 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Periode memiliki pendaftar dan tidak bisa dihapus",
+                )
             self.repository.delete_period(period)
         return {"success": True}
 
@@ -126,9 +153,12 @@ class PPDBService:
     # -------------------------------------------------------------------------
     def get_waves(self, period_id: str | None = None):
         waves = self.repository.get_waves(period_id)
-        return [
-            {c.name: getattr(w, c.name) for c in w.__table__.columns} for w in waves
-        ]
+        result = []
+        for w in waves:
+            item = {c.name: getattr(w, c.name) for c in w.__table__.columns}
+            item["filled"] = self.repository.count_applicants_in_wave(w.id)
+            result.append(item)
+        return result
 
     def get_all_waves(self):
         waves = self.repository.get_waves()
@@ -195,23 +225,88 @@ class PPDBService:
         return {c.name: getattr(wave, c.name) for c in wave.__table__.columns}
 
     def update_wave(self, wave_id: str, body: WaveUpdate):
+        from datetime import date as date_type
+
         wave = self.repository.get_wave_by_id(wave_id)
         if not wave:
             raise HTTPException(status_code=404, detail="Not found")
 
-        wave.name = body.name
-        wave.allowed_paths = body.allowed_paths
-        wave.allowed_levels = body.allowed_levels
-        wave.registration_start_date = body.registration_start_date
-        wave.registration_end_date = body.registration_end_date
-        wave.document_upload_end_date = body.document_upload_end_date
-        wave.selection_date = body.selection_date
-        wave.quota = body.quota
-        wave.registration_fee = body.registration_fee
-        wave.updated_at = datetime.now()
+        provided = body.model_dump(exclude_unset=True)
+        if not provided:
+            raise HTTPException(status_code=400, detail="Tidak ada field untuk diubah")
 
-        if body.second_stage_fee is not None:
-            wave.second_stage_fee = body.second_stage_fee
+        def _as_date(value, fallback):
+            if value is None:
+                value = fallback
+            if isinstance(value, datetime):
+                return value.date()
+            if isinstance(value, date_type):
+                return value
+            if value is None:
+                return None
+            return date_type.fromisoformat(str(value))
+
+        effective = {
+            "registration_start_date": _as_date(
+                provided.get("registration_start_date"),
+                wave.registration_start_date,
+            ),
+            "registration_end_date": _as_date(
+                provided.get("registration_end_date"), wave.registration_end_date
+            ),
+            "document_upload_end_date": _as_date(
+                provided.get("document_upload_end_date"),
+                wave.document_upload_end_date,
+            ),
+            "selection_date": _as_date(
+                provided.get("selection_date"), wave.selection_date
+            ),
+        }
+        if (
+            effective["registration_end_date"] is not None
+            and effective["registration_start_date"] is not None
+            and effective["registration_end_date"]
+            < effective["registration_start_date"]
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Tanggal akhir pendaftaran tidak boleh sebelum tanggal mulai",
+            )
+        if (
+            effective["document_upload_end_date"] is not None
+            and effective["registration_end_date"] is not None
+            and effective["document_upload_end_date"]
+            < effective["registration_end_date"]
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Batas upload dokumen tidak boleh sebelum akhir pendaftaran",
+            )
+        if (
+            effective["selection_date"] is not None
+            and effective["document_upload_end_date"] is not None
+            and effective["selection_date"] < effective["document_upload_end_date"]
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Jadwal seleksi tidak boleh sebelum batas upload dokumen",
+            )
+
+        for field in (
+            "name",
+            "allowed_paths",
+            "allowed_levels",
+            "registration_start_date",
+            "registration_end_date",
+            "document_upload_end_date",
+            "selection_date",
+            "quota",
+            "registration_fee",
+            "second_stage_fee",
+        ):
+            if field in provided and provided[field] is not None:
+                setattr(wave, field, provided[field])
+        wave.updated_at = datetime.now()
 
         self.repository.update_wave(wave)
         return {c.name: getattr(wave, c.name) for c in wave.__table__.columns}
@@ -230,14 +325,81 @@ class PPDBService:
         return {"success": True}
 
     def deactivate_wave(self, wave_id: str):
+        wave = self.repository.get_wave_by_id(wave_id)
+        if not wave:
+            raise HTTPException(status_code=404, detail="Gelombang tidak ditemukan")
         self.repository.deactivate_wave(wave_id)
         return {"success": True}
 
     def delete_wave(self, wave_id: str):
         wave = self.repository.get_wave_by_id(wave_id)
         if wave:
+            if self.repository.count_applicants_in_wave(wave_id) > 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Gelombang memiliki pendaftar dan tidak bisa dihapus",
+                )
             self.repository.delete_wave(wave)
         return {"success": True}
+
+    # -------------------------------------------------------------------------
+    # Wave fee items (Biaya Tahap 2 per gelombang)
+    # -------------------------------------------------------------------------
+    def get_wave_fee_items(self, wave_id: str) -> dict[str, Any]:
+        wave = self.repository.get_wave_by_id(wave_id)
+        if not wave:
+            raise HTTPException(status_code=404, detail="Gelombang tidak ditemukan")
+        items = self.repository.get_fee_items_by_wave(wave_id)
+        return {
+            "items": [
+                {c.name: getattr(i, c.name) for c in i.__table__.columns}
+                for i in items
+            ]
+        }
+
+    def create_wave_fee_item(self, wave_id: str, body: WaveFeeItemCreate):
+        wave = self.repository.get_wave_by_id(wave_id)
+        if not wave:
+            raise HTTPException(status_code=404, detail="Gelombang tidak ditemukan")
+        item = PPDBWaveFeeItem(
+            id=str(uuid.uuid4()),
+            wave_id=wave_id,
+            name=body.name,
+            nominal=body.nominal,
+            order_index=body.order_index,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+        self.repository.create_fee_item(item)
+        return {c.name: getattr(item, c.name) for c in item.__table__.columns}
+
+    def delete_wave_fee_item(self, wave_id: str, item_id: str):
+        wave = self.repository.get_wave_by_id(wave_id)
+        if not wave:
+            raise HTTPException(status_code=404, detail="Gelombang tidak ditemukan")
+        item = self.repository.get_fee_item(item_id)
+        if not item or item.wave_id != wave_id:
+            raise HTTPException(status_code=404, detail="Item biaya tidak ditemukan")
+        if self.repository.count_discounts_for_fee_item(
+            item_id
+        ) > 0 or self.repository.count_bills_for_fee_item(item_id) > 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Item biaya sudah dipakai diskon/tagihan dan tidak bisa dihapus",
+            )
+        self.repository.delete_fee_item(item)
+        return {"success": True}
+
+    def update_wave_mou_template(
+        self, wave_id: str, body: WaveMouTemplateUpdate
+    ) -> dict[str, Any]:
+        wave = self.repository.get_wave_by_id(wave_id)
+        if not wave:
+            raise HTTPException(status_code=404, detail="Gelombang tidak ditemukan")
+        wave.mou_template = body.mou_template
+        wave.updated_at = datetime.now()
+        self.repository.update_wave(wave)
+        return {c.name: getattr(wave, c.name) for c in wave.__table__.columns}
 
     # -------------------------------------------------------------------------
     # Registration
@@ -455,6 +617,10 @@ class PPDBService:
         new_password = (new_password or "").strip()
         if not new_password:
             return {"changed": False, "message": "Password tidak diubah (field kosong)"}
+
+        from src.core.security import validate_password
+
+        validate_password(new_password)
 
         user = self.repository.get_user_by_id(applicant.user_id)
         if not user:
@@ -787,15 +953,50 @@ class PPDBService:
         if not mou:
             return {"mou": None}
 
+        return {"mou": self._mou_to_dict(mou)}
+
+    @staticmethod
+    def _mou_to_dict(mou: PPDBBMOU) -> dict[str, Any]:
         return {
-            "mou": {
-                "id": mou.id,
-                "applicant_id": mou.applicant_id,
-                "draft_content": mou.draft_content,
-                "signature_data": mou.signature_data,
-                "status": mou.status,
-                "signed_at": mou.signed_at.isoformat() if mou.signed_at else None,
-                "created_at": mou.created_at.isoformat() if mou.created_at else None,
-                "updated_at": mou.updated_at.isoformat() if mou.updated_at else None,
-            }
+            "id": mou.id,
+            "applicant_id": mou.applicant_id,
+            "draft_content": mou.draft_content,
+            "signature_data": mou.signature_data,
+            "status": mou.status,
+            "signed_at": mou.signed_at.isoformat() if mou.signed_at else None,
+            "created_at": mou.created_at.isoformat() if mou.created_at else None,
+            "updated_at": mou.updated_at.isoformat() if mou.updated_at else None,
         }
+
+    def get_my_mou(self, user_id: str) -> dict[str, Any]:
+        applicant = self.repository.get_applicant_by_user_id(user_id)
+        if not applicant:
+            raise HTTPException(
+                status_code=404, detail="Data pendaftaran tidak ditemukan"
+            )
+        mou = self.repository.get_mou_by_applicant(applicant.id)
+        if not mou:
+            return {"mou": None}
+        return {"mou": self._mou_to_dict(mou)}
+
+    def sign_my_mou(self, user_id: str, body: MouSignRequest) -> dict[str, Any]:
+        applicant = self.repository.get_applicant_by_user_id(user_id)
+        if not applicant:
+            raise HTTPException(
+                status_code=404, detail="Data pendaftaran tidak ditemukan"
+            )
+        mou = self.repository.get_mou_by_applicant(applicant.id)
+        if not mou:
+            raise HTTPException(status_code=404, detail="MOU belum tersedia")
+        if mou.status == "signed":
+            return {"success": True, "message": "MOU sudah ditandatangani"}
+        if not body.signature_data or not body.signature_data.strip():
+            raise HTTPException(
+                status_code=400, detail="Data tanda tangan wajib diisi"
+            )
+        mou.signature_data = body.signature_data
+        mou.status = "signed"
+        mou.signed_at = datetime.now()
+        mou.updated_at = datetime.now()
+        self.repository.update_mou(mou)
+        return {"success": True, "message": "MOU berhasil ditandatangani"}

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import PageHero from '../components/PageHero'
 import * as api from '../api/client'
 import { Button } from "@/components/ui"
 import { Input } from "@/components/ui"
@@ -47,6 +48,19 @@ export default function ProfilePage() {
     confirm_password: '',
   })
   const [saving, setSaving] = useState(false)
+  const [prevUserId, setPrevUserId] = useState(user?.id)
+
+  // Sinkronkan form saat data user selesai dimuat async (pola render-phase).
+  if (user?.id !== prevUserId) {
+    setPrevUserId(user?.id)
+    setForm((f) => ({
+      ...f,
+      username: user?.username || '',
+      full_name: user?.full_name || '',
+      email: user?.email || '',
+      avatar_url: user?.avatar_url || '',
+    }))
+  }
 
   const isSuper = user?.user_type === 'superadmin' || user?.is_superadmin
   const initials = (user?.full_name || user?.username || 'S')[0]?.toUpperCase()
@@ -112,15 +126,24 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 animate-fadeIn">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Kembali">
-          <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Profile</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Kelola informasi dan keamanan akun Anda</p>
-        </div>
-      </div>
+      <PageHero
+        eyebrow="Akun Saya"
+        title="Profile"
+        description="Kelola informasi dan keamanan akun Anda"
+        chips={[
+          { icon: UserRound, label: `@${form.username || '—'}` },
+          { icon: Mail, label: form.email || 'Email belum diisi' },
+          { icon: ShieldCheck, label: 'Superadmin' },
+        ]}
+        actions={
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-xs font-semibold text-white ring-1 ring-white/25 transition-colors hover:bg-white/25"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Kembali
+          </button>
+        }
+      />
 
       <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[320px_1fr]">
         {/* ── Identity card ── */}

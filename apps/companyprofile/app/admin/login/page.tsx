@@ -23,7 +23,7 @@ export default function AdminLogin() {
     setError('')
     setLoading(true)
     try {
-      const res = await login(username, password)
+      await login(username, password)
       setSuccess(true)
       setTimeout(() => router.push('/admin/dashboard'), 900)
     } catch (e: unknown) {

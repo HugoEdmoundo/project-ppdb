@@ -135,7 +135,7 @@ const TABS: TabDef[] = [
   { key: 'testimonials', label: 'Testimoni', endpoint: '/testimonials', fetch: api.getTestimonials, icon: MessageSquare },
   { key: 'social', label: 'Tautan Sosial', endpoint: '/social-links', fetch: api.getSocialLinks, icon: Link },
   { key: 'contact', label: 'Info Kontak', endpoint: '/contact-info', fetch: api.getContactInfo, icon: Phone },
-  { key: 'settings', label: 'Pengaturan', endpoint: '/settings', fetch: api.getSettings, icon: Settings },
+  { key: 'settings', label: 'Pengaturan', endpoint: '/settings', fetch: api.getAdminSettings, icon: Settings },
 ]
 
 const HAS_CONTENT: string[] = ['news', 'programs', 'facilities', 'staff', 'achievements', 'gallery', 'testimonials']
@@ -428,7 +428,7 @@ export default function AdminDashboard() {
         .catch(() => {})
     }
     loadLogo()
-    return eventBus.on('companyprofile', () => {
+    return eventBus.on('companyprofile:refresh', () => {
       loadLogo()
     })
   }, [])
@@ -540,7 +540,7 @@ export default function AdminDashboard() {
     } catch {
       localStorage.removeItem('admin_user')
     }
-  }, [])
+  }, [router])
 
   useEffect(() => {
     const user = localStorage.getItem('admin_user')
@@ -588,7 +588,12 @@ export default function AdminDashboard() {
 
   function buildContent(fd: FormState): Record<string, unknown> {
     const fields = CONTENT_FIELDS[activeTab] || []
-    const content: Record<string, unknown> = {}
+    // Pertahankan key warisan (mis. content.text lama) agar edit tidak menghapus data.
+    const base: Record<string, unknown> =
+      formMode === 'edit' && editingItem && typeof editingItem.content === 'object' && editingItem.content !== null
+        ? { ...(editingItem.content as Record<string, unknown>) }
+        : {}
+    const content: Record<string, unknown> = { ...base }
     for (const f of fields) {
       const raw = fd[`_c_${f.name}`] ?? ''
       if (f.type === 'list') {
@@ -637,7 +642,17 @@ export default function AdminDashboard() {
       const payload: Record<string, unknown> = {}
       for (const f of FORM_FIELDS[activeTab] || []) {
         const val = formData[f.name]
-        payload[f.name] = f.type === 'number' ? Number(val) : val
+        if (f.type === 'number') {
+          // Jangan kirim Number('') === 0 — kolom angka wajib diisi eksplisit.
+          if (val === '' || val === null || val === undefined) {
+            toast('error', `${f.label} wajib diisi`)
+            setSaving(false)
+            return
+          }
+          payload[f.name] = Number(val)
+        } else {
+          payload[f.name] = val
+        }
       }
       if (activeTab !== 'social') payload.image = formData.image || ''
       if (activeTab === 'news') payload.gallery = JSON.stringify(formData.gallery ?? [])
@@ -1348,6 +1363,18 @@ function SettingsEditor({ settings, canCrud }: { settings: api.SiteSetting[]; ca
   })
   const [saving, setSaving] = useState<string | null>(null)
 
+  // Sync ulang saat daftar settings berubah (mis. refresh via SSE).
+  // Penyesuaian state saat render — pola resmi React untuk props yang berubah.
+  const [prevSettings, setPrevSettings] = useState(settings)
+  if (settings !== prevSettings) {
+    setPrevSettings(settings)
+    setValues((prev) => {
+      const next = { ...prev }
+      for (const s of settings) next[s.key] = s.value
+      return next
+    })
+  }
+
   async function handleSave(key: string) {
     if (!canCrud) return
     const value = values[key] ?? ''
@@ -1475,6 +1502,22 @@ function ContactEditor({ contactInfo, canCrud, onSave }: { contactInfo: RowRecor
     office_hours: contactInfo?.office_hours || '',
   })
   const [saving, setSaving] = useState(false)
+
+  // Sync ulang saat info kontak berubah (mis. refresh via SSE).
+  // Penyesuaian state saat render — pola resmi React untuk props yang berubah.
+  const [prevContact, setPrevContact] = useState(contactInfo)
+  if (contactInfo !== prevContact) {
+    setPrevContact(contactInfo)
+    setForm({
+      phone_primary: contactInfo?.phone_primary || '',
+      phone_secondary: contactInfo?.phone_secondary || '',
+      whatsapp: contactInfo?.whatsapp || '',
+      email_primary: contactInfo?.email_primary || '',
+      email_admission: contactInfo?.email_admission || '',
+      address: contactInfo?.address || '',
+      office_hours: contactInfo?.office_hours || '',
+    })
+  }
 
   async function handleSave() {
     if (!canCrud) return

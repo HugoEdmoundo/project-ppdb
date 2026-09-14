@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from datetime import date, datetime
 from typing import Any, cast
+from uuid import uuid4
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
@@ -103,6 +104,59 @@ class SelectionRepository:
         )
         return cast(Sequence[SelectionCriteria], self.db.scalars(stmt).all())
 
+    def get_category_by_id(
+        self, category_id: str
+    ) -> SelectionCategory | None:
+        stmt = select(SelectionCategory).where(
+            SelectionCategory.id == category_id
+        )
+        return cast(SelectionCategory | None, self.db.scalar(stmt))
+
+    def get_criteria_by_id(
+        self, criteria_id: str
+    ) -> SelectionCriteria | None:
+        stmt = select(SelectionCriteria).where(
+            SelectionCriteria.id == criteria_id
+        )
+        return cast(SelectionCriteria | None, self.db.scalar(stmt))
+
+    def get_active_wave_info(self) -> dict[str, Any] | None:
+        stmt = (
+            select(PPDBWave.id, PPDBWave.name)
+            .where(PPDBWave.status == "active")
+            .limit(1)
+        )
+        row = self.db.execute(stmt).first()
+        if not row:
+            return None
+        return {"id": row[0], "name": row[1]}
+
+    def ensure_selection_result(
+        self, applicant_id: str, now: datetime
+    ) -> SelectionResult:
+        """Ambil baris hasil seleksi pendaftar, buat jika belum ada.
+
+        Tanpa ini, UPDATE notes/session menyentuh 0 baris dan booking
+        terlihat sukses padahal tidak tersimpan.
+        """
+        existing = self.get_selection_result_by_applicant(applicant_id)
+        if existing:
+            return existing
+        row = SelectionResult(
+            id=str(uuid4()),
+            applicant_id=applicant_id,
+            session_id=None,
+            score=None,
+            notes=None,
+            graduation_status=None,
+            graduation_notes=None,
+            created_at=now,
+            updated_at=now,
+        )
+        self.db.add(row)
+        self.db.flush()
+        return row
+
     def create_category(self, category: SelectionCategory) -> SelectionCategory:
         self.db.add(category)
         self.db.flush()
@@ -143,6 +197,8 @@ class SelectionRepository:
         self.db.flush()
 
     def get_results(self, wave_id: str) -> Sequence[tuple]:
+        # Mulai dari pendaftar (LEFT JOIN hasil) agar pendaftar yang belum
+        # punya baris selection_results tetap muncul di list admin.
         stmt = (
             select(
                 SelectionResult,
@@ -150,7 +206,10 @@ class SelectionRepository:
                 SelectionSession,
                 PPDBWave.name.label("wave_name"),
             )
-            .join(PPDBApplicant, SelectionResult.applicant_id == PPDBApplicant.id)
+            .select_from(PPDBApplicant)
+            .outerjoin(
+                SelectionResult, SelectionResult.applicant_id == PPDBApplicant.id
+            )
             .outerjoin(
                 SelectionSession, SelectionResult.session_id == SelectionSession.id
             )
@@ -185,12 +244,10 @@ class SelectionRepository:
     def update_selection_result_notes(
         self, applicant_id: str, notes: str | None, now: datetime
     ):
-        stmt = (
-            update(SelectionResult)
-            .where(SelectionResult.applicant_id == applicant_id)
-            .values(notes=notes, updated_at=now)
-        )
-        self.db.execute(stmt)
+        row = self.ensure_selection_result(applicant_id, now)
+        row.notes = notes
+        row.updated_at = now
+        self.db.add(row)
         self.db.flush()
 
     def get_selection_score(
@@ -217,12 +274,10 @@ class SelectionRepository:
     def update_selection_result_session(
         self, applicant_id: str, session_id: str, now: datetime
     ):
-        stmt = (
-            update(SelectionResult)
-            .where(SelectionResult.applicant_id == applicant_id)
-            .values(session_id=session_id, updated_at=now)
-        )
-        self.db.execute(stmt)
+        row = self.ensure_selection_result(applicant_id, now)
+        row.session_id = session_id
+        row.updated_at = now
+        self.db.add(row)
         self.db.flush()
 
     def get_applicant_scores_with_details(self, applicant_id: str) -> Sequence[tuple]:

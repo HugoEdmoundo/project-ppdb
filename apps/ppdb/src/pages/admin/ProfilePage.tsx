@@ -48,6 +48,19 @@ export default function AdminProfilePage() {
     confirm_password: '',
   })
   const [saving, setSaving] = useState(false)
+  const [prevUserId, setPrevUserId] = useState(user?.id)
+
+  // Sinkronkan form saat data user selesai dimuat async (pola render-phase).
+  if (user?.id !== prevUserId) {
+    setPrevUserId(user?.id)
+    setForm((f) => ({
+      ...f,
+      username: user?.username || '',
+      full_name: user?.full_name || '',
+      email: user?.email || '',
+      avatar_url: user?.avatar_url || '',
+    }))
+  }
 
   const isSuper = user?.user_type === 'superadmin' || user?.is_superadmin
   const initials = (user?.full_name || user?.username || 'A')[0]?.toUpperCase()

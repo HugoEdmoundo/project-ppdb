@@ -33,5 +33,5 @@ export interface Transaction {
   method: string
   amount: number
   created_at: string
-  status: 'pending' | 'paid' | 'expired'
+  status: 'pending' | 'success' | 'failed' | 'expired'
 }

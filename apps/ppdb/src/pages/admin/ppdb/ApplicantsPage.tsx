@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui"
 import { ArrowRight, Activity, Users, FileText, CheckCircle, XCircle } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
+import PaginationControls from '@/components/shared/PaginationControls'
 import PaymentStatusBadge from '@/components/shared/PaymentStatusBadge'
 import ApplicantsTable from '@/components/shared/ApplicantsTable'
 import PageHeaderCard from '@/components/shared/PageHeaderCard'
@@ -26,6 +27,8 @@ export default function ApplicantsPage() {
   const [searchInput, setSearchInput] = useState('')
   const [searchParams] = useSearchParams()
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') ?? 'all')
+  const [page, setPage] = useState(1)
+  const limit = 20
 
   // Document verification modal state
   const [verifyApplicant, setVerifyApplicant] = useState<any>(null)
@@ -34,11 +37,13 @@ export default function ApplicantsPage() {
   const [isVerifying, setIsVerifying] = useState(false)
 
   const { data, isLoading: loading, refetch, isFetching } = useQuery({
-    queryKey: ['applicants', search, statusFilter],
+    queryKey: ['applicants', search, statusFilter, page, limit],
     queryFn: async () => {
       const qs = new URLSearchParams()
       if (search) qs.append('search', search)
       if (statusFilter && statusFilter !== 'all') qs.append('status', statusFilter)
+      qs.append('page', page.toString())
+      qs.append('perPage', limit.toString())
 
       // Backend secara otomatis scope ke gelombang aktif.
       const res = await api.apiFetch<any>(`/ppdb/applicants?${qs.toString()}`)
@@ -49,6 +54,7 @@ export default function ApplicantsPage() {
   const applicants = data?.data || []
   const activeWaveData = data?.active_wave && typeof data.active_wave === 'object' ? data.active_wave : null
   const hasActiveWave = !!activeWaveData
+  const totalPages = data?.total ? Math.ceil(data.total / limit) : 1
 
   const fetchApplicantDocs = async (applicant: any) => {
     setVerifyApplicant(applicant)
@@ -96,10 +102,12 @@ export default function ApplicantsPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setSearch(searchInput)
+    setPage(1)
   }
 
   const handleStatusChange = (val: string) => {
     setStatusFilter(val)
+    setPage(1)
   }
 
   return (
@@ -152,6 +160,11 @@ export default function ApplicantsPage() {
             loading={loading}
             hasActiveWave={hasActiveWave}
             onRowClick={fetchApplicantDocs}
+          />
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
           />
         </CardContent>
       </Card>

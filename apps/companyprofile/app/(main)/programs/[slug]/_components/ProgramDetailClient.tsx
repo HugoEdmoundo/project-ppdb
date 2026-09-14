@@ -32,7 +32,11 @@ export default function ProgramDetailClient({ program }: { program: Program }) {
     <>
       <section className="relative pt-28 pb-20 md:pt-36 md:pb-28 overflow-hidden">
         <div className="absolute inset-0">
-          <Image src={program.image || ''} alt={info.title || ''} fill className="object-cover" sizes="100vw" priority />
+          {program.image ? (
+            <Image src={program.image} alt={info.title || ''} fill className="object-cover" sizes="100vw" priority />
+          ) : (
+            <div className="absolute inset-0 bg-[var(--bg-secondary)]" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/85 to-white/95" />
         </div>
         <div className="absolute top-0 left-0 right-0 verse-strip" />

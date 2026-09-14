@@ -246,6 +246,14 @@ class PaymentRepository:
         self.db.flush()
         self.db.commit()
 
+    def has_paid_stage2_bills(self, applicant_id: str, fee_item_id: str) -> bool:
+        stmt = select(PPDBStage2Bill.id).where(
+            PPDBStage2Bill.applicant_id == applicant_id,
+            PPDBStage2Bill.fee_item_id == fee_item_id,
+            PPDBStage2Bill.status == "paid",
+        )
+        return self.db.scalars(stmt).first() is not None
+
     def delete_stage2_bills(self, applicant_id: str, fee_item_id: str):
         stmt = delete(PPDBStage2Bill).where(
             PPDBStage2Bill.applicant_id == applicant_id,

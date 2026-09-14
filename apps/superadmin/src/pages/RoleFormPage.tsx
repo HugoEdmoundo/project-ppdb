@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Shield, ShieldCheck, Lock } from 'lucide-react'
+import PageHero from '../components/PageHero'
 import * as api from '../api/client'
 import { useToast } from '../components/Toast'
 import { ACCESS_LEVELS } from '../types'
 import type { AccessLevel } from '../types'
 import { useAuth } from '../contexts/AuthContext'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from "@/components/ui"
 import { Input } from "@/components/ui"
 import { Label } from "@/components/ui"
@@ -17,7 +19,8 @@ export default function RoleFormPage() {
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id)
   const { user: currentUser, loading: authLoading } = useAuth()
-  const canCrud = currentUser?.user_type === 'superadmin'
+  const canCrud = currentUser?.user_type === 'superadmin' || !!currentUser?.is_superadmin
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     if (!authLoading && currentUser && !canCrud) {
@@ -79,6 +82,7 @@ export default function RoleFormPage() {
         await api.createRole(payload)
       }
       toast('success', isEdit ? 'Role berhasil diperbarui' : 'Role berhasil dibuat')
+      queryClient.invalidateQueries({ queryKey: ['roles'] })
       navigate('/roles')
     } catch (e: any) {
       toast('error', e.message || 'Gagal menyimpan')
@@ -97,19 +101,28 @@ export default function RoleFormPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 animate-fadeIn">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/roles')}>
-          <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {isEdit ? (form.is_system ? 'Detail Role Sistem' : 'Edit Role') : 'Buat Role Baru'}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {isEdit ? (form.is_system ? 'Melihat informasi role sistem' : 'Ubah informasi dan hak akses role') : 'Buat role baru dengan hak akses yang ditentukan'}
-          </p>
-        </div>
-      </div>
+      <PageHero
+        eyebrow="Manajemen Akses"
+        title={isEdit ? (form.is_system ? 'Detail Role Sistem' : 'Edit Role') : 'Buat Role Baru'}
+        description={isEdit ? (form.is_system ? 'Melihat informasi role sistem' : 'Ubah informasi dan hak akses role') : 'Buat role baru dengan hak akses yang ditentukan'}
+        loading={fetching}
+        chips={[
+          { icon: ShieldCheck, label: form.name || 'Role baru' },
+          ...(form.is_superadmin
+            ? [{ icon: Lock, label: 'Akses Penuh Superadmin' }]
+            : form.is_system
+              ? [{ icon: Lock, label: 'Role Sistem Terkunci' }]
+              : [{ icon: Shield, label: `${Object.keys(permissions).length} Modul Diatur` }]),
+        ]}
+        actions={
+          <button
+            onClick={() => navigate('/roles')}
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-xs font-semibold text-white ring-1 ring-white/25 transition-colors hover:bg-white/25"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Kembali
+          </button>
+        }
+      />
 
       <form onSubmit={handleSubmit}>
         {/* Basic Info */}
@@ -172,7 +185,12 @@ export default function RoleFormPage() {
                 {(() => {
                   const DISPLAY_MODULES = [
                     { id: 'companyprofile', label: 'Company Profile', keys: ['companyprofile'] },
-                    { id: 'ppdb', label: 'PPDB (Dashboard, Periode)', keys: ['ppdb'] }
+                    { id: 'ppdb', label: 'PPDB (Dashboard, Periode)', keys: ['ppdb'] },
+                    { id: 'payment', label: 'Pembayaran (Tahap 1 & 2)', keys: ['payment'] },
+                    { id: 'selection', label: 'Seleksi', keys: ['selection'] },
+                    { id: 'notification', label: 'Notifikasi', keys: ['notification'] },
+                    { id: 'dashboard', label: 'Dashboard', keys: ['dashboard'] },
+                    { id: 'applicant_dashboard', label: 'Dashboard Pendaftar', keys: ['applicant_dashboard'] },
                   ]
 
                   return DISPLAY_MODULES.map(({ id, label, keys }) => {

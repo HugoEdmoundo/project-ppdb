@@ -9,9 +9,12 @@ from src.models.ppdb import (
     PPDBBMOU,
     FileUpload,
     PPDBApplicant,
+    PPDBApplicantDiscount,
     PPDBPaymentTransaction,
     PPDBPeriod,
+    PPDBStage2Bill,
     PPDBWave,
+    PPDBWaveFeeItem,
 )
 
 
@@ -180,6 +183,57 @@ class PPDBRepository:
     def delete_wave(self, wave: PPDBWave):
         self.db.delete(wave)
         self.db.commit()
+
+    # -------------------------------------------------------------------------
+    # Wave fee items (Biaya Tahap 2 per gelombang)
+    # -------------------------------------------------------------------------
+    def get_fee_items_by_wave(self, wave_id: str) -> list[PPDBWaveFeeItem]:
+        return cast(
+            list[PPDBWaveFeeItem],
+            self.db.query(PPDBWaveFeeItem)
+            .filter(PPDBWaveFeeItem.wave_id == wave_id)
+            .order_by(
+                PPDBWaveFeeItem.order_index.asc(), PPDBWaveFeeItem.created_at.asc()
+            )
+            .all(),
+        )
+
+    def get_fee_item(self, item_id: str) -> PPDBWaveFeeItem | None:
+        return cast(
+            PPDBWaveFeeItem | None,
+            self.db.query(PPDBWaveFeeItem)
+            .filter(PPDBWaveFeeItem.id == item_id)
+            .first(),
+        )
+
+    def create_fee_item(self, item: PPDBWaveFeeItem) -> PPDBWaveFeeItem:
+        self.db.add(item)
+        self.db.commit()
+        self.db.refresh(item)
+        return item
+
+    def delete_fee_item(self, item: PPDBWaveFeeItem):
+        self.db.delete(item)
+        self.db.commit()
+
+    def count_discounts_for_fee_item(self, fee_item_id: str) -> int:
+        return (
+            self.db.query(PPDBApplicantDiscount)
+            .filter(PPDBApplicantDiscount.fee_item_id == fee_item_id)
+            .count()
+        )
+
+    def count_bills_for_fee_item(self, fee_item_id: str) -> int:
+        return (
+            self.db.query(PPDBStage2Bill)
+            .filter(PPDBStage2Bill.fee_item_id == fee_item_id)
+            .count()
+        )
+
+    def update_mou(self, mou: PPDBBMOU) -> PPDBBMOU:
+        self.db.commit()
+        self.db.refresh(mou)
+        return mou
 
     # -------------------------------------------------------------------------
     # Registration & Applicants
@@ -369,6 +423,15 @@ class PPDBRepository:
     # -------------------------------------------------------------------------
     # Dashboard & Cron
     # -------------------------------------------------------------------------
+    def count_applicants_in_period(self, period_id: str) -> int:
+        return cast(
+            int,
+            self.db.query(PPDBApplicant)
+            .join(PPDBWave, PPDBApplicant.wave_id == PPDBWave.id)
+            .filter(PPDBWave.period_id == period_id)
+            .count(),
+        )
+
     def count_periods(self) -> int:
         return cast(int, self.db.query(PPDBPeriod).count())
 

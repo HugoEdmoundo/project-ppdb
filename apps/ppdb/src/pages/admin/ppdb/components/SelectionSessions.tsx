@@ -11,6 +11,7 @@ import { Input } from "@/components/ui"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
 import { EmptyState } from "@/components/ui"
 import { Textarea } from "@/components/ui"
+import { ConfirmDialog } from "@/components/ui"
 import { TableSkeletonRows } from "@/components/ui"
 import { CalendarDays, Plus, Pencil, Trash2, MessageSquare } from 'lucide-react'
 import type { Session } from './types'
@@ -19,9 +20,10 @@ export default function SelectionSessions() {
   const { toast } = useToast()
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const canCrud = user?.is_superadmin || user?.permissions?.ppdb === 'crud' || user?.permissions?.selection === 'crud'
+  const canCrud = user?.is_superadmin || user?.user_type === 'superadmin' || user?.permissions?.ppdb === 'crud'
 
   const [sessionModal, setSessionModal] = useState<'create' | 'edit' | null>(null)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
   const [editSession, setEditSession] = useState<Session | null>(null)
   const [sessionForm, setSessionForm] = useState({
     name: '', session_date: '', start_time: '', end_time: '', location: '', description: '', quota: 0
@@ -60,7 +62,8 @@ export default function SelectionSessions() {
       toast('success', 'Sesi dihapus')
       queryClient.invalidateQueries({ queryKey: ['selection-sessions'] })
     },
-    onError: (e: any) => toast('error', e.message || 'Gagal menghapus sesi')
+    onError: (e: any) => toast('error', e.message || 'Gagal menghapus sesi'),
+    onSettled: () => setDeleteId(null),
   })
 
   const broadcastMutation = useMutation({
@@ -95,8 +98,8 @@ export default function SelectionSessions() {
   }
 
   const deleteSession = (id: string) => {
-    if (!confirm('Hapus sesi ini?')) return
-    deleteMutation.mutate(id)
+    if (deleteMutation.isPending) return
+    setDeleteId(id)
   }
 
   const handleBroadcast = () => {
@@ -234,6 +237,17 @@ export default function SelectionSessions() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}
+        loading={deleteMutation.isPending}
+        title="Hapus Sesi"
+        message="Yakin ingin menghapus sesi ini? Peserta yang sudah booking akan dilepas dari sesi."
+        confirmLabel="Ya, Hapus"
+        variant="destructive"
+      />
 
       {/* ── Modal: Broadcast ─────────────────────────────────────────────────── */}
       <Dialog open={!!broadcastModal} onOpenChange={() => setBroadcastModal(null)}>

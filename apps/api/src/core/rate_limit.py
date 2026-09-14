@@ -17,6 +17,7 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "login": (10, 60),  # max 10 login attempts per IP per menit
     "register": (5, 60),  # max 5 registrasi per IP per menit
     "register_applicant": (3, 300),  # max 3 pendaftaran per IP per 5 menit
+    "recover_applicant": (5, 300),  # max 5 recovery/IP/5 mnt (anti brute-force)
 }
 
 # {key: [timestamps]} — sliding window log.

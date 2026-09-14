@@ -5,7 +5,6 @@ from fastapi import (
     APIRouter,
     Depends,
     File,
-    Header,
     HTTPException,
     Query,
     Request,
@@ -15,7 +14,11 @@ from sqlalchemy.orm import Session
 
 from src.core.config import settings
 from src.core.database import get_db
-from src.core.dependencies import get_current_user
+from src.core.dependencies import (
+    AccessLevel,
+    get_current_user,
+    require_module_access,
+)
 from src.core.uploads import upload_file
 from src.repositories.payment_repository import PaymentRepository
 from src.services.payment_service import PaymentService
@@ -28,28 +31,10 @@ def get_payment_service(db: Session = Depends(get_db)) -> PaymentService:
     return PaymentService(repo)
 
 
-def require_payment_admin(user: dict = Depends(get_current_user)):
-    if user.get("is_superadmin"):
-        return user
-
-    perms = user.get("permissions", {})
-    if perms.get("payment") not in ["crud"]:
-        raise HTTPException(
-            status_code=403, detail="Forbidden: Requires payment CRUD access"
-        )
-    return user
-
-
-def require_payment_read(user: dict = Depends(get_current_user)):
-    if user.get("is_superadmin"):
-        return user
-
-    perms = user.get("permissions", {})
-    if perms.get("payment") not in ["read", "crud"]:
-        raise HTTPException(
-            status_code=403, detail="Forbidden: Requires payment read access"
-        )
-    return user
+# Konsisten dengan modul lain: hormati superadmin, role is_superadmin,
+# override per-user, dan permission role.
+require_payment_admin = require_module_access("payment", AccessLevel.CRUD)
+require_payment_read = require_module_access("payment", AccessLevel.READ)
 
 
 @router.get("/transactions")
@@ -120,15 +105,16 @@ def _verify_midtrans_signature(
 @router.post("/webhook")
 async def payment_webhook(
     request: Request,
-    signature_key: str | None = Header(None),
     service: PaymentService = Depends(get_payment_service),
 ):
     """
     Webhook for Payment Gateway (e.g., Midtrans).
     Verifikasi signature Midtrans (sha512) wajib; menolak jika `MIDTRANS_SERVER_KEY`
     tidak dikonfigurasi (fail-closed) supaya tidak bisa di-forge.
+    Catatan: Midtrans mengirim `signature_key` di BODY JSON, bukan header.
     """
     payload = await request.json()
+    signature_key = payload.get("signature_key")
     _verify_midtrans_signature(payload, signature_key, settings.midtrans_server_key)
     return service.process_webhook(payload)
 

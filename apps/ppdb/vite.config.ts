@@ -15,5 +15,8 @@ export default defineConfig({
   },
   server: {
     port: 5174,
+    // Gagal cepat kalau port dipakai (jangan geser diam-diam: HMR + API_BASE
+    // mengasumsikan port ini).
+    strictPort: true,
   },
 })

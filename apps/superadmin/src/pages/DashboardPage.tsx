@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Users, Shield, GraduationCap, Bell, Send, Activity, ChevronRight,
   UserRound, Settings, CreditCard, Waves, type LucideIcon,
 } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 import * as api from '../api/client'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui"
 import { Skeleton } from "@/components/ui"
@@ -247,6 +248,8 @@ function WaveQuotaCard({ wave }: { wave: Stats['active_wave'] }) {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const [data, setData] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -392,7 +395,11 @@ export default function DashboardPage() {
       ),
       footer: (
         <div className="mt-3">
-          <Link to="/notifications" className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15">
+          <Link
+            to="/notifications"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
+          >
             <Send className="h-3.5 w-3.5" /> Kirim Notifikasi
           </Link>
         </div>
@@ -408,21 +415,58 @@ export default function DashboardPage() {
   const trendHasData = (data?.trend?.length ?? 0) > 0 && (data?.trend?.some(p => p.users > 0) ?? false)
   const deltaPct = data?.trend_delta?.pct ?? null
 
+  const displayName = (user?.full_name || user?.username || 'Admin').trim().split(' ')[0] || 'Admin'
+  const todayLabel = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const heroChips = [
+    { icon: Users, label: `${s.total_users} Pengguna` },
+    { icon: Waves, label: data?.active_wave?.name ?? 'Tanpa Gelombang Aktif' },
+    { icon: Bell, label: `${data?.notifications?.sent_today ?? 0} Notif Hari Ini` },
+  ]
+
   return (
     <div className="space-y-6 animate-fadeIn pb-8">
-      {/* Header section with Welcome & System Status */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-slate-900">Superadmin Control Center</h1>
-          <p className="mt-1 text-sm text-slate-500">Pantau aktivitas, akses, dan konfigurasi sistem PTDARRAHMAN.</p>
+      {/* Hero card: sapaan + status sistem */}
+      {loading ? (
+        <Skeleton className="h-48 w-full rounded-3xl" />
+      ) : (
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0E3B26] via-[#1A6B47] to-[#237A52] p-6 text-white shadow-lg shadow-emerald-900/20 md:p-8">
+          <div className="pointer-events-none absolute inset-0 bg-pattern-dots opacity-20" />
+          <div className="pointer-events-none absolute -right-10 -top-12 h-48 w-48 rounded-full bg-white/10" />
+          <div className="pointer-events-none absolute -bottom-16 right-24 h-40 w-40 rounded-full bg-[#D4A853]/25" />
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-emerald-100">Assalamu'alaikum, {displayName} — {todayLabel}</p>
+              <h1 className="mt-0.5 font-heading text-2xl font-bold tracking-tight md:text-3xl">Superadmin Control Center</h1>
+              <p className="mt-1 text-sm text-emerald-50/90">Pantau aktivitas, akses, dan konfigurasi sistem PTDARRAHMAN.</p>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {heroChips.map((chip) => {
+                  const ChipIcon = chip.icon
+                  return (
+                    <span key={chip.label} className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/25">
+                      <ChipIcon className="h-3.5 w-3.5" />
+                      {chip.label}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
+              <Badge variant="outline" className="border-emerald-200/40 bg-emerald-50/10 px-3 py-1.5 text-emerald-50">
+                <span className="mr-2 h-2 w-2 rounded-full bg-emerald-400 animate-pulse motion-reduce:animate-none" />
+                System Online
+              </Badge>
+              <div className="flex flex-wrap gap-2">
+                <Link to="/users" className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-xs font-semibold text-white ring-1 ring-white/25 transition-colors hover:bg-white/25">
+                  <Users className="h-3.5 w-3.5" /> Kelola Users
+                </Link>
+                <Link to="/notifications" className="inline-flex items-center gap-1.5 rounded-full bg-[#D4A853] px-4 py-2 text-xs font-bold text-[#0E3B26] transition-colors hover:bg-[#E2BC6B]">
+                  <Send className="h-3.5 w-3.5" /> Kirim Notifikasi
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 py-1.5 px-3">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse" />
-            System Online
-          </Badge>
-        </div>
-      </div>
+      )}
 
       {/* Bento Grid Layout */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -465,9 +509,21 @@ export default function DashboardPage() {
                   </Card>
                 )
                 return card.link ? (
-                  <Link key={card.label} to={card.link} className="block h-full transition-transform hover:scale-[1.02]">
+                  <div
+                    key={card.label}
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => navigate(card.link!)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        navigate(card.link!)
+                      }
+                    }}
+                    className="block h-full cursor-pointer rounded-2xl transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                  >
                     {content}
-                  </Link>
+                  </div>
                 ) : (
                   <div key={card.label} className="h-full">{content}</div>
                 )

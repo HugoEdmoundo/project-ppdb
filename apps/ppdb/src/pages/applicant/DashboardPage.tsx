@@ -144,7 +144,7 @@ export default function ApplicantDashboardPage() {
     mutationFn: () => apiFetch('/ppdb/documents/submit', { method: 'POST' }),
     onSuccess: () => {
       toast('success', 'Dokumen berhasil dikirim untuk verifikasi')
-      window.location.reload()
+      refreshAll()
     },
     onError: (e: any) => toast('error', e.message || 'Gagal mengirim dokumen'),
     onSettled: () => setShowSubmitConfirm(false),

@@ -61,7 +61,7 @@ class PPDBApplicant(Base):
     __tablename__ = "ppdb_applicants"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    wave_id: Mapped[str] = mapped_column(String(36), ForeignKey("ppdb_waves.id"))
+    wave_id: Mapped[str] = mapped_column(String(50), ForeignKey("ppdb_waves.id"))
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="CASCADE")
     )
@@ -352,7 +352,7 @@ class PPDBWaveFeeItem(Base):
     __tablename__ = "ppdb_wave_fee_items"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     wave_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("ppdb_waves.id", ondelete="CASCADE")
+        String(50), ForeignKey("ppdb_waves.id", ondelete="CASCADE")
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     nominal: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)

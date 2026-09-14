@@ -22,13 +22,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({ user: null, loading: true, login: async () => {}, logout: async () => {}, refreshUser: async () => {} })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<AuthUser | null>(() => api.getStoredUser())
+  // loading hanya true jika ada sesi tersimpan yang perlu divalidasi ke backend.
+  const [loading, setLoading] = useState(() => !!api.getStoredUser())
 
   useEffect(() => {
-    const stored = api.getStoredUser()
-    if (stored) { setUser(stored); api.getMe().then(setUser).catch(() => setUser(null)).finally(() => setLoading(false)) }
-    else setLoading(false)
+    if (!api.getStoredUser()) return
+    api.getMe().then(setUser).catch(() => setUser(null)).finally(() => setLoading(false))
   }, [])
 
   // Auto-refresh user permissions every 30 seconds to handle dynamic permission changes or account deactivation
@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
     }, 30000)
     return () => clearInterval(interval)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]) // only re-run if user id changes
 
   const loginFn = useCallback(async (username: string, password: string) => { const u = await api.login(username, password); setUser(u) }, [])

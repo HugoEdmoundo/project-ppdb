@@ -9,6 +9,7 @@ import SelectionSessions from './components/SelectionSessions'
 import SelectionCategories from './components/SelectionCategories'
 import SelectionResults from './components/SelectionResults'
 import PageHeaderCard from '@/components/shared/PageHeaderCard'
+import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
 import TabsBarCard from '@/components/shared/TabsBarCard'
 
 const TAB_LABELS: Record<string, string> = {
@@ -61,6 +62,10 @@ export default function SelectionPage() {
           <Star className="h-4 w-4 mr-1.5" /> Penilai & Status
         </TabsTrigger>
       </TabsBarCard>
+
+      {!wavesLoading && !activeWave && (
+        <NoActiveWaveBanner message="Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk mengelola seleksi." />
+      )}
 
       {/* Tab Content */}
       {activeTab === 'sesi' && <SelectionSessions />}

@@ -29,6 +29,17 @@ def _now_wib() -> datetime:
     return datetime.now(WIB).replace(tzinfo=None)
 
 
+def _parse_session_date(raw: str | None) -> date | None:
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail="Format tanggal sesi tidak valid (YYYY-MM-DD)"
+        ) from exc
+
+
 class SelectionService:
     def __init__(self, repo: SelectionRepository):
         self.repo = repo
@@ -53,6 +64,14 @@ class SelectionService:
             result.append(d)
         return result
 
+    def _require_active_wave_session(self, session_id: str):
+        """Ambil sesi dan pastikan milik gelombang aktif (404 jika tidak)."""
+        wave_id = self._get_active_wave_id_or_400()
+        session = self.repo.get_session_by_id(session_id)
+        if not session or session.wave_id != wave_id:
+            raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
+        return session
+
     def create_session(self, body: SessionCreate) -> dict[str, Any]:
         now = _now_wib()
         wave_id = self._get_active_wave_id_or_400()
@@ -61,7 +80,7 @@ class SelectionService:
             id=sid,
             wave_id=wave_id,
             name=body.name,
-            session_date=body.session_date,
+            session_date=_parse_session_date(body.session_date),
             start_time=body.start_time,
             end_time=body.end_time,
             location=body.location,
@@ -76,14 +95,10 @@ class SelectionService:
 
     def update_session(self, session_id: str, body: SessionUpdate) -> dict[str, Any]:
         now = _now_wib()
-        session = self.repo.get_session_by_id(session_id)
-        if not session:
-            raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
+        session = self._require_active_wave_session(session_id)
 
         session.name = body.name
-        session.session_date = (
-            date.fromisoformat(body.session_date) if body.session_date else None
-        )
+        session.session_date = _parse_session_date(body.session_date)
         session.start_time = body.start_time
         session.end_time = body.end_time
         session.location = body.location
@@ -96,17 +111,13 @@ class SelectionService:
         return {"message": "Sesi berhasil diperbarui"}
 
     def delete_session(self, session_id: str) -> dict[str, Any]:
-        session = self.repo.get_session_by_id(session_id)
-        if not session:
-            raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
+        self._require_active_wave_session(session_id)
         self.repo.delete_session(session_id)
         self.repo.db.commit()
         return {"message": "Sesi berhasil dihapus"}
 
     def broadcast_session(self, session_id: str, message: str) -> dict[str, Any]:
-        session = self.repo.get_session_by_id(session_id)
-        if not session:
-            raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
+        session = self._require_active_wave_session(session_id)
 
         applicants = self.repo.get_applicants_in_session(session_id)
         for app in applicants:
@@ -148,6 +159,10 @@ class SelectionService:
 
     def create_criteria(self, category_id: str, body: CriteriaCreate) -> dict[str, Any]:
         now = _now_wib()
+        wave_id = self._get_active_wave_id_or_400()
+        category = self.repo.get_category_by_id(category_id)
+        if not category or category.wave_id != wave_id:
+            raise HTTPException(status_code=404, detail="Kategori tidak ditemukan")
         crid = str(uuid4())
         crit = SelectionCriteria(
             id=crid,
@@ -161,11 +176,22 @@ class SelectionService:
         return {"id": crid, "message": "Kriteria berhasil ditambahkan"}
 
     def delete_category(self, id: str) -> dict[str, Any]:
+        wave_id = self._get_active_wave_id_or_400()
+        category = self.repo.get_category_by_id(id)
+        if not category or category.wave_id != wave_id:
+            raise HTTPException(status_code=404, detail="Kategori tidak ditemukan")
         self.repo.delete_category(id)
         self.repo.db.commit()
         return {"message": "Kategori dihapus"}
 
     def delete_criteria(self, id: str) -> dict[str, Any]:
+        wave_id = self._get_active_wave_id_or_400()
+        criteria = self.repo.get_criteria_by_id(id)
+        if not criteria:
+            raise HTTPException(status_code=404, detail="Kriteria tidak ditemukan")
+        category = self.repo.get_category_by_id(criteria.category_id)
+        if not category or category.wave_id != wave_id:
+            raise HTTPException(status_code=404, detail="Kriteria tidak ditemukan")
         self.repo.delete_criteria(id)
         self.repo.db.commit()
         return {"message": "Kriteria dihapus"}
@@ -199,14 +225,33 @@ class SelectionService:
         return results
 
     def save_result(self, body: ApplicantScoreSave) -> dict[str, Any]:
+        import math
+
         now = _now_wib()
+        wave_id = self._get_active_wave_id_or_400()
         app = self.repo.get_applicant_by_id(body.applicant_id)
         if not app:
             raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
 
+        # Pastikan baris hasil ada dulu agar notes/skor tersimpan.
+        self.repo.ensure_selection_result(body.applicant_id, now)
         self.repo.update_selection_result_notes(body.applicant_id, body.notes, now)
 
         for sc in body.scores:
+            if not math.isfinite(sc.score) or sc.score < 0:
+                raise HTTPException(
+                    status_code=400, detail="Nilai harus berupa angka >= 0"
+                )
+            criteria = self.repo.get_criteria_by_id(sc.criteria_id)
+            if not criteria:
+                raise HTTPException(
+                    status_code=400, detail="Kriteria tidak ditemukan"
+                )
+            category = self.repo.get_category_by_id(criteria.category_id)
+            if not category or category.wave_id != wave_id:
+                raise HTTPException(
+                    status_code=400, detail="Kriteria tidak termasuk gelombang aktif"
+                )
             existing = self.repo.get_selection_score(body.applicant_id, sc.criteria_id)
             if existing:
                 existing.score = sc.score
@@ -240,6 +285,15 @@ class SelectionService:
         app.status = body.status
         app.updated_at = now
         self.repo.update_applicant(app)
+
+        # Sinkronkan graduation_status agar filter pendaftar lulus
+        # (Tahap 2 / MOU) ikut terisi.
+        result_row = self.repo.ensure_selection_result(applicant_id, now)
+        result_row.graduation_status = (
+            {"passed": "passed", "failed": "failed"}.get(body.status)
+        )
+        result_row.updated_at = now
+        self.repo.db.add(result_row)
 
         if body.reason is not None:
             self.repo.update_selection_result_notes(applicant_id, body.reason, now)
@@ -282,6 +336,10 @@ class SelectionService:
 
         session, booked_count = s_data
         booked_count = booked_count or 0
+        if session.wave_id != app.wave_id:
+            raise HTTPException(
+                status_code=400, detail="Sesi bukan dari gelombang Anda"
+            )
         if session.quota > 0 and booked_count >= session.quota:
             raise HTTPException(status_code=400, detail="Kuota sesi ini sudah penuh")
 

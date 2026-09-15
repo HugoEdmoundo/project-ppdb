@@ -30,7 +30,7 @@ interface DiscountItem {
 
 export default function DiskonasiPage() {
   const { toast } = useToast()
-  const { canCrud } = useCan('payment', 'crud')
+  const { canCrud } = useCan('ppdb', 'crud')
   const queryClient = useQueryClient()
 
   const [selectedApplicant, setSelectedApplicant] = useState<any>(null)

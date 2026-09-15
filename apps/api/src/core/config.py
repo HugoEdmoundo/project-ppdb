@@ -52,8 +52,6 @@ class Settings(BaseSettings):
     cloudinary_folder: str = "ptdarrahman"
     cloudinary_secure: bool = True
 
-
-
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

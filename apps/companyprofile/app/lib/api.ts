@@ -393,7 +393,7 @@ export async function getSettings(): Promise<SettingsItem[]> {
 }
 
 export async function getAdminSettings(): Promise<SettingsItem[]> {
-  return fetchApiWithAuth<SettingsItem[]>('/settings-admin')
+  return fetchApiWithAuth<SettingsItem[]>('/settings-admin', { method: 'GET' })
 }
 
 export async function updateSetting(key: string, value: string) {

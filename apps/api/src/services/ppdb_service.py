@@ -352,8 +352,7 @@ class PPDBService:
         items = self.repository.get_fee_items_by_wave(wave_id)
         return {
             "items": [
-                {c.name: getattr(i, c.name) for c in i.__table__.columns}
-                for i in items
+                {c.name: getattr(i, c.name) for c in i.__table__.columns} for i in items
             ]
         }
 
@@ -380,9 +379,10 @@ class PPDBService:
         item = self.repository.get_fee_item(item_id)
         if not item or item.wave_id != wave_id:
             raise HTTPException(status_code=404, detail="Item biaya tidak ditemukan")
-        if self.repository.count_discounts_for_fee_item(
-            item_id
-        ) > 0 or self.repository.count_bills_for_fee_item(item_id) > 0:
+        if (
+            self.repository.count_discounts_for_fee_item(item_id) > 0
+            or self.repository.count_bills_for_fee_item(item_id) > 0
+        ):
             raise HTTPException(
                 status_code=400,
                 detail="Item biaya sudah dipakai diskon/tagihan dan tidak bisa dihapus",
@@ -596,9 +596,7 @@ class PPDBService:
             cast(str, resolved_wave_id), search, status, page, per_page
         )
         active_wave_info = (
-            {"id": active_wave.id, "name": active_wave.name}
-            if active_wave
-            else None
+            {"id": active_wave.id, "name": active_wave.name} if active_wave else None
         )
         return {"data": data, "total": total, "active_wave": active_wave_info}
 
@@ -697,9 +695,7 @@ class PPDBService:
 
         doc_type = (doc_type or "").strip()
         if doc_type not in REQUIRED_DOCUMENTS:
-            raise HTTPException(
-                status_code=400, detail="Jenis dokumen tidak dikenal"
-            )
+            raise HTTPException(status_code=400, detail="Jenis dokumen tidak dikenal")
 
         file_id = str(uuid.uuid4())
         upload = await upload_file(file, file_id)
@@ -715,9 +711,7 @@ class PPDBService:
             delete_upload(path)
 
         docs = self.repository.get_applicant_documents(applicant.id)
-        document = next(
-            (d for d in docs if d["doc_type"] == doc_type), None
-        )
+        document = next((d for d in docs if d["doc_type"] == doc_type), None)
         return {"message": "Dokumen berhasil diunggah", "document": document}
 
     def submit_documents(self, user: dict[str, Any]) -> dict[str, Any]:
@@ -749,9 +743,7 @@ class PPDBService:
     def get_applicant_documents_admin(self, applicant_id: str) -> dict[str, Any]:
         applicant = self.repository.get_applicant_by_id(applicant_id)
         if not applicant:
-            raise HTTPException(
-                status_code=404, detail="Pendaftar tidak ditemukan"
-            )
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
         return {"data": self.repository.get_applicant_documents(applicant.id)}
 
     def verify_applicant_documents(
@@ -761,18 +753,12 @@ class PPDBService:
 
         applicant = self.repository.get_applicant_by_id(applicant_id)
         if not applicant:
-            raise HTTPException(
-                status_code=404, detail="Pendaftar tidak ditemukan"
-            )
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
 
         if status not in ("document_approved", "document_rejected"):
-            raise HTTPException(
-                status_code=400, detail="Status verifikasi tidak valid"
-            )
+            raise HTTPException(status_code=400, detail="Status verifikasi tidak valid")
         if status == "document_rejected" and not (rejection_reason or "").strip():
-            raise HTTPException(
-                status_code=400, detail="Alasan penolakan wajib diisi"
-            )
+            raise HTTPException(status_code=400, detail="Alasan penolakan wajib diisi")
 
         applicant.status = status
         applicant.rejection_reason = (
@@ -830,12 +816,14 @@ class PPDBService:
             }
 
         grouped = self.repository.count_applicants_by_status_in_wave(active_wave.id)
+
         def g(key: str) -> int:
             return grouped.get(key, 0)
 
         payments_by_status = self.repository.count_payments_by_status_in_wave(
             active_wave.id
         )
+
         def p(key: str) -> int:
             return payments_by_status.get(key, 0)
 
@@ -991,9 +979,7 @@ class PPDBService:
         if mou.status == "signed":
             return {"success": True, "message": "MOU sudah ditandatangani"}
         if not body.signature_data or not body.signature_data.strip():
-            raise HTTPException(
-                status_code=400, detail="Data tanda tangan wajib diisi"
-            )
+            raise HTTPException(status_code=400, detail="Data tanda tangan wajib diisi")
         mou.signature_data = body.signature_data
         mou.status = "signed"
         mou.signed_at = datetime.now()

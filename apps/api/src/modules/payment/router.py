@@ -33,8 +33,8 @@ def get_payment_service(db: Session = Depends(get_db)) -> PaymentService:
 
 # Konsisten dengan modul lain: hormati superadmin, role is_superadmin,
 # override per-user, dan permission role.
-require_payment_admin = require_module_access("payment", AccessLevel.CRUD)
-require_payment_read = require_module_access("payment", AccessLevel.READ)
+require_payment_admin = require_module_access("ppdb", AccessLevel.CRUD)
+require_payment_read = require_module_access("ppdb", AccessLevel.READ)
 
 
 @router.get("/transactions")

@@ -273,9 +273,7 @@ class PaymentService:
                 )
 
             if dtype not in (None, "", "percent", "nominal"):
-                raise HTTPException(
-                    status_code=400, detail="Tipe diskon tidak valid"
-                )
+                raise HTTPException(status_code=400, detail="Tipe diskon tidak valid")
             try:
                 dnum = float(dvalue or 0)
             except (TypeError, ValueError) as exc:

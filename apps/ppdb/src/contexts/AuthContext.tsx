@@ -66,14 +66,14 @@ export function usePermission() {
     isAdmin: () => {
       if (!user) return false
       if (user.is_superadmin || user.user_type === 'superadmin') return true
-      const modules = ['ppdb', 'payment', 'selection', 'notification', 'dashboard']
+      const modules = ['ppdb']
       return modules.some(m => (user.permissions?.[m] || 'none') !== 'none')
     },
     hasApplicantAccess: () => {
       if (!user) return false
       if (user.user_type === 'applicant') return true
       if (user.is_superadmin || user.user_type === 'superadmin') return true
-      return (user.permissions?.['applicant_dashboard'] || 'none') !== 'none'
+      return (user.permissions?.['ppdb'] || 'none') !== 'none'
     },
     pagePermissions: user?.page_permissions || [],
     permissions: user?.permissions || {},

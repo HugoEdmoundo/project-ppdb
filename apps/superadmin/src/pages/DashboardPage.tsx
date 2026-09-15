@@ -469,6 +469,12 @@ export default function DashboardPage() {
       )}
 
       {/* Bento Grid Layout */}
+      {!loading && !data?.active_wave && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Tidak ada gelombang aktif. Aktifkan periode &amp; gelombang terlebih dahulu untuk menampilkan data pendaftar (Pendaftar, Trend, Status Pembayaran, Kuota).
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
 
         {/* Main Stats (Top row) */}
@@ -489,7 +495,6 @@ export default function DashboardPage() {
                 const Icon = card.icon
                 const content = (
                   <Card className="group h-full cursor-pointer overflow-hidden rounded-2xl border-slate-100 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-                    <div className={`absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-[0.07] ${card.chip}`} />
                     <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-slate-700">
                         {card.label}
@@ -539,7 +544,7 @@ export default function DashboardPage() {
                   <Activity className="h-5 w-5 text-primary" />
                   Trend Pendaftaran
                 </CardTitle>
-                <p className="mt-1 text-xs text-muted-foreground">Registrasi pendaftar sistem dalam 30 hari terakhir</p>
+                <p className="mt-1 text-xs text-muted-foreground">Registrasi pendaftar pada gelombang aktif dalam 30 hari terakhir</p>
               </div>
               {!loading && deltaPct !== null && (
                 <Badge
@@ -640,8 +645,8 @@ export default function DashboardPage() {
             )}
           </CardContent>
           <div className="mt-auto border-t border-slate-50 bg-slate-50/50 p-3">
-            <Link to="/notifications" className="flex w-full items-center justify-center py-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80">
-              Kelola Notifikasi <ChevronRight className="ml-1 h-3 w-3" />
+            <Link to="/activities" className="flex w-full items-center justify-center py-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80">
+              Kelola Aktivitas <ChevronRight className="ml-1 h-3 w-3" />
             </Link>
           </div>
         </Card>
@@ -659,7 +664,7 @@ export default function DashboardPage() {
           />
           <DonutCard
             title="Status Pembayaran"
-            description="Distribusi status pembayaran seluruh pendaftar"
+            description="Distribusi status pembayaran pendaftar pada gelombang aktif"
             icon={CreditCard}
             items={paymentItems}
             emptyText="Belum ada data pendaftar"

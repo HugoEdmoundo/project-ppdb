@@ -20,7 +20,7 @@ import TabsBarCard from '@/components/shared/TabsBarCard'
 
 export default function Stage2PaymentsPage() {
   const { toast } = useToast()
-  const { canCrud } = useCan('payment', 'crud')
+  const { canCrud } = useCan('ppdb', 'crud')
   const queryClient = useQueryClient()
 
   const [activeTab, setActiveTab] = useState('all')

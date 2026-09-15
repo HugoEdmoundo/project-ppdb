@@ -184,13 +184,8 @@ export default function RoleFormPage() {
               <div className="space-y-3">
                 {(() => {
                   const DISPLAY_MODULES = [
-                    { id: 'companyprofile', label: 'Company Profile', keys: ['companyprofile'] },
-                    { id: 'ppdb', label: 'PPDB (Dashboard, Periode)', keys: ['ppdb'] },
-                    { id: 'payment', label: 'Pembayaran (Tahap 1 & 2)', keys: ['payment'] },
-                    { id: 'selection', label: 'Seleksi', keys: ['selection'] },
-                    { id: 'notification', label: 'Notifikasi', keys: ['notification'] },
-                    { id: 'dashboard', label: 'Dashboard', keys: ['dashboard'] },
-                    { id: 'applicant_dashboard', label: 'Dashboard Pendaftar', keys: ['applicant_dashboard'] },
+                    { id: 'ppdb', label: 'PPDB (Pendaftar, Pembayaran, Seleksi, Notifikasi, Dashboard)', keys: ['ppdb'] },
+                    { id: 'companyprofile', label: 'Company Profile (Konten Website)', keys: ['companyprofile'] },
                   ]
 
                   return DISPLAY_MODULES.map(({ id, label, keys }) => {

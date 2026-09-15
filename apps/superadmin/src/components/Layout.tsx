@@ -2,7 +2,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Users, Shield, LogOut, User as UserIcon,
-  ChevronLeft, Menu, GraduationCap, Bell
+  ChevronLeft, Menu, GraduationCap, Bell, History
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { getSettings, API_BASE } from '../api/client'
@@ -19,10 +19,11 @@ import {
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/applicants', icon: GraduationCap, label: 'Pendaftar' },
   { to: '/users', icon: Users, label: 'Users' },
   { to: '/roles', icon: Shield, label: 'Roles' },
+  { to: '/activities', icon: History, label: 'Aktivitas' },
   { to: '/notifications', icon: Bell, label: 'Notifikasi' },
 ]
 
@@ -113,7 +114,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {!collapsed && <div className="mb-3 px-3 text-[11px] font-bold uppercase tracking-widest text-slate-400">Menu Utama</div>}
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
-            const isActive = item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to)
+            const isActive = item.to === '/dashboard' ? location.pathname === '/dashboard' || location.pathname === '/' : location.pathname.startsWith(item.to)
             return (
               <NavLink
                 key={item.to}
@@ -150,7 +151,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              
+
               {/* Breadcrumb / Title area */}
               <div className="hidden items-center gap-2.5 sm:flex">
                 <div className="flex items-center gap-2 text-sm font-medium text-slate-500 bg-slate-100/50 px-2.5 py-1 rounded-md">
@@ -159,7 +160,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </div>
                 <span className="text-slate-300">/</span>
                 <h1 className="text-sm font-bold text-slate-900 capitalize tracking-tight">
-                  {location.pathname === '/' ? 'Overview' : location.pathname.split('/')[1]}
+                  {location.pathname === '/dashboard' ? 'Overview' : location.pathname.split('/')[1]}
                 </h1>
               </div>
             </div>

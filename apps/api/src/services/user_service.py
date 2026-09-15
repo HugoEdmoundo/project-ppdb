@@ -3,6 +3,7 @@ import random
 import string
 import uuid
 from datetime import datetime
+from typing import cast
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
@@ -215,28 +216,31 @@ class UserService:
         if (user.user_type or "") == "superadmin":
             return True
         if user.role_id:
-            role = self.repository.db.query(Role).filter(
-                Role.id == user.role_id
-            ).first()
+            role = (
+                self.repository.db.query(Role).filter(Role.id == user.role_id).first()
+            )
             return bool(role and role.is_superadmin)
         return False
 
     def _count_superadmins(self) -> int:
         from sqlalchemy import or_
 
-        return (
-            self.repository.db.query(User)
-            .filter(
-                or_(
-                    User.user_type == "superadmin",
-                    User.role_id.in_(
-                        self.repository.db.query(Role.id).filter(
-                            Role.is_superadmin.is_(True)
-                        )
-                    ),
+        return cast(
+            int,
+            (
+                self.repository.db.query(User)
+                .filter(
+                    or_(
+                        User.user_type == "superadmin",
+                        User.role_id.in_(
+                            self.repository.db.query(Role.id).filter(
+                                Role.is_superadmin.is_(True)
+                            )
+                        ),
+                    )
                 )
-            )
-            .count()
+                .count()
+            ),
         )
 
     def get_page_permissions(self, user_id: str) -> dict:

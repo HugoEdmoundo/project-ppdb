@@ -176,7 +176,7 @@ async def require_ppdb_admin(
 async def require_notification_admin(
     user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
-    if not await has_module_access(user, "notification", AccessLevel.CRUD):
+    if not await has_module_access(user, Module.PPDB, AccessLevel.CRUD):
         raise HTTPException(
             status_code=403, detail="Forbidden: Requires notification CRUD access"
         )
@@ -186,7 +186,7 @@ async def require_notification_admin(
 async def require_notification_read(
     user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
-    if not await has_module_access(user, "notification", AccessLevel.READ):
+    if not await has_module_access(user, Module.PPDB, AccessLevel.READ):
         raise HTTPException(
             status_code=403, detail="Forbidden: Requires notification read access"
         )

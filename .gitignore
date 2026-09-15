@@ -61,4 +61,5 @@ apps/api/uploads/
 # Scratch / debug artifacts
 scratch_*.py
 *.db
+*.db.bak-*
 *.sqlite

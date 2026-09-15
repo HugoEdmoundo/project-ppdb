@@ -20,7 +20,7 @@ const VARS = ['{nama_peserta}', '{username}', '{email}', '{phone}', '{password}'
 
 export default function NotificationsPage() {
   const { toast } = useToast()
-  const { canCrud } = useCan('notification', 'crud')
+  const { canCrud } = useCan('ppdb', 'crud')
   const queryClient = useQueryClient()
 
   const [selected, setSelected] = useState<any>(null)

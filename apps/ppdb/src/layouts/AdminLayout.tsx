@@ -10,7 +10,7 @@ import { API_BASE } from '@/api/client'
 import TopBar from '@/components/shared/TopBar'
 
 const navItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, href: '/admin/dashboard', module: 'dashboard' },
+  { label: 'Dashboard', icon: LayoutDashboard, href: '/admin/dashboard', module: 'ppdb' },
   { label: 'Data Pendaftar', icon: Users, href: '/admin/data-pendaftar', module: 'ppdb', minLevel: 'read' },
   {
     label: 'Persyaratan Seleksi',
@@ -26,7 +26,7 @@ const navItems = [
   {
     label: 'Pembayaran',
     icon: CreditCard,
-    module: 'payment',
+    module: 'ppdb',
     minLevel: 'read',
     children: [
       { label: 'Pembayaran Formulir', href: '/admin/payments' },
@@ -35,7 +35,7 @@ const navItems = [
     ]
   },
   { label: 'Periode PPDB', icon: CalendarDays, href: '/admin/periods', module: 'ppdb', minLevel: 'read' },
-  { label: 'Notifikasi', icon: Bell, href: '/admin/notifications', module: 'notification', minLevel: 'read' },
+  { label: 'Notifikasi', icon: Bell, href: '/admin/notifications', module: 'ppdb', minLevel: 'read' },
 ]
 
 type NavChild = { label: string; href: string }

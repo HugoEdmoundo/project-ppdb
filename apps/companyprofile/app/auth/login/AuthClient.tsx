@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ArrowRight, Lock, User, Loader2, Eye, EyeOff, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react'
 import AnimatedLogo from '@/app/components/ui/AnimatedLogo'
-import { API_BASE, getSettings } from '@/app/lib/api'
+import { login, getSettings } from '@/app/lib/api'
 
 export default function AuthClient() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
@@ -33,25 +35,9 @@ export default function AuthClient() {
     setError('')
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ username: email, password }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: 'Login gagal' }))
-        throw new Error(err.detail || 'Login gagal')
-      }
-      const data = await res.json()
-      if (data.access_token) {
-        localStorage.setItem('auth_token', data.access_token)
-        localStorage.setItem('auth_user', JSON.stringify(data.user || {}))
-      }
+      await login(email, password)
       setSuccess(true)
-      setTimeout(() => {
-        window.location.href = process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:5174'
-      }, 900)
+      setTimeout(() => router.push('/admin/overview'), 900)
     } catch (err: unknown) {
       setSuccess(false)
       const msg = err instanceof Error ? err.message : 'Login gagal'
@@ -89,14 +75,14 @@ export default function AuthClient() {
           Selamat Datang
         </h1>
         <p className="text-sm text-[var(--text-secondary)] mb-3">
-          Masuk untuk mengakses platform
+          Masuk untuk mengakses dasbor
         </p>
 
         <div className="mb-7 flex items-center justify-center gap-2">
           <span className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--accent-gold)]" />
           <ShieldCheck className="w-3.5 h-3.5 text-[var(--accent-gold)]" />
           <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--accent-gold)]">
-            Portal Peserta
+            Panel Admin
           </span>
           <span className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--accent-gold)]" />
         </div>
@@ -107,7 +93,7 @@ export default function AuthClient() {
             style={{ animation: 'modalIn 0.25s ease-out' }}
           >
             <CheckCircle2 className="mt-px w-4 h-4 shrink-0" />
-            <span>Login berhasil — mengalihkan Anda...</span>
+            <span>Login berhasil — mengalihkan ke dasbor...</span>
           </div>
         )}
         {error && (
@@ -176,7 +162,7 @@ export default function AuthClient() {
               </span>
             ) : (
               <>
-                Masuk ke Portal
+                Masuk ke Dasbor
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

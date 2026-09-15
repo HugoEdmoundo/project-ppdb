@@ -244,9 +244,7 @@ class SelectionService:
                 )
             criteria = self.repo.get_criteria_by_id(sc.criteria_id)
             if not criteria:
-                raise HTTPException(
-                    status_code=400, detail="Kriteria tidak ditemukan"
-                )
+                raise HTTPException(status_code=400, detail="Kriteria tidak ditemukan")
             category = self.repo.get_category_by_id(criteria.category_id)
             if not category or category.wave_id != wave_id:
                 raise HTTPException(
@@ -289,8 +287,8 @@ class SelectionService:
         # Sinkronkan graduation_status agar filter pendaftar lulus
         # (Tahap 2 / MOU) ikut terisi.
         result_row = self.repo.ensure_selection_result(applicant_id, now)
-        result_row.graduation_status = (
-            {"passed": "passed", "failed": "failed"}.get(body.status)
+        result_row.graduation_status = {"passed": "passed", "failed": "failed"}.get(
+            body.status
         )
         result_row.updated_at = now
         self.repo.db.add(result_row)

@@ -4,14 +4,22 @@ Run from the `api/` directory:
     python -m scripts.seed
 
 Creates (only if missing):
-  - modules & pages for the superadmin/ppdb permission system
-  - default roles ("Superadmin", "Pendaftar", "Admin PPDB")
+  - modules & pages for the permission system
+  - default roles ("Superadmin", "Pendaftar", "Admin PPDB", "AdminCP")
   - default site_settings keys
+  - default notification templates
+  - a default superadmin account (only when none exists)
+
+Permission-module model:
+  - `ppdb`          — satu module yang mencakup seluruh sistem PPDB
+    (dashboard admin, pendaftar, pembayaran, seleksi, notifikasi).
+  - `companyprofile` — module terpisah untuk CMS konten website.
 
 Safe to run repeatedly.
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from uuid import uuid4
@@ -28,17 +36,13 @@ from src.core.database import (  # noqa: E402
 from src.core.security import hash_password  # noqa: E402
 
 MODULES = {
-    "companyprofile": "Company Profile",
     "ppdb": "PPDB",
-    "payment": "Payment",
-    "selection": "Selection",
-    "notification": "Notification",
-    "dashboard": "Dashboard",
-    "applicant_dashboard": "Applicant Dashboard",
+    "companyprofile": "Company Profile",
 }
 
 PAGES = {
     "ppdb": [
+        ("admin-dashboard", "Dashboard Admin", "LayoutDashboard", 5),
         ("ppdb-periods", "Periode PPDB", "CalendarDays", 10),
         ("ppdb-applicants", "Pendaftar", "Users", 20),
         ("ppdb-payments", "Pembayaran", "Wallet", 30),
@@ -48,9 +52,6 @@ PAGES = {
         ("companyprofile-news", "Berita", "Newspaper", 10),
         ("companyprofile-programs", "Program", "BookOpen", 20),
         ("companyprofile-settings", "Pengaturan", "Settings", 30),
-    ],
-    "dashboard": [
-        ("admin-dashboard", "Dashboard Admin", "LayoutDashboard", 10),
     ],
 }
 
@@ -68,23 +69,36 @@ DEFAULT_ROLES = [
         "is_superadmin": False,
         "is_system": True,
         "permissions": {
-            "applicant_dashboard": "dashboard",
+            "ppdb": "dashboard",
         },
     },
     {
         "name": "Admin PPDB",
-        "description": "Manages PPDB periods, waves and applicants.",
+        "description": (
+            "Mengelola seluruh sistem PPDB (pendaftar, pembayaran, seleksi, "
+            "notifikasi)."
+        ),
         "is_superadmin": False,
         "is_system": False,
         "permissions": {
-            "dashboard": "dashboard",
             "ppdb": "crud",
-            "payment": "crud",
-            "selection": "crud",
-            "notification": "crud",
+        },
+    },
+    {
+        "name": "AdminCP",
+        "description": "Mengelola konten website (Company Profile).",
+        "is_superadmin": False,
+        "is_system": False,
+        "permissions": {
+            "companyprofile": "crud",
         },
     },
 ]
+
+# Akun superadmin default (hanya dibuat jika belum ada satupun user
+# superadmin). Ganti password via env `SEED_SUPERADMIN_PASSWORD`.
+DEFAULT_SUPERADMIN_USERNAME = "superadmin"
+DEFAULT_SUPERADMIN_PASSWORD = os.getenv("SEED_SUPERADMIN_PASSWORD", "Admin123!")
 
 SITE_SETTINGS = [
     (
@@ -114,7 +128,8 @@ NOTIF_TEMPLATES = [
             "  Username: {username}\n"
             "  Password: {password}\n"
             "  Link Login: {link_login}\n\n"
-            "Segera lakukan pembayaran formulir pendaftaran sebelum {batas_waktu_bayar}.\n\n"
+            "Segera lakukan pembayaran formulir pendaftaran sebelum "
+            "{batas_waktu_bayar}.\n\n"
             "Terima kasih,\nPanitia PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
         ),
     },
@@ -157,7 +172,8 @@ NOTIF_TEMPLATES = [
         "email_subject": "Password Akun Anda Telah Direset",
         "body": (
             "Halo {nama_peserta},\n\n"
-            "Password akun Anda telah direset oleh admin. Berikut kredensial login terbaru:\n"
+            "Password akun Anda telah direset oleh admin. Berikut kredensial "
+            "login terbaru:\n"
             "  Username: {username}\n"
             "  Password: {password}\n"
             "  Link Login: {link_login}\n\n"
@@ -172,8 +188,10 @@ NOTIF_TEMPLATES = [
         "email_subject": "Pembayaran Formulir Pendaftaran PPDB",
         "body": (
             "Halo {nama_peserta},\n\n"
-            "Kami mengingatkan untuk segera menyelesaikan pembayaran formulir pendaftaran PPDB "
-            "sebelum {batas_waktu_bayar}. Pendaftaran Anda akan hangus jika melewati batas tersebut.\n\n"
+            "Kami mengingatkan untuk segera menyelesaikan pembayaran formulir "
+            "pendaftaran PPDB "
+            "sebelum {batas_waktu_bayar}. Pendaftaran Anda akan hangus jika "
+            "melewati batas tersebut.\n\n"
             "Lakukan pembayaran melalui: {link_pembayaran}\n\n"
             "Terima kasih,\nPanitia PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
         ),
@@ -186,7 +204,8 @@ NOTIF_TEMPLATES = [
         "body": (
             "Halo {nama_peserta},\n\n"
             "Kami mengingatkan bahwa batas pembayaran formulir pendaftaran Anda adalah "
-            "{batas_waktu_bayar}. Segera selesaikan pembayaran agar pendaftaran tidak hangus.\n\n"
+            "{batas_waktu_bayar}. Segera selesaikan pembayaran agar pendaftaran "
+            "tidak hangus.\n\n"
             "Lakukan pembayaran melalui: {link_pembayaran}\n\n"
             "Terima kasih,\nPanitia PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
         ),
@@ -198,7 +217,8 @@ NOTIF_TEMPLATES = [
         "email_subject": "Pembayaran Formulir PPDB Berhasil",
         "body": (
             "Halo {nama_peserta},\n\n"
-            "Pembayaran formulir pendaftaran Anda sebesar {nominal_bayar} telah kami terima. "
+            "Pembayaran formulir pendaftaran Anda sebesar {nominal_bayar} telah "
+            "kami terima. "
             "Anda kini dapat melanjutkan ke tahap upload dokumen persyaratan.\n\n"
             "Terima kasih,\nPanitia PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
         ),
@@ -210,7 +230,8 @@ NOTIF_TEMPLATES = [
         "email_subject": "Pembayaran Formulir PPDB Gagal",
         "body": (
             "Halo {nama_peserta},\n\n"
-            "Sayangnya pembayaran formulir pendaftaran Anda gagal diproses. Silakan coba lagi "
+            "Sayangnya pembayaran formulir pendaftaran Anda gagal diproses. "
+            "Silakan coba lagi "
             "sebelum batas waktu {batas_waktu_bayar}.\n\n"
             "Lakukan pembayaran melalui: {link_pembayaran}\n\n"
             "Terima kasih,\nPanitia PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
@@ -223,8 +244,10 @@ NOTIF_TEMPLATES = [
         "email_subject": "Pendaftaran PPDB Dinyatakan Hangus",
         "body": (
             "Halo {nama_peserta},\n\n"
-            "Kami mohon maaf, pendaftaran Anda dinyatakan hangus karena belum melakukan pembayaran "
-            "formulir hingga batas waktu yang ditentukan. Silakan mendaftar kembali pada gelombang berikutnya.\n\n"
+            "Kami mohon maaf, pendaftaran Anda dinyatakan hangus karena belum "
+            "melakukan pembayaran "
+            "formulir hingga batas waktu yang ditentukan. Silakan mendaftar "
+            "kembali pada gelombang berikutnya.\n\n"
             "Terima kasih,\nPanitia PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
         ),
     },
@@ -235,7 +258,8 @@ NOTIF_TEMPLATES = [
         "email_subject": "Pengingat: Upload Dokumen PPDB (H-3)",
         "body": (
             "Halo {nama_peserta},\n\n"
-            "Batas waktu upload dokumen persyaratan {nama_gelombang} tinggal 3 hari lagi. "
+            "Batas waktu upload dokumen persyaratan {nama_gelombang} tinggal "
+            "3 hari lagi. "
             "Segera lengkapi dokumen Anda sebelum batas akhir.\n\n"
             "Terima kasih,\nPanitia PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
         ),
@@ -247,7 +271,8 @@ NOTIF_TEMPLATES = [
         "email_subject": "Pengingat: Upload Dokumen PPDB (H-1)",
         "body": (
             "Halo {nama_peserta},\n\n"
-            "Batas waktu upload dokumen persyaratan {nama_gelombang} tinggal 1 hari lagi. "
+            "Batas waktu upload dokumen persyaratan {nama_gelombang} tinggal "
+            "1 hari lagi. "
             "Segera lengkapi dokumen Anda sebelum batas akhir.\n\n"
             "Terima kasih,\nPanitia PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
         ),
@@ -259,7 +284,8 @@ NOTIF_TEMPLATES = [
         "email_subject": "Dokumen PPDB Anda Disetujui",
         "body": (
             "Halo {nama_peserta},\n\n"
-            "Selamat! Dokumen persyaratan Anda telah disetujui. Kami akan menginformasikan jadwal "
+            "Selamat! Dokumen persyaratan Anda telah disetujui. Kami akan "
+            "menginformasikan jadwal "
             "seleksi melalui email dan WhatsApp.\n\n"
             "Terima kasih,\nPanitia PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
         ),
@@ -308,7 +334,8 @@ NOTIF_TEMPLATES = [
         "email_subject": "Hasil Seleksi PPDB",
         "body": (
             "Halo {nama_peserta},\n\n"
-            "Pengumuman hasil seleksi PPDB telah dirilis. Silakan cek status Anda pada dashboard pendaftar.\n\n"
+            "Pengumuman hasil seleksi PPDB telah dirilis. Silakan cek status Anda "
+            "pada dashboard pendaftar.\n\n"
             "Terima kasih,\nPanitia PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
         ),
     },
@@ -363,13 +390,10 @@ def ensure_modules_and_pages() -> None:
 
 
 def ensure_roles() -> None:
+    """Create or reconcile every default role to match the seed definition."""
     for role in DEFAULT_ROLES:
         existing = get_by_column("roles", "name", role["name"])
         if existing:
-            if not role.get("is_system"):
-                print(f"  role exists:     {role['name']}")
-                continue
-
             stored_perms = json.loads(existing.get("permissions") or "{}")
             if (
                 stored_perms != role["permissions"]
@@ -453,13 +477,51 @@ def ensure_notification_templates() -> None:
         print(f"  template created: {tpl['event_key']}")
 
 
+def ensure_default_superadmin() -> None:
+    """Create a default superadmin account if none exists."""
+    existing = execute_raw(
+        "SELECT id FROM users WHERE user_type = 'superadmin' LIMIT 1"
+    )
+    if existing:
+        print("  superadmin exists (kept as-is)")
+        return
+    role = get_by_column("roles", "name", "Superadmin")
+    role_id = role["id"] if role else None
+    now = _now()
+    user_id = str(uuid4())
+    create_record(
+        "users",
+        {
+            "id": user_id,
+            "username": DEFAULT_SUPERADMIN_USERNAME,
+            "full_name": "Superadmin",
+            "password_hash": hash_password(DEFAULT_SUPERADMIN_PASSWORD),
+            "email": "",
+            "phone": "",
+            "user_type": "superadmin",
+            "role_id": role_id,
+            "avatar_url": "",
+            "is_active": 1,
+            "failed_login_attempts": 0,
+            "created_at": now,
+            "updated_at": now,
+        },
+    )
+    print(
+        f"  superadmin created: '{DEFAULT_SUPERADMIN_USERNAME}' / "
+        f"'{DEFAULT_SUPERADMIN_PASSWORD}' — ganti password setelah login pertama."
+    )
+
+
 def main() -> None:
     print("Seeding database...")
+    print("  Using DATABASE_URL:", settings.database_url)
     ensure_modules_and_pages()
     ensure_roles()
     ensure_applicant_roles()
     ensure_site_settings()
     ensure_notification_templates()
+    ensure_default_superadmin()
     print("Done.")
 
 

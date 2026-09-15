@@ -12,6 +12,7 @@ import RolesPage from './pages/RolesPage'
 import RoleFormPage from './pages/RoleFormPage'
 import ProfilePage from './pages/ProfilePage'
 import ApplicantsPage from './pages/ApplicantsPage'
+import ActivitiesPage from './pages/ActivitiesPage'
 import NotificationsPage from './pages/NotificationsPage'
 import NotFoundPage from './pages/NotFoundPage'
 import * as api from './api/client'
@@ -51,7 +52,7 @@ export default function App() {
               <ProtectedRoute>
                 <Layout>
                   <Routes>
-                    <Route path="/" element={<DashboardPage />} />
+                    <Route path="/dashboard" element={<DashboardPage />} />
                     <Route path="/users" element={<UsersPage />} />
                     <Route path="/users/new" element={<UserFormPage />} />
                     <Route path="/users/:id" element={<UserFormPage />} />
@@ -60,6 +61,7 @@ export default function App() {
                     <Route path="/roles/:id" element={<RoleFormPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/applicants" element={<ApplicantsPage />} />
+                    <Route path="/activities" element={<ActivitiesPage />} />
                     <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>

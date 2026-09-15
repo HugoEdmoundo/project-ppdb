@@ -9,7 +9,7 @@ export default function AdminPage() {
   useEffect(() => {
     const user = typeof window !== 'undefined' ? localStorage.getItem('admin_user') : null
     if (user) {
-      router.replace('/admin/dashboard')
+      router.replace('/admin/overview')
     } else {
       router.replace('/admin/login')
     }

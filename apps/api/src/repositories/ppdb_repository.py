@@ -217,17 +217,23 @@ class PPDBRepository:
         self.db.commit()
 
     def count_discounts_for_fee_item(self, fee_item_id: str) -> int:
-        return (
-            self.db.query(PPDBApplicantDiscount)
-            .filter(PPDBApplicantDiscount.fee_item_id == fee_item_id)
-            .count()
+        return cast(
+            int,
+            (
+                self.db.query(PPDBApplicantDiscount)
+                .filter(PPDBApplicantDiscount.fee_item_id == fee_item_id)
+                .count()
+            ),
         )
 
     def count_bills_for_fee_item(self, fee_item_id: str) -> int:
-        return (
-            self.db.query(PPDBStage2Bill)
-            .filter(PPDBStage2Bill.fee_item_id == fee_item_id)
-            .count()
+        return cast(
+            int,
+            (
+                self.db.query(PPDBStage2Bill)
+                .filter(PPDBStage2Bill.fee_item_id == fee_item_id)
+                .count()
+            ),
         )
 
     def update_mou(self, mou: PPDBBMOU) -> PPDBBMOU:
@@ -336,13 +342,16 @@ class PPDBRepository:
         return result, total
 
     def get_applicant_by_user_id(self, user_id: str) -> PPDBApplicant | None:
-        return (
-            self.db.query(PPDBApplicant)
-            .filter(
-                PPDBApplicant.user_id == user_id,
-                PPDBApplicant.deleted_at.is_(None),
-            )
-            .first()
+        return cast(
+            PPDBApplicant | None,
+            (
+                self.db.query(PPDBApplicant)
+                .filter(
+                    PPDBApplicant.user_id == user_id,
+                    PPDBApplicant.deleted_at.is_(None),
+                )
+                .first()
+            ),
         )
 
     def get_applicant_documents(self, applicant_id: str) -> list[dict[str, Any]]:
@@ -445,10 +454,13 @@ class PPDBRepository:
     def count_applicants_in_wave(self, wave_id: str) -> int:
         """Total pendaftar di gelombang tertentu (ikut soft-deleted/expired,
         konsisten dengan GET /ppdb/applicants yang tetap menampilkan expired)."""
-        return (
-            self.db.query(PPDBApplicant)
-            .filter(PPDBApplicant.wave_id == wave_id)
-            .count()
+        return cast(
+            int,
+            (
+                self.db.query(PPDBApplicant)
+                .filter(PPDBApplicant.wave_id == wave_id)
+                .count()
+            ),
         )
 
     def count_applicants_by_status_in_wave(self, wave_id: str) -> dict[str, int]:

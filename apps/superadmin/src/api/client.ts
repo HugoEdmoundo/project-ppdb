@@ -253,8 +253,13 @@ export async function deleteRole(id: string): Promise<void> {
   await apiFetch(`/roles/${id}`, { method: 'DELETE' })
 }
 
-export async function getDashboardStats(): Promise<{ total_users: number; total_roles: number }> {
+export async function getDashboardStats(): Promise<any> {
   return apiFetch('/superadmin/dashboard')
+}
+
+export async function getAuditLogs(params?: any): Promise<any> {
+  const query = params ? '?' + new URLSearchParams(params) : ''
+  return await apiFetch(`/superadmin/audit-logs${query}`)
 }
 
 // ── Settings ──────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import uuid
+from typing import cast
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -37,7 +38,7 @@ class UserRepository:
         return users, total
 
     def get_by_id(self, user_id: str) -> User | None:
-        return self.db.query(User).filter(User.id == user_id).first()
+        return cast(User | None, self.db.query(User).filter(User.id == user_id).first())
 
     def create(self, user: User) -> User:
         self.db.add(user)

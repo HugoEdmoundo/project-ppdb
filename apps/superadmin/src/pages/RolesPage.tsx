@@ -28,7 +28,7 @@ export default function RolesPage() {
 
   useEffect(() => {
     if (!authLoading && currentUser && !canView) {
-      navigate('/')
+      navigate('/dashboard')
     }
   }, [currentUser, authLoading, canView, navigate])
 

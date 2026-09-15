@@ -25,7 +25,7 @@ export default function AdminLogin() {
     try {
       await login(username, password)
       setSuccess(true)
-      setTimeout(() => router.push('/admin/dashboard'), 900)
+      setTimeout(() => router.push('/admin/overview'), 900)
     } catch (e: unknown) {
       setSuccess(false)
       const msg = e instanceof Error ? e.message : 'Login gagal. Periksa username dan password.'

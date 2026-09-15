@@ -38,7 +38,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (!authLoading && currentUser && !canView) {
-      navigate('/')
+      navigate('/dashboard')
     }
   }, [currentUser, authLoading, canView, navigate])
 

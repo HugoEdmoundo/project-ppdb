@@ -21,7 +21,7 @@ import TabsBarCard from '@/components/shared/TabsBarCard'
 
 export default function PaymentsPage() {
   const { toast } = useToast()
-  const { canCrud } = useCan('payment', 'crud')
+  const { canCrud } = useCan('ppdb', 'crud')
   const queryClient = useQueryClient()
 
   const [searchParams] = useSearchParams()

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import * as api from '@/app/lib/api'
 import { eventBus } from '@/app/lib/event-bus'
 import { useSSE } from '@/app/hooks/useSSE'
@@ -10,7 +11,7 @@ import AdminConfirm from '@/app/components/ui/AdminConfirm'
 import Image from 'next/image'
 import {
   Newspaper, GraduationCap, Building2, Users, Trophy,
-  Image as ImageIcon, MessageSquare, Link, Phone, Settings,
+  Image as ImageIcon, MessageSquare, Link as LinkIcon, Phone, Settings,
   Plus, Menu, X, ChevronLeft, LogOut, User as UserIcon,
   LayoutDashboard, Upload, ImagePlus, Link2, Loader2,
 } from 'lucide-react'
@@ -133,7 +134,7 @@ const TABS: TabDef[] = [
   { key: 'achievements', label: 'Prestasi', endpoint: '/achievements', fetch: api.getAchievements, icon: Trophy },
   { key: 'gallery', label: 'Galeri', endpoint: '/gallery', fetch: api.getGallery, icon: ImageIcon },
   { key: 'testimonials', label: 'Testimoni', endpoint: '/testimonials', fetch: api.getTestimonials, icon: MessageSquare },
-  { key: 'social', label: 'Tautan Sosial', endpoint: '/social-links', fetch: api.getSocialLinks, icon: Link },
+  { key: 'social', label: 'Tautan Sosial', endpoint: '/social-links', fetch: api.getSocialLinks, icon: LinkIcon },
   { key: 'contact', label: 'Info Kontak', endpoint: '/contact-info', fetch: api.getContactInfo, icon: Phone },
   { key: 'settings', label: 'Pengaturan', endpoint: '/settings', fetch: api.getAdminSettings, icon: Settings },
 ]
@@ -383,6 +384,16 @@ export default function AdminDashboard() {
   const [logoUrl, setLogoUrl] = useState('/download.png')
 
   useSSE('companyprofile')
+
+  // Dukung deep-link `?tab=...` (mis. ikon seksi dari dashboard overview).
+  useEffect(() => {
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+    const tab = params.get('tab')
+    if (tab && TABS.some((t) => t.key === tab)) {
+      const frame = requestAnimationFrame(() => setActiveTab(tab))
+      return () => cancelAnimationFrame(frame)
+    }
+  }, [])
 
   const filteredTabs = pagePermissions && pagePermissions.length > 0
     ? TABS.filter(tab => pagePermissions.some(p => `page-cp-${tab.key}` === p))
@@ -1112,6 +1123,20 @@ export default function AdminDashboard() {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1 no-scrollbar">
+          <Link
+            href="/admin/overview"
+            onClick={() => setSidebarOpen(false)}
+            className={cn(
+              'w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-150 text-left',
+              collapsed ? 'justify-center p-2' : 'px-3 py-2.5',
+              'text-muted-foreground hover:bg-primary/10 hover:text-foreground'
+            )}
+            title={collapsed ? 'Dashboard' : undefined}
+          >
+            <LayoutDashboard className="h-4 w-4 shrink-0" />
+            {!collapsed && <span className="truncate">Dashboard</span>}
+          </Link>
+
           {filteredTabs.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.key

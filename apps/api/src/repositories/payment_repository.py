@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, delete, func, select
@@ -25,7 +25,7 @@ class PaymentRepository:
 
     def get_active_wave_id(self) -> str | None:
         stmt = select(PPDBWave.id).where(PPDBWave.status == "active").limit(1)
-        return self.db.scalars(stmt).first()
+        return cast(str | None, self.db.scalars(stmt).first())
 
     def get_active_wave_info(self) -> dict[str, str] | None:
         stmt = select(PPDBWave).where(PPDBWave.status == "active").limit(1)
@@ -96,7 +96,7 @@ class PaymentRepository:
 
     def get_applicant_by_user_id(self, user_id: str) -> PPDBApplicant | None:
         stmt = select(PPDBApplicant).where(PPDBApplicant.user_id == user_id)
-        return self.db.scalars(stmt).first()
+        return cast(PPDBApplicant | None, self.db.scalars(stmt).first())
 
     def get_latest_transaction_by_applicant_id(
         self, applicant_id: str
@@ -107,7 +107,7 @@ class PaymentRepository:
             .order_by(PPDBPaymentTransaction.created_at.desc())
             .limit(1)
         )
-        return self.db.scalars(stmt).first()
+        return cast(PPDBPaymentTransaction | None, self.db.scalars(stmt).first())
 
     def get_transaction_by_id(
         self, transaction_id: str
@@ -115,7 +115,7 @@ class PaymentRepository:
         stmt = select(PPDBPaymentTransaction).where(
             PPDBPaymentTransaction.id == transaction_id
         )
-        return self.db.scalars(stmt).first()
+        return cast(PPDBPaymentTransaction | None, self.db.scalars(stmt).first())
 
     def update_transaction(self, transaction: PPDBPaymentTransaction):
         transaction.updated_at = datetime.now(WIB)
@@ -131,7 +131,7 @@ class PaymentRepository:
 
     def get_applicant_by_id(self, applicant_id: str) -> PPDBApplicant | None:
         stmt = select(PPDBApplicant).where(PPDBApplicant.id == applicant_id)
-        return self.db.scalars(stmt).first()
+        return cast(PPDBApplicant | None, self.db.scalars(stmt).first())
 
     # Stage 2
     def get_stage2_applicants(self, wave_id: str) -> tuple[list[Any], int]:
@@ -226,11 +226,11 @@ class PaymentRepository:
 
     def get_mou_by_applicant_id(self, applicant_id: str) -> PPDBBMOU | None:
         stmt = select(PPDBBMOU).where(PPDBBMOU.applicant_id == applicant_id)
-        return self.db.scalars(stmt).first()
+        return cast(PPDBBMOU | None, self.db.scalars(stmt).first())
 
     def get_fee_item_by_id(self, fee_item_id: str) -> PPDBWaveFeeItem | None:
         stmt = select(PPDBWaveFeeItem).where(PPDBWaveFeeItem.id == fee_item_id)
-        return self.db.scalars(stmt).first()
+        return cast(PPDBWaveFeeItem | None, self.db.scalars(stmt).first())
 
     def get_applicant_discount(
         self, applicant_id: str, fee_item_id: str
@@ -239,7 +239,7 @@ class PaymentRepository:
             PPDBApplicantDiscount.applicant_id == applicant_id,
             PPDBApplicantDiscount.fee_item_id == fee_item_id,
         )
-        return self.db.scalars(stmt).first()
+        return cast(PPDBApplicantDiscount | None, self.db.scalars(stmt).first())
 
     def save_applicant_discount(self, discount: PPDBApplicantDiscount):
         self.db.add(discount)
@@ -270,7 +270,7 @@ class PaymentRepository:
 
     def get_wave_by_id(self, wave_id: str) -> PPDBWave | None:
         stmt = select(PPDBWave).where(PPDBWave.id == wave_id)
-        return self.db.scalars(stmt).first()
+        return cast(PPDBWave | None, self.db.scalars(stmt).first())
 
     def save_mou(self, mou: PPDBBMOU):
         self.db.add(mou)
@@ -386,7 +386,7 @@ class PaymentRepository:
 
     def get_stage2_bill_by_id(self, bill_id: str) -> PPDBStage2Bill | None:
         stmt = select(PPDBStage2Bill).where(PPDBStage2Bill.id == bill_id)
-        return self.db.scalars(stmt).first()
+        return cast(PPDBStage2Bill | None, self.db.scalars(stmt).first())
 
     def update_stage2_bill(self, bill: PPDBStage2Bill):
         bill.updated_at = datetime.now(WIB)

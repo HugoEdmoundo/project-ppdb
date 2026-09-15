@@ -104,20 +104,12 @@ class SelectionRepository:
         )
         return cast(Sequence[SelectionCriteria], self.db.scalars(stmt).all())
 
-    def get_category_by_id(
-        self, category_id: str
-    ) -> SelectionCategory | None:
-        stmt = select(SelectionCategory).where(
-            SelectionCategory.id == category_id
-        )
+    def get_category_by_id(self, category_id: str) -> SelectionCategory | None:
+        stmt = select(SelectionCategory).where(SelectionCategory.id == category_id)
         return cast(SelectionCategory | None, self.db.scalar(stmt))
 
-    def get_criteria_by_id(
-        self, criteria_id: str
-    ) -> SelectionCriteria | None:
-        stmt = select(SelectionCriteria).where(
-            SelectionCriteria.id == criteria_id
-        )
+    def get_criteria_by_id(self, criteria_id: str) -> SelectionCriteria | None:
+        stmt = select(SelectionCriteria).where(SelectionCriteria.id == criteria_id)
         return cast(SelectionCriteria | None, self.db.scalar(stmt))
 
     def get_active_wave_info(self) -> dict[str, Any] | None:

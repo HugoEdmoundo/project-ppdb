@@ -252,15 +252,11 @@ class AuthService:
         new_password = data.get("new_password") or data.get("password")
         if new_password:
             if not data.get("old_password"):
-                raise HTTPException(
-                    status_code=400, detail="Old password is required"
-                )
+                raise HTTPException(status_code=400, detail="Old password is required")
             if not verify_password(
                 data["old_password"], user_dict.get("password_hash", "")
             ):
-                raise HTTPException(
-                    status_code=400, detail="Old password is incorrect"
-                )
+                raise HTTPException(status_code=400, detail="Old password is incorrect")
             user.password_hash = hash_password(new_password)
 
         self.repository.update_user(user)
@@ -346,9 +342,7 @@ class AuthService:
             self.repository.db.commit()
         except IntegrityError as exc:
             self.repository.db.rollback()
-            raise HTTPException(
-                400, "Username atau email sudah digunakan"
-            ) from exc
+            raise HTTPException(400, "Username atau email sudah digunakan") from exc
         self.repository.db.refresh(user)
 
         token = create_access_token({"sub": user.id})

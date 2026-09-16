@@ -46,12 +46,12 @@ def get_sqlite_engine():
 def serialize(val):
     if val is None:
         return None
-    if isinstance(val, (datetime.datetime, datetime.date)):
+    if isinstance(val, datetime.datetime | datetime.date):
         return str(val)
     if isinstance(val, bytes):
         try:
             return val.decode("utf-8")
-        except:
+        except (UnicodeDecodeError, ValueError):
             return val.hex()
     if isinstance(val, dict):
         return json.dumps(val, ensure_ascii=False)
@@ -90,12 +90,11 @@ def migrate():
                         try:
                             col_str = ", ".join(f"`{c}`" for c in rd)
                             ph_str = ", ".join(f":{c}" for c in rd)
-                            sc.execute(
-                                text(
-                                    f"INSERT OR REPLACE INTO `{table}` ({col_str}) VALUES ({ph_str})"
-                                ),
-                                rd,
+                            insert_sql = (
+                                f"INSERT OR REPLACE INTO `{table}` "
+                                f"({col_str}) VALUES ({ph_str})"
                             )
+                            sc.execute(text(insert_sql), rd)
                             ok += 1
                         except Exception as e:
                             err += 1

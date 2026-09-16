@@ -126,7 +126,7 @@ def favicon():
 def read_root():
     return {
         "message": "Pesantren Tahfidz Qur'an dan Digital Arrahman API",
-        "version": "2.0.0",
+        "version": "0.1.0",
         "docs": "/scalar",
     }
 
@@ -153,5 +153,23 @@ elif settings.upload_provider == "local":
 
     from fastapi.staticfiles import StaticFiles
 
+    class DownloadStaticFiles(StaticFiles):
+        """StaticFiles that forces downloads (never executes served content).
+
+        Uploaded files may be attacker-controlled; even with magic-byte checks
+        a browser should not render them inline. `Content-Disposition: attachment`
+        plus `X-Content-Type-Options: nosniff` prevents stored-XSS via SVG/HTML.
+        """
+
+        def file_response(self, *args, **kwargs):
+            response = super().file_response(*args, **kwargs)
+            response.headers["Content-Disposition"] = "attachment"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            return response
+
     os.makedirs(settings.upload_dir, exist_ok=True)
-    app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
+    app.mount(
+        "/uploads",
+        DownloadStaticFiles(directory=settings.upload_dir),
+        name="uploads",
+    )

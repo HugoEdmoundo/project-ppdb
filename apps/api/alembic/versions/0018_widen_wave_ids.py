@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """Widen wave_id columns to fit prefixed UUIDs
 
 Revision ID: 0018

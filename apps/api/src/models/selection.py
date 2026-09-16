@@ -65,9 +65,6 @@ class SelectionCriteria(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     category_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    max_score: Mapped[float] = mapped_column(
-        Float, nullable=False, server_default="100.0"
-    )
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 

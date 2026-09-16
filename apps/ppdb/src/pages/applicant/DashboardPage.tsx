@@ -25,6 +25,7 @@ const STEP_ICONS: LucideIcon[] = [Wallet, FileUp, ClipboardCheck, Trophy]
 
 const STATUS_LABEL: Record<string, string> = {
   registration: 'Terdaftar',
+  pending_payment: 'Menunggu Pembayaran',
   document_uploaded: 'Dokumen Menunggu Review',
   document_uploaded_pending: 'Dokumen Menunggu Review',
   document_rejected: 'Dokumen Ditolak',

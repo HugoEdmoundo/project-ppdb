@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """Drop unused legacy SPP & students tables
 
 Revision ID: 0019
@@ -24,17 +25,27 @@ depends_on: str | Sequence[str] | None = None
 _TABLES: list[str] = ["spp_payments", "spp_bills", "spp_settings", "students"]
 
 
+def _existing_tables() -> set:
+    import sqlalchemy as sa
+
+    return set(sa.inspect(op.get_bind()).get_table_names())
+
+
 def upgrade() -> None:
     bind = op.get_bind()
+    existing = _existing_tables()
+    tables = [t for t in _TABLES if t in existing]
+    if not tables:
+        return
     if bind.dialect.name == "mysql":
         op.execute("SET FOREIGN_KEY_CHECKS = 0")
         try:
-            for table in _TABLES:
+            for table in tables:
                 op.drop_table(table)
         finally:
             op.execute("SET FOREIGN_KEY_CHECKS = 1")
     else:
-        for table in _TABLES:
+        for table in tables:
             op.drop_table(table)
 
 

@@ -146,7 +146,7 @@ export default function NotificationsPage() {
         subject,
         body,
       })
-      toast('success', `Notifikasi terkirim (simulasi): ${res.sent} dari ${res.total} penerima`)
+      toast('success', res?.message || 'Notifikasi berhasil dikirim')
       setSubject('')
       setBody('')
       setSelected(new Set())

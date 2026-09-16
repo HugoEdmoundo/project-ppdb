@@ -32,7 +32,7 @@ export default function ApplicantsPage() {
   const fetchApplicants = async (q = search, p = page) => {
     setLoading(true)
     try {
-      const res = await api.getApplicants({ search: q, page: p, per_page: perPage })
+      const res = await api.getApplicants({ search: q, page: p, perPage: perPage })
       setApplicants((res as any).data || [])
       setTotal((res as any).total ?? 0)
       setActiveWave((res as any).active_wave ?? null)

@@ -161,9 +161,9 @@ export default function ResultStep({ applicant, selectionResult, mou, stage2Bill
                             </tr>
                           </thead>
                           <tbody>
-                            {bills.sort((a: any, b: any) => a.installment_sequence - b.installment_sequence).map((b: any) => (
+                            {bills.sort((a: any, b: any) => a.installment_number - b.installment_number).map((b: any) => (
                               <tr key={b.id} className="border-b last:border-0">
-                                <td className="p-3">Cicilan {b.installment_sequence} dari {bills.length}</td>
+                                <td className="p-3">Cicilan {b.installment_number} dari {bills.length}</td>
                                 <td className="p-3 font-medium">{formatRp(Number(b.amount))}</td>
                                 <td className="p-3 text-center">
                                   <Badge variant={b.status === 'paid' ? 'success' : b.status === 'pending' ? 'warning' : 'secondary'} className="text-[10px]">

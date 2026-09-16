@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """widen file_uploads.entity_id
 
 Revision ID: 0006

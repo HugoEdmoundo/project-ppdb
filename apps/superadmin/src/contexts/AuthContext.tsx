@@ -30,6 +30,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api.getMe().then((u) => setUser(u)).catch(() => {
       setUser(null)
     }).finally(() => setLoading(false))
+
+    // Revalidasi berkala: akun yang dinonaktifkan (is_active=false) atau token
+    // yang di-revoke saat sesi berjalan akan segera di-kick ke /auth/login.
+    const interval = window.setInterval(() => {
+      api.getMe().then((u) => setUser(u)).catch(() => {
+        setUser(null)
+        window.location.href = '/auth/login'
+      })
+    }, 60_000)
+
+    return () => window.clearInterval(interval)
   }, [])
 
   const login = useCallback(async (username: string, password: string) => {

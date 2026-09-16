@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -7,6 +8,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
+from src.core.notif_service import send_notifications
 from src.core.security import (
     create_access_token,
     generate_refresh_token,
@@ -16,6 +18,8 @@ from src.core.security import (
 )
 from src.models.auth import RefreshToken, Role, User
 from src.repositories.auth_repository import AuthRepository
+
+logger = logging.getLogger("ptdarrahman.auth")
 
 LOCKOUT_THRESHOLD = 5
 LOCKOUT_MINUTES = 15
@@ -357,6 +361,7 @@ class AuthService:
         import string
         from datetime import date as date_type
 
+        from src.core.config import settings
         from src.models.ppdb import PPDBApplicant
 
         try:
@@ -390,4 +395,40 @@ class AuthService:
         user.updated_at = datetime.now(WIB)
         self.repository.db.commit()
 
-        return {"username": user.username, "new_password": new_password}
+        # Password baru dikirim lewat channel notifikasi (email/WA), bukan
+        # dikembalikan lewat response API. Ini mencegah siapa pun yang hanya
+        # mengetahui NIK + tanggal lahir mengambil alih akun.
+        try:
+            send_notifications(
+                [
+                    (
+                        "password_reset",
+                        {
+                            "password": new_password,
+                            "link_login": f"{settings.ppdb_frontend_url}/auth/login",
+                        },
+                    )
+                ],
+                user.id,
+                user_row={
+                    "id": user.id,
+                    "email": user.email,
+                    "username": user.username,
+                    "full_name": user.full_name,
+                    "phone": user.phone or "",
+                },
+                applicant_row={
+                    "id": applicant.id,
+                    "full_name": applicant.full_name,
+                    "phone": applicant.phone,
+                },
+            )
+        except Exception:
+            logger.exception("send password_reset notification failed; continuing")
+
+        return {
+            "message": (
+                "Reset password berhasil. Password baru telah dikirim ke "
+                "email/WhatsApp yang terdaftar."
+            )
+        }

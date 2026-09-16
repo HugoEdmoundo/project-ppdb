@@ -1,14 +1,25 @@
-"""add address fields
+# mypy: ignore-errors
+"""add address fields (portable + idempotent rewrite)
 
 Revision ID: 0008
 Revises: 0007
 Create Date: 2026-08-18 10:23:24.851603
 
+The original version of this migration emitted raw MySQL ``ALTER TABLE``
+statements (``MODIFY COLUMN``, ``DROP INDEX IF EXISTS``, ...) that crash on a
+fresh SQLite database. This rewrite reflects the live schema first and only
+applies changes that are actually missing, using ``batch_alter_table`` so the
+same code runs on MySQL production and SQLite development databases.
+
+Every operation is guarded: if the target table/column/constraint does not
+exist (or already matches), nothing happens. A fresh database created from
+0001 is therefore left untouched, while a legacy MySQL database is still
+reconciled toward the current model.
 """
 
 from collections.abc import Sequence
 
-from sqlalchemy import text
+import sqlalchemy as sa
 
 from alembic import op
 
@@ -18,294 +29,349 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-def _execute_safe(sql: str) -> None:
-    """Execute raw SQL, ignoring common 'already done' errors."""
-    try:
-        op.execute(text(sql))
-    except Exception as e:
-        err = str(e)
-        # Ignore errors that mean the operation was already done
-        if any(
-            x in err
-            for x in [
-                "Duplicate key name",
-                "Can't drop",
-                "check that it exists",
-                "Duplicate entry",
-                "already exists",
-                "doesn't exist",
-                "Unknown column",
-                "Duplicate column",
-                "error in your SQL syntax",
-                "foreign key constraint",
-                "Duplicate key on write",
-                "Can't create table",
-            ]
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _tables() -> set[str]:
+    return {t for t in sa.inspect(op.get_bind()).get_table_names()}
+
+
+def _has_table(name: str) -> bool:
+    return name in _tables()
+
+
+def _columns(table: str) -> set[str]:
+    if not _has_table(table):
+        return set()
+    return {c["name"] for c in sa.inspect(op.get_bind()).get_columns(table)}
+
+
+def _has_column(table: str, column: str) -> bool:
+    return column in _columns(table)
+
+
+def _column_info(table: str, column: str) -> dict | None:
+    for c in sa.inspect(op.get_bind()).get_columns(table):
+        if c["name"] == column:
+            return c
+    return None
+
+
+def _type_base(coltype) -> str:
+    """Normalize a reflected type to a comparable base name."""
+    name = str(coltype).upper()
+    base = name.split("(")[0]
+    if base in ("INTEGER", "INT"):
+        return "INT"
+    return base
+
+
+def _add_column(table: str, column) -> None:
+    if not _has_column(table, column.name):
+        with op.batch_alter_table(table) as batch:
+            batch.add_column(column)
+
+
+def _drop_column(table: str, column: str) -> None:
+    if _has_column(table, column):
+        with op.batch_alter_table(table) as batch:
+            batch.drop_column(column)
+
+
+def _alter_column(
+    table: str,
+    column: str,
+    *,
+    type_=None,
+    nullable: bool | None = None,
+    server_default=None,
+) -> None:
+    """Alter `column` only when nullable/type/default actually differ."""
+    if not _has_column(table, column):
+        return
+    current = _column_info(table, column)
+    if current is None:
+        return
+
+    changes: dict = {}
+    if type_ is not None and _type_base(current["type"]) != _type_base(type_):
+        changes["type_"] = type_
+        changes["existing_type"] = current["type"]
+    if nullable is not None and bool(current["nullable"]) != bool(nullable):
+        changes["nullable"] = nullable
+        changes["existing_nullable"] = bool(current["nullable"])
+
+    if server_default is not None:
+        existing = current.get("default")
+        if (
+            existing is None
+            or str(existing).replace("'", "").upper()
+            != str(server_default).replace("'", "").upper()
         ):
-            return
-        raise
+            # Server-side defaults are only reconciled on MySQL; SQLite dev
+            # databases already carry the model-level defaults.
+            if op.get_bind().dialect.name == "mysql":
+                changes["server_default"] = server_default
+                changes["existing_server_default"] = existing
+
+    if not changes:
+        return
+    with op.batch_alter_table(table) as batch:
+        batch.alter_column(column, **changes)
+
+
+def _has_index(table: str, index: str) -> bool:
+    if not _has_table(table):
+        return False
+    return index in {i["name"] for i in sa.inspect(op.get_bind()).get_indexes(table)}
+
+
+def _create_index(table: str, index: str, columns: list[str]) -> None:
+    if _has_index(table, index):
+        return
+    with op.batch_alter_table(table) as batch:
+        batch.create_index(index, columns)
+
+
+def _drop_index(table: str, index: str) -> None:
+    if not _has_index(table, index):
+        return
+    with op.batch_alter_table(table) as batch:
+        batch.drop_index(index)
+
+
+def _has_unique(table: str, column: str) -> bool:
+    if not _has_table(table):
+        return False
+    inspector = sa.inspect(op.get_bind())
+    for u in inspector.get_unique_constraints(table):
+        if column in (u.get("column_names") or []):
+            return True
+    return False
+
+
+def _add_unique(table: str, column: str) -> None:
+    if _has_unique(table, column):
+        return
+    with op.batch_alter_table(table) as batch:
+        batch.create_unique_constraint(f"uq_{table}_{column}", [column])
+
+
+def _has_fk(table: str, column: str, referred_table: str) -> bool:
+    if not _has_table(table):
+        return False
+    inspector = sa.inspect(op.get_bind())
+    for fk in inspector.get_foreign_keys(table):
+        if (
+            column in (fk.get("constrained_columns") or [])
+            and fk.get("referred_table") == referred_table
+        ):
+            return True
+    return False
+
+
+def _add_fk(
+    table: str, column: str, referred_table: str, ondelete: str | None = None
+) -> None:
+    if _has_fk(table, column, referred_table):
+        return
+    with op.batch_alter_table(table) as batch:
+        batch.create_foreign_key(
+            f"fk_{table}_{column}_{referred_table}",
+            column,
+            referred_table,
+            ["id"],
+            ondelete=ondelete,
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Migration
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 def upgrade() -> None:
     # ── audit_log ─────────────────────────────────────────────────────────
-    _execute_safe(
-        "ALTER TABLE audit_log MODIFY COLUMN created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)"
+    _alter_column(
+        "audit_log",
+        "created_at",
+        nullable=False,
+        server_default=sa.text("CURRENT_TIMESTAMP(3)"),
     )
-    _execute_safe("DROP INDEX IF EXISTS idx_audit_log_created ON audit_log")
-    _execute_safe("DROP INDEX IF EXISTS idx_audit_log_entity ON audit_log")
-    _execute_safe("ALTER TABLE audit_log DROP FOREIGN KEY fk_audit_log_user")
-    _execute_safe("DROP INDEX IF EXISTS idx_audit_log_user ON audit_log")
-    _execute_safe("DROP INDEX IF EXISTS ix_audit_log_created_at ON audit_log")
-    _execute_safe("DROP INDEX IF EXISTS ix_audit_log_user_id ON audit_log")
-    _execute_safe("CREATE INDEX ix_audit_log_created_at ON audit_log (created_at)")
-    _execute_safe("CREATE INDEX ix_audit_log_user_id ON audit_log (user_id)")
-    _execute_safe(
-        "ALTER TABLE audit_log ADD CONSTRAINT fk_audit_log_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL"
-    )
+    for idx in ("idx_audit_log_created", "idx_audit_log_entity", "idx_audit_log_user"):
+        _drop_index("audit_log", idx)
+    for idx in ("ix_audit_log_created_at", "ix_audit_log_user_id"):
+        _drop_index("audit_log", idx)
+    _create_index("audit_log", "ix_audit_log_created_at", ["created_at"])
+    _create_index("audit_log", "ix_audit_log_user_id", ["user_id"])
+    _add_fk("audit_log", "user_id", "users", ondelete="SET NULL")
 
     # ── file_uploads ──────────────────────────────────────────────────────
-    _execute_safe("ALTER TABLE file_uploads MODIFY COLUMN entity_type VARCHAR(50)")
-    _execute_safe("DROP INDEX IF EXISTS idx_file_uploads_entity ON file_uploads")
-    _execute_safe("ALTER TABLE file_uploads DROP FOREIGN KEY fk_file_uploads_user")
-    _execute_safe("DROP INDEX IF EXISTS idx_file_uploads_uploaded_by ON file_uploads")
-    _execute_safe(
-        "ALTER TABLE file_uploads ADD CONSTRAINT fk_file_uploads_user FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE"
-    )
+    _alter_column("file_uploads", "entity_type", type_=sa.String(50))
+    for idx in ("idx_file_uploads_entity", "idx_file_uploads_uploaded_by"):
+        _drop_index("file_uploads", idx)
+    _add_fk("file_uploads", "uploaded_by", "users", ondelete="CASCADE")
 
     # ── modules ───────────────────────────────────────────────────────────
-    _execute_safe("DROP INDEX uk_modules_key ON modules")
-    _execute_safe("ALTER TABLE modules ADD CONSTRAINT uq_modules_key UNIQUE (`key`)")
+    _drop_index("modules", "uk_modules_key")
+    _add_unique("modules", "key")
 
     # ── news_articles ─────────────────────────────────────────────────────
-    _execute_safe("DROP INDEX IF EXISTS idx_news_articles_slug ON news_articles")
-    _execute_safe("CREATE INDEX ix_news_articles_slug ON news_articles (slug)")
+    for idx in ("idx_news_articles_slug", "ix_news_articles_slug"):
+        _drop_index("news_articles", idx)
+    _create_index("news_articles", "ix_news_articles_slug", ["slug"])
 
     # ── notification_logs ─────────────────────────────────────────────────
-    _execute_safe("ALTER TABLE notification_logs MODIFY COLUMN id VARCHAR(36) NOT NULL")
-    _execute_safe("ALTER TABLE notification_logs DROP COLUMN updated_at")
+    _alter_column("notification_logs", "id", nullable=False)
+    _drop_column("notification_logs", "updated_at")
 
     # ── pages ─────────────────────────────────────────────────────────────
-    _execute_safe(
-        "ALTER TABLE pages MODIFY COLUMN icon VARCHAR(50) NOT NULL DEFAULT ''"
+    _alter_column(
+        "pages", "icon", type_=sa.String(50), nullable=False, server_default="''"
     )
-    _execute_safe("ALTER TABLE pages MODIFY COLUMN sort_order INT NOT NULL DEFAULT 0")
-    _execute_safe("ALTER TABLE pages DROP FOREIGN KEY fk_pages_module")
-    _execute_safe("DROP INDEX IF EXISTS uk_pages_module_key ON pages")
+    _alter_column(
+        "pages", "sort_order", type_=sa.Integer(), nullable=False, server_default="0"
+    )
+    _drop_index("pages", "uk_pages_module_key")
+    _add_fk("pages", "module_id", "modules", ondelete="CASCADE")
 
     # ── ppdb_applicants (new address columns + type changes) ──────────────
-    _execute_safe(
-        "ALTER TABLE ppdb_payment_transactions DROP FOREIGN KEY fk_ppdb_payment_transactions_applicant_id_ppdb_applicants"
+    for name_, col in [
+        ("province", sa.Column("province", sa.String(100), nullable=True)),
+        ("city", sa.Column("city", sa.String(100), nullable=True)),
+        ("district", sa.Column("district", sa.String(100), nullable=True)),
+        ("village", sa.Column("village", sa.String(100), nullable=True)),
+        ("postal_code", sa.Column("postal_code", sa.String(20), nullable=True)),
+    ]:
+        _add_column("ppdb_applicants", col)
+    _alter_column("ppdb_applicants", "id", type_=sa.String(36), nullable=False)
+    _alter_column("ppdb_applicants", "wave_id", type_=sa.String(36), nullable=False)
+    _alter_column(
+        "ppdb_applicants",
+        "status",
+        type_=sa.String(50),
+        nullable=False,
+        server_default="pending_payment",
     )
-    _execute_safe(
-        "ALTER TABLE ppdb_applicants DROP FOREIGN KEY fk_ppdb_applicants_wave"
-    )
-    _execute_safe("ALTER TABLE ppdb_applicants ADD COLUMN province VARCHAR(100)")
-    _execute_safe("ALTER TABLE ppdb_applicants ADD COLUMN city VARCHAR(100)")
-    _execute_safe("ALTER TABLE ppdb_applicants ADD COLUMN district VARCHAR(100)")
-    _execute_safe("ALTER TABLE ppdb_applicants ADD COLUMN village VARCHAR(100)")
-    _execute_safe("ALTER TABLE ppdb_applicants ADD COLUMN postal_code VARCHAR(20)")
-    _execute_safe("ALTER TABLE ppdb_applicants MODIFY COLUMN id VARCHAR(36) NOT NULL")
-    _execute_safe(
-        "ALTER TABLE ppdb_applicants MODIFY COLUMN wave_id VARCHAR(36) NOT NULL"
-    )
-    _execute_safe(
-        "ALTER TABLE ppdb_applicants MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'pending_payment'"
-    )
+    _add_fk("ppdb_applicants", "wave_id", "ppdb_waves")
 
     # ── ppdb_payment_transactions ─────────────────────────────────────────
-    _execute_safe(
-        "ALTER TABLE ppdb_payment_transactions MODIFY COLUMN id VARCHAR(36) NOT NULL"
+    _alter_column(
+        "ppdb_payment_transactions", "id", type_=sa.String(36), nullable=False
     )
-    _execute_safe(
-        "ALTER TABLE ppdb_payment_transactions MODIFY COLUMN applicant_id VARCHAR(36) NOT NULL"
+    _alter_column(
+        "ppdb_payment_transactions",
+        "applicant_id",
+        type_=sa.String(36),
+        nullable=False,
     )
-    _execute_safe(
-        "ALTER TABLE ppdb_payment_transactions ADD CONSTRAINT fk_ppdb_payment_transactions_applicant_id_ppdb_applicants FOREIGN KEY (applicant_id) REFERENCES ppdb_applicants(id) ON DELETE CASCADE"
+    _add_fk(
+        "ppdb_payment_transactions",
+        "applicant_id",
+        "ppdb_applicants",
+        ondelete="CASCADE",
     )
 
     # ── ppdb_periods ──────────────────────────────────────────────────────
-    _execute_safe(
-        "ALTER TABLE ppdb_periods MODIFY COLUMN status VARCHAR(20) NOT NULL DEFAULT 'inactive'"
+    _alter_column(
+        "ppdb_periods",
+        "status",
+        type_=sa.String(20),
+        nullable=False,
+        server_default="inactive",
     )
 
     # ── ppdb_waves ────────────────────────────────────────────────────────
-    _execute_safe("ALTER TABLE ppdb_waves MODIFY COLUMN quota INT NOT NULL DEFAULT 0")
-    _execute_safe(
-        "ALTER TABLE ppdb_waves MODIFY COLUMN status VARCHAR(20) NOT NULL DEFAULT 'inactive'"
+    _alter_column(
+        "ppdb_waves", "quota", type_=sa.Integer(), nullable=False, server_default="0"
     )
-    _execute_safe("DROP INDEX IF EXISTS period_id ON ppdb_waves")
-    _execute_safe(
-        "ALTER TABLE ppdb_waves ADD CONSTRAINT fk_ppdb_waves_period_id_ppdb_periods FOREIGN KEY (period_id) REFERENCES ppdb_periods(id) ON DELETE CASCADE"
+    _alter_column(
+        "ppdb_waves",
+        "status",
+        type_=sa.String(20),
+        nullable=False,
+        server_default="inactive",
     )
+    _drop_index("ppdb_waves", "period_id")
+    _add_fk("ppdb_waves", "period_id", "ppdb_periods", ondelete="CASCADE")
 
     # ── programs ──────────────────────────────────────────────────────────
-    _execute_safe("DROP INDEX IF EXISTS idx_programs_slug ON programs")
-    _execute_safe("CREATE INDEX ix_programs_slug ON programs (slug)")
+    for idx in ("idx_programs_slug", "ix_programs_slug"):
+        _drop_index("programs", idx)
+    _create_index("programs", "ix_programs_slug", ["slug"])
 
     # ── rate_limits ───────────────────────────────────────────────────────
-    _execute_safe("DROP INDEX IF EXISTS idx_key ON rate_limits")
+    _drop_index("rate_limits", "idx_key")
 
     # ── refresh_tokens ────────────────────────────────────────────────────
-    _execute_safe(
-        "ALTER TABLE refresh_tokens MODIFY COLUMN revoked TINYINT(1) NOT NULL DEFAULT 0"
+    _alter_column(
+        "refresh_tokens",
+        "revoked",
+        type_=sa.Boolean(),
+        nullable=False,
+        server_default="0",
     )
-    _execute_safe(
-        "ALTER TABLE refresh_tokens MODIFY COLUMN created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)"
+    _alter_column(
+        "refresh_tokens",
+        "created_at",
+        nullable=False,
+        server_default=sa.text("CURRENT_TIMESTAMP(3)"),
     )
-    _execute_safe("DROP INDEX IF EXISTS idx_refresh_tokens_hash ON refresh_tokens")
-    _execute_safe("ALTER TABLE refresh_tokens DROP FOREIGN KEY fk_refresh_tokens_user")
-    _execute_safe("DROP INDEX IF EXISTS idx_refresh_tokens_user ON refresh_tokens")
-    _execute_safe("DROP INDEX IF EXISTS ix_refresh_tokens_user_id ON refresh_tokens")
-    _execute_safe("CREATE INDEX ix_refresh_tokens_user_id ON refresh_tokens (user_id)")
+    for idx in ("idx_refresh_tokens_hash", "idx_refresh_tokens_user"):
+        _drop_index("refresh_tokens", idx)
+    for idx in ("ix_refresh_tokens_user_id", "ix_refresh_tokens_user"):
+        _drop_index("refresh_tokens", idx)
+    _create_index("refresh_tokens", "ix_refresh_tokens_user_id", ["user_id"])
+    _add_fk("refresh_tokens", "user_id", "users", ondelete="CASCADE")
 
     # ── roles ─────────────────────────────────────────────────────────────
-    _execute_safe(
-        "ALTER TABLE roles MODIFY COLUMN is_superadmin TINYINT(1) NOT NULL DEFAULT 0"
+    _alter_column(
+        "roles", "is_superadmin", type_=sa.Boolean(), nullable=False, server_default="0"
     )
-    _execute_safe("DROP INDEX uk_roles_name ON roles")
-    _execute_safe("ALTER TABLE roles ADD CONSTRAINT uq_roles_name UNIQUE (name)")
-
-    # ── spp_bills ─────────────────────────────────────────────────────────
-    _execute_safe(
-        "ALTER TABLE spp_bills MODIFY COLUMN total_paid BIGINT NOT NULL DEFAULT 0"
-    )
-    _execute_safe(
-        "ALTER TABLE spp_bills MODIFY COLUMN status VARCHAR(20) NOT NULL DEFAULT 'unpaid'"
-    )
-    _execute_safe("DROP INDEX IF EXISTS idx_spp_bills_month_year ON spp_bills")
-    _execute_safe("DROP INDEX IF EXISTS idx_spp_bills_status ON spp_bills")
-    _execute_safe("ALTER TABLE spp_bills DROP FOREIGN KEY fk_spp_bills_student")
-    _execute_safe("DROP INDEX IF EXISTS idx_spp_bills_student ON spp_bills")
-
-    # ── spp_payments ──────────────────────────────────────────────────────
-    _execute_safe(
-        "ALTER TABLE spp_payments MODIFY COLUMN status VARCHAR(20) NOT NULL DEFAULT 'pending'"
-    )
-    _execute_safe("ALTER TABLE spp_payments DROP FOREIGN KEY fk_spp_payments_bill")
-    _execute_safe("DROP INDEX IF EXISTS idx_spp_payments_bill ON spp_payments")
-    _execute_safe("DROP INDEX IF EXISTS idx_spp_payments_status ON spp_payments")
-    _execute_safe("ALTER TABLE spp_payments DROP FOREIGN KEY fk_spp_payments_student")
-    _execute_safe("DROP INDEX IF EXISTS idx_spp_payments_student ON spp_payments")
-
-    # ── spp_settings ──────────────────────────────────────────────────────
-    _execute_safe("DROP INDEX IF EXISTS idx_spp_settings_class_year ON spp_settings")
-
-    # ── students ──────────────────────────────────────────────────────────
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN gender VARCHAR(10) NOT NULL DEFAULT 'L'"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN birth_place VARCHAR(255) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN phone VARCHAR(50) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN email VARCHAR(255) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN father_name VARCHAR(255) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN mother_name VARCHAR(255) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN father_occupation VARCHAR(255) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN mother_occupation VARCHAR(255) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN parent_phone VARCHAR(50) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN photo VARCHAR(255) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN previous_school VARCHAR(255) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN registration_number VARCHAR(100) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN program VARCHAR(255) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN class_name VARCHAR(255) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN academic_year VARCHAR(20) NOT NULL DEFAULT ''"
-    )
-    _execute_safe(
-        "ALTER TABLE students MODIFY COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'"
-    )
-    _execute_safe("DROP INDEX IF EXISTS idx_students_academic_year ON students")
-    _execute_safe("DROP INDEX IF EXISTS idx_students_class ON students")
-    _execute_safe("DROP INDEX IF EXISTS idx_students_program ON students")
-    _execute_safe("DROP INDEX IF EXISTS idx_students_status ON students")
-    _execute_safe("DROP INDEX uk_students_nis ON students")
-    _execute_safe("DROP INDEX uk_students_nisn ON students")
-    _execute_safe("ALTER TABLE students ADD CONSTRAINT uq_students_nis UNIQUE (nis)")
-    _execute_safe("ALTER TABLE students ADD CONSTRAINT uq_students_nisn UNIQUE (nisn)")
+    for idx in ("uk_roles_name",):
+        _drop_index("roles", idx)
+    _add_unique("roles", "name")
 
     # ── user_page_permissions ─────────────────────────────────────────────
-    _execute_safe("ALTER TABLE user_page_permissions DROP FOREIGN KEY fk_upp_user")
-    _execute_safe("DROP INDEX IF EXISTS uk_user_page ON user_page_permissions")
+    for idx in ("uk_user_page", "ix_user_page_permissions_user_id"):
+        _drop_index("user_page_permissions", idx)
+    _add_fk("user_page_permissions", "user_id", "users", ondelete="CASCADE")
 
     # ── users ─────────────────────────────────────────────────────────────
-    _execute_safe(
-        "ALTER TABLE users MODIFY COLUMN email VARCHAR(255) NOT NULL DEFAULT ''"
+    _alter_column(
+        "users", "email", type_=sa.String(255), nullable=False, server_default="''"
     )
-    _execute_safe(
-        "ALTER TABLE users MODIFY COLUMN user_type VARCHAR(50) NOT NULL DEFAULT 'admin'"
+    _alter_column(
+        "users",
+        "user_type",
+        type_=sa.String(50),
+        nullable=False,
+        server_default="admin",
     )
-    _execute_safe(
-        "ALTER TABLE users MODIFY COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1"
+    _alter_column(
+        "users", "is_active", type_=sa.Boolean(), nullable=False, server_default="1"
     )
-    _execute_safe(
-        "ALTER TABLE users MODIFY COLUMN full_name VARCHAR(255) NOT NULL DEFAULT ''"
+    _alter_column(
+        "users", "full_name", type_=sa.String(255), nullable=False, server_default="''"
     )
-    _execute_safe(
-        "ALTER TABLE users MODIFY COLUMN avatar_url VARCHAR(255) NOT NULL DEFAULT ''"
+    _alter_column(
+        "users", "avatar_url", type_=sa.String(255), nullable=False, server_default="''"
     )
-    _execute_safe(
-        "ALTER TABLE users MODIFY COLUMN failed_login_attempts INT NOT NULL DEFAULT 0"
+    _alter_column(
+        "users",
+        "failed_login_attempts",
+        type_=sa.Integer(),
+        nullable=False,
+        server_default="0",
     )
-    _execute_safe("ALTER TABLE users DROP FOREIGN KEY fk_users_role")
-    _execute_safe("DROP INDEX IF EXISTS idx_users_role_id ON users")
-    _execute_safe("DROP INDEX uk_users_email ON users")
-    _execute_safe("DROP INDEX uk_users_username ON users")
-    _execute_safe("CREATE INDEX ix_users_role_id ON users (role_id)")
-    _execute_safe("ALTER TABLE users ADD CONSTRAINT uq_users_email UNIQUE (email)")
-    _execute_safe(
-        "ALTER TABLE users ADD CONSTRAINT uq_users_username UNIQUE (username)"
-    )
-
-    # ── Recreate FKs that were dropped above ──────────────────────────────
-    _execute_safe(
-        "ALTER TABLE ppdb_applicants ADD CONSTRAINT fk_ppdb_applicants_wave FOREIGN KEY (wave_id) REFERENCES ppdb_waves(id)"
-    )
-    _execute_safe(
-        "ALTER TABLE pages ADD CONSTRAINT fk_pages_module FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE CASCADE"
-    )
-    _execute_safe(
-        "ALTER TABLE refresh_tokens ADD CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-    )
-    _execute_safe(
-        "ALTER TABLE spp_bills ADD CONSTRAINT fk_spp_bills_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
-    )
-    _execute_safe(
-        "ALTER TABLE spp_payments ADD CONSTRAINT fk_spp_payments_bill FOREIGN KEY (bill_id) REFERENCES spp_bills(id) ON DELETE SET NULL"
-    )
-    _execute_safe(
-        "ALTER TABLE spp_payments ADD CONSTRAINT fk_spp_payments_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
-    )
-    _execute_safe(
-        "ALTER TABLE user_page_permissions ADD CONSTRAINT fk_upp_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-    )
-    _execute_safe(
-        "ALTER TABLE users ADD CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles(id)"
-    )
+    for idx in ("idx_users_role_id", "uk_users_email", "uk_users_username"):
+        _drop_index("users", idx)
+    _create_index("users", "ix_users_role_id", ["role_id"])
+    _add_unique("users", "email")
+    _add_unique("users", "username")
+    _add_fk("users", "role_id", "roles")
 
 
 def downgrade() -> None:

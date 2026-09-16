@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """Widen applicant/payment IDs to fit prefixed UUIDs
 
 Revision ID: 0016

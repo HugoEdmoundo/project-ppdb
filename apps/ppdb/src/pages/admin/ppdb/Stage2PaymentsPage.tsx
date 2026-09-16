@@ -106,7 +106,7 @@ export default function Stage2PaymentsPage() {
               bills.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell>
-                    <div className="font-medium">{t.applicant_name}</div>
+                    <div className="font-medium">{t.full_name || '-'}</div>
                   </TableCell>
                   <TableCell>{t.fee_item_name}</TableCell>
                   <TableCell>{t.installment_number}</TableCell>
@@ -124,7 +124,7 @@ export default function Stage2PaymentsPage() {
                     ) : '-'}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {t.confirmed_by_name || '-'}
+                    {t.confirmed_by ? <span className="font-mono text-xs">#{t.confirmed_by.slice(0, 8)}</span> : '-'}
                     {t.confirmed_at && <div className="text-xs text-muted-foreground">{new Date(t.confirmed_at).toLocaleDateString('id-ID')}</div>}
                   </TableCell>
                   <TableCell className="text-right">

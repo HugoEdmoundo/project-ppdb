@@ -18,7 +18,6 @@ import { Input } from "@/components/ui"
 import { Label } from "@/components/ui"
 import { Card, CardContent } from "@/components/ui"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
-import { CredentialsCard } from '@/components/CredentialsCard'
 import { apiFetch } from '@/api/client'
 import { useToast } from '@/components/Toast'
 import { settingsService } from '../../services/index'
@@ -90,7 +89,6 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
@@ -112,7 +110,7 @@ export default function LoginPage() {
   const [logoUrl, setLogoUrl] = useState('')
 
   const [showRecover, setShowRecover] = useState(false)
-  const [recoverResult, setRecoverResult] = useState<{username: string, new_password: string} | null>(null)
+  const [recoverMessage, setRecoverMessage] = useState<string | null>(null)
 
   useEffect(() => {
     settingsService
@@ -152,7 +150,7 @@ export default function LoginPage() {
         method: 'POST',
         body: JSON.stringify({ nik: data.nik, birth_date: data.dob })
       })
-      setRecoverResult(res)
+      setRecoverMessage(res.message || 'Password baru sudah dikirim ke email/WhatsApp Anda.')
     } catch (err: any) {
       toast('error', err.message || 'Data tidak ditemukan')
     }
@@ -367,24 +365,22 @@ export default function LoginPage() {
 
       <Dialog open={showRecover} onOpenChange={(open) => {
         setShowRecover(open)
-        if (!open) { setRecoverResult(null); resetRecover() }
+        if (!open) { setRecoverMessage(null); resetRecover() }
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Pulihkan Kredensial</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
-            {recoverResult ? (
+            {recoverMessage ? (
               <div className="space-y-4">
-                <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 border border-amber-200">
-                  Mohon simpan dan catat kredensial baru ini dengan baik.
+                <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 border border-emerald-200">
+                  {recoverMessage}
                 </div>
-                <CredentialsCard username={recoverResult.username} password={recoverResult.new_password} />
-                <Button className="w-full" onClick={() => {
-                  setShowRecover(false)
-                  setValue('username', recoverResult.username)
-                  setValue('password', recoverResult.new_password)
-                }}>Masuk Sekarang</Button>
+                <p className="text-sm text-muted-foreground">
+                  Periksa email/WhatsApp Anda. Gunakan password baru tersebut untuk login.
+                </p>
+                <Button className="w-full" onClick={() => setShowRecover(false)}>Tutup</Button>
               </div>
             ) : (
               <form onSubmit={handleRecoverSubmit(onRecover)} className="space-y-4">

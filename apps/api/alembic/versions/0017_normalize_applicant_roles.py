@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """Normalize applicant user_type and applicant role name
 
 Revision ID: 0017

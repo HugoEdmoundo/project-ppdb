@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """add wave scope: allowed_paths and allowed_levels
 
 Revision ID: 0011
@@ -18,24 +19,27 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column(
-        "ppdb_waves",
-        sa.Column(
-            "allowed_paths",
-            sa.String(length=50),
-            nullable=False,
-            server_default="reguler,pindahan",
-        ),
-    )
-    op.add_column(
-        "ppdb_waves",
-        sa.Column(
-            "allowed_levels",
-            sa.String(length=100),
-            nullable=False,
-            server_default="SMP,SMK",
-        ),
-    )
+    cols = {c["name"] for c in sa.inspect(op.get_bind()).get_columns("ppdb_waves")}
+    if "allowed_paths" not in cols:
+        op.add_column(
+            "ppdb_waves",
+            sa.Column(
+                "allowed_paths",
+                sa.String(length=50),
+                nullable=False,
+                server_default="reguler,pindahan",
+            ),
+        )
+    if "allowed_levels" not in cols:
+        op.add_column(
+            "ppdb_waves",
+            sa.Column(
+                "allowed_levels",
+                sa.String(length=100),
+                nullable=False,
+                server_default="SMP,SMK",
+            ),
+        )
 
 
 def downgrade():

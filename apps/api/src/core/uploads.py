@@ -27,6 +27,26 @@ ALLOWED_IMAGE_TYPES = {
 }
 MAX_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
+# Magic bytes per allowed MIME type. Content-type header from the client is
+# never trusted: the actual bytes are sniffed and must match the declared type.
+_MAGIC: dict[str, bytes] = {
+    "image/jpeg": b"\xff\xd8\xff",
+    "image/png": b"\x89PNG\r\n\x1a\n",
+    "image/webp": b"RIFF",
+    "image/gif": b"GIF8",
+    "application/pdf": b"%PDF-",
+}
+
+# Safe extension derived from the *sniffed* type — never from the user-supplied
+# filename (an attacker could name a file ".svg" to smuggle active content).
+_TYPE_EXT: dict[str, str] = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "application/pdf": ".pdf",
+}
+
 PUBLIC_ID_PREFIX = "uploads"
 
 
@@ -40,14 +60,53 @@ class UploadResult:
     data: bytes | None = None
 
 
-def _validate(file: UploadFile) -> None:
-    if not file or not file.filename:
+def _is_webp(content: bytes) -> bool:
+    return len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP"
+
+
+def _sniff_type(content: bytes) -> str | None:
+    """Return the MIME type matching the file's magic bytes, or None."""
+    for mime, magic in _MAGIC.items():
+        if content.startswith(magic):
+            if mime == "image/webp" and not _is_webp(content):
+                continue
+            return mime
+    return None
+
+
+def _validate(
+    content: bytes, filename: str | None, content_type: str | None
+) -> tuple[str, str]:
+    """Validate declared type + magic bytes + extension.
+
+    Returns ``(detected_mime, safe_extension)``.
+    """
+    if not content:
+        raise HTTPException(status_code=400, detail="File kosong atau tidak valid")
+    declared = (content_type or "").lower()
+    if not filename:
         raise HTTPException(status_code=400, detail="No file uploaded")
-    if file.content_type not in ALLOWED_IMAGE_TYPES:
+    if declared not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
             status_code=400,
             detail="File type not allowed. Accepted: JPEG, PNG, WebP, GIF, PDF",
         )
+    detected = _sniff_type(content)
+    if detected is None or detected != declared:
+        raise HTTPException(
+            status_code=400,
+            detail="Isi file tidak sesuai dengan tipe yang dinyatakan",
+        )
+    ext = Path(filename).suffix.lower()
+    if not ext or ext not in set(_TYPE_EXT.values()):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Ekstensi file tidak diizinkan. "
+                "Accepted: .jpg, .png, .webp, .gif, .pdf"
+            ),
+        )
+    return detected, _TYPE_EXT[detected]
 
 
 async def _read_with_limit(file: UploadFile) -> bytes:
@@ -98,12 +157,11 @@ def _upload_cloudinary(
 
 
 def _upload_local(
-    content: bytes, original_name: str, content_type: str
+    content: bytes, original_name: str, content_type: str, safe_ext: str = ".bin"
 ) -> UploadResult:
     base = Path(settings.upload_dir)
     base.mkdir(parents=True, exist_ok=True)
-    ext = Path(original_name).suffix or ".bin"
-    stored_name = f"{uuid.uuid4().hex}{ext}"
+    stored_name = f"{uuid.uuid4().hex}{safe_ext}"
     (base / stored_name).write_bytes(content)
     return UploadResult(
         public_url=f"/uploads/{stored_name}",
@@ -128,9 +186,9 @@ def _upload_db(
 
 
 async def upload_file(file: UploadFile, record_id: str | None = None) -> UploadResult:
-    _validate(file)
     content = await _read_with_limit(file)
     original_name = file.filename or "file"
+    detected_type, safe_ext = _validate(content, file.filename, file.content_type)
 
     provider = settings.upload_provider
     if provider == "cloudinary" and not settings.cloudinary_configured:
@@ -138,24 +196,15 @@ async def upload_file(file: UploadFile, record_id: str | None = None) -> UploadR
         provider = "local"
 
     if provider == "cloudinary":
-        result = _upload_cloudinary(
-            content, original_name, file.content_type or "application/octet-stream"
-        )
+        result = _upload_cloudinary(content, original_name, detected_type)
     elif provider == "db":
         if not record_id:
             raise HTTPException(
                 status_code=500, detail="db upload requires a record id"
             )
-        result = _upload_db(
-            content,
-            original_name,
-            file.content_type or "application/octet-stream",
-            record_id,
-        )
+        result = _upload_db(content, original_name, detected_type, record_id)
     else:
-        result = _upload_local(
-            content, original_name, file.content_type or "application/octet-stream"
-        )
+        result = _upload_local(content, original_name, detected_type, safe_ext)
 
     logger.info("Uploaded %s -> %s", original_name, result.public_url)
     return result

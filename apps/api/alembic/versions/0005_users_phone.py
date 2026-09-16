@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """users.phone for notification delivery
 
 Revision ID: 0005

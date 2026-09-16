@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """add file_uploads.data for db-backed storage
 
 Revision ID: 0010
@@ -18,10 +19,12 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column(
-        "file_uploads",
-        sa.Column("data", sa.LargeBinary(length=16777215), nullable=True),
-    )
+    cols = {c["name"] for c in sa.inspect(op.get_bind()).get_columns("file_uploads")}
+    if "data" not in cols:
+        op.add_column(
+            "file_uploads",
+            sa.Column("data", sa.LargeBinary(length=16777215), nullable=True),
+        )
 
 
 def downgrade():

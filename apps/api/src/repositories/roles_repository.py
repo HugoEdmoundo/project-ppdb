@@ -8,10 +8,10 @@ class RolesRepository:
         self.db = db
 
     def get_all(self) -> list[Role]:
-        return self.db.query(Role).order_by(Role.name.asc()).all()
+        return self.db.query(Role).order_by(Role.name.asc()).all()  # type: ignore[no-any-return]
 
     def get_by_id(self, role_id: str) -> Role | None:
-        return self.db.query(Role).filter(Role.id == role_id).first()
+        return self.db.query(Role).filter(Role.id == role_id).first()  # type: ignore[no-any-return]
 
     def create(self, role: Role) -> Role:
         self.db.add(role)

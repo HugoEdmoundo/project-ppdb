@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """ppdb periods/waves v2 (academic year, description, wave schedule & quota)
 
 Revision ID: 0002

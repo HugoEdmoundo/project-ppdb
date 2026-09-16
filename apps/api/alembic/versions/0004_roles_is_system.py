@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """roles is_system
 
 Revision ID: 0004

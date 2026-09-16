@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """payment tracking, soft-delete, notification templates & logs
 
 Revision ID: 0003

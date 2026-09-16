@@ -55,5 +55,4 @@ class RecoverApplicantRequest(BaseModel):
 
 
 class RecoverApplicantResponse(BaseModel):
-    username: str
-    new_password: str
+    message: str

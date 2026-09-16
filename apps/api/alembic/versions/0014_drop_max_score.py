@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """drop max_score from selection_criteria
 
 Revision ID: 0014
@@ -18,8 +19,11 @@ depends_on = None
 
 
 def upgrade():
-    with op.batch_alter_table("selection_criteria") as batch_op:
-        batch_op.drop_column("max_score")
+    bind = sa.inspect(op.get_bind())
+    cols = {c["name"] for c in bind.get_columns("selection_criteria")}
+    if "max_score" in cols:
+        with op.batch_alter_table("selection_criteria") as batch_op:
+            batch_op.drop_column("max_score")
 
 
 def downgrade():

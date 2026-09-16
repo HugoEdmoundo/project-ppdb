@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """add ppdb_applicants.rejection_reason
 
 Revision ID: 0007

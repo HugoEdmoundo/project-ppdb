@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui"
 import { EmptyState } from "@/components/ui"
 import { Search, GraduationCap, UserRoundSearch, KeyRound, CheckCircle2, Waves } from 'lucide-react'
 import PageHero from '../components/PageHero'
+import { generateSecurePassword } from '../lib/password'
 
 export default function ApplicantsPage() {
   const { toast } = useToast()
@@ -33,9 +34,20 @@ export default function ApplicantsPage() {
     setLoading(true)
     try {
       const res = await api.getApplicants({ search: q, page: p, perPage: perPage })
+      const newestTotal = (res as any).total ?? 0
+      const activeWave = (res as any).active_wave ?? null
+      const tp = Math.max(1, Math.ceil(newestTotal / perPage))
+      if (p > tp && tp >= 1) {
+        setPage(tp)
+        const clamped = await api.getApplicants({ search: q, page: tp, perPage: perPage })
+        setApplicants((clamped as any).data || [])
+        setTotal((clamped as any).total ?? newestTotal)
+        setActiveWave((clamped as any).active_wave ?? activeWave)
+        return
+      }
       setApplicants((res as any).data || [])
-      setTotal((res as any).total ?? 0)
-      setActiveWave((res as any).active_wave ?? null)
+      setTotal(newestTotal)
+      setActiveWave(activeWave)
     } catch (e: any) {
       toast('error', e.message || 'Gagal memuat pendaftar')
     } finally {
@@ -63,10 +75,7 @@ export default function ApplicantsPage() {
   }
 
   function generatePassword() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    let pass = ''
-    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length))
-    setResetPassword(pass)
+    setResetPassword(generateSecurePassword(8))
     setResetResult(null)
   }
 
@@ -188,7 +197,7 @@ export default function ApplicantsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="uppercase text-[10px]">
-                        {['passed', 'failed', 'selection'].includes(a.status) ? 'DOCUMENT APPROVED' : a.status.replace('_', ' ')}
+                        {['passed', 'failed', 'selection'].includes(a.status) ? 'DOCUMENT APPROVED' : (a.status || '').replace(/_/g, ' ')}
                       </Badge>
                     </TableCell>
                     <TableCell>

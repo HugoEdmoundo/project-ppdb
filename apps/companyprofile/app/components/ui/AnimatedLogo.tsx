@@ -15,6 +15,7 @@ export default function AnimatedLogo({ src, alt, isTransparent, className = '' }
           animation: 'logoPulse 3s ease-in-out infinite',
         }}
       />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt={alt}

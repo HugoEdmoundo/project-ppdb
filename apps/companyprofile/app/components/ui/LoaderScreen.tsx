@@ -144,6 +144,7 @@ export default function LoaderScreen() {
           <div className="absolute inset-0 rounded-full bg-[var(--color-gold)] blur-2xl opacity-10 scale-150" />
           <div ref={logoWrapperRef} style={{ opacity: 0 }} className="relative mx-auto mb-4 h-16 w-16">
             {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={logoUrl}
                 alt="Ar-Rahman"

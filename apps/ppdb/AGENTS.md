@@ -12,11 +12,11 @@ Aplikasi frontend Penerimaan Peserta Didik Baru (PPDB) untuk Pesantren Tahfidz Q
 
 ## Architecture & State Management
 - **API Client (`src/api/client.ts`):**
-  - Custom `fetch` wrapper (`apiFetch`).
-  - Automatic JWT token refresh via `/auth/refresh`.
-  - Fallback mechanism from `PRIMARY_API` to `FALLBACK_API` upon connection failures.
+  - Custom `fetch` wrapper (`apiFetch`) with JSON-safe error parsing.
+  - Cookie-based auth (`credentials: 'include'`); no tokens in localStorage/headers. Automatic token refresh via `/auth/refresh` on 401, then redirects to `/auth/login` if it still fails.
+  - `API_BASE` berasal dari `VITE_API_URL` (fallback string kosong → request ke origin yang sama / Vite dev proxy). TIDAK ada mekanisme failover PRIMARY→FALLBACK API; `fetchWithFallback` hanyalah wrapper `fetch` polos.
 - **Services (`src/services/`):**
-  - Modular API calls: `authService`, `ppdbService`, `applicantService`, `documentService`, `paymentService`, `selectionService`, `postService`, `notifService`, `notificationService`, `dashboardService`, `settingsService`.
+  - Modular API calls: `authService` (di `auth.service.ts`), plus `ppdbService`, `applicantService`, `paymentService`, `notificationService`, `settingsService` (di `index.ts`).
 - **Global Contexts (`src/contexts/`):**
   - `AuthContext`: Manages user state, login/logout, and permissions. Auto-refreshes `/auth/me` every 30 seconds to catch permission or deactivation changes on the fly.
 

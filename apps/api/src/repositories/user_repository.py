@@ -4,7 +4,7 @@ from typing import cast
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from src.models.auth import User, UserPagePermission
+from src.models.auth import Page, User, UserPagePermission
 
 
 class UserRepository:
@@ -62,6 +62,15 @@ class UserRepository:
             .all()
         )
         return [p.page_id for p in perms]
+
+    def get_page_keys(self, user_id: str) -> list[str]:
+        rows = (
+            self.db.query(Page.key)
+            .join(UserPagePermission, UserPagePermission.page_id == Page.id)
+            .filter(UserPagePermission.user_id == user_id)
+            .all()
+        )
+        return [r[0] for r in rows]
 
     def set_page_permissions(self, user_id: str, page_ids: list[str]) -> None:
         # Delete existing

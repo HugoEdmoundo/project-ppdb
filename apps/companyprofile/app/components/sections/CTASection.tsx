@@ -10,12 +10,15 @@ import MagneticButton from '../ui/MagneticButton'
 
 const Particles = dynamic(() => import('../ui/Particles'), { ssr: false })
 
+const DEFAULT_DEADLINE = '2027-07-01T00:00:00'
+const DEADLINE = process.env.NEXT_PUBLIC_PPDB_DEADLINE || DEFAULT_DEADLINE
+
 function CountdownTimer() {
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null)
 
   useEffect(() => {
     function calc() {
-      const diff = new Date('2026-09-01T00:00:00').getTime() - Date.now()
+      const diff = new Date(DEADLINE).getTime() - Date.now()
       if (diff <= 0) return null
       return {
         days: Math.floor(diff / (1000 * 60 * 60 * 24)),
@@ -24,7 +27,12 @@ function CountdownTimer() {
         seconds: Math.floor((diff / 1000) % 60),
       }
     }
-    const timer = setInterval(() => setTimeLeft(calc()), 1000)
+    const timer = setInterval(() => {
+      const next = calc()
+      setTimeLeft(next)
+      // Hentikan interval begitu countdown habis agar tidak berdetak terus.
+      if (!next) clearInterval(timer)
+    }, 1000)
     setTimeout(() => {
       setTimeLeft(calc())
     }, 0)

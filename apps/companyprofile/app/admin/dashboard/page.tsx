@@ -396,7 +396,7 @@ export default function AdminDashboard() {
   }, [])
 
   const filteredTabs = pagePermissions && pagePermissions.length > 0
-    ? TABS.filter(tab => pagePermissions.some(p => `page-cp-${tab.key}` === p))
+    ? TABS.filter(tab => pagePermissions.includes(tab.key))
     : TABS
 
   // SSE untuk realtime page permissions
@@ -415,7 +415,7 @@ export default function AdminDashboard() {
     es.addEventListener('page_permissions_changed', (e) => {
       try {
         const data = JSON.parse(e.data)
-        setPagePermissions(data.page_ids.length > 0 ? data.page_ids : null)
+        setPagePermissions(data.page_keys && data.page_keys.length > 0 ? data.page_keys : null)
       } catch { /* ignore */ }
     })
 
@@ -453,7 +453,7 @@ export default function AdminDashboard() {
 
   const fetchData = useCallback(async () => {
     const currentTabs = pagePermissions && pagePermissions.length > 0
-      ? TABS.filter(tab => pagePermissions.some(p => `page-cp-${tab.key}` === p))
+      ? TABS.filter(tab => pagePermissions.includes(tab.key))
       : TABS
 
     setLoading(true)
@@ -1103,10 +1103,20 @@ export default function AdminDashboard() {
         {/* Header */}
         <div className={cn('relative flex items-center border-b border-border/60 bg-white/40', collapsed ? 'justify-center px-2 py-3' : 'px-5 py-4')}>
           {collapsed ? (
-            logoUrl ? <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-auto max-w-8 object-contain" /> : <div className="h-8 w-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg select-none">ار</div>
+            logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-auto max-w-8 object-contain" />
+            ) : (
+              <div className="h-8 w-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg select-none">ار</div>
+            )
           ) : (
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              {logoUrl ? <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 object-contain shrink-0" /> : <div className="h-9 w-9 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg shrink-0 select-none">ار</div>}
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 object-contain shrink-0" />
+              ) : (
+                <div className="h-9 w-9 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg shrink-0 select-none">ار</div>
+              )}
               <div className="min-w-0">
                 <div className="font-heading text-sm font-bold text-foreground truncate">PTDARRAHMAN</div>
                 <div className="text-[11px] text-muted-foreground">Admin CMS</div>

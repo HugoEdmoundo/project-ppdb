@@ -11,9 +11,29 @@ interface CredentialsCardProps {
 export function CredentialsCard({ username, password, title = 'Akun Anda' }: CredentialsCardProps) {
   const { toast } = useToast()
 
-  const copy = (text: string, label: string) => {
-    navigator.clipboard.writeText(text)
-    toast('success', `${label} disalin ke clipboard`)
+  const copy = async (text: string, label: string) => {
+    let ok: boolean
+    let ta: HTMLTextAreaElement | null = null
+    try {
+      await navigator.clipboard.writeText(text)
+      ok = true
+    } catch {
+      try {
+        ta = document.createElement('textarea')
+        ta.value = text
+        ta.style.position = 'fixed'
+        ta.style.opacity = '0'
+        document.body.appendChild(ta)
+        ta.focus()
+        ta.select()
+        ok = document.execCommand('copy')
+      } catch {
+        ok = false
+      } finally {
+        if (ta) document.body.removeChild(ta)
+      }
+    }
+    toast(ok ? 'success' : 'error', ok ? `${label} disalin ke clipboard` : `Gagal menyalin ${label.toLowerCase()}`)
   }
 
   return (

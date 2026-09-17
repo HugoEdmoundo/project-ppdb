@@ -23,7 +23,7 @@ The application is a Single Page Application (SPA) with the following routes:
   - `*`: 404 Not Found page.
 
 ## Authentication & Access Control
-- **Token Management:** Handled in `src/api/client.ts`. Access and refresh tokens are stored in `localStorage` under keys `sa_token`, `sa_refresh`, and `sa_user`. Automatic token refresh is implemented on HTTP 401 errors using `/companyprofile/auth/refresh`.
+- **Token Management:** Handled in `src/api/client.ts`. Auth is **httpOnly-cookie based** (`credentials: 'include'`); only the authenticated user object is stored in `localStorage` under key `sa_user` (via `getStoredUser`/`setStoredUser`). There are **no** `sa_token`/`sa_refresh` keys in localStorage. Automatic token refresh is implemented on HTTP 401 errors using `/companyprofile/auth/refresh`.
 - **Authorization Guard:** Checked by `src/components/ProtectedRoute.tsx`.
   - The panel is **STRICTLY** for superadmin users.
   - Access is granted **only** if `user.user_type === 'superadmin'` or `user.is_superadmin === true`. Any other user attempting to access protected routes will be forcibly redirected to `/login`.
@@ -31,8 +31,8 @@ The application is a Single Page Application (SPA) with the following routes:
 - **System Roles (`is_system = true`):** Protected system roles (e.g., Superadmin, Pendaftar) have specific UI safeguards in `RoleFormPage` to prevent unauthorized modification or deletion.
 
 ## API Integration (`src/api/client.ts`)
-- The `apiFetch` wrapper handles automatic token injection and token refresh logic.
-- **Base URL:** Defined via the `VITE_API_URL` environment variable, falling back to `http://localhost:8000`. The Vite dev server proxies `/companyprofile` to `http://localhost:8000` via `vite.config.ts`.
+- The `apiFetch` wrapper handles automatic token refresh logic (cookie-based; no manual token injection happens — every request sends `credentials: 'include'`).
+- **Base URL:** Defined via the `VITE_API_URL` environment variable (currently set to `http://localhost:8000` in `.env`). `client.ts` also has a hardcoded fallback to `http://localhost:8000` as a dev convenience (planned for removal). The Vite dev server proxies `/companyprofile`, `/auth`, `/users`, `/roles`, `/modules`, `/superadmin`, `/ppdb`, and `/notifications` to `http://localhost:8000` via `vite.config.ts`.
 - **Endpoints Interacted With:**
   - **Auth:** `/companyprofile/auth/login`, `/companyprofile/auth/me`, `/companyprofile/auth/refresh`, `/companyprofile/auth/logout`.
   - **Users:** `/users` (CRUD).

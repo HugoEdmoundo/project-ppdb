@@ -74,6 +74,7 @@ export default function Footer() {
           <div className="sm:col-span-2 lg:col-span-4">
             <div className="flex items-center gap-3 mb-5">
               {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={logoUrl}
                   alt="PTDARRAHMAN Logo"

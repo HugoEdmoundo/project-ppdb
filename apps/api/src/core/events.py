@@ -52,3 +52,30 @@ class EventHub:
 
 
 companyprofile_hub = EventHub()
+
+
+class UserEventRegistry:
+    """Per-user SSE hub registry.
+
+    Every ``EventHub`` keeps its queues in memory only; connections that
+    fire before the hub is created simply never receive that message, so a
+    fresh hub per user is created lazily on first subscribe.
+    """
+
+    def __init__(self) -> None:
+        self._hubs: dict[str, EventHub] = {}
+
+    def get(self, user_id: str) -> EventHub:
+        hub = self._hubs.get(user_id)
+        if hub is None:
+            hub = EventHub()
+            self._hubs[user_id] = hub
+        return hub
+
+    def broadcast(self, user_id: str, message: dict | None = None) -> None:
+        hub = self._hubs.get(user_id)
+        if hub is not None:
+            hub.broadcast(message or {"type": "change"})
+
+
+user_hubs = UserEventRegistry()

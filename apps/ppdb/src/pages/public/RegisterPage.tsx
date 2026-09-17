@@ -45,6 +45,7 @@ export default function RegisterPage() {
     full_name: '',
     birth_place: '',
     birth_date: '',
+    gender: '',
     nisn: '',
     nik: '',
     email: '',
@@ -190,7 +191,7 @@ export default function RegisterPage() {
     setConfirmOpen(false)
     setLoading(true)
     try {
-      const res = await ppdbService.registerApplicant(formData)
+      const res = await ppdbService.registerApplicant({ ...formData, gender: formData.gender || null })
       setSuccessData(res.credentials)
       toast('success', 'Pendaftaran berhasil!')
     } catch (err: any) {
@@ -328,6 +329,17 @@ export default function RegisterPage() {
                       value={formData.full_name}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, full_name: e.target.value})}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">Jenis Kelamin</Label>
+                    <Select value={formData.gender} onValueChange={(v: string) => setFormData({...formData, gender: v})}>
+                      <SelectTrigger><SelectValue placeholder="Pilih jenis kelamin..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="L">Laki-laki</SelectItem>
+                        <SelectItem value="P">Perempuan</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">

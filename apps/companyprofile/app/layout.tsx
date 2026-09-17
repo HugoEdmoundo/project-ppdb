@@ -8,7 +8,10 @@ import type { SettingsItem } from "./lib/types"
 
 async function getFavicon(): Promise<string | undefined> {
   try {
-    const res = await fetch(`${API_BASE}/companyprofile/settings`, { cache: 'no-store' })
+    const res = await fetch(`${API_BASE}/companyprofile/settings`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(5000),
+    })
     if (!res.ok) return undefined
     const settings: SettingsItem[] = await res.json()
     const value = settings.find((s) => s.key === 'favicon')?.value

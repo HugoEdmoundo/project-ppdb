@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as api from '@/api/client'
 import { useToast } from '@/components/Toast'
-import { useAuth } from '@/contexts/AuthContext'
+import { useCan } from '@/hooks/useCan'
 import { Card, CardContent } from "@/components/ui"
 import { Button } from "@/components/ui"
 import { Input } from "@/components/ui"
@@ -16,9 +16,8 @@ import { downloadCSV } from './utils'
 
 export default function SelectionCategories() {
   const { toast } = useToast()
-  const { user } = useAuth()
   const queryClient = useQueryClient()
-  const canCrud = user?.is_superadmin || user?.user_type === 'superadmin' || user?.permissions?.ppdb === 'crud'
+  const { canCrud } = useCan('ppdb', 'crud')
 
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'category' | 'criteria', id: string } | null>(null)
 

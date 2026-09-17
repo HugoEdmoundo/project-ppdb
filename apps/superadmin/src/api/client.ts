@@ -1,6 +1,6 @@
 import type { AuthUser, LoginResponse, User, Role, Module, UserPagePermissions } from '../types'
 
-export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
+export const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '')
 
 async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Response> {
   const options = { ...opts, credentials: 'include' as RequestCredentials }
@@ -48,6 +48,24 @@ function setStoredUser(user: AuthUser) {
 }
 
 let refreshPromise: Promise<boolean> | null = null
+
+/**
+ * Ekstrak pesan error dari body FastAPI. `detail` bisa berupa string (mis.
+ * "Incorrect username or password") atau array validasi 422 (list of
+ * {loc, msg, type}). Kalau array, gabungkan `msg` per elemen.
+ */
+function extractErrorMessage(body: any, fallbackText: string): string {
+  if (!body) return fallbackText
+  const { detail } = body
+  if (typeof detail === 'string' && detail.trim() !== '') return detail
+  if (Array.isArray(detail)) {
+    const msgs = detail
+      .map((item: any) => (item && typeof item.msg === 'string' ? item.msg : ''))
+      .filter((m: string) => m !== '')
+    if (msgs.length > 0) return msgs.join('; ')
+  }
+  return fallbackText
+}
 
 async function tryRefresh(): Promise<boolean> {
   if (refreshPromise) {
@@ -97,8 +115,8 @@ async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Promise<T>
   }
 
   if (!res.ok) {
-    const body = await parseJsonSafe<Record<string, string>>(res, `API ${endpoint}`).catch(() => ({ detail: res.statusText }))
-    throw new Error(body.detail || `API ${res.status}`)
+    const body = await parseJsonSafe<any>(res, `API ${endpoint}`).catch(() => ({ detail: res.statusText }))
+    throw new Error(extractErrorMessage(body, `API ${res.status}`))
   }
 
   if (res.status === 204) return undefined as T

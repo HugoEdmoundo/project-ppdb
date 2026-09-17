@@ -171,15 +171,17 @@ export default function RolesPage() {
                     >
                       <Edit className="mr-2 h-4 w-4" /> Edit
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() => handleDelete(role)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Hapus
-                    </Button>
+                    {!role.is_superadmin && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => handleDelete(role)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Hapus
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

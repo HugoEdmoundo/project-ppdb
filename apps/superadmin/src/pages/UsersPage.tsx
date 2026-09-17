@@ -50,6 +50,8 @@ export default function UsersPage() {
       const userList = ((res as any).data || []) as User[]
       return {
         users: userList.filter((u: User) => u.user_type !== 'superadmin'),
+        // total dari server TIDAK termasuk superadmin — nilainya dipakai apa
+        // adanya (menghitung halaman); tidak perlu diubah lebih lanjut.
         total: (res as any).total ?? userList.length,
       }
     },
@@ -58,6 +60,15 @@ export default function UsersPage() {
   const users = usersData?.users ?? []
   const totalUsers = usersData?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(totalUsers / perPage))
+
+  // Setelah hapus item terakhir di halaman terakhir, clamp page ke totalPages
+  // agar tidak tampil EmptyState palsu.
+  useEffect(() => {
+    if (totalPages >= 1 && page > totalPages) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPage(totalPages)
+    }
+  }, [page, totalPages])
 
   const { data: roles = [] } = useQuery({
     queryKey: ['roles'],

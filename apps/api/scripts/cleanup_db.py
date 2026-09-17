@@ -32,11 +32,16 @@ KEEP_MODULE_KEYS = {"ppdb", "companyprofile"}
 KEEP_ROLE_NAMES = {"Superadmin", "Pendaftar", "Admin PPDB", "AdminCP"}
 
 PPDB_PAGE_KEYS = {
-    "admin-dashboard",
-    "ppdb-periods",
-    "ppdb-applicants",
-    "ppdb-payments",
-    "ppdb-selection",
+    "dashboard",
+    "data-pendaftar",
+    "applicants",
+    "selection",
+    "mou",
+    "payments",
+    "diskonasi",
+    "stage2-pembayaran",
+    "periods",
+    "notifications",
 }
 
 ROLE_DEFS = {

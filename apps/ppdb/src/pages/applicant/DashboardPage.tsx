@@ -472,7 +472,7 @@ export default function ApplicantDashboardPage() {
       />
 
       {/* Floating Support FAB */}
-      {contactInfo && (
+      {contactInfo && (contactInfo.phone_primary || contactInfo.whatsapp || contactInfo.email_primary) && (
         <SupportFab
           phone={contactInfo.phone_primary}
           whatsapp={contactInfo.whatsapp}

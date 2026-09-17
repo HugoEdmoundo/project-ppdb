@@ -19,6 +19,34 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
+      '/auth': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/users': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/roles': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/modules': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/superadmin': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/ppdb': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/notifications': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
     },
   },
 })

@@ -17,6 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui"
 import { cn } from '@/lib/utils'
+import { generateSecurePassword } from '../lib/password'
 
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -145,10 +146,7 @@ export default function UserFormPage() {
   }, [id, isEdit, navigate, reset])
 
   function generatePassword() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    let pass = ''
-    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length))
-    setValue('password', pass, { shouldValidate: true })
+    setValue('password', generateSecurePassword(8), { shouldValidate: true })
   }
 
   const onSubmit = (data: UserFormValues) => {

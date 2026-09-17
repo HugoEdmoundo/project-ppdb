@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as api from '@/api/client'
 import { useToast } from '@/components/Toast'
-import { useAuth } from '@/contexts/AuthContext'
+import { useCan } from '@/hooks/useCan'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
 import { Badge } from "@/components/ui"
@@ -16,12 +16,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui"
 import { Upload, Star, FileSpreadsheet, AlertCircle } from 'lucide-react'
 import type { SelectionResult, SelectionCategory, Session } from './types'
+import { parseCsvRow } from './utils'
 
 export default function SelectionResults() {
   const { toast } = useToast()
-  const { user } = useAuth()
   const queryClient = useQueryClient()
-  const canCrud = user?.is_superadmin || user?.user_type === 'superadmin' || user?.permissions?.ppdb === 'crud'
+  const { canCrud } = useCan('ppdb', 'crud')
 
   const [filterSessionId, setFilterSessionId] = useState<string>('all')
   const [selectedApplicant, setSelectedApplicant] = useState<SelectionResult | null>(null)
@@ -148,7 +148,7 @@ export default function SelectionResults() {
     setImportErrors([])
     try {
       const text = await importFile.text();
-      const rows = text.split('\n').map(row => row.split(',').map(c => c.replace(/(^"|"$)/g, '').trim()));
+      const rows = text.split('\n').map(parseCsvRow);
       const headers = rows[0];
 
       if(!headers.includes('ID Pendaftar')) {

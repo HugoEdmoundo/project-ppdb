@@ -109,6 +109,11 @@
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 .animate-fadeIn { animation: fadeIn 0.2s ease-out; }
 
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
 /* ── Brand components (companyprofile /auth parity) ── */
 @layer components {
   .glass-card {

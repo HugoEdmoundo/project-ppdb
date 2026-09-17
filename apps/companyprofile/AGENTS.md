@@ -21,8 +21,9 @@ Main public website + admin dashboard for Pesantren Tahfidz Qur'an dan Digital A
   - `/auth` — Student/parent portal login
 - **Admin (`app/admin/`)**:
   - `/admin/login` — Login page
-  - `/admin/dashboard` — Main CRUD dashboard
-  - `/admin` — Redirects to dashboard if token exists, else login
+  - `/admin/overview` — Dashboard overview page (stats + per-section links into `/admin/dashboard`).
+  - `/admin/dashboard` — Main CRUD dashboard (10 tabs, supports deep-link `?tab=...`).
+  - `/admin` — Redirects to `/admin/overview` if `admin_user` exists in localStorage, else `/admin/login`.
 
 ## Key Conventions
 - **Route Group**: `app/(main)/` contains all public pages wrapped with Navbar and Footer.
@@ -56,7 +57,7 @@ Main public website + admin dashboard for Pesantren Tahfidz Qur'an dan Digital A
 - `useSSE()` — Subscribe to real-time content changes.
 - `useRealtimeData()` — Fetch initial data and sync updates via SSE.
 - `useScrollAnimations()` & `useTiltEffect()` — UI interactions and animations.
-- `Providers` (in `app/context/Providers.tsx`) — Wraps the application to provide contexts.
+- `Providers` (in `app/context/Providers.tsx`) — Pass-through wrapper (renders `{children}` with no contexts; kept as an extension point).
 
 ## Components
 - `AdminConfirm` — Reusable confirmation dialog.

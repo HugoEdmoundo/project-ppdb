@@ -52,6 +52,7 @@ export default function App() {
               <ProtectedRoute>
                 <Layout>
                   <Routes>
+                    <Route path="/" element={<DashboardPage />} />
                     <Route path="/dashboard" element={<DashboardPage />} />
                     <Route path="/users" element={<UsersPage />} />
                     <Route path="/users/new" element={<UserFormPage />} />

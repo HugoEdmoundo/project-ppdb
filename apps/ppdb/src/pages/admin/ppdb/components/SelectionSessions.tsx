@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as api from '@/api/client'
 import { useToast } from '@/components/Toast'
-import { useAuth } from '@/contexts/AuthContext'
+import { useCan } from '@/hooks/useCan'
 import { Card, CardContent, CardHeader } from "@/components/ui"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
 import { Badge } from "@/components/ui"
@@ -18,9 +18,8 @@ import type { Session } from './types'
 
 export default function SelectionSessions() {
   const { toast } = useToast()
-  const { user } = useAuth()
   const queryClient = useQueryClient()
-  const canCrud = user?.is_superadmin || user?.user_type === 'superadmin' || user?.permissions?.ppdb === 'crud'
+  const { canCrud } = useCan('ppdb', 'crud')
 
   const [sessionModal, setSessionModal] = useState<'create' | 'edit' | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)

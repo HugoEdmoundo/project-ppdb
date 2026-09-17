@@ -33,6 +33,9 @@ class PaymentService:
 
         transaction = self.repo.get_latest_transaction_by_applicant_id(applicant.id)
 
+        wave = (
+            self.repo.get_wave_by_id(applicant.wave_id) if applicant.wave_id else None
+        )
         app_dict = {
             "id": applicant.id,
             "wave_id": applicant.wave_id,
@@ -40,8 +43,28 @@ class PaymentService:
             "full_name": applicant.full_name,
             "email": applicant.email,
             "phone": applicant.phone,
+            "registration_path": applicant.registration_path,
+            "registration_level": applicant.registration_level,
+            "birth_place": applicant.birth_place,
+            "birth_date": applicant.birth_date,
+            "gender": applicant.gender,
+            "nisn": applicant.nisn,
+            "nik": applicant.nik,
+            "parent_name": applicant.parent_name,
+            "previous_school": applicant.previous_school,
+            "major_choice": applicant.major_choice,
+            "province": applicant.province,
+            "city": applicant.city,
+            "district": applicant.district,
+            "village": applicant.village,
+            "postal_code": applicant.postal_code,
+            "address": applicant.address,
             "status": applicant.status,
             "payment_status": applicant.payment_status,
+            "payment_deadline": applicant.payment_deadline,
+            "rejection_reason": applicant.rejection_reason,
+            "wave_name": wave.name if wave else None,
+            "created_at": applicant.created_at,
         }
 
         tx_dict = None

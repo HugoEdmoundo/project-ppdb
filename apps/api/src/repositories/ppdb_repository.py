@@ -628,7 +628,7 @@ class PPDBRepository:
             list[FileUpload],
             self.db.query(FileUpload)
             .filter(
-                FileUpload.entity_type == "ppdb_document",
+                FileUpload.entity_type.like("ppdb_document:%"),
                 FileUpload.entity_id == applicant_id,
             )
             .order_by(FileUpload.created_at.desc())

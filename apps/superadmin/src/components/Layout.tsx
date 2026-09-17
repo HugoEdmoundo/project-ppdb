@@ -128,7 +128,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 )}
                 title={collapsed ? item.label : undefined}
               >
-                <Icon className={cn("h-4.5 w-4.5 shrink-0 transition-transform duration-300 group-hover:scale-110", isActive ? "text-primary-foreground" : "text-slate-400 group-hover:text-primary")} />
+                <Icon className={cn("h-5 w-5 shrink-0 transition-transform duration-300 group-hover:scale-110", isActive ? "text-primary-foreground" : "text-slate-400 group-hover:text-primary")} />
                 {!collapsed && <span className="truncate">{item.label}</span>}
               </NavLink>
             )

@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { FolderOpen } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '../../lib/utils'
 import { Button } from './button'
 
 export interface EmptyStateProps {

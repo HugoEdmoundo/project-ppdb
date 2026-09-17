@@ -40,18 +40,35 @@ MODULES = {
     "companyprofile": "Company Profile",
 }
 
+# Key halaman adalah kontrak antar app: harus SAMA dengan key yang
+# diturunkan dari URL di app PPDB (href `/admin/<key>`) dan key tab di
+# app Company Profile (`tab.key`). Jangan ubah tanpa menyesuaikan
+# `apps/ppdb/src/layouts/AdminLayout.tsx` dan
+# `apps/companyprofile/app/admin/dashboard/page.tsx`.
 PAGES = {
     "ppdb": [
-        ("admin-dashboard", "Dashboard Admin", "LayoutDashboard", 5),
-        ("ppdb-periods", "Periode PPDB", "CalendarDays", 10),
-        ("ppdb-applicants", "Pendaftar", "Users", 20),
-        ("ppdb-payments", "Pembayaran", "Wallet", 30),
-        ("ppdb-selection", "Seleksi", "ClipboardCheck", 40),
+        ("dashboard", "Dashboard Admin", "LayoutDashboard", 5),
+        ("data-pendaftar", "Data Pendaftar", "Users", 10),
+        ("applicants", "Dokumen Pendaftar", "FolderOpen", 20),
+        ("selection", "Seleksi", "ClipboardCheck", 30),
+        ("mou", "Review MOU", "FileSignature", 35),
+        ("payments", "Pembayaran Formulir", "Wallet", 40),
+        ("diskonasi", "Diskonasi", "Percent", 45),
+        ("stage2-pembayaran", "Pembayaran Tahap 2", "CreditCard", 50),
+        ("periods", "Periode PPDB", "CalendarDays", 55),
+        ("notifications", "Notifikasi", "Bell", 60),
     ],
     "companyprofile": [
-        ("companyprofile-news", "Berita", "Newspaper", 10),
-        ("companyprofile-programs", "Program", "BookOpen", 20),
-        ("companyprofile-settings", "Pengaturan", "Settings", 30),
+        ("news", "Berita", "Newspaper", 10),
+        ("programs", "Program", "BookOpen", 20),
+        ("facilities", "Fasilitas", "Building2", 30),
+        ("staff", "Staff", "Users", 40),
+        ("achievements", "Prestasi", "Trophy", 50),
+        ("gallery", "Galeri", "ImageIcon", 60),
+        ("testimonials", "Testimoni", "MessageSquare", 70),
+        ("social", "Tautan Sosial", "LinkIcon", 80),
+        ("contact", "Info Kontak", "Phone", 90),
+        ("settings", "Pengaturan", "Settings", 100),
     ],
 }
 

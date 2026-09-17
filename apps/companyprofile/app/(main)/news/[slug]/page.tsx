@@ -1,13 +1,13 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getNews } from '@/app/lib/api'
+import { getNewsCached } from '@/app/lib/api'
 import type { NewsArticle } from '@/app/lib/types'
 import NewsDetailClient from './_components/NewsDetailClient'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   let allNews: NewsArticle[] | null = null
-  try { allNews = await getNews() } catch { allNews = null }
+  try { allNews = await getNewsCached() } catch { allNews = null }
   const article = (allNews ?? []).find((a) => a.slug === slug)
   if (!article) {
     return { title: 'Berita Tidak Ditemukan' }
@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function NewsDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   let allNews: NewsArticle[] | null = null
-  try { allNews = await getNews() } catch { allNews = null }
+  try { allNews = await getNewsCached() } catch { allNews = null }
   const safeNews = allNews ?? []
   const article = safeNews.find((a) => a.slug === slug)
   if (!article || !article.content) notFound()

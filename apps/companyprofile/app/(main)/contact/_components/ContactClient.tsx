@@ -8,8 +8,8 @@ import type { ContactInfo, SocialLink } from '@/app/lib/types'
 
 const faqs = [
   {
-    question: 'Bagaimana jadwal pendaftaran 2026/2027?',
-    answer: 'Pendaftaran awal berlangsung dari 1 September hingga 31 Desember 2026. Ujian masuk 15 Juni, wawancara 20-25 Juni, dan pengumuman 1 Juli. Tahun ajaran dimulai 15 Juli.',
+    question: 'Bagaimana jadwal pendaftaran 2027/2028?',
+    answer: 'Pendaftaran PPDB Tahun Ajaran 2027/2028 dibuka mulai 1 April hingga 31 Mei 2027. Ujian masuk 15 Juni, wawancara 20-25 Juni, dan pengumuman 1 Juli. Tahun ajaran dimulai 15 Juli.',
   },
   {
     question: 'Program apa saja yang tersedia?',

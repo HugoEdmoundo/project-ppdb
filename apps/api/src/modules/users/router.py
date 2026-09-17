@@ -1,11 +1,12 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from src.core.database import get_db
-from src.core.dependencies import require_superadmin
+from src.core.dependencies import get_current_user, require_superadmin
+from src.core.events import user_hubs
 from src.modules.users.schemas import PagePermissionsUpdate, UserCreate, UserUpdate
 from src.repositories.user_repository import UserRepository
 from src.services.user_service import UserService
@@ -69,6 +70,20 @@ def delete_user(
 ):
     user_service.delete_user(id, current_user_id=user.get("id"))
     return {"message": "Deleted"}
+
+
+@router.get("/{user_id}/events")
+async def user_events(
+    user_id: str,
+    request: Request,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    is_superadmin = user.get("user_type") == "superadmin" or bool(
+        user.get("is_superadmin")
+    )
+    if user.get("id") != user_id and not is_superadmin:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return await user_hubs.get(user_id).stream(request)
 
 
 @router.get("/{id}/page-permissions")

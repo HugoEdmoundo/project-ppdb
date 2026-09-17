@@ -125,6 +125,16 @@ export default function RoleFormPage() {
       />
 
       <form onSubmit={handleSubmit}>
+        {form.is_superadmin && (
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-700">
+            <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-semibold">Role ini dilindungi</p>
+              <p className="text-[13px]">Role superadmin memiliki akses penuh ke semua module dan tidak dapat diubah atau dihapus melalui form ini.</p>
+            </div>
+          </div>
+        )}
+
         {/* Basic Info */}
         <Card>
           <CardContent className="space-y-5 p-6 md:p-8">

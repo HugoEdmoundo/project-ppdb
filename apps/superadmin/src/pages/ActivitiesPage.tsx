@@ -43,6 +43,7 @@ export default function ActivitiesPage() {
   const [logs, setLogs] = useState<AuditRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
   const [entityType, setEntityType] = useState('')
   const [action, setAction] = useState('')
   const [entityTypes, setEntityTypes] = useState<string[]>([])
@@ -77,22 +78,24 @@ export default function ActivitiesPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLogs()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [page, search, entityType, action])
+
+  // Debounce pencarian ~400ms — bukan 1 request per ketukan.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput)
+      setPage(1)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchInput])
 
   const totalPages = Math.max(1, Math.ceil(total / perPage))
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    setSearch(searchInput)
     setPage(1)
   }
-
-  useEffect(() => {
-    if (page > 1 || search !== '' || entityType !== '' || action !== '') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      fetchLogs()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search, entityType, action])
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -117,10 +120,9 @@ export default function ActivitiesPage() {
                 <Input
                   placeholder="Cari username / aksi / entitas..."
                   className="pl-9"
-                  value={search}
+                  value={searchInput}
                   onChange={(e) => {
-                    setSearch(e.target.value)
-                    setPage(1)
+                    setSearchInput(e.target.value)
                   }}
                 />
               </div>

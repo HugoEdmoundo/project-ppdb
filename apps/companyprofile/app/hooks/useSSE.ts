@@ -1,10 +1,11 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useRef } from 'react'
 import { eventBus } from '@/app/lib/event-bus'
 
 export function useSSE(module: string) {
   const reconnectRef = useRef(0)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const maxReconnect = 5
@@ -16,17 +17,22 @@ export function useSSE(module: string) {
       es = new EventSource(url)
 
       const handler = () => {
+        // Koneksi hidup → reset penghitung reconnect agar EventSource tidak
+        // "mati permanen" hanya karena beberapa kali gagal sementara.
+        reconnectRef.current = 0
         eventBus.emit(`${module}:refresh`)
       }
 
       es.addEventListener('change', handler)
 
       es.onerror = () => {
+        // Tutup dulu sebelum reconnect, jangan biarkan koneksi gantung.
         es?.close()
+
+        if (reconnectRef.current >= maxReconnect) return
+
         reconnectRef.current++
-        if (reconnectRef.current <= maxReconnect) {
-          setTimeout(connect, 3000)
-        }
+        timerRef.current = setTimeout(connect, 3000)
       }
     }
 
@@ -34,6 +40,7 @@ export function useSSE(module: string) {
 
     return () => {
       es?.close()
+      if (timerRef.current) clearTimeout(timerRef.current)
     }
   }, [module])
 }

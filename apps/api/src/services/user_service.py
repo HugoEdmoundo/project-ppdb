@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
 from src.core.config import settings
+from src.core.events import user_hubs
 from src.core.notif_service import send_notifications
 from src.core.security import hash_password
 from src.models.auth import Role, User
@@ -30,7 +31,7 @@ class UserService:
     def _login_link_for(self, user_type: str) -> str:
         if user_type == "applicant":
             return settings.ppdb_frontend_url + "/auth/login"
-        return settings.superadmin_frontend_url + "/login"
+        return settings.superadmin_frontend_url + "/auth/login"
 
     def _send_credentials(
         self, event_key: str, user: User, raw_password: str = ""
@@ -257,4 +258,12 @@ class UserService:
             raise HTTPException(status_code=404, detail="User not found")
 
         self.repository.set_page_permissions(user_id, page_ids)
+        page_keys = self.repository.get_page_keys(user_id)
+        user_hubs.broadcast(
+            user_id,
+            {
+                "type": "page_permissions_changed",
+                "page_keys": page_keys,
+            },
+        )
         return {"user_id": user_id, "page_ids": page_ids}

@@ -90,9 +90,7 @@ export default function AdminOverview() {
 
   const filteredSections =
     pagePermissions && pagePermissions.length > 0
-      ? SECTIONS.filter((s) =>
-          pagePermissions.some((p) => `page-cp-${s.key}` === p)
-        )
+      ? SECTIONS.filter((s) => pagePermissions.includes(s.key))
       : SECTIONS
 
   const handle401 = useCallback(() => {
@@ -247,9 +245,11 @@ export default function AdminOverview() {
       >
         <div className={cn('relative flex items-center border-b border-border/60 bg-white/40', collapsed ? 'justify-center px-2 py-3' : 'px-5 py-4')}>
           {collapsed ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-auto max-w-8 object-contain" />
           ) : (
             <div className="flex items-center gap-3 min-w-0 flex-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 object-contain shrink-0" />
               <div className="min-w-0">
                 <div className="font-heading text-sm font-bold text-foreground truncate">PTDARRAHMAN</div>

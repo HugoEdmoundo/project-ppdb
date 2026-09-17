@@ -1,3 +1,5 @@
+import { cache } from 'react'
+
 import type {
   Achievement,
   ContactInfo,
@@ -143,6 +145,11 @@ export async function getPrograms(): Promise<Program[]> {
   const items = await fetchApi<JsonValue[]>('/programs')
   return items.map((item) => mapContent(item) as unknown as Program)
 }
+
+// Dedupe fetch dalam satu alur render (React `cache`): `generateMetadata` dan
+// page memanggil getNews/getPrograms → tanpa wrapper ini terjadi double-fetch.
+export const getNewsCached = cache(getNews)
+export const getProgramsCached = cache(getPrograms)
 
 export async function getProgramBySlug(slug: string): Promise<Program> {
   const item = await fetchApi<JsonValue>(`/programs/${slug}`)

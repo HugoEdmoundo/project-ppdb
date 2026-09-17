@@ -135,9 +135,7 @@ def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
 def _strip_permission_fields(user: dict) -> dict:
     """Keep login/me payload contract for the companyprofile admin dashboard."""
     return {
-        k: v
-        for k, v in user.items()
-        if k not in ("page_permissions", "payment_status", "payment_deadline")
+        k: v for k, v in user.items() if k not in ("payment_status", "payment_deadline")
     }
 
 
@@ -252,14 +250,9 @@ async def cp_me(
     user: dict[str, Any] = Depends(get_current_user),
     service: AuthService = Depends(get_auth_service),
 ):
-    data = service.get_me(user)
-    # Preserve the dashboard's page_permissions contract (raw page ids).
-    page_rows = execute_raw(
-        "SELECT page_id FROM user_page_permissions WHERE user_id = :uid",
-        {"uid": user["id"]},
-    )
-    data["page_permissions"] = [r["page_id"] for r in page_rows] if page_rows else []
-    return data
+    # `service.get_me()` serializes page_permissions as page KEYS, the same
+    # contract the PPDB admin nav and the Company Profile admin tabs consume.
+    return service.get_me(user)
 
 
 @router.put("/auth/profile")

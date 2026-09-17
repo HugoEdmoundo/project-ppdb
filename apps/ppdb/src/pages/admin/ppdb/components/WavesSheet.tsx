@@ -36,6 +36,7 @@ const waveSchema = z.object({
   selection_date: z.string().min(1, 'Jadwal seleksi wajib diisi'),
   quota: z.number().min(1, 'Kuota harus diisi minimal 1'),
   registration_fee: z.number().min(0, 'Biaya tidak boleh negatif'),
+  second_stage_fee: z.number().min(0, 'Biaya tidak boleh negatif'),
 }).refine(data => data.registration_end_date >= data.registration_start_date, {
   message: "Tanggal akhir pendaftaran tidak boleh sebelum tanggal mulai pendaftaran",
   path: ["registration_end_date"],
@@ -59,6 +60,7 @@ const emptyWaveForm = (): WaveFormData => ({
   selection_date: '',
   quota: 0,
   registration_fee: 0,
+  second_stage_fee: 0,
 })
 
 const fmtDateShort = (d: string): string =>
@@ -108,6 +110,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
   const allowedPaths = useWatch({ control, name: 'allowed_paths' }) ?? []
   const allowedLevels = useWatch({ control, name: 'allowed_levels' }) ?? []
   const registrationFee = useWatch({ control, name: 'registration_fee' })
+const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
 
   const [feeDialogWave, setFeeDialogWave] = useState<any>(null)
   const [feeItems, setFeeItems] = useState<any[]>([])
@@ -171,6 +174,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
       selection_date: (w.selection_date || '').split('T')[0],
       quota: w.quota ?? 0,
       registration_fee: w.registration_fee ?? 0,
+      second_stage_fee: w.second_stage_fee ?? 0,
     })
     setFormError(null)
     setShowForm(true)
@@ -557,6 +561,12 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                   <CurrencyInput id="wave-fee1" value={registrationFee}
                     onValueChange={(v: number) => setValue('registration_fee', v)}
                     placeholder="Contoh: 350.000" disabled={!canCrud} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wave-fee2">Biaya Daftar Ulang (Tahap 2)</Label>
+                  <CurrencyInput id="wave-fee2" value={secondStageFee}
+                    onValueChange={(v: number) => setValue('second_stage_fee', v)}
+                    placeholder="Contoh: 2.500.000" disabled={!canCrud} />
                 </div>
               </div>
             </div>

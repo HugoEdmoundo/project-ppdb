@@ -15,7 +15,7 @@ Managed as a **pnpm workspace + Turborepo** monorepo. Run cross-package scripts 
 
 ### Workspace Layout
 - `apps/*`: Deployable applications (the four services above).
-- `packages/*`: Shared internal libraries — `ui` (shared React/Tailwind UI components), `types`, `utils`, `typescript-config`, `eslint-config`, `database`.
+- `packages/*`: Shared internal libraries — `ui` (shared React/Tailwind UI components) and `typescript-config` (shared TypeScript/tsconfig presets).
 - `pnpm-workspace.yaml`: Workspace globs (`apps/*`, `packages/*`).
 - `turbo.json`: Task orchestration for `build`/`dev`/`lint`/`test`.
 - `.pre-commit-config.yaml`: Pre-commit hooks (ruff, mypy, trailing-whitespace, etc.) installed on commit.

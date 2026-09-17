@@ -468,8 +468,10 @@ class PPDBService:
         role_id = self.repository.get_role_id_by_name("Pendaftar")
 
         now = datetime.now()
-        payment_deadline = datetime.now(ZoneInfo("Asia/Jakarta")) + timedelta(days=7)
-        payment_deadline_str = payment_deadline.strftime("%Y-%m-%d %H:%M:%S")
+        payment_deadline_wib = datetime.now(ZoneInfo("Asia/Jakarta")) + timedelta(
+            days=7
+        )
+        payment_deadline = payment_deadline_wib.replace(tzinfo=None)
 
         user = User(
             id=str(uuid.uuid4()),
@@ -508,7 +510,7 @@ class PPDBService:
             major_choice=body.major_choice,
             status="pending_payment",
             payment_status="pending",
-            payment_deadline=payment_deadline_str,
+            payment_deadline=payment_deadline,
             created_at=now,
             updated_at=now,
         )

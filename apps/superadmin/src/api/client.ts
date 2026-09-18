@@ -101,6 +101,13 @@ async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Promise<T>
   let res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers })
 
   if (res.status === 401) {
+    // Simpan detail dari respon pertama: untuk login 401 artinya kredensial
+    // salah / user tidak ada — tetap tampilkan pesan backend, bukan "Unauthorized".
+    const firstBody = await parseJsonSafe<any>(res, `API ${endpoint}`).catch(() => ({
+      detail: res.statusText,
+    }))
+    const firstMsg = extractErrorMessage(firstBody, `API ${res.status}`)
+
     const refreshed = await tryRefresh()
     if (refreshed) {
       res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers })
@@ -110,7 +117,7 @@ async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Promise<T>
       if (window.location.pathname !== '/auth/login') {
         window.location.href = '/auth/login'
       }
-      throw new Error('Unauthorized')
+      throw new Error(firstMsg || 'Unauthorized')
     }
   }
 
@@ -337,3 +344,105 @@ export async function getNotificationLogs(params?: any): Promise<any> {
 // ── Helpers ───────────────────────────────────────────────
 
 export { getStoredUser, clearAuth, apiFetch }
+
+// ── WhatsApp Service ──────────────────────────────────────
+
+export const WA_API_BASE = (import.meta.env.VITE_WA_URL || 'http://localhost:3100').replace(/\/+$/, '')
+export const WA_API_KEY = import.meta.env.VITE_WA_API_KEY || ''
+
+async function waFetch<T>(endpoint: string, opts: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${WA_API_BASE}${endpoint}`, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': WA_API_KEY,
+      ...(opts.headers as Record<string, string>),
+    },
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error(body?.error || `WA API ${res.status}`)
+  }
+  if (res.status === 204) return undefined as T
+  return res.json() as Promise<T>
+}
+
+export interface WASessionInfo {
+  status: 'initializing' | 'qr' | 'authenticated' | 'ready' | 'disconnected' | 'destroyed'
+  phone?: string
+  pushName?: string
+  qrCode?: string
+  connectedAt?: string
+  lastActivity?: string
+}
+
+export interface WAQueueStats {
+  waiting: number
+  active: number
+  completed: number
+  failed: number
+  delayed: number
+}
+
+export interface WALogEntry {
+  id: string
+  event_key: string
+  recipient_name: string
+  recipient_phone: string
+  channel: string
+  body_sent: string
+  status: 'queued' | 'sent' | 'failed' | 'invalid_number'
+  retry_count: number
+  error_message?: string
+  wa_message_id?: string
+  created_at: string
+  sent_at?: string
+}
+
+export async function waGetSession(): Promise<{ success: boolean; data: WASessionInfo }> {
+  return waFetch('/api/session')
+}
+
+export async function waInitSession(): Promise<{ success: boolean; message: string }> {
+  return waFetch('/api/session/init', { method: 'POST' })
+}
+
+export async function waLogoutSession(): Promise<{ success: boolean; message: string }> {
+  return waFetch('/api/session/logout', { method: 'POST' })
+}
+
+export async function waDestroySession(): Promise<{ success: boolean; message: string }> {
+  return waFetch('/api/session', { method: 'DELETE' })
+}
+
+export async function waGetQrImage(): Promise<{ success: boolean; data: { qrCode: string } }> {
+  return waFetch('/api/session/qr/image')
+}
+
+export async function waGetQueueStats(): Promise<{ success: boolean; data: WAQueueStats }> {
+  return waFetch('/api/messages/queue')
+}
+
+export async function waGetLogs(params?: {
+  page?: number
+  perPage?: number
+  status?: string
+}): Promise<{ success: boolean; data: WALogEntry[]; total: number; totalPages: number }> {
+  const q = new URLSearchParams()
+  if (params?.page) q.set('page', String(params.page))
+  if (params?.perPage) q.set('perPage', String(params.perPage))
+  if (params?.status) q.set('status', params.status)
+  return waFetch(`/api/messages/logs${q.toString() ? '?' + q : ''}`)
+}
+
+export async function waGetHealth(): Promise<any> {
+  const res = await fetch(`${WA_API_BASE}/health/detailed`, {
+    headers: { 'X-API-Key': WA_API_KEY },
+  })
+  return res.json()
+}
+
+/** SSE stream URL untuk QR code realtime */
+export function waGetQrSseUrl(): string {
+  return `${WA_API_BASE}/api/session/qr`
+}

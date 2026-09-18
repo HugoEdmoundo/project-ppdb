@@ -95,6 +95,7 @@ class AuthService:
             "user_type": user.user_type or "admin",
             "is_superadmin": is_superadmin or user.user_type == "superadmin",
             "is_active": user.is_active,
+            "login_denied": False,
             "payment_status": payment_status,
             "payment_deadline": payment_deadline,
         }
@@ -102,7 +103,7 @@ class AuthService:
     def login(self, username: str, password: str) -> dict:
         user = self.repository.get_user_by_username_or_email(username)
         if not user:
-            raise HTTPException(401, "Invalid username or password")
+            raise HTTPException(401, "Username atau email tidak ditemukan")
 
         if not user.is_active:
             raise HTTPException(403, "User is inactive")
@@ -138,7 +139,47 @@ class AuthService:
 
             user.failed_login_attempts = attempts
             self.repository.update_user(user)
-            raise HTTPException(401, "Invalid username or password")
+            raise HTTPException(401, "Password salah")
+
+        # Validasi module access: user_type=admin/applicant dengan role yang
+        # seluruh module-nya = "none" tidak boleh login sama sekali.
+        # Superadmin (user_type="superadmin" atau role.is_superadmin=True)
+        # SELALU bypass pengecekan ini.
+        if user.user_type not in ("superadmin",):
+            role = (
+                self.repository.get_role_by_id(user.role_id) if user.role_id else None
+            )
+            is_super_role = bool(role and role.is_superadmin) if role else False
+            if not is_super_role:
+                if user.user_type == "applicant":
+                    # Applicant: role Pendaftar bawaan — selalu diizinkan masuk
+                    pass
+                else:
+                    # Admin biasa: cek apakah semua module di permissions = "none"
+                    permissions: dict = {}
+                    if role:
+                        raw = role.permissions
+                        if isinstance(raw, str):
+                            try:
+                                parsed = json.loads(raw)
+                                if isinstance(parsed, dict):
+                                    permissions = parsed
+                            except json.JSONDecodeError:
+                                pass
+                        elif isinstance(raw, dict):
+                            permissions = raw
+                    # Jika role tidak punya permissions sama sekali ATAU
+                    # semua nilai = "none", blokir login
+                    all_none = not permissions or all(
+                        v == "none" for v in permissions.values()
+                    )
+                    if all_none:
+                        raise HTTPException(
+                            403,
+                            "module_disabled: Akses ditolak — semua modul "
+                            "dinonaktifkan oleh superadmin. "
+                            "Hubungi superadmin untuk mengaktifkan akses.",
+                        )
 
         user.last_login_at = datetime.now(WIB)
         user.failed_login_attempts = 0
@@ -257,9 +298,7 @@ class AuthService:
         if new_password:
             if not data.get("old_password"):
                 raise HTTPException(status_code=400, detail="Old password is required")
-            if not verify_password(
-                data["old_password"], user_dict.get("password_hash", "")
-            ):
+            if not verify_password(data["old_password"], user.password_hash):
                 raise HTTPException(status_code=400, detail="Old password is incorrect")
             user.password_hash = hash_password(new_password)
 

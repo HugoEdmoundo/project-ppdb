@@ -71,6 +71,10 @@ const STATS = [
 
 function translateLoginError(message: string): string {
   const m = message.toLowerCase()
+  // Blokir module: semua modul dinonaktifkan oleh superadmin
+  if (m.startsWith('module_disabled:') || m.includes('module_disabled')) {
+    return 'Akses ditolak: semua modul dinonaktifkan oleh superadmin. Hubungi superadmin untuk mengaktifkan akses.'
+  }
   if (m.includes('invalid username') || m.includes('wrong password') || m.includes('incorrect')) {
     return 'Username atau password salah. Silakan coba lagi.'
   }
@@ -81,7 +85,7 @@ function translateLoginError(message: string): string {
 }
 
 export default function LoginPage() {
-  const { login, user, logout } = useAuth()
+  const { login, user } = useAuth()
   const { toast } = useToast()
   const { isAdmin, hasApplicantAccess } = usePermission()
   const navigate = useNavigate()
@@ -126,23 +130,20 @@ export default function LoginPage() {
   const canApplicant = hasApplicantAccess()
   const canChoose = canAdmin && canApplicant && user?.user_type !== 'superadmin'
 
+  // Redirect hanya dilakukan setelah loginSuccess=true — TIDAK pada setiap
+  // perubahan user. Ini mencegah redirect prematur yang bisa terjadi saat
+  // AuthContext melakukan periodic getMe() refresh (tiap 30 detik) dan
+  // mengembalikan user baru, padahal pengguna belum bermaksud login ulang.
   useEffect(() => {
-    if (user) {
-      if (canChoose) {
-        // Do nothing, let user choose from the UI below
-      } else if (canAdmin) {
-        navigate('/admin/dashboard', { replace: true })
-      } else if (canApplicant) {
-        navigate('/applicant', { replace: true })
-      } else {
-        // No permission to any PPDB module or dashboard.
-        // Intentional post-login side effect: sync external auth state to local UI.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setErrorMsg('Akses ditolak: Anda tidak memiliki izin untuk modul PPDB.')
-        logout()
-      }
-    }
-  }, [user, navigate, canAdmin, canApplicant, canChoose, logout])
+    if (!loginSuccess || !user) return
+    const isSuperadminUser = user.is_superadmin || user.user_type === 'superadmin'
+    const isApplicantUser = user.user_type === 'applicant'
+    const isAdminUser = isSuperadminUser || (!isApplicantUser && Object.values(user.permissions || {}).some(v => v !== 'none'))
+
+    const dest = isApplicantUser ? '/applicant' : '/admin/dashboard'
+    const timer = setTimeout(() => navigate(dest, { replace: true }), 1200)
+    return () => clearTimeout(timer)
+  }, [loginSuccess, user, navigate])
 
   const onRecover = async (data: RecoverData) => {
     try {
@@ -262,10 +263,16 @@ export default function LoginPage() {
                 </p>
 
                 {/* Alerts */}
-                {loginSuccess && (
+                {loginSuccess && user && (
                   <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-emerald-primary/25 bg-emerald-light px-4 py-3 text-left text-xs font-medium text-emerald-dark animate-fade-in">
                     <CheckCircle2 className="mt-px h-4 w-4 shrink-0" />
-                    <span>Login berhasil</span>
+                    <span>
+                      Login berhasil! Selamat datang,{' '}
+                      <strong>{user.full_name || user.username}</strong>.{' '}
+                      Mengalihkan ke{' '}
+                      {user.user_type === 'applicant' ? 'Dashboard Peserta' : 'Admin Dashboard'}
+                      {' '}…
+                    </span>
                   </div>
                 )}
                 {errorMsg && (
@@ -334,7 +341,7 @@ export default function LoginPage() {
                       {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
                     </div>
 
-                    <Button type="submit" size="lg" className="w-full" disabled={isSubmitting} loading={isSubmitting}>
+                    <Button type="submit" size="lg" className="w-full" disabled={isSubmitting || loginSuccess} loading={isSubmitting || loginSuccess}>
                       {isSubmitting ? (
                         'Memproses...'
                       ) : (

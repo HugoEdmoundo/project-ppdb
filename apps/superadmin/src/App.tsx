@@ -14,6 +14,7 @@ import ProfilePage from './pages/ProfilePage'
 import ApplicantsPage from './pages/ApplicantsPage'
 import ActivitiesPage from './pages/ActivitiesPage'
 import NotificationsPage from './pages/NotificationsPage'
+import WhatsAppPage from './pages/WhatsAppPage'
 import NotFoundPage from './pages/NotFoundPage'
 import * as api from './api/client'
 
@@ -64,6 +65,7 @@ export default function App() {
                     <Route path="/applicants" element={<ApplicantsPage />} />
                     <Route path="/activities" element={<ActivitiesPage />} />
                     <Route path="/notifications" element={<NotificationsPage />} />
+                    <Route path="/whatsapp" element={<WhatsAppPage />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </Layout>

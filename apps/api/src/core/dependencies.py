@@ -61,6 +61,7 @@ async def has_module_access(
         return True
 
     role_id = user.get("role_id")
+    role: dict[str, Any] | None = None
     if role_id:
         role = get_by_id("roles", role_id)
         if role and role.get("is_superadmin"):
@@ -85,11 +86,9 @@ async def has_module_access(
     ):
         return True
 
-    if role_id:
-        role = get_by_id("roles", role_id)
-        if role:
-            permissions = _parse_permissions(role.get("permissions"))
-            return _has_level(str(permissions.get(module, AccessLevel.NONE)), required)
+    if role:
+        permissions = _parse_permissions(role.get("permissions"))
+        return _has_level(str(permissions.get(module, AccessLevel.NONE)), required)
 
     return False
 

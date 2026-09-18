@@ -42,6 +42,14 @@ class Settings(BaseSettings):
     ppdb_frontend_url: str = "http://localhost:5174"
     superadmin_frontend_url: str = "http://localhost:5173"
 
+    # --- WhatsApp Microservice ---
+    # URL ke apps/whatsapp/ Express service
+    wa_service_url: str = "http://localhost:3100"
+    # API Key yang sama dengan WA microservice API_KEY
+    wa_service_api_key: str = ""
+    # Secret untuk verifikasi HMAC webhook callback dari WA microservice
+    wa_webhook_secret: str = ""
+
     # --- Uploads ---
     upload_provider: str = "local"  # local | cloudinary | db
     upload_dir: str = "uploads"

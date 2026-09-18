@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # ── FastAPI Backend ─────────────────────────────────────────────────────
   api:
     build:
       context: ./apps/api
@@ -8,7 +9,71 @@ services:
       - "8080:8000"
     volumes:
       - ./apps/api:/app
+      - ./uploads:/app/uploads
     env_file:
       - ./apps/api/.env
+    environment:
+      # Override untuk Docker networking
+      WA_SERVICE_URL: http://whatsapp:3100
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── WhatsApp Notification Microservice ──────────────────────────────────
+  whatsapp:
+    build:
+      context: ./apps/whatsapp
+    ports:
+      - "3100:3100"
+    volumes:
+      # Persistent WhatsApp session data (PENTING: jangan hilangkan)
+      - wa_session:/app/wa-session
+      # Log files
+      - wa_logs:/app/logs
+    env_file:
+      - ./apps/whatsapp/.env
+    environment:
+      NODE_ENV: production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Override webhook URL untuk Docker networking
+      WEBHOOK_URL: http://api:8000/notifications/webhook/whatsapp
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    # Puppeteer membutuhkan lebih banyak shared memory
+    shm_size: '256mb'
+
+  # ── Redis ──────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: >
+      redis-server
+        --appendonly yes
+        --appendfsync everysec
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+        --save 60 1
+        --loglevel notice
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+    driver: local
+  wa_session:
+    driver: local
+  wa_logs:
+    driver: local

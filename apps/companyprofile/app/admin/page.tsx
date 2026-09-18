@@ -11,7 +11,7 @@ export default function AdminPage() {
     if (user) {
       router.replace('/admin/overview')
     } else {
-      router.replace('/admin/login')
+      router.replace('/auth/login')
     }
   }, [router])
 

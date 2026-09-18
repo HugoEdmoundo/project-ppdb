@@ -48,6 +48,9 @@ export default function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/auth/login" element={<LoginPage />} />
 
+            {/* Alias: /applicant/login → /auth/login — untuk user yang salah ketik URL */}
+            <Route path="/applicant/login" element={<Navigate to="/auth/login" replace />} />
+
             <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout><Outlet /></AdminLayout></ProtectedRoute>}>
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />

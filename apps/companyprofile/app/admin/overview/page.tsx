@@ -95,7 +95,7 @@ export default function AdminOverview() {
 
   const handle401 = useCallback(() => {
     localStorage.removeItem('admin_user')
-    router.push('/admin/login')
+    router.push('/auth/login')
   }, [router])
 
   // Auth guard — sama dengan dashboard admin.
@@ -115,7 +115,7 @@ export default function AdminOverview() {
             throw new Error('no user')
           }
         } catch {
-          router.replace('/admin/login')
+          router.replace('/auth/login')
         }
       })()
       return
@@ -123,7 +123,7 @@ export default function AdminOverview() {
     try {
       const parsed = JSON.parse(saved) as AdminUser | null
       if (!parsed) {
-        router.replace('/admin/login')
+        router.replace('/auth/login')
         return
       }
       requestAnimationFrame(() => {
@@ -133,7 +133,7 @@ export default function AdminOverview() {
         }
       })
     } catch {
-      router.replace('/admin/login')
+      router.replace('/auth/login')
     }
   }, [router])
 
@@ -214,7 +214,7 @@ export default function AdminOverview() {
   function handleLogout() {
     api.logout()
     localStorage.removeItem('admin_user')
-    router.push('/admin/login')
+    router.push('/auth/login')
   }
 
   const greetingName = adminUser?.full_name || adminUser?.username || 'Admin'

@@ -2,7 +2,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Users, Shield, LogOut, User as UserIcon,
-  ChevronLeft, Menu, GraduationCap, Bell, History
+  ChevronLeft, Menu, GraduationCap, Bell, History, MessageCircle
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { getSettings, API_BASE } from '../api/client'
@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { to: '/roles', icon: Shield, label: 'Roles' },
   { to: '/activities', icon: History, label: 'Aktivitas' },
   { to: '/notifications', icon: Bell, label: 'Notifikasi' },
+  { to: '/whatsapp', icon: MessageCircle, label: 'WhatsApp' },
 ]
 
 export default function Layout({ children }: { children: React.ReactNode }) {

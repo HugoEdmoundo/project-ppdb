@@ -52,6 +52,11 @@ export async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Pro
 
   let res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers })
   if (res.status === 401) {
+    // Simpan detail respon pertama: untuk login 401 artinya kredensial salah
+    // atau akun tidak ada — tampilkan pesan backend, bukan "Unauthorized".
+    const firstBody = await parseJsonSafe<Record<string, string>>(res, `API ${endpoint}`).catch(() => ({ detail: res.statusText }))
+    const firstMsg = firstBody?.detail || `API ${res.status}`
+
     const refreshed = await tryRefresh()
     if (refreshed) { res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers }) }
     if (res.status === 401) {
@@ -59,7 +64,7 @@ export async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Pro
       if (window.location.pathname !== '/auth/login') {
         window.location.href = '/auth/login';
       }
-      throw new Error('Unauthorized')
+      throw new Error(firstMsg)
     }
   }
   if (!res.ok) { const body = await parseJsonSafe<Record<string, string>>(res, `API ${endpoint}`).catch(() => ({ detail: res.statusText })); throw new Error(body.detail || `API ${res.status}`) }

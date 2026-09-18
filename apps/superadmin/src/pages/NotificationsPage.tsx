@@ -1,17 +1,51 @@
-import { useState, useEffect, useRef } from 'react'
-import * as api from '../api/client'
-import { useToast } from '../components/Toast'
-import { ConfirmDialog } from "../components/ui/confirmdialog"
-import { Card, CardContent } from "@/components/ui"
-import { Badge } from "@/components/ui"
-import { Button } from "@/components/ui"
-import { Input } from "@/components/ui"
-import { Label } from "@/components/ui"
-import { Checkbox } from "@/components/ui"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
-import { EmptyState } from "@/components/ui"
-import { Send, Search, Inbox, Users } from 'lucide-react'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import {
+  Send, FileText, Inbox, Bell, Edit2, Eye, EyeOff,
+  CheckCircle2, XCircle, Clock, AlertTriangle, RefreshCw,
+  ChevronLeft, ChevronRight, Users, MessageSquare, Mail,
+  Zap, Search, Info, Copy, Check, Download,
+} from 'lucide-react'
 import PageHero from '../components/PageHero'
+import { ConfirmDialog } from '../components/ui/confirmdialog'
+import { useToast } from '../components/Toast'
+import * as api from '../api/client'
+import {
+  Card, CardContent,
+  Table, TableHeader, TableRow, TableHead, TableBody, TableCell,
+  Button,
+  Badge,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Input, Label, Textarea, Checkbox,
+  Tabs, TabsList, TabsTrigger, TabsContent,
+  EmptyState,
+} from '@/components/ui'
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface Template {
+  id: string
+  event_key: string
+  label: string
+  channel: string
+  email_subject?: string
+  body: string
+  is_active: boolean
+}
+
+interface NotifLog {
+  id: string
+  event_key: string
+  recipient_name?: string
+  recipient_phone?: string
+  recipient_email?: string
+  channel: string
+  status: string
+  retry_count?: number
+  error_message?: string
+  wa_message_id?: string
+  created_at: string
+  sent_at?: string
+}
 
 interface Recipient {
   user_id: string
@@ -19,327 +53,756 @@ interface Recipient {
   username: string
   email: string
   phone: string
-  type: string
+  type: 'Admin' | 'Pendaftar'
 }
 
-export default function NotificationsPage() {
-  const { toast } = useToast()
+// ── Constants ────────────────────────────────────────────────────────────────
 
+const AVAILABLE_VARS = [
+  { key: '{nama_peserta}', desc: 'Nama lengkap penerima' },
+  { key: '{username}', desc: 'Username akun' },
+  { key: '{email}', desc: 'Email penerima' },
+  { key: '{phone}', desc: 'No. WhatsApp' },
+  { key: '{password}', desc: 'Password (saat buat/reset akun)' },
+  { key: '{link_login}', desc: 'URL halaman login' },
+  { key: '{batas_waktu_bayar}', desc: 'Deadline pembayaran' },
+  { key: '{nominal_bayar}', desc: 'Nominal pembayaran' },
+  { key: '{link_pembayaran}', desc: 'URL halaman pembayaran' },
+  { key: '{alasan_penolakan}', desc: 'Alasan dokumen ditolak' },
+  { key: '{alasan_gagal}', desc: 'Alasan pembayaran gagal' },
+  { key: '{tanggal_seleksi}', desc: 'Tanggal seleksi' },
+  { key: '{waktu_seleksi}', desc: 'Waktu seleksi' },
+  { key: '{lokasi_seleksi}', desc: 'Lokasi/link seleksi' },
+  { key: '{nama_gelombang}', desc: 'Nama gelombang aktif' },
+  { key: '{deadline_daftar_ulang}', desc: 'Deadline daftar ulang' },
+]
+
+const PREVIEW_CONTEXT: Record<string, string> = {
+  '{nama_peserta}': 'Ahmad Fauzi',
+  '{username}': 'ahmad.fauzi24',
+  '{email}': 'ahmad@example.com',
+  '{phone}': '081234567890',
+  '{password}': 'Pass1234',
+  '{link_login}': 'https://ppdb.ptdarrahman.sch.id/auth/login',
+  '{batas_waktu_bayar}': '2026-09-25 23:59',
+  '{nominal_bayar}': 'Rp 350.000',
+  '{link_pembayaran}': 'https://ppdb.ptdarrahman.sch.id/checkout',
+  '{alasan_penolakan}': 'Foto tidak jelas / buram',
+  '{alasan_gagal}': 'Saldo tidak mencukupi',
+  '{tanggal_seleksi}': 'Sabtu, 10 Oktober 2026',
+  '{waktu_seleksi}': '08.00 WIB',
+  '{lokasi_seleksi}': 'Gedung Aula Lt. 2',
+  '{nama_gelombang}': 'Gelombang 1 TA 2026/2027',
+  '{deadline_daftar_ulang}': '2026-10-20 23:59',
+}
+
+const LOG_STATUS_META: Record<string, { label: string; color: string }> = {
+  sent:           { label: 'Terkirim',       color: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+  queued:         { label: 'Antrian',        color: 'border-blue-200 bg-blue-50 text-blue-700' },
+  failed:         { label: 'Gagal',          color: 'border-red-200 bg-red-50 text-red-700' },
+  invalid_number: { label: 'No. Tdk Valid',  color: 'border-orange-200 bg-orange-50 text-orange-700' },
+}
+
+const CHANNEL_META: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  whatsapp: { label: 'WhatsApp', color: 'bg-green-100 text-green-700 border-green-200', icon: MessageSquare },
+  email:    { label: 'Email',    color: 'bg-blue-100 text-blue-700 border-blue-200',   icon: Mail },
+  both:     { label: 'WA + Email', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Zap },
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function renderPreview(body: string): string {
+  let result = body
+  for (const [k, v] of Object.entries(PREVIEW_CONTEXT)) {
+    result = result.split(k).join(v)
+  }
+  return result
+}
+
+function fmtDate(d?: string) {
+  if (!d) return '—'
+  return new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  }).format(new Date(d))
+}
+
+function exportCSV(logs: NotifLog[]) {
+  const header = 'ID,Event,Penerima,Email,Phone,Channel,Status,Retry,WA ID,Waktu\n'
+  const rows = logs.map(l => [
+    l.id, l.event_key, l.recipient_name ?? '', l.recipient_email ?? '',
+    l.recipient_phone ?? '', l.channel, l.status,
+    l.retry_count ?? 0, l.wa_message_id ?? '',
+    l.sent_at || l.created_at,
+  ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+  const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = `notif-logs-${Date.now()}.csv`; a.click()
+  URL.revokeObjectURL(url)
+}
+
+// ── VarChip ───────────────────────────────────────────────────────────────────
+
+function VarChip({ varKey, desc, onInsert }: { varKey: string; desc: string; onInsert: (v: string) => void }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      type="button" title={desc}
+      onClick={() => { onInsert(varKey); setCopied(true); setTimeout(() => setCopied(false), 1200) }}
+      className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-mono font-medium text-slate-600 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 transition-colors"
+    >
+      {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3 opacity-50" />}
+      {varKey}
+    </button>
+  )
+}
+
+// ── Tab 1: Kirim Pesan ────────────────────────────────────────────────────────
+
+function SendTab({ templates }: { templates: Template[] }) {
+  const { toast } = useToast()
   const [recipients, setRecipients] = useState<Recipient[]>([])
+  const [recLoading, setRecLoading] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [filter, setFilter] = useState('')
-  const [channel, setChannel] = useState('both')
+  const [channel, setChannel] = useState('whatsapp')
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [useTemplate, setUseTemplate] = useState(false)
+  const [selectedTpl, setSelectedTpl] = useState('')
   const [sending, setSending] = useState(false)
-  const [logs, setLogs] = useState<any[]>([])
-
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [confirmData, setConfirmData] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
-  const confirmResolveRef = useRef<((v: boolean) => void) | null>(null)
-
-  const fetchAll = async () => {
-    setLoading(true)
-    try {
-      const [usersRes, applicantsRes, logsRes] = await Promise.all([
-        api.getUsers({ per_page: 500 }),
-        api.getApplicants({ perPage: 500 }),
-        api.getNotificationLogs({ perPage: 10 }),
-      ])
-      const userList = (Array.isArray(usersRes) ? usersRes : (usersRes as any).data || [])
-      const applicantList = (applicantsRes as any).data || []
-
-      const list: Recipient[] = [
-        ...userList.map((u: any) => ({
-          user_id: u.id,
-          name: u.full_name || u.username,
-          username: u.username,
-          email: u.email || '',
-          phone: u.phone || '',
-          type: 'Admin / User',
-        })),
-        ...applicantList
-          .filter((a: any) => a.user_id)
-          .map((a: any) => ({
-            user_id: a.user_id,
-            name: a.full_name,
-            username: a.username || '',
-            email: a.email || '',
-            phone: a.phone || '',
-            type: 'Pendaftar',
-          })),
-      ]
-      setRecipients(list)
-      setLogs(logsRes?.data || [])
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal memuat data penerima')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchAll()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setRecLoading(true)
+    Promise.all([
+      api.getUsers({ per_page: 500 }),
+      api.getApplicants({ perPage: 500 }),
+    ]).then(([usersRes, applicantsRes]) => {
+      const ul = Array.isArray(usersRes) ? usersRes : (usersRes as any).data ?? []
+      const al = (applicantsRes as any).data ?? []
+      const list: Recipient[] = [
+        ...ul.filter((u: any) => u.user_type !== 'superadmin').map((u: any) => ({
+          user_id: u.id, name: u.full_name || u.username, username: u.username,
+          email: u.email || '', phone: u.phone || '', type: 'Admin' as const,
+        })),
+        ...al.filter((a: any) => a.user_id).map((a: any) => ({
+          user_id: a.user_id, name: a.full_name, username: a.username || '',
+          email: a.email || '', phone: a.phone || '', type: 'Pendaftar' as const,
+        })),
+      ]
+      setRecipients(list)
+    }).catch(() => { }).finally(() => setRecLoading(false))
   }, [])
 
-  const eligible = recipients.filter(r => r.email || r.phone)
-  const filtered = eligible.filter(r => {
+  const filtered = recipients.filter(r => {
     if (!filter) return true
     const q = filter.toLowerCase()
-    return (
-      (r.name || '').toLowerCase().includes(q) ||
-      (r.username || '').toLowerCase().includes(q) ||
-      (r.email || '').toLowerCase().includes(q) ||
-      (r.phone || '').toLowerCase().includes(q)
-    )
+    return [r.name, r.username, r.email, r.phone].some(v => v.toLowerCase().includes(q))
   })
 
   function toggle(id: string) {
-    setSelected(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 
-  function selectAll() {
-    setSelected(prev => {
-      const next = new Set(prev)
-      filtered.forEach(r => next.add(r.user_id))
-      return next
-    })
-  }
-
-  function clearAll() {
-    setSelected(new Set())
-  }
-
-  async function handleSend() {
-    if (selected.size === 0) {
-      toast('warning', 'Pilih minimal satu penerima terlebih dahulu')
-      return
+  function onTplChange(id: string) {
+    setSelectedTpl(id)
+    const tpl = templates.find(t => t.id === id)
+    if (tpl) {
+      setBody(tpl.body)
+      setSubject(tpl.email_subject ?? '')
+      setChannel(tpl.channel)
     }
-    if (!body.trim()) {
-      toast('warning', 'Body pesan tidak boleh kosong')
-      return
-    }
-    const confirmed = await new Promise<boolean>((resolve) => {
-      confirmResolveRef.current = resolve
-      setConfirmData({
-        title: 'Kirim Notifikasi',
-        message: `Notifikasi akan dikirim ke ${selected.size} penerima. Pastikan email/nomor WhatsApp penerima sudah benar.\n\nChannel: ${channel}\nSubject: ${subject || '(kosong)'}\n\nYakin ingin mengirim?`,
-        onConfirm: () => { setConfirmOpen(false); confirmResolveRef.current = null; resolve(true) },
-      })
-      setConfirmOpen(true)
-    })
-    if (!confirmed) return
+  }
 
+  async function doSend() {
+    setConfirmOpen(false)
     setSending(true)
     try {
       const res = await api.sendCustomNotification({
         recipient_user_ids: Array.from(selected),
-        channel,
-        subject,
-        body,
+        channel, subject, body,
       })
-      toast('success', res?.message || 'Notifikasi berhasil dikirim')
-      setSubject('')
-      setBody('')
-      setSelected(new Set())
-      const logsRes = await api.getNotificationLogs({ perPage: 10 })
-      setLogs(logsRes?.data || [])
+      toast('success', res?.message || `Notifikasi diantrekan ke ${selected.size} penerima`)
+      setSelected(new Set()); setBody(''); setSubject('')
     } catch (e: any) {
-      toast('error', e.message || 'Gagal mengirim notifikasi')
+      toast('error', e.message || 'Gagal mengirim')
     } finally {
       setSending(false)
     }
   }
 
+  const previewBody = renderPreview(body)
+
   return (
-    <>
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
+      {/* Recipient list */}
+      <Card className="lg:col-span-3">
+        <CardContent className="p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-semibold">Pilih Penerima ({selected.size} dipilih)</Label>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm"
+                onClick={() => setSelected(new Set(filtered.map(r => r.user_id)))}>
+                Semua
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setSelected(new Set())}>
+                Bersihkan
+              </Button>
+            </div>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input className="pl-9" placeholder="Cari nama / username / email / WA..."
+              value={filter} onChange={e => setFilter(e.target.value)} />
+          </div>
+          <div className="max-h-72 overflow-y-auto rounded-xl border border-border p-1.5 space-y-0.5">
+            {recLoading ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Memuat data penerima...</p>
+            ) : filtered.length === 0 ? (
+              <EmptyState icon={Users} title="Tidak Ada Penerima" description="Tidak ada user yang cocok." className="bg-transparent border-transparent py-6" />
+            ) : filtered.map(r => (
+              <label key={r.user_id} className="flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-accent">
+                <Checkbox checked={selected.has(r.user_id)} onCheckedChange={() => toggle(r.user_id)} className="mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <span className="truncate">{r.name}</span>
+                    <Badge variant="secondary" className="text-[10px] shrink-0">{r.type}</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {r.email || '—'} · {r.phone || 'Tanpa WA'}
+                  </div>
+                </div>
+              </label>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Composer */}
+      <Card className="lg:col-span-2">
+        <CardContent className="p-5 space-y-4">
+          <div className="space-y-1.5">
+            <Label>Channel</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={channel} onChange={e => setChannel(e.target.value)}>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="email">Email</option>
+              <option value="both">WhatsApp + Email</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox id="use-tpl" checked={useTemplate} onCheckedChange={v => setUseTemplate(Boolean(v))} />
+            <label htmlFor="use-tpl" className="text-sm cursor-pointer">Pakai template yang ada</label>
+          </div>
+
+          {useTemplate && (
+            <div className="space-y-1.5">
+              <Label>Template</Label>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={selectedTpl} onChange={e => onTplChange(e.target.value)}>
+                <option value="">— Pilih template —</option>
+                {templates.filter(t => t.is_active).map(t => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {(channel === 'email' || channel === 'both') && (
+            <div className="space-y-1.5">
+              <Label>Subject Email</Label>
+              <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Judul email..." />
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label>Body Pesan *</Label>
+            <Textarea rows={7} className="font-mono text-sm"
+              value={body} onChange={e => setBody(e.target.value)}
+              placeholder="Tulis pesan atau pilih template di atas..." />
+          </div>
+
+          {body && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+              <p className="mb-1 text-[10px] font-semibold uppercase text-emerald-700">Preview</p>
+              <pre className="whitespace-pre-wrap break-words font-sans text-xs text-slate-700 leading-relaxed max-h-40 overflow-y-auto">
+                {previewBody}
+              </pre>
+            </div>
+          )}
+
+          <Button className="w-full" disabled={sending || selected.size === 0 || !body.trim()}
+            onClick={() => setConfirmOpen(true)}>
+            <Send className="h-4 w-4 mr-2" />
+            {sending ? 'Mengirim...' : `Kirim ke ${selected.size} Penerima`}
+          </Button>
+        </CardContent>
+      </Card>
+
       <ConfirmDialog
         isOpen={confirmOpen}
-        onClose={() => { setConfirmOpen(false); confirmResolveRef.current?.(false); confirmResolveRef.current = null }}
-        onConfirm={() => confirmData?.onConfirm()}
-        title={confirmData?.title || 'Konfirmasi'}
-        message={confirmData?.message || ''}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={doSend}
+        title="Kirim Notifikasi"
+        message={`Notifikasi akan dikirim ke ${selected.size} penerima via ${channel}.\n\nYakin ingin melanjutkan?`}
         confirmLabel="Ya, Kirim"
       />
-      <div className="space-y-6 animate-fadeIn">
-        <PageHero
-          eyebrow="Komunikasi"
-          title="Kirim Notifikasi"
-          description="Kirim pesan khusus ke user / pendaftar. Saat ini dalam mode simulasi — pesan tercatat di log notifikasi."
-          loading={loading && recipients.length === 0}
-          chips={[
-            { icon: Users, label: `${eligible.length} Penerima Eligible` },
-            { icon: Inbox, label: `${logs.length} Log Terakhir` },
-            { icon: Send, label: `${selected.size} Dipilih` },
-          ]}
+    </div>
+  )
+}
+
+// ── Tab 2: Template Manager ───────────────────────────────────────────────────
+
+function TemplateTab() {
+  const { toast } = useToast()
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editTarget, setEditTarget] = useState<Template | null>(null)
+
+  const fetchTemplates = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.apiFetch<Template[]>('/notifications/templates')
+      setTemplates(res)
+    } catch (e: any) {
+      toast('error', e.message || 'Gagal memuat template')
+    } finally {
+      setLoading(false)
+    }
+  }, [toast])
+
+  useEffect(() => { fetchTemplates() }, [fetchTemplates])
+
+  const activeCount = templates.filter(t => t.is_active).length
+
+  return (
+    <>
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">{templates.length} Template</span>
+              <span className="text-xs text-muted-foreground">({activeCount} aktif)</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchTemplates}>
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />Refresh
+            </Button>
+          </div>
+          <Table>
+            <TableHeader className="bg-primary/5">
+              <TableRow>
+                <TableHead>Event Key</TableHead>
+                <TableHead>Label</TableHead>
+                <TableHead>Channel</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">Memuat template...</TableCell></TableRow>
+              ) : templates.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="py-10">
+                  <EmptyState icon={Bell} title="Belum Ada Template" description="Jalankan alembic upgrade head untuk seed template." className="bg-transparent border-transparent" />
+                </TableCell></TableRow>
+              ) : templates.map(t => {
+                const ch = CHANNEL_META[t.channel] ?? CHANNEL_META.both
+                const ChIcon = ch.icon
+                return (
+                  <TableRow key={t.id} className="hover:bg-muted/30 transition-colors">
+                    <TableCell>
+                      <span className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-600">{t.event_key}</span>
+                    </TableCell>
+                    <TableCell className="text-sm font-medium">{t.label}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${ch.color}`}>
+                        <ChIcon className="h-3 w-3" />{ch.label}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={t.is_active ? 'success' : 'secondary'}>
+                        {t.is_active ? 'Aktif' : 'Nonaktif'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => setEditTarget(t)}>
+                        <Edit2 className="h-3.5 w-3.5 mr-1" />Edit
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {editTarget && (
+        <TemplateEditDialog
+          template={editTarget}
+          open={!!editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={() => { fetchTemplates(); setEditTarget(null) }}
         />
+      )}
+    </>
+  )
+}
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-          {/* Pilih penerima */}
-          <Card className="lg:col-span-3">
-            <CardContent className="space-y-4 p-6">
-              <div className="flex items-center justify-between gap-3">
-                <Label className="text-sm font-semibold text-foreground">Pilih Penerima ({selected.size} dipilih)</Label>
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={selectAll}>Pilih Semua</Button>
-                  <Button type="button" variant="outline" size="sm" onClick={clearAll}>Bersihkan</Button>
-                </div>
+function TemplateEditDialog({ template, open, onClose, onSaved }: {
+  template: Template; open: boolean; onClose: () => void; onSaved: () => void
+}) {
+  const { toast } = useToast()
+  const [form, setForm] = useState({
+    label: template.label,
+    channel: template.channel,
+    email_subject: template.email_subject ?? '',
+    body: template.body,
+    is_active: template.is_active,
+  })
+  const [showPreview, setShowPreview] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const insertVar = (varKey: string) => {
+    const el = textareaRef.current
+    if (!el) { setForm(p => ({ ...p, body: p.body + varKey })); return }
+    const start = el.selectionStart ?? el.value.length
+    const end = el.selectionEnd ?? el.value.length
+    const next = el.value.slice(0, start) + varKey + el.value.slice(end)
+    setForm(p => ({ ...p, body: next }))
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(start + varKey.length, start + varKey.length) })
+  }
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      await api.apiFetch(`/notifications/templates/${template.id}`, {
+        method: 'PUT', body: JSON.stringify(form),
+      })
+      // Clear WA template cache silently
+      try {
+        if (api.WA_API_KEY) {
+          await fetch(`${api.WA_API_BASE}/api/templates/cache/clear`, {
+            method: 'POST', headers: { 'X-API-Key': api.WA_API_KEY },
+          })
+        }
+      } catch { /* silent */ }
+      toast('success', 'Template berhasil disimpan')
+      onSaved()
+    } catch (e: any) {
+      toast('error', e.message || 'Gagal menyimpan')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Edit2 className="h-4 w-4 text-primary" />
+            Edit: <span className="font-mono text-sm text-muted-foreground">{template.event_key}</span>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>Label</Label>
+            <Input value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Channel</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={form.channel} onChange={e => setForm(p => ({ ...p, channel: e.target.value }))}>
+              <option value="whatsapp">WhatsApp saja</option>
+              <option value="email">Email saja</option>
+              <option value="both">WhatsApp + Email</option>
+            </select>
+          </div>
+          {(form.channel === 'email' || form.channel === 'both') && (
+            <div className="space-y-1.5">
+              <Label>Subject Email</Label>
+              <Input value={form.email_subject} onChange={e => setForm(p => ({ ...p, email_subject: e.target.value }))} />
+            </div>
+          )}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Info className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-semibold text-muted-foreground">Klik variabel untuk menyisipkan ke kursor:</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 rounded-lg border border-dashed border-slate-200 bg-slate-50/50 p-3">
+              {AVAILABLE_VARS.map(v => <VarChip key={v.key} varKey={v.key} desc={v.desc} onInsert={insertVar} />)}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label>Body Pesan</Label>
+              <button type="button" onClick={() => setShowPreview(p => !p)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                {showPreview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                {showPreview ? 'Sembunyikan preview' : 'Tampilkan preview'}
+              </button>
+            </div>
+            <Textarea ref={textareaRef} className="min-h-[220px] font-mono text-sm leading-relaxed"
+              value={form.body} onChange={e => setForm(p => ({ ...p, body: e.target.value }))}
+              placeholder="Isi pesan..." />
+            <p className="text-[11px] text-muted-foreground">*teks* = bold, _teks_ = italic (WhatsApp formatting)</p>
+          </div>
+          {showPreview && (
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5">
+                <Eye className="h-3.5 w-3.5 text-emerald-500" />Preview (contoh data)
+              </Label>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
+                <pre className="whitespace-pre-wrap break-words font-sans text-sm text-slate-700 leading-relaxed">
+                  {renderPreview(form.body) || <span className="text-muted-foreground italic">Tulis body pesan...</span>}
+                </pre>
               </div>
+            </div>
+          )}
+          <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
+            <input type="checkbox" id="is_active_sa" checked={form.is_active}
+              onChange={e => setForm(p => ({ ...p, is_active: e.target.checked }))}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+            <label htmlFor="is_active_sa" className="text-sm font-medium cursor-pointer">
+              Template aktif — akan dikirim saat event terpicu
+            </label>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Batal</Button>
+          <Button onClick={save} disabled={saving}>{saving ? 'Menyimpan...' : 'Simpan Template'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Cari nama / username / email / no. WhatsApp..."
-                  className="pl-9"
-                  value={filter}
-                  onChange={e => setFilter(e.target.value)}
-                />
-              </div>
+// ── Tab 3: Log ────────────────────────────────────────────────────────────────
 
-              <div className="max-h-80 space-y-1 overflow-y-auto rounded-xl border border-border p-2">
-                {loading ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">Memuat data...</p>
-                ) : filtered.length === 0 ? (
-                  <EmptyState
-                    icon={Inbox}
-                    title="Tidak Ada Penerima"
-                    description="Tidak ada user dengan email / nomor WhatsApp yang bisa dipilih."
-                    className="bg-transparent border-transparent"
-                  />
-                ) : (
-                  filtered.map(r => (
-                    <label
-                      key={r.user_id}
-                      className="flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-accent"
-                    >
-                      <Checkbox
-                        checked={selected.has(r.user_id)}
-                        onCheckedChange={() => toggle(r.user_id)}
-                        className="mt-0.5"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                          <span className="truncate">{r.name || r.username}</span>
-                          <Badge variant="secondary" className="text-[10px]">{r.type}</Badge>
-                        </div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {r.email || '-'} <span className="mx-1">•</span> {r.phone || '-'}
-                        </div>
-                      </div>
-                    </label>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
+function LogTab() {
+  const { toast } = useToast()
+  const [logs, setLogs] = useState<NotifLog[]>([])
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [page, setPage] = useState(1)
+  const [statusFilter, setStatusFilter] = useState('')
+  const [eventFilter, setEventFilter] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [autoRefresh, setAutoRefresh] = useState(false)
 
-          {/* Komposer */}
-          <Card className="lg:col-span-2">
-            <CardContent className="space-y-4 p-6">
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold text-foreground">Channel</Label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  value={channel}
-                  onChange={e => setChannel(e.target.value)}
-                >
-                  <option value="email">Email</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="both">Email &amp; WhatsApp</option>
-                </select>
-              </div>
+  const fetchLogs = useCallback(async (p = page, status = statusFilter, event = eventFilter) => {
+    setLoading(true)
+    try {
+      const qs = new URLSearchParams({ page: String(p), perPage: '20' })
+      if (status) qs.set('status', status)
+      if (event) qs.set('event_key', event)
+      const res = await api.apiFetch<any>(`/notifications/logs?${qs}`)
+      setLogs(res?.data || [])
+      setTotal(res?.total ?? 0)
+      setTotalPages(res?.totalPages ?? Math.ceil((res?.total ?? 0) / 20))
+    } catch (e: any) {
+      toast('error', e.message || 'Gagal memuat log')
+    } finally {
+      setLoading(false)
+    }
+  }, [page, statusFilter, eventFilter, toast])
 
-              {(channel === 'email' || channel === 'both') && (
-                <div className="space-y-2">
-                  <Label htmlFor="subject" className="text-xs font-semibold text-foreground">Subject</Label>
-                  <Input
-                    id="subject"
-                    type="text"
-                    value={subject}
-                    onChange={e => setSubject(e.target.value)}
-                    placeholder="Judul pesan (untuk email)"
-                  />
-                </div>
-              )}
+  useEffect(() => { fetchLogs(1, statusFilter, eventFilter) }, [statusFilter, eventFilter])
 
-              <div className="space-y-2">
-                <Label htmlFor="body" className="text-xs font-semibold text-foreground">Body Pesan *</Label>
-                <textarea
-                  id="body"
-                  rows={8}
-                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  value={body}
-                  onChange={e => setBody(e.target.value)}
-                  placeholder="Tulis pesan yang akan dikirim ke penerima..."
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Mendukung variabel: {'{nama_peserta}'}, {'{username}'}, {'{email}'}, {'{phone}'}
-                </p>
-              </div>
+  useEffect(() => {
+    if (!autoRefresh) return
+    const id = setInterval(() => fetchLogs(page, statusFilter, eventFilter), 10_000)
+    return () => clearInterval(id)
+  }, [autoRefresh, page, statusFilter, eventFilter, fetchLogs])
 
-              <Button className="w-full" onClick={handleSend} disabled={sending}>
-                <Send className="h-4 w-4 mr-2" />
-                {sending ? 'Mengirim...' : `Kirim ke ${selected.size} Penerima`}
-              </Button>
-            </CardContent>
-          </Card>
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-3.5">
+          <div className="flex items-center gap-2 flex-1">
+            <Inbox className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">Log Pengiriman</span>
+            {total > 0 && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{total}</span>}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none">
+              <option value="">Semua Status</option>
+              <option value="sent">Terkirim</option>
+              <option value="queued">Antrian</option>
+              <option value="failed">Gagal</option>
+              <option value="invalid_number">No. Tidak Valid</option>
+            </select>
+            <Input className="h-8 text-xs w-40" placeholder="Cari event key..."
+              value={eventFilter} onChange={e => { setEventFilter(e.target.value); setPage(1) }} />
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+              <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)}
+                className="rounded" />
+              Auto-refresh 10s
+            </label>
+            <Button variant="outline" size="sm" onClick={() => fetchLogs(page, statusFilter, eventFilter)}>
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => exportCSV(logs)} disabled={logs.length === 0}>
+              <Download className="h-3.5 w-3.5 mr-1.5" />CSV
+            </Button>
+          </div>
         </div>
 
-        {/* Log */}
-        <Card>
-          <CardContent className="p-0">
-            <div className="flex items-center gap-2 border-b border-border px-5 py-3">
-              <Inbox className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold text-foreground">Log Notifikasi Terbaru</h2>
-            </div>
-            <Table>
-              <TableHeader className="bg-muted/50">
-                <TableRow>
-                  <TableHead>Penerima</TableHead>
-                  <TableHead>Channel</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Waktu</TableHead>
+        <Table>
+          <TableHeader className="bg-muted/40">
+            <TableRow>
+              <TableHead>Penerima</TableHead>
+              <TableHead>Event</TableHead>
+              <TableHead>Channel</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Retry</TableHead>
+              <TableHead>WA ID</TableHead>
+              <TableHead>Waktu</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow><TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">Memuat log...</TableCell></TableRow>
+            ) : logs.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="py-10">
+                <EmptyState icon={Inbox} title="Belum Ada Log" description="Belum ada log pengiriman notifikasi." className="bg-transparent border-transparent" />
+              </TableCell></TableRow>
+            ) : logs.map(log => {
+              const sm = LOG_STATUS_META[log.status] ?? LOG_STATUS_META.failed
+              return (
+                <TableRow key={log.id} className="hover:bg-muted/20 transition-colors">
+                  <TableCell>
+                    <div className="text-sm font-medium">{log.recipient_name || '—'}</div>
+                    <div className="text-xs text-muted-foreground font-mono">{log.recipient_phone || log.recipient_email || '—'}</div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">{log.event_key}</span>
+                  </TableCell>
+                  <TableCell className="text-xs uppercase text-muted-foreground">{log.channel}</TableCell>
+                  <TableCell>
+                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${sm.color}`}>
+                      {sm.label}
+                    </span>
+                    {log.error_message && (
+                      <p className="mt-0.5 max-w-[160px] truncate text-[11px] text-red-500" title={log.error_message}>
+                        {log.error_message}
+                      </p>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {(log.retry_count ?? 0) > 0
+                      ? <span className="text-xs font-semibold text-amber-600">{log.retry_count}×</span>
+                      : <span className="text-muted-foreground text-xs">—</span>}
+                  </TableCell>
+                  <TableCell>
+                    {log.wa_message_id
+                      ? <span className="font-mono text-[10px] text-muted-foreground">{log.wa_message_id.slice(0, 16)}…</span>
+                      : <span className="text-muted-foreground text-xs">—</span>}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                    {fmtDate(log.sent_at || log.created_at)}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">Belum ada log notifikasi.</TableCell></TableRow>
-                ) : (
-                  logs.map(l => (
-                    <TableRow key={l.id}>
-                      <TableCell className="text-sm">
-                        <span className="font-medium text-foreground">{l.recipient_name || '—'}</span>
-                        <div className="text-xs text-muted-foreground">{l.recipient_email || l.recipient_phone || '—'}</div>
-                      </TableCell>
-                      <TableCell className="uppercase text-xs">{l.channel}</TableCell>
-                      <TableCell className="max-w-[220px] truncate text-xs">{l.subject_sent || l.event_key || '—'}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={l.status === 'sent' ? 'border-success/30 bg-success/10 text-success' : undefined}
-                        >{l.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {l.created_at ? new Date(l.created_at).toLocaleString('id-ID') : '—'}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
-    </>
+              )
+            })}
+          </TableBody>
+        </Table>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-border px-5 py-3 text-sm text-muted-foreground">
+            <span>Halaman {page} dari {totalPages} ({total} log)</span>
+            <div className="flex gap-1.5">
+              <Button variant="outline" size="sm" disabled={page <= 1}
+                onClick={() => { const p = page - 1; setPage(p); fetchLogs(p, statusFilter, eventFilter) }}>
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="outline" size="sm" disabled={page >= totalPages}
+                onClick={() => { const p = page + 1; setPage(p); fetchLogs(p, statusFilter, eventFilter) }}>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
+export default function NotificationsPage() {
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [tplLoading, setTplLoading] = useState(true)
+  const { toast } = useToast()
+  const waConfigured = Boolean(api.WA_API_KEY)
+
+  useEffect(() => {
+    api.apiFetch<Template[]>('/notifications/templates')
+      .then(setTemplates)
+      .catch((e: any) => toast('error', e.message || 'Gagal memuat template'))
+      .finally(() => setTplLoading(false))
+  }, [toast])
+
+  const activeCount = templates.filter(t => t.is_active).length
+
+  return (
+    <div className="space-y-6 animate-fadeIn">
+      <PageHero
+        eyebrow="Komunikasi"
+        title="Notifikasi"
+        description="Kirim pesan, kelola template, dan pantau log pengiriman via WhatsApp & Email."
+        loading={tplLoading && templates.length === 0}
+        chips={[
+          { icon: Bell, label: `${templates.length} Template` },
+          { icon: CheckCircle2, label: `${activeCount} Aktif` },
+          { icon: waConfigured ? Zap : AlertTriangle, label: waConfigured ? 'WA: Terhubung' : 'WA: Belum dikonfigurasi' },
+        ]}
+      />
+
+      {!waConfigured && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
+          <div>
+            <p className="font-semibold">WhatsApp Service Belum Dikonfigurasi</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Tambahkan <code className="bg-amber-100 px-1 rounded">VITE_WA_URL</code> dan{' '}
+              <code className="bg-amber-100 px-1 rounded">VITE_WA_API_KEY</code> ke{' '}
+              <code className="bg-amber-100 px-1 rounded">.env</code> superadmin, lalu restart dev server.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <Tabs defaultValue="send">
+        <TabsList className="mb-2">
+          <TabsTrigger value="send" className="flex items-center gap-1.5">
+            <Send className="h-3.5 w-3.5" />Kirim Pesan
+          </TabsTrigger>
+          <TabsTrigger value="templates" className="flex items-center gap-1.5">
+            <FileText className="h-3.5 w-3.5" />Template
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-1.5">
+            <Inbox className="h-3.5 w-3.5" />Log
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="send">
+          <SendTab templates={templates} />
+        </TabsContent>
+        <TabsContent value="templates">
+          <TemplateTab />
+        </TabsContent>
+        <TabsContent value="logs">
+          <LogTab />
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }

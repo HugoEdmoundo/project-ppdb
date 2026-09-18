@@ -446,7 +446,7 @@ export default function AdminDashboard() {
 
   const handle401 = useCallback(() => {
     localStorage.removeItem('admin_user')
-    router.push('/admin/login')
+    router.push('/auth/login')
   }, [router])
 
   const ADMIN_PAGE_SIZE = 25
@@ -534,7 +534,7 @@ export default function AdminDashboard() {
           }
         } catch {
           localStorage.removeItem('admin_user')
-          router.replace('/admin/login')
+          router.replace('/auth/login')
         }
       })()
       return
@@ -556,7 +556,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const user = localStorage.getItem('admin_user')
     if (!user) {
-      router.replace('/admin/login')
+      router.replace('/auth/login')
       return
     }
     const frame = requestAnimationFrame(() => { fetchData() })
@@ -746,7 +746,7 @@ export default function AdminDashboard() {
   function handleLogout() {
     api.logout()
     localStorage.removeItem('admin_user')
-    router.push('/admin/login')
+    router.push('/auth/login')
   }
 
   // ─── Render: Form Modal ──────────────────────────────────

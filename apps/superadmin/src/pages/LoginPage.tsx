@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false)
   const [redirecting, setRedirecting] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string>('')
+  const [successName, setSuccessName] = useState('')
 
   // Load logo dynamically (login pakai logo, bukan favicon).
   // Tidak ada aset logo statis — fallback ke text mark jika belum tersedia.
@@ -28,14 +29,19 @@ export default function LoginPage() {
       .catch(() => {})
   }, [])
 
-  // If already logged in, redirect
+  const isSuperadmin = !!user && (user.user_type === 'superadmin' || !!user.is_superadmin)
+
+  // If already logged in as superadmin, redirect.
+  // Jangan redirect user dengan session tersimpan yang BUKAN superadmin
+  // (mis. sisa localStorage lama) — itu bikin loop /auth/login ↔ / (ProtectedRoute
+  // menolak non-superadmin, LoginPage malah me-redirect balik ke /).
   useEffect(() => {
-    if (user && !redirecting) {
+    if (isSuperadmin && !redirecting) {
       navigate('/', { replace: true })
     }
-  }, [user, navigate, redirecting])
+  }, [isSuperadmin, navigate, redirecting])
 
-  if (user && !redirecting) {
+  if (isSuperadmin && !redirecting) {
     return null
   }
 
@@ -48,10 +54,11 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      await login(username, password)
+      const loggedInUser = await login(username, password)
+      setSuccessName(loggedInUser?.full_name || loggedInUser?.username || username)
       setSuccess(true)
       setRedirecting(true)
-      setTimeout(() => navigate('/', { replace: true }), 900)
+      setTimeout(() => navigate('/', { replace: true }), 1200)
     } catch (e: any) {
       setSuccess(false)
       setError(e.message || 'Login gagal')
@@ -100,7 +107,11 @@ export default function LoginPage() {
         {success && (
           <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-[#1A6B47]/25 bg-[#E8F5EE] px-4 py-3 text-left text-xs font-medium text-[#135235]" style={{ animation: 'modalIn 0.25s ease-out' }}>
             <CheckCircle2 className="mt-px w-4 h-4 shrink-0" />
-            <span>Login berhasil — mengalihkan Anda...</span>
+            <span>
+              Login berhasil! Selamat datang,{' '}
+              <strong>{successName}</strong>.{' '}
+              Mengalihkan ke panel…
+            </span>
           </div>
         )}
         {error && (
@@ -157,7 +168,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading || !username.trim() || !password.trim()}
+            disabled={loading || success || !username.trim() || !password.trim()}
             className="btn-primary w-full justify-center disabled:opacity-60"
           >
             {loading ? (

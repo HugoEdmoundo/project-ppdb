@@ -12,6 +12,7 @@ Managed as a **pnpm workspace + Turborepo** monorepo. Run cross-package scripts 
 | **PPDB App** | `apps/ppdb/` | Vite 8, React 19, Tailwind CSS v3 | Student registration, payment gateway wall, applicant dashboard, PPDB admin. |
 | **Superadmin Panel**| `apps/superadmin/` | Vite 8, React 19, Tailwind CSS v3 | System-wide users and roles management, modules access control. |
 | **Backend API** | `apps/api/` | FastAPI 0.141, Python 3.12, SQLAlchemy 2, MySQL | Monolithic backend serving all three frontends. Handles DB, auth, SSE, and uploads. |
+| **WhatsApp Service** | `apps/whatsapp/` | Node.js 20, Express, whatsapp-web.js, BullMQ, Redis | WhatsApp notification microservice. Sends messages, manages session, queues delivery. |
 
 ### Workspace Layout
 - `apps/*`: Deployable applications (the four services above).
@@ -37,10 +38,69 @@ A single FastAPI service handling all business logic, database operations, and a
 - **File Uploads**: Local storage handled under the `uploads` module.
 
 ## Frontend Access Control
+
 Permissions are defined per-module (e.g., `companyprofile`, `ppdb`, `dashboard`) with levels (`none` < `dashboard` < `read` < `crud`).
 - Buttons and forms must check permissions before rendering. Form inputs are disabled (read-only) if the user lacks `crud` access.
-- **Superadmin Bypass**: Users with `user_type === 'superadmin'` bypass all module-level permission checks.
 - System roles (`is_system=True`) like "Superadmin" and "Pendaftar" are protected from accidental deletion or modification.
+
+### User Types & Auth Rules
+
+Ada tiga jenis user dalam sistem:
+
+| User Type | Login Di | Dashboard | Aturan Khusus |
+| --- | --- | --- | --- |
+| `superadmin` | Superadmin Panel (`apps/superadmin`) | Superadmin panel saja | Bypass SEMUA pengecekan permission — selalu punya akses ke semua modul dan semua halaman |
+| `admin` | PPDB (`apps/ppdb`) | `/admin/dashboard` | Diblokir login jika SEMUA module di role-nya = `none` |
+| `applicant` | PPDB (`apps/ppdb`) | `/applicant` (bukan `/admin`) | Role "Pendaftar" bawaan system — tidak bisa akses admin dashboard PPDB |
+
+### Superadmin
+- `user_type === 'superadmin'` atau role dengan `is_superadmin = true` → **bypass semua pengecekan permission**.
+- Role "Superadmin" bersifat sistem (`is_system=True`) — tidak bisa diedit atau dihapus.
+- Role Superadmin tidak punya kolom permissions yang perlu diisi — mereka punya akses ke segalanya secara implisit.
+- Superadmin hanya bisa login di Superadmin Panel, BUKAN di PPDB App.
+
+### Admin (Dibuat oleh Superadmin)
+- Login di PPDB App (`/auth/login`).
+- Jika **semua module di role-nya = `none`** → **diblokir login** di backend dengan HTTP 403, pesan dimulai dengan prefix `module_disabled:`.
+  - Frontend PPDB menampilkan alert: "Akses ditolak: semua modul dinonaktifkan oleh superadmin."
+- Jika punya minimal 1 module bukan `none` → boleh login dan masuk ke `/admin/dashboard`.
+- Permission page (halaman mana yang bisa diakses di sidebar) mengikuti `user_page_permissions` table — hanya page dari module yang punya akses yang muncul.
+
+### Applicant (Pendaftar)
+- Login di PPDB App (`/auth/login`).
+- Role "Pendaftar" adalah role sistem (`is_system=True`) — tidak bisa diedit.
+- Setelah login, hanya bisa mengakses `/applicant` (dashboard peserta) atau `/checkout` (paywall).
+- **Tidak bisa** masuk ke `/admin/dashboard` atau halaman admin manapun.
+- Tidak ada pengecekan module permission untuk applicant — mereka selalu diizinkan login (selama akun aktif).
+
+### Routing Logic (PPDB ProtectedRoute & LoginPage)
+Tidak ada "validasi mau masuk dashboard mana" — routing adalah **konsekuensi otomatis dari user_type**:
+
+- **Post-login redirect** di LoginPage (`apps/ppdb`):
+  - `user_type === 'superadmin'` atau `is_superadmin` → redirect ke `/admin/dashboard`
+  - `user_type === 'admin'` dengan minimal 1 module bukan `none` → redirect ke `/admin/dashboard`
+  - `user_type === 'applicant'` → redirect ke `/applicant`
+  - Semua module `none` → **diblokir di backend sebelum sampai sini**
+
+- **ProtectedRoute** (`apps/ppdb/src/components/ProtectedRoute.tsx`):
+  - `role="admin"` → cek `isAdmin()` → true untuk superadmin atau admin dengan modul aktif
+  - `role="applicant"` → cek `hasApplicantAccess()` → **hanya** true untuk `user_type === 'applicant'`
+  - Tidak ada routing ke dashboard lain — setiap user langsung masuk ke tempat yang sesuai berdasarkan `user_type`-nya
+
+- **isAdmin()** (`AuthContext.tsx`):
+  - `user_type === 'superadmin'` atau `is_superadmin === true` → `true`
+  - `user_type === 'applicant'` → `false`
+  - Lainnya: `true` jika ada minimal 1 permission value bukan `none`
+
+- **hasApplicantAccess()** (`AuthContext.tsx`):
+  - Hanya `true` jika `user_type === 'applicant'`
+  - Superadmin → `false` (tidak masuk ke /applicant, tapi ke /admin/dashboard)
+
+### Permission Halaman (Page Permissions)
+- Setiap halaman admin memiliki key unik (e.g. `dashboard`, `applicants`, `payments`).
+- User hanya bisa melihat halaman yang ada di `user_page_permissions` mereka.
+- Jika module dari sebuah halaman = `none`, halaman tersebut tidak akan muncul di permission list user tersebut.
+- Superadmin tidak dicek via page permissions — mereka melihat semua halaman.
 
 ## PPDB Flow
 1. **Registration**: User registers -> receives `payment_status = 'pending'` and a 7-day `payment_deadline`. Nominal biaya pendaftaran (Tahap 1) ditarik otomatis dari konfigurasi `registration_fee` pada tabel `ppdb_waves` yang sedang aktif.
@@ -110,3 +170,222 @@ Pendaftaran hanya bisa dilakukan jika **tepat 1 Periode DAN 1 Gelombang** bersta
 - `settingsService.getLogo()` → GET `/companyprofile/settings/logo`
 - `settingsService.getFavicon()` → GET `/companyprofile/settings/favicon`
 - Perubahan brand tampil live via SSE (`/companyprofile/events`).
+
+## WhatsApp Notification Microservice (`apps/whatsapp/`)
+
+Node.js 20 + Express + whatsapp-web.js service untuk pengiriman notifikasi WhatsApp ke pendaftar PPDB.
+
+### Architecture Overview
+
+```
+FastAPI (apps/api/)
+    │
+    ├── POST /api/messages/send  ──►  WhatsApp Microservice (apps/whatsapp/)
+    │                                       │
+    │                                       ├── BullMQ Queue (Redis)
+    │                                       │       │
+    │                                       │       └── Worker → whatsapp-web.js → WA
+    │                                       │
+    │                                       └── Webhook callback
+    │
+    └── POST /notifications/webhook/whatsapp  ◄── delivery status update
+```
+
+### Notification Events (PPDB Flow)
+
+| Event Key | Trigger | Channel |
+| --- | --- | --- |
+| `registration_welcome` | Pendaftar baru register | WA + Email |
+| `payment_reminder_day7` | H-7 deadline pembayaran | WA + Email |
+| `payment_success` | Pembayaran dikonfirmasi | WA + Email |
+| `payment_failed` | Pembayaran gagal | WA + Email |
+| `payment_expired` | Akun expired (H-8 belum bayar) | WA + Email |
+| `document_reminder_3days` | H-3 batas upload dokumen | WA + Email |
+| `document_reminder_1day` | H-1 batas upload dokumen | WA + Email |
+| `document_approved` | Dokumen disetujui admin | WA + Email |
+| `document_rejected` | Dokumen ditolak admin | WA + Email |
+| `selection_reminder_5days` | H-5 seleksi | WA + Email |
+| `selection_reminder_1day` | H-1 seleksi | WA + Email |
+| `selection_result` | Pengumuman hasil seleksi | WA + Email |
+
+### Source Structure
+
+```
+apps/whatsapp/src/
+├── config/
+│   └── env.ts               # Zod env validation
+├── lib/
+│   ├── logger.ts            # Winston logger
+│   ├── redis.ts             # Redis singleton + BullMQ connections
+│   ├── database.ts          # MySQL2 pool
+│   ├── phoneUtils.ts        # Indonesian phone normalization
+│   └── retry.ts             # Exponential backoff + jitter
+├── services/
+│   ├── SessionManager.ts    # whatsapp-web.js session lifecycle
+│   ├── TemplateService.ts   # Template loading + rendering (5min cache)
+│   ├── AuditLogService.ts   # notification_logs CRUD
+│   └── WebhookService.ts    # HMAC-signed callback ke FastAPI
+├── queues/
+│   └── messageQueue.ts      # BullMQ queue + priority + enqueue helpers
+├── workers/
+│   └── messageWorker.ts     # BullMQ worker (concurrency: 1, anti-ban)
+├── middlewares/
+│   ├── apiKeyAuth.ts        # Bearer/X-API-Key authentication
+│   ├── rateLimiter.ts       # IP rate limiting (express-rate-limit)
+│   ├── requestLogger.ts     # Morgan → Winston
+│   └── errorHandler.ts      # Global error + Zod validation handler
+├── routes/
+│   ├── session.routes.ts    # Session mgmt + QR SSE
+│   ├── message.routes.ts    # Send single/template/bulk + logs
+│   ├── template.routes.ts   # Template CRUD
+│   └── health.routes.ts     # Liveness + readiness probe
+├── types/
+│   └── index.ts             # Shared TypeScript types
+├── app.ts                   # Express factory
+└── server.ts                # Bootstrap + graceful shutdown
+```
+
+### API Endpoints
+
+**Public (no auth):**
+- `GET /health` — Liveness probe
+- `GET /health/detailed` — Full readiness check (Redis, MySQL, WA session, queue)
+
+**Protected (API Key required):**
+- `GET /api/session` — Session status
+- `POST /api/session/init` — Start/reconnect session
+- `POST /api/session/logout` — Logout
+- `DELETE /api/session` — Destroy session
+- `GET /api/session/qr` — QR code via SSE (text/event-stream)
+- `GET /api/session/qr/image` — QR as base64 data URL (one-shot)
+- `POST /api/messages/send` — Send direct message
+- `POST /api/messages/send-template` — Send via event template
+- `POST /api/messages/bulk` — Bulk send (max 100)
+- `GET /api/messages/queue` — Queue stats
+- `GET /api/messages/logs` — Delivery logs (paginated)
+- `GET /api/templates` — List templates
+- `PUT /api/templates/:id` — Update template
+- `POST /api/templates/cache/clear` — Invalidate template cache
+
+### Retry Strategy
+
+| Attempt | Delay | Jitter |
+| --- | --- | --- |
+| 1 | 5s | ±20% |
+| 2 | 30s | ±20% |
+| 3 | 2m | ±20% |
+| 4 | 15m | ±20% |
+| 5 (final) | 1h | ±20% |
+
+Invalid phone numbers are NOT retried — immediately marked as `invalid_number`.
+
+### Environment Variables (apps/whatsapp/.env)
+
+Key variables (see `.env.example` for full list):
+- `API_KEY` — Shared secret, min 32 chars
+- `DB_*` — MySQL connection (shared database with FastAPI)
+- `REDIS_*` — Redis connection (DB index 1)
+- `WA_SESSION_PATH` — Path untuk simpan session WA (di-mount sebagai Docker volume)
+- `WEBHOOK_URL` — FastAPI webhook endpoint URL
+- `WEBHOOK_SECRET` — HMAC secret untuk verifikasi callback
+- `WA_THROTTLE_PER_MINUTE` — Max pesan/menit yang dikirim ke WA (default: 20)
+
+### FastAPI Integration
+
+Di `apps/api/src/core/config.py`:
+- `wa_service_url` — URL WA microservice
+- `wa_service_api_key` — Harus sama dengan `API_KEY` di WA microservice
+- `wa_webhook_secret` — Harus sama dengan `WEBHOOK_SECRET` di WA microservice
+
+Di `apps/api/src/core/notif_service.py`:
+- `send_notification(event_key, user_id, context)` — Kirim single notif
+- `send_notifications(events, user_id)` — Kirim batch notif
+- `send_custom_notifications(user_ids, channel, subject, body)` — Custom blast
+
+### First Run Checklist
+
+1. Copy `.env.example` → `.env` di `apps/whatsapp/`
+2. Set `API_KEY`, `DB_*`, `REDIS_*`, `WEBHOOK_SECRET`
+3. Set `WA_SERVICE_API_KEY` dan `WA_WEBHOOK_SECRET` di `apps/api/.env` (nilai sama)
+4. Run `alembic upgrade head` untuk migration `0021_wa_notification_fields`
+5. Start Redis: `docker compose up redis -d`
+6. Start service: `cd apps/whatsapp && pnpm dev`
+7. Scan QR di `GET /api/session/qr` (SSE) atau `GET /api/session/qr/image`
+8. Tes kirim: `POST /api/messages/send` dengan API key
+
+### Docker
+
+```bash
+# Start semua services
+docker compose up -d
+
+# Lihat QR code (scan sekali, session tersimpan di volume)
+docker compose logs -f whatsapp
+# atau hit: GET http://localhost:3100/api/session/qr/image
+
+# Re-scan QR (setelah session expired)
+docker compose exec whatsapp curl -X DELETE http://localhost:3100/api/session \
+  -H "X-API-Key: <your-api-key>"
+```
+
+
+### Retry Strategy
+
+| Attempt | Delay | Jitter |
+| --- | --- | --- |
+| 1 | 5s | ±20% |
+| 2 | 30s | ±20% |
+| 3 | 2m | ±20% |
+| 4 | 15m | ±20% |
+| 5 (final) | 1h | ±20% |
+
+Invalid phone numbers are NOT retried — immediately marked as `invalid_number`.
+
+### Environment Variables (apps/whatsapp/.env)
+
+Key variables (see `.env.example` for full list):
+- `API_KEY` — Shared secret, min 32 chars
+- `DB_*` — MySQL connection (shared database with FastAPI)
+- `REDIS_*` — Redis connection (DB index 1)
+- `WA_SESSION_PATH` — Path untuk simpan session WA (di-mount sebagai Docker volume)
+- `WEBHOOK_URL` — FastAPI webhook endpoint URL
+- `WEBHOOK_SECRET` — HMAC secret untuk verifikasi callback
+- `WA_THROTTLE_PER_MINUTE` — Max pesan/menit yang dikirim ke WA (default: 20)
+
+### FastAPI Integration
+
+Di `apps/api/src/core/config.py`:
+- `wa_service_url` — URL WA microservice
+- `wa_service_api_key` — Harus sama dengan `API_KEY` di WA microservice
+- `wa_webhook_secret` — Harus sama dengan `WEBHOOK_SECRET` di WA microservice
+
+Di `apps/api/src/core/notif_service.py`:
+- `send_notification(event_key, user_id, context)` — Kirim single notif
+- `send_notifications(events, user_id)` — Kirim batch notif
+- `send_custom_notifications(user_ids, channel, subject, body)` — Custom blast
+
+### First Run Checklist
+
+1. Copy `.env.example` → `.env` di `apps/whatsapp/`
+2. Set `API_KEY`, `DB_*`, `REDIS_*`, `WEBHOOK_SECRET`
+3. Set `WA_SERVICE_API_KEY` dan `WA_WEBHOOK_SECRET` di `apps/api/.env` (nilai sama)
+4. Run `alembic upgrade head` untuk migration `0021_wa_notification_fields`
+5. Start Redis: `docker compose up redis -d`
+6. Start service: `cd apps/whatsapp && pnpm dev`
+7. Scan QR di `GET /api/session/qr` (SSE) atau `GET /api/session/qr/image`
+8. Tes kirim: `POST /api/messages/send` dengan API key
+
+### Docker
+
+```bash
+# Start semua services
+docker compose up -d
+
+# Lihat QR code (scan sekali, session tersimpan di volume)
+docker compose logs -f whatsapp
+# atau hit: GET http://localhost:3100/api/session/qr/image
+
+# Re-scan QR (setelah session expired)
+docker compose exec whatsapp curl -X DELETE http://localhost:3100/api/session \
+  -H "X-API-Key: <your-api-key>"
+```

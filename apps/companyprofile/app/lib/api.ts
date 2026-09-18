@@ -53,7 +53,7 @@ async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Respo
 function _redirectLogin() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(USER_KEY)
-    window.location.href = '/admin/login'
+    window.location.href = '/auth/login'
   }
 }
 

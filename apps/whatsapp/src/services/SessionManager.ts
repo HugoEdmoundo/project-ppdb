@@ -1,0 +1,367 @@
+/**
+ * src/services/SessionManager.ts
+ *
+ * WhatsApp Single Session Manager menggunakan whatsapp-web.js.
+ *
+ * Responsibilities:
+ * - Initialize/destroy Puppeteer + WA client
+ * - Emit QR code via SSE (Server-Sent Events) ke admin
+ * - Track session state
+ * - Auto-reconnect pada disconnect
+ * - Graceful shutdown
+ */
+
+import path from "path";
+import { EventEmitter } from "events";
+import qrcode from "qrcode";
+import { Client, LocalAuth, Message } from "whatsapp-web.js";
+import { env } from "../config/env";
+import { logger } from "../lib/logger";
+import type { WASessionInfo, WASessionStatus } from "../types";
+
+export type SessionEvent =
+  | { type: "status"; data: WASessionInfo }
+  | { type: "qr"; data: { qrCode: string; dataUrl: string } }
+  | { type: "ready"; data: WASessionInfo }
+  | { type: "disconnected"; data: { reason: string } }
+  | { type: "message_create"; data: Message };
+
+export class SessionManager extends EventEmitter {
+  private client: Client | null = null;
+  private sessionInfo: WASessionInfo = { status: "initializing" };
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private reconnectAttempts = 0;
+  private readonly MAX_RECONNECT_ATTEMPTS = 10;
+  private isShuttingDown = false;
+
+  // SSE subscribers
+  private sseClients: Set<{
+    id: string;
+    write: (data: string) => void;
+  }> = new Set();
+
+  constructor() {
+    super();
+    this.setMaxListeners(50);
+  }
+
+  // ── Public API ─────────────────────────────────────────────────────────────
+
+  getStatus(): WASessionInfo {
+    return { ...this.sessionInfo };
+  }
+
+  isReady(): boolean {
+    return this.sessionInfo.status === "ready";
+  }
+
+  /**
+   * Initialize WhatsApp client.
+   * Safe to call multiple times — idempotent.
+   */
+  async initialize(): Promise<void> {
+    if (this.client && this.sessionInfo.status !== "destroyed") {
+      logger.info("[Session] Already initialized, skipping");
+      return;
+    }
+
+    logger.info("[Session] Initializing WhatsApp client...");
+    this.updateStatus("initializing");
+
+    const puppeteerArgs = [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-accelerated-2d-canvas",
+      "--disable-gpu",
+      "--window-size=1280,720",
+      "--no-first-run",
+      "--no-zygote",
+      "--single-process",
+    ];
+
+    this.client = new Client({
+      authStrategy: new LocalAuth({
+        dataPath: path.resolve(env.WA_SESSION_PATH),
+        clientId: "ptdarrahman-wa",
+      }),
+      puppeteer: {
+        headless: true,
+        executablePath: env.CHROMIUM_EXECUTABLE_PATH || undefined,
+        args: puppeteerArgs,
+      },
+      webVersion: "2.3000.1023204227-alpha",
+      webVersionCache: {
+        type: "remote",
+        remotePath:
+          "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1023204227-alpha.html",
+      },
+    });
+
+    this.attachEventHandlers();
+
+    try {
+      await this.client.initialize();
+    } catch (err) {
+      logger.error("[Session] Failed to initialize client", {
+        error: (err as Error).message,
+      });
+      this.updateStatus("disconnected");
+      this.scheduleReconnect();
+    }
+  }
+
+  /**
+   * Send a WhatsApp message.
+   * Throws if session not ready.
+   */
+  async sendMessage(to: string, message: string): Promise<string> {
+    if (!this.client || !this.isReady()) {
+      throw new Error("WhatsApp session is not ready");
+    }
+
+    const msg = await this.client.sendMessage(to, message);
+    return msg.id._serialized;
+  }
+
+  /**
+   * Destroy the session (logout + cleanup).
+   */
+  async destroy(): Promise<void> {
+    this.isShuttingDown = true;
+    this.clearReconnectTimer();
+
+    if (this.client) {
+      logger.info("[Session] Destroying client...");
+      try {
+        await this.client.destroy();
+      } catch (err) {
+        logger.warn("[Session] Error during destroy", {
+          error: (err as Error).message,
+        });
+      }
+      this.client = null;
+    }
+
+    this.updateStatus("destroyed");
+    logger.info("[Session] Session destroyed");
+  }
+
+  /**
+   * Logout from WhatsApp (clears auth data).
+   */
+  async logout(): Promise<void> {
+    if (!this.client) throw new Error("No active session");
+
+    logger.info("[Session] Logging out...");
+    await this.client.logout();
+    this.updateStatus("destroyed");
+  }
+
+  // ── SSE (Server-Sent Events) ───────────────────────────────────────────────
+
+  /**
+   * Register an SSE client to receive real-time session events.
+   * Returns an unsubscribe function.
+   */
+  addSseClient(
+    id: string,
+    write: (data: string) => void
+  ): () => void {
+    const client = { id, write };
+    this.sseClients.add(client);
+    logger.debug("[Session] SSE client connected", { id, total: this.sseClients.size });
+
+    // Send current status immediately
+    this.sendSseEvent(client, "status", this.sessionInfo);
+
+    return () => {
+      this.sseClients.delete(client);
+      logger.debug("[Session] SSE client disconnected", {
+        id,
+        total: this.sseClients.size,
+      });
+    };
+  }
+
+  // ── Private ────────────────────────────────────────────────────────────────
+
+  private attachEventHandlers(): void {
+    if (!this.client) return;
+
+    this.client.on("qr", async (qr) => {
+      logger.info("[Session] QR code received — scan with WhatsApp");
+      this.reconnectAttempts = 0;
+
+      let dataUrl = "";
+      try {
+        dataUrl = await qrcode.toDataURL(qr);
+      } catch (err) {
+        logger.warn("[Session] Failed to generate QR data URL", {
+          error: (err as Error).message,
+        });
+      }
+
+      this.updateStatus("qr", { qrCode: dataUrl });
+      this.broadcastSse("qr", { qrCode: dataUrl, raw: qr });
+    });
+
+    this.client.on("authenticated", () => {
+      logger.info("[Session] Authenticated successfully");
+      this.updateStatus("authenticated");
+    });
+
+    this.client.on("auth_failure", (msg) => {
+      logger.error("[Session] Authentication failed", { reason: msg });
+      this.updateStatus("disconnected");
+      if (!this.isShuttingDown) {
+        this.scheduleReconnect();
+      }
+    });
+
+    this.client.on("ready", async () => {
+      this.reconnectAttempts = 0;
+      this.clearReconnectTimer();
+
+      let phone: string | undefined;
+      let pushName: string | undefined;
+
+      try {
+        const info = this.client!.info;
+        phone = info?.wid?.user;
+        pushName = info?.pushname;
+      } catch {
+        // info might not be available immediately
+      }
+
+      const info: WASessionInfo = {
+        status: "ready",
+        phone,
+        pushName,
+        connectedAt: new Date(),
+        lastActivity: new Date(),
+      };
+
+      this.updateStatus("ready", info);
+      this.broadcastSse("ready", info);
+
+      logger.info("[Session] WhatsApp session ready", {
+        phone: phone ? `***${phone.slice(-4)}` : "unknown",
+        pushName,
+      });
+    });
+
+    this.client.on("disconnected", (reason) => {
+      logger.warn("[Session] Disconnected", { reason });
+      this.updateStatus("disconnected");
+      this.broadcastSse("disconnected", { reason });
+
+      if (!this.isShuttingDown) {
+        this.scheduleReconnect();
+      }
+    });
+
+    this.client.on("message_create", (msg) => {
+      this.sessionInfo.lastActivity = new Date();
+      this.emit("message_create", msg);
+    });
+  }
+
+  private updateStatus(
+    status: WASessionStatus,
+    extra: Partial<WASessionInfo> = {}
+  ): void {
+    this.sessionInfo = {
+      ...this.sessionInfo,
+      status,
+      ...extra,
+    };
+
+    // Clear QR when no longer needed
+    if (status !== "qr") {
+      delete this.sessionInfo.qrCode;
+    }
+
+    this.broadcastSse("status", this.sessionInfo);
+    this.emit("status", this.sessionInfo);
+  }
+
+  private broadcastSse(event: string, data: unknown): void {
+    if (this.sseClients.size === 0) return;
+
+    const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+    const dead: typeof this.sseClients extends Set<infer T> ? T[] : never[] =
+      [];
+
+    for (const client of this.sseClients) {
+      try {
+        client.write(payload);
+      } catch {
+        dead.push(client as never);
+      }
+    }
+
+    for (const d of dead) {
+      this.sseClients.delete(d as (typeof dead)[0]);
+    }
+  }
+
+  private sendSseEvent(
+    client: { id: string; write: (d: string) => void },
+    event: string,
+    data: unknown
+  ): void {
+    try {
+      client.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    } catch {
+      this.sseClients.delete(client);
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.isShuttingDown) return;
+    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
+      logger.error("[Session] Max reconnect attempts reached. Manual intervention required.");
+      return;
+    }
+
+    this.clearReconnectTimer();
+
+    // Exponential backoff: 5s, 10s, 20s, 40s, ... capped at 5m
+    const delay = Math.min(5_000 * Math.pow(2, this.reconnectAttempts), 300_000);
+    this.reconnectAttempts++;
+
+    logger.info("[Session] Scheduling reconnect", {
+      attempt: this.reconnectAttempts,
+      delayMs: delay,
+    });
+
+    this.reconnectTimer = setTimeout(async () => {
+      logger.info("[Session] Attempting reconnect...", {
+        attempt: this.reconnectAttempts,
+      });
+
+      // Destroy old client first
+      if (this.client) {
+        try {
+          await this.client.destroy();
+        } catch {
+          // ignore
+        }
+        this.client = null;
+      }
+
+      await this.initialize();
+    }, delay);
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+}
+
+// Singleton instance
+export const sessionManager = new SessionManager();

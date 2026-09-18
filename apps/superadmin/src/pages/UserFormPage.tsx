@@ -155,10 +155,22 @@ export default function UserFormPage() {
       return
     }
 
-    if (data.email || data.phone) {
+    if (!isEdit) {
+      // Create: selalu konfirmasi karena kredensial akan dikirim
       setConfirmData({
-        title: 'Periksa Data Kontak',
-        message: `Pastikan Email dan No. WhatsApp sudah benar, karena sistem akan mengirim notifikasi kredensial ke alamat tersebut.\n\nEmail: ${data.email || '—'}\nWhatsApp: ${data.phone || '—'}`,
+        title: 'Konfirmasi Buat User',
+        message: `Sistem akan otomatis mengirimkan kredensial login ke:\n\n📱 WhatsApp: ${data.phone || 'Tidak diisi'}\n📧 Email: ${data.email || 'Tidak diisi'}\n\nUsername: ${data.username}\nPassword: [akan di-generate sistem]\n\nPastikan nomor WA dan email sudah benar sebelum melanjutkan.`,
+        onConfirm: () => {
+          setConfirmOpen(false)
+          executeSubmit(data)
+        },
+      })
+      setConfirmOpen(true)
+    } else if (data.password) {
+      // Edit dengan password baru
+      setConfirmData({
+        title: 'Konfirmasi Ganti Password',
+        message: `Password baru akan dikirim ke:\n\n📱 WhatsApp: ${data.phone || 'Tidak diisi'}\n📧 Email: ${data.email || 'Tidak diisi'}\n\nYakin ingin mengganti password user ini?`,
         onConfirm: () => {
           setConfirmOpen(false)
           executeSubmit(data)
@@ -354,6 +366,12 @@ export default function UserFormPage() {
                 <KeyRound className="h-3 w-3" />
                 Password dibuat otomatis oleh sistem — tidak bisa diisi manual.
               </p>
+              {!isEdit && (
+                <div className="flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                  <span className="mt-0.5 text-base leading-none">📱</span>
+                  <span>Setelah user dibuat, kredensial login (username & password) akan otomatis dikirim ke <strong>WhatsApp</strong> dan <strong>Email</strong> yang terdaftar.</span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

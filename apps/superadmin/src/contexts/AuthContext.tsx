@@ -5,7 +5,7 @@ import * as api from '../api/client'
 interface AuthContextType {
   user: AuthUser | null
   loading: boolean
-  login: (username: string, password: string) => Promise<void>
+  login: (username: string, password: string) => Promise<AuthUser>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
 }
@@ -13,7 +13,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  login: async () => {},
+  login: async () => { throw new Error('AuthContext not initialized') },
   logout: async () => {},
   refreshUser: async () => {},
 })
@@ -46,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (username: string, password: string) => {
     const u = await api.login(username, password)
     setUser(u)
+    return u
   }, [])
 
   const logout = useCallback(async () => {

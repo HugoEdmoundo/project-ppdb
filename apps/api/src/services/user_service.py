@@ -137,7 +137,7 @@ class UserService:
                 status_code=400, detail="Username or email already exists"
             )
 
-        self._send_credentials("account_created", created_user, raw_password)
+        self._send_credentials("user_created", created_user, raw_password)
 
         response = {
             "id": created_user.id,

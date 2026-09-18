@@ -65,15 +65,17 @@ export function usePermission() {
     },
     isAdmin: () => {
       if (!user) return false
+      // Superadmin selalu punya akses admin
       if (user.is_superadmin || user.user_type === 'superadmin') return true
-      const modules = ['ppdb']
-      return modules.some(m => (user.permissions?.[m] || 'none') !== 'none')
+      // Applicant TIDAK punya akses admin
+      if (user.user_type === 'applicant') return false
+      // Admin biasa: harus punya minimal 1 module bukan 'none'
+      return Object.values(user.permissions || {}).some(v => v !== 'none')
     },
     hasApplicantAccess: () => {
       if (!user) return false
-      if (user.user_type === 'applicant') return true
-      if (user.is_superadmin || user.user_type === 'superadmin') return true
-      return (user.permissions?.['ppdb'] || 'none') !== 'none'
+      // Hanya user_type=applicant yang punya akses applicant dashboard
+      return user.user_type === 'applicant'
     },
     pagePermissions: user?.page_permissions || [],
     permissions: user?.permissions || {},

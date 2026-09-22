@@ -115,7 +115,11 @@ export async function generateMetadata(): Promise<Metadata> {
         'max-snippet': -1,
       },
     },
-    icons: favicon ? { icon: favicon, apple: favicon } : { icon: '/download.png', apple: '/download.png' },
+    // Favicon dinamis dari CMS. Jika API belum tersedia saat build/cold-start,
+    // fallback ke placeholder download.png di public/ — BUKAN file statis branding.
+    // File app/favicon.ico dan app/icon.png sengaja TIDAK ada agar Next.js tidak
+    // override favicon dinamis dengan file statis.
+    icons: favicon ? { icon: favicon, apple: favicon } : undefined,
   }
 }
 

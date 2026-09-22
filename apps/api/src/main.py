@@ -39,6 +39,7 @@ def _validate_secrets() -> None:
         "dev-only-secret-change-me",
         "dev-only-cron-secret-change-me",
         "change-me",
+        "change-me-to-a-long-random-hex-string",
     }
     if (
         not settings.jwt_secret
@@ -47,7 +48,8 @@ def _validate_secrets() -> None:
     ):
         raise RuntimeError(
             "JWT_SECRET belum diatur aman. "
-            "Set JWT_SECRET di .env (min 32 karakter random)."
+            "Set JWT_SECRET di .env (min 32 karakter random).\n"
+            '  python -c "import secrets; print(secrets.token_hex(32))"'
         )
     if (
         not settings.cron_secret
@@ -56,7 +58,8 @@ def _validate_secrets() -> None:
     ):
         raise RuntimeError(
             "CRON_SECRET belum diatur aman. "
-            "Set CRON_SECRET di .env (min 16 karakter random)."
+            "Set CRON_SECRET di .env (min 16 karakter random).\n"
+            '  python -c "import secrets; print(secrets.token_hex(16))"'
         )
 
 
@@ -64,6 +67,17 @@ def _validate_secrets() -> None:
 async def lifespan(app: FastAPI):
     logger.info("Pesantren Tahfidz Qur'an dan Digital Arrahman API starting")
     _validate_secrets()
+    # Warm up Redis connection (non-fatal if unavailable)
+    from src.core.cache import get_redis
+
+    r = get_redis()
+    if r:
+        logger.info("Redis cache: connected")
+    else:
+        logger.warning(
+            "Redis cache: NOT connected — rate limiter & session cache degraded. "
+            "Set REDIS_URL in .env to enable."
+        )
     yield
 
 

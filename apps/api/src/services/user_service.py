@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
+from src.core.cache import invalidate_user_cache
 from src.core.config import settings
 from src.core.events import user_hubs
 from src.core.notif_service import send_notifications
@@ -180,6 +181,9 @@ class UserService:
                 status_code=400, detail="Username or email already exists"
             )
 
+        # Invalidate Redis cache so next request re-fetches fresh data
+        invalidate_user_cache(user_id)
+
         if data.get("password"):
             self._send_credentials("password_reset", updated_user, data["password"])
         elif data.get("email") or data.get("phone"):
@@ -258,6 +262,8 @@ class UserService:
             raise HTTPException(status_code=404, detail="User not found")
 
         self.repository.set_page_permissions(user_id, page_ids)
+        # Invalidate cache so re-fetched user has updated page_permissions
+        invalidate_user_cache(user_id)
         page_keys = self.repository.get_page_keys(user_id)
         user_hubs.broadcast(
             user_id,

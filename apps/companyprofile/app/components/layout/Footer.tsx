@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { MapPin, Phone, Mail, ArrowUpRight } from 'lucide-react'
 import VerseStrip from '../ui/VerseStrip'
-import { socialLinks as staticSocialLinks } from '@/app/data/social'
 import { getContactInfo, getSettings, getSocialLinks } from '@/app/lib/api'
 
 interface SocialItem {
@@ -27,7 +26,9 @@ const FALLBACK_CONTACT: ContactState = {
 
 export default function Footer() {
   const [logoUrl, setLogoUrl] = useState('')
-  const [socials, setSocials] = useState<SocialItem[]>(staticSocialLinks)
+  // Initial state kosong — social links diambil dari API (dinamis).
+  // Fallback ke array kosong jika API gagal (footer tetap render tanpa social icons).
+  const [socials, setSocials] = useState<SocialItem[]>([])
   const [contact, setContact] = useState<ContactState>(FALLBACK_CONTACT)
 
   useEffect(() => {

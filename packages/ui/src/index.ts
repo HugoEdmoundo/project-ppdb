@@ -1,3 +1,4 @@
+// ── Primitives ────────────────────────────────────────────────────────────────
 export * from "./lib/utils";
 export * from "./components/ui/avatar";
 export * from "./components/ui/badge";
@@ -20,3 +21,10 @@ export * from "./components/ui/switch";
 export * from "./components/ui/table";
 export * from "./components/ui/tabs";
 export * from "./components/ui/textarea";
+
+// ── Shared composite components ───────────────────────────────────────────────
+export * from "./components/ui/avatar-editor";
+export * from "./components/ui/section-card";
+export * from "./components/ui/error-state";
+export * from "./components/ui/success-state";
+export * from "./components/ui/confirm-dialog";

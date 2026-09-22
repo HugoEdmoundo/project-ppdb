@@ -1,6 +1,18 @@
+"""
+apps/api/src/core/database.py
+
+MySQL-only database layer (SQLAlchemy 2).
+
+Provides:
+- SQLAlchemy engine / session factory (get_engine, get_db)
+- Declarative Base with naming-convention metadata
+- Thin raw-SQL helpers (used by legacy modules still migrating to ORM)
+- utcnow() — current WIB timestamp string for MySQL DATETIME columns
+- audit_log()  — fire-and-forget audit trail writer
+"""
+
 import json
 import logging
-import os
 import re
 from datetime import datetime
 from typing import Any, cast
@@ -10,7 +22,6 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import URL, MetaData, create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
-from sqlalchemy.pool import NullPool
 
 from src.core.config import settings
 
@@ -20,6 +31,7 @@ WIB = ZoneInfo("Asia/Jakarta")
 
 # Tables whose PK column is `key` instead of `id`.
 PK_TABLES = {"site_settings"}
+
 # Tables that have no `updated_at` column.
 NO_UPDATED_AT = {
     "refresh_tokens",
@@ -33,68 +45,56 @@ NO_UPDATED_AT = {
 _IDENT_RE = re.compile(r"^[A-Za-z0-9_]+$")
 
 _engine: Engine | None = None
-_SessionLocal: sessionmaker | None = None
+_SessionLocal: sessionmaker | None = None  # type: ignore[type-arg]
+
+
+# ── SQL injection guard ────────────────────────────────────────────────────────
 
 
 def _require_ident(name: str) -> str:
-    """Guard against SQL injection through table/column identifiers."""
+    """Validate that *name* is a safe SQL identifier (table / column name)."""
     if not _IDENT_RE.match(name):
-        raise ValueError(f"Invalid identifier: {name}")
+        raise ValueError(f"Invalid SQL identifier: {name!r}")
     return name
+
+
+# ── Engine & session factory ───────────────────────────────────────────────────
 
 
 def get_engine() -> Engine:
     global _engine
-    if _engine is None:
-        # --- SQLite / custom DATABASE_URL override (local dev) ---
-        if settings.database_url:
-            from sqlalchemy.pool import StaticPool
+    if _engine is not None:
+        return _engine
 
-            _engine = create_engine(
-                settings.database_url,
-                connect_args={"check_same_thread": False}
-                if "sqlite" in settings.database_url
-                else {},
-                poolclass=StaticPool if "sqlite" in settings.database_url else None,
-            )
-            return _engine
+    url = URL.create(
+        drivername="mysql+pymysql",
+        username=settings.mysql_user,
+        password=settings.mysql_password,
+        host=settings.mysql_host,
+        port=settings.mysql_port,
+        database=settings.mysql_database,
+    )
+    connect_args: dict[str, Any] = {"charset": "utf8mb4"}
+    if settings.mysql_ssl:
+        connect_args["ssl"] = {}
 
-        # --- MySQL (production / default) ---
-        url = URL.create(
-            drivername="mysql+pymysql",
-            username=settings.mysql_user,
-            password=settings.mysql_password,
-            host=settings.mysql_host,
-            port=settings.mysql_port,
-            database=settings.mysql_database,
-        )
-        connect_args: dict[str, Any] = {"charset": "utf8mb4"}
-        if settings.mysql_ssl:
-            connect_args["ssl"] = {}
-
-        if os.getenv("VERCEL"):
-            _engine = create_engine(
-                url,
-                poolclass=NullPool,
-                connect_args=connect_args,
-            )
-        else:
-            _engine = create_engine(
-                url,
-                pool_pre_ping=True,
-                pool_recycle=280,
-                pool_size=5,
-                max_overflow=10,
-                connect_args=connect_args,
-            )
+    _engine = create_engine(
+        url,
+        pool_pre_ping=True,
+        pool_recycle=280,
+        pool_size=5,
+        max_overflow=10,
+        connect_args=connect_args,
+    )
     return _engine
 
 
 def get_raw_pool() -> Engine:
+    """Alias kept for backward-compat with notif_service."""
     return get_engine()
 
 
-def get_sessionmaker() -> sessionmaker:
+def get_sessionmaker() -> sessionmaker:  # type: ignore[type-arg]
     global _SessionLocal
     if _SessionLocal is None:
         _SessionLocal = sessionmaker(
@@ -104,11 +104,15 @@ def get_sessionmaker() -> sessionmaker:
 
 
 def get_db():
+    """FastAPI dependency — yields a SQLAlchemy Session."""
     db = get_sessionmaker()()
     try:
         yield db
     finally:
         db.close()
+
+
+# ── ORM Base ──────────────────────────────────────────────────────────────────
 
 
 class Base(DeclarativeBase):
@@ -123,8 +127,11 @@ class Base(DeclarativeBase):
     )
 
 
+# ── Low-level SQL helpers ──────────────────────────────────────────────────────
+
+
 def _run(sql: str, params: dict[str, Any] | None = None) -> Any:
-    """Execute a statement on the engine pool and return rows or rowcount."""
+    """Execute *sql* against the engine pool. Returns rows or rowcount."""
     with get_engine().connect() as conn:
         result = conn.execute(text(sql), params or {})
         conn.commit()
@@ -138,7 +145,7 @@ def execute_raw(sql: str, params: dict[str, Any] | None = None) -> Any:
 
 
 def utcnow() -> str:
-    """Current WIB time formatted for MySQL DATETIME columns."""
+    """Return current WIB time formatted for MySQL DATETIME columns."""
     return datetime.now(WIB).strftime("%Y-%m-%d %H:%M:%S")
 
 
@@ -154,6 +161,9 @@ def _prepare_value(val: Any) -> Any:
     if isinstance(val, bool):
         return 1 if val else 0
     return val
+
+
+# ── CRUD helpers ───────────────────────────────────────────────────────────────
 
 
 def list_all(
@@ -222,9 +232,7 @@ def create_record(
     if table in PK_TABLES or not return_row:
         return cleaned
     row = get_by_id(table, cleaned["id"])
-    if row is None:
-        return cleaned
-    return row
+    return row if row is not None else cleaned
 
 
 def update_record(table: str, id: str, data: dict[str, Any]) -> dict[str, Any] | None:
@@ -270,30 +278,30 @@ def search_paginated(
             f"`{_require_ident(c)}` LIKE :search_pattern" for c in columns
         )
         where_clause = f"WHERE ({or_clauses})"
-        escaped_search = search.replace("%", "\\%").replace("_", "\\_")
-        params_dict["search_pattern"] = f"%{escaped_search}%"
+        escaped = search.replace("%", "\\%").replace("_", "\\_")
+        params_dict["search_pattern"] = f"%{escaped}%"
 
     if filters:
-        filter_clauses = []
+        filter_clauses: list[str] = []
         for i, (col, val) in enumerate(filters.items()):
-            if val is not None:
-                if isinstance(val, list | tuple):
-                    if val:
-                        ph_list = []
-                        for j, item in enumerate(val):
-                            ph_key = f"in_{i}_{j}"
-                            ph_list.append(f":{ph_key}")
-                            params_dict[ph_key] = item
-                        placeholders = ", ".join(ph_list)
-                        filter_clauses.append(
-                            f"`{_require_ident(col)}` IN ({placeholders})"
-                        )
-                    else:
-                        filter_clauses.append("1 = 0")
+            if val is None:
+                continue
+            if isinstance(val, list | tuple):
+                if val:
+                    ph_list = []
+                    for j, item in enumerate(val):
+                        ph_key = f"in_{i}_{j}"
+                        ph_list.append(f":{ph_key}")
+                        params_dict[ph_key] = item
+                    filter_clauses.append(
+                        f"`{_require_ident(col)}` IN ({', '.join(ph_list)})"
+                    )
                 else:
-                    ph_key = f"eq_{i}"
-                    filter_clauses.append(f"`{_require_ident(col)}` = :{ph_key}")
-                    params_dict[ph_key] = val
+                    filter_clauses.append("1 = 0")
+            else:
+                ph_key = f"eq_{i}"
+                filter_clauses.append(f"`{_require_ident(col)}` = :{ph_key}")
+                params_dict[ph_key] = val
         if filter_clauses:
             joined = " AND ".join(filter_clauses)
             where_clause = (
@@ -316,6 +324,9 @@ def search_paginated(
     data = _run(data_sql, params_dict)
 
     return {"data": data, "total": total}
+
+
+# ── Audit log ──────────────────────────────────────────────────────────────────
 
 
 def audit_log(
@@ -343,4 +354,4 @@ def audit_log(
             },
         )
     except Exception:
-        logger.exception("audit_log failed")
+        logger.exception("audit_log failed — non-fatal, continuing")

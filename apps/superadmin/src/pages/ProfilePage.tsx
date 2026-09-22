@@ -20,8 +20,7 @@ import { Input } from "@/components/ui"
 import { Label } from "@/components/ui"
 import { Card, CardContent } from "@/components/ui"
 import { Badge } from "@/components/ui"
-import { AvatarEditor } from '../components/profile/AvatarEditor'
-import { SectionCard } from '../components/profile/SectionCard'
+import { AvatarEditor, SectionCard } from '@repo/ui'
 import { useToast } from '../components/Toast'
 import { cn } from '@/lib/utils'
 

@@ -1,7 +1,5 @@
 import type { MetadataRoute } from 'next'
 import { getNews, getPrograms } from './lib/api'
-import { newsArticles as seedNews } from './data/news'
-import { programs as seedPrograms } from './data/programs'
 import type { NewsArticle, Program } from './lib/types'
 
 const baseUrl = 'https://ptdarrahman.sch.id'
@@ -36,21 +34,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/ppdb`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
   ]
 
-  // Ambil dari CMS (API). Jika gagal/timeout, fallback ke seed statis agar
-  // sitemap selalu bisa digenerate.
-  let news: NewsArticle[] = seedNews as unknown as NewsArticle[]
-  let programs: Program[] = seedPrograms as unknown as Program[]
+  // Ambil dari CMS (API). Jika gagal/timeout, gunakan array kosong — lebih
+  // baik sitemap hanya berisi route statis yang valid daripada berisi URL
+  // dengan slug placeholder dummy yang mungkin tidak ada di database.
+  let news: NewsArticle[] = []
+  let programs: Program[] = []
+
   try {
     const liveNews = await getNews()
     if (liveNews.length > 0) news = liveNews
   } catch {
-    // fallback ke seed
+    // API tidak tersedia saat build — lewati dynamic news routes
   }
+
   try {
     const livePrograms = await getPrograms()
     if (livePrograms.length > 0) programs = livePrograms
   } catch {
-    // fallback ke seed
+    // API tidak tersedia saat build — lewati dynamic program routes
   }
 
   const newsRoutes: MetadataRoute.Sitemap = news.map((article) => ({

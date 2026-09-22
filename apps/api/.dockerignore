@@ -1,20 +1,41 @@
+# ── Secrets & env ────────────────────────────────────────────────────────────
 .env
 .env.*
+
+# ── Python artifacts ──────────────────────────────────────────────────────────
 .venv
 venv
 __pycache__
 *.pyc
+*.pyo
+*.pyd
+
+# ── Dev databases (never in production image) ─────────────────────────────────
+*.db
+*.db-shm
+*.db-wal
+*.db.bak-*
+
+# ── Tool caches ───────────────────────────────────────────────────────────────
 .mypy_cache
 .pytest_cache
 .ruff_cache
-dev.db
-*.db
-*.db.bak-*
+.turbo
+
+# ── Uploads (served from volume, not baked in) ────────────────────────────────
 uploads
+
+# ── Test & dev scripts ────────────────────────────────────────────────────────
 tests
 scripts
 *.md
+README*
+
+# ── Git & editor ─────────────────────────────────────────────────────────────
 .git
 .gitignore
+.gitattributes
+
+# ── Docker config itself ──────────────────────────────────────────────────────
 Dockerfile
 .dockerignore

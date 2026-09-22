@@ -1,3 +1,13 @@
+"""
+apps/api/src/core/dependencies.py
+
+FastAPI dependency functions for authentication and authorization.
+
+User lookup uses a Redis cache (5-minute TTL) to avoid 2 DB hits per request.
+Cache is invalidated automatically on profile/permission updates via
+cache.invalidate_user_cache(user_id).
+"""
+
 import json
 from collections.abc import Callable
 from typing import Any
@@ -5,6 +15,11 @@ from typing import Any
 from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from src.core.cache import (  # noqa: F401
+    cache_user,
+    get_cached_user,
+    invalidate_user_cache,
+)
 from src.core.database import get_by_id
 from src.core.security import verify_token
 
@@ -32,19 +47,14 @@ LEVEL_ORDER = [
 ]
 
 
-def _parse_permissions(raw) -> dict[str, Any]:
+def _parse_permissions(raw: Any) -> dict[str, Any]:
     if isinstance(raw, str):
         try:
-            if raw:
-                parsed = json.loads(raw)
-                if isinstance(parsed, dict):
-                    return parsed
-            return {}
+            parsed = json.loads(raw) if raw else {}
+            return parsed if isinstance(parsed, dict) else {}
         except (json.JSONDecodeError, TypeError):
             return {}
-    if isinstance(raw, dict):
-        return raw
-    return {}
+    return raw if isinstance(raw, dict) else {}
 
 
 def _has_level(actual: str, required: str) -> bool:
@@ -75,9 +85,7 @@ async def has_module_access(
         except (json.JSONDecodeError, TypeError):
             profile = {}
     overrides = (
-        (profile or {}).get("permissions_override", {})
-        if isinstance(profile, dict)
-        else {}
+        profile.get("permissions_override", {}) if isinstance(profile, dict) else {}
     )
     if (
         isinstance(overrides, dict)
@@ -93,28 +101,11 @@ async def has_module_access(
     return False
 
 
-def get_current_user(
-    request: Request, credentials: HTTPAuthorizationCredentials = Security(security)
-) -> dict[str, Any]:
-    token = request.cookies.get("access_token")
-    if not token and credentials:
-        token = credentials.credentials
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    payload = verify_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token payload")
-
+def _load_user_fresh(user_id: str) -> dict[str, Any] | None:
+    """Load user + role from DB and populate permission fields."""
     user = get_by_id("users", user_id)
     if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    if not user.get("is_active", True):
-        raise HTTPException(status_code=403, detail="User is inactive")
+        return None
 
     role_id = user.get("role_id")
     if role_id:
@@ -125,6 +116,42 @@ def get_current_user(
             user["is_superadmin"] = bool(role.get("is_superadmin"))
     if user.get("user_type") == "superadmin":
         user["is_superadmin"] = True
+
+    return user
+
+
+def get_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Security(security),
+) -> dict[str, Any]:
+    # 1. Extract token from cookie or Authorization header
+    token = request.cookies.get("access_token")
+    if not token and credentials:
+        token = credentials.credentials
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    # 2. Verify JWT
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    # 3. Try Redis cache first (avoids 2 DB queries per request)
+    user = get_cached_user(user_id)
+    if user is None:
+        user = _load_user_fresh(user_id)
+        if user:
+            cache_user(user_id, user)
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    if not user.get("is_active", True):
+        raise HTTPException(status_code=403, detail="User is inactive")
+
     return user
 
 
@@ -177,7 +204,8 @@ async def require_notification_admin(
 ) -> dict[str, Any]:
     if not await has_module_access(user, Module.PPDB, AccessLevel.CRUD):
         raise HTTPException(
-            status_code=403, detail="Forbidden: Requires notification CRUD access"
+            status_code=403,
+            detail="Forbidden: Requires notification CRUD access",
         )
     return user
 
@@ -187,6 +215,7 @@ async def require_notification_read(
 ) -> dict[str, Any]:
     if not await has_module_access(user, Module.PPDB, AccessLevel.READ):
         raise HTTPException(
-            status_code=403, detail="Forbidden: Requires notification read access"
+            status_code=403,
+            detail="Forbidden: Requires notification read access",
         )
     return user

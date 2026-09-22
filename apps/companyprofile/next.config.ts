@@ -9,7 +9,6 @@ const cspConnectSrc = [
   ...(apiOrigin ? [apiOrigin] : []),
   ...(apiOrigin.includes("localhost") ? [] : ["http://localhost:8000"]),
   "https:",
-  "wss://dkynlzmpwndadmbqokry.supabase.co",
 ].join(" ");
 
 const nextConfig: NextConfig = {
@@ -17,27 +16,11 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
         hostname: "res.cloudinary.com",
       },
       {
         protocol: "https",
         hostname: "img.youtube.com",
-      },
-      {
-        protocol: "https",
-        hostname: "dkynlzmpwndadmbqokry.supabase.co",
-      },
-      {
-        protocol: "https",
-        hostname: "*.supabase.co",
-      },
-      {
-        protocol: "https",
-        hostname: "upload.wikimedia.org",
       },
       {
         protocol: "https",

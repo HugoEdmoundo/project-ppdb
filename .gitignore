@@ -60,6 +60,16 @@ apps/api/uploads/
 
 # Scratch / debug artifacts
 scratch_*.py
+temp*.py
+del_*.py
+list_*.py
 *.db
+*.db.bak
 *.db.bak-*
 *.sqlite
+*.sqlite3
+
+# Docker / OS artifacts
+.dockerignore.bak
+Thumbs.db
+ehthumbs.db

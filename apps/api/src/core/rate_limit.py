@@ -1,80 +1,49 @@
-"""In-memory sliding-window rate limiter untuk endpoint publik.
-
-Melindungi endpoint publik (login, register) dari brute-force/spam tanpa
-menambah dependensi eksternal dan tanpa bergantung pada tabel DB.
-
-Catatan: in-memory bersifat per-proses. Cocok untuk deploy single-instance
-(API monolitik ini). Untuk multi-instance gunakan store bersama (Redis).
 """
+apps/api/src/core/rate_limit.py
 
-import threading
-import time
+Redis-backed sliding-window rate limiter.
+
+Menggantikan implementasi in-memory sebelumnya yang tidak aman di multi-worker.
+Menggunakan Redis sorted-set agar state dibagi antar semua uvicorn workers.
+
+Fallback: jika Redis tidak tersedia, request di-allow (fail-open) — lebih baik
+serve request daripada memblokir semua user saat Redis restart.
+"""
 
 from fastapi import HTTPException, Request
 
+from src.core.cache import redis_rate_limit
+
 # Konfigurasi per-endpoint: (limit, window_seconds)
 RATE_LIMITS: dict[str, tuple[int, int]] = {
-    "login": (10, 60),  # max 10 login attempts per IP per menit
-    "register": (5, 60),  # max 5 registrasi per IP per menit
-    "register_applicant": (3, 300),  # max 3 pendaftaran per IP per 5 menit
-    "recover_applicant": (5, 300),  # max 5 recovery/IP/5 mnt (anti brute-force)
+    "login": (10, 60),  # max 10 login attempts/IP/menit
+    "register": (5, 60),  # max 5 registrasi/IP/menit
+    "register_applicant": (3, 300),  # max 3 pendaftaran/IP/5 menit
+    "recover_applicant": (5, 300),  # max 5 recovery/IP/5 menit
 }
-
-# {key: [timestamps]} — sliding window log.
-_buckets: dict[str, list[float]] = {}
-_lock = threading.Lock()
-
-# Batas atas baris yang disimpan per key untuk cegah pertumbuhan tak terkendali.
-_MAX_ENTRIES = 1000
-
-
-def _now() -> float:
-    return time.monotonic()
 
 
 def check_rate_limit(
     request: Request, scope: str, limit: int, window_seconds: int
 ) -> None:
-    """Periksa dan catat hit rate limit untuk scope+IP.
-
-    Raise HTTPException(429) jika melebihi limit dalam window.
     """
-    client_ip = request.client.host if request.client else "unknown"
+    Periksa rate limit untuk scope+IP. Raise HTTPException 429 jika terlampaui.
+    """
+    client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (
+        request.client.host if request.client else "unknown"
+    )
     key = f"{scope}:{client_ip}"
-    now = _now()
-    window_start = now - window_seconds
-
-    with _lock:
-        bucket = _buckets.setdefault(key, [])
-        # Buang entry lama.
-        if bucket and bucket[0] < window_start:
-            bucket[:] = [t for t in bucket if t >= window_start]
-        # Batasi ukuran bucket.
-        if len(bucket) >= _MAX_ENTRIES:
-            bucket = bucket[-_MAX_ENTRIES:]
-            _buckets[key] = bucket
-
-        if len(bucket) >= limit:
-            oldest = bucket[0]
-            retry_after = max(1, int(window_seconds - (now - oldest)))
-            raise HTTPException(
-                status_code=429,
-                detail="Terlalu banyak permintaan. Coba lagi sebentar lagi.",
-                headers={"Retry-After": str(retry_after)},
-            )
-
-        bucket.append(now)
-
-    # Pangkas key yang sudah tidak aktif untuk cegah kebocoran memori.
-    if len(_buckets) > 10000:
-        with _lock:
-            for k in list(_buckets.keys()):
-                if _buckets[k] and _now() - _buckets[k][-1] > 3600:
-                    del _buckets[k]
+    allowed, retry_after = redis_rate_limit(key, limit, window_seconds)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Terlalu banyak permintaan. Coba lagi sebentar lagi.",
+            headers={"Retry-After": str(retry_after)},
+        )
 
 
 def rate_limit_dependency(scope: str):
-    """Factory dependency FastAPI yang menggunakan konfigurasi RATE_LIMITS."""
+    """FastAPI dependency factory menggunakan konfigurasi RATE_LIMITS."""
 
     def dependency(request: Request) -> None:
         limit, window = RATE_LIMITS.get(scope, (0, 0))

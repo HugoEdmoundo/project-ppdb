@@ -10,17 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
     display: 'standalone',
     background_color: '#F7F5F0',
     theme_color: '#1A6B47',
-    icons: [
-      {
-        src: '/download.png',
-        sizes: '192x192',
-        type: 'image/png',
-      },
-      {
-        src: '/download.png',
-        sizes: '512x512',
-        type: 'image/png',
-      },
-    ],
+    // Icons dikosongkan — logo diambil dinamis dari CMS via /companyprofile/settings/logo.
+    // PWA icon statis sengaja tidak diisi agar tidak ada branding statis yang stale.
+    icons: [],
   }
 }

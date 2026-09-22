@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
+from src.core.cache import invalidate_user_cache
 from src.core.notif_service import send_notifications
 from src.core.security import (
     create_access_token,
@@ -303,6 +304,8 @@ class AuthService:
             user.password_hash = hash_password(new_password)
 
         self.repository.update_user(user)
+        # Invalidate Redis cache after profile update
+        invalidate_user_cache(user.id)
         return self._serialize_user(user)
 
     def register_applicant(self, data: dict) -> dict:

@@ -5,11 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # --- Database ---
-    # Set DATABASE_URL to override MySQL settings entirely
-    # (e.g. sqlite:///./dev.db for local dev)
-    database_url: str | None = None
-
+    # ── Database (MySQL only) ────────────────────────────────────────────────
     mysql_host: str = "127.0.0.1"
     mysql_port: int = 3306
     mysql_user: str = "root"
@@ -17,40 +13,45 @@ class Settings(BaseSettings):
     mysql_database: str = "ptdarrahman"
     mysql_ssl: bool = False
 
-    # --- JWT ---
+    # ── Redis ────────────────────────────────────────────────────────────────
+    # Dipakai oleh rate limiter dan user-session cache.
+    # Format: redis://:password@host:port/db   ATAU  host:port (tanpa auth)
+    redis_url: str = "redis://localhost:6379/0"
+
+    # TTL cache user-session di Redis (detik). Default 5 menit.
+    user_cache_ttl: int = 300
+
+    # ── JWT ──────────────────────────────────────────────────────────────────
     jwt_secret: str = ""
     jwt_expiry_hours: int = 24
 
-    # --- Cron ---
+    # ── Cron ─────────────────────────────────────────────────────────────────
     cron_secret: str = ""
 
-    # --- Cookies ---
-    # Set "true" di produksi (HTTPS) supaya cookie tidak dikirim via HTTP.
+    # ── Cookies ──────────────────────────────────────────────────────────────
+    # Wajib true di produksi (HTTPS). Reverse-proxy otomatis override ini
+    # via x-forwarded-proto=https tanpa perlu set manual (lihat auth/router.py).
     cookie_secure: bool = False
 
-    # --- Payment gateway (Midtrans) ---
-    # Server key Midtrans untuk verifikasi signature webhook. Kosongkan jika
-    # pembayaran hanya offline/manual.
+    # ── Payment gateway (Midtrans) ───────────────────────────────────────────
     midtrans_server_key: str | None = None
 
-    # --- CORS ---
-    # "*" = allow all (dev only). Empty = default allowlist + regex (see core/cors.py).
+    # ── CORS ─────────────────────────────────────────────────────────────────
+    # "*" = allow all (dev only; credentials nonaktif).
+    # Kosong (default) = allowlist bawaan + regex localhost.
     cors_origins: str = ""
     cors_origin_regex: str = ""
 
-    # --- Frontend URLs (for notification links) ---
+    # ── Frontend URLs (for notification deep-links) ──────────────────────────
     ppdb_frontend_url: str = "http://localhost:5174"
     superadmin_frontend_url: str = "http://localhost:5173"
 
-    # --- WhatsApp Microservice ---
-    # URL ke apps/whatsapp/ Express service
+    # ── WhatsApp Microservice ─────────────────────────────────────────────────
     wa_service_url: str = "http://localhost:3100"
-    # API Key yang sama dengan WA microservice API_KEY
     wa_service_api_key: str = ""
-    # Secret untuk verifikasi HMAC webhook callback dari WA microservice
     wa_webhook_secret: str = ""
 
-    # --- Uploads ---
+    # ── Uploads ──────────────────────────────────────────────────────────────
     upload_provider: str = "local"  # local | cloudinary | db
     upload_dir: str = "uploads"
 
@@ -81,10 +82,9 @@ class Settings(BaseSettings):
     @field_validator("upload_provider")
     @classmethod
     def _validate_upload_provider(cls, value: str) -> str:
-        if value not in ("local", "cloudinary", "db"):
-            raise ValueError(
-                f"UPLOAD_PROVIDER must be 'local', 'cloudinary', or 'db', got '{value}'"
-            )
+        allowed = {"local", "cloudinary", "db"}
+        if value not in allowed:
+            raise ValueError(f"UPLOAD_PROVIDER must be one of {allowed}, got '{value}'")
         return value
 
 

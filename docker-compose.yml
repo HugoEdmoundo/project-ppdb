@@ -1,58 +1,85 @@
-version: '3.8'
+# ============================================================
+# PTDARRAHMAN — Production Docker Compose
+# ============================================================
+# Setup:
+#   1. Pastikan apps/api/.env dan apps/whatsapp/.env sudah diisi
+#   2. docker compose up -d
+#   3. Scan WA QR: docker compose logs -f whatsapp
+#      atau: GET http://localhost:3100/api/session/qr/image
+# ============================================================
 
 services:
-  # ── FastAPI Backend ─────────────────────────────────────────────────────
+  # ── FastAPI Backend ────────────────────────────────────────────────────
   api:
     build:
       context: ./apps/api
+      dockerfile: Dockerfile
     ports:
       - "8080:8000"
     volumes:
-      - ./apps/api:/app
-      - ./uploads:/app/uploads
+      # Uploads disimpan di named volume, bukan bind ke source tree
+      - uploads_data:/app/uploads
     env_file:
       - ./apps/api/.env
     environment:
-      # Override untuk Docker networking
+      # Override untuk Docker internal networking
       WA_SERVICE_URL: http://whatsapp:3100
+      # Redis (shared dengan WA service, DB index 0 untuk API)
+      REDIS_URL: redis://redis:6379/0
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
-  # ── WhatsApp Notification Microservice ──────────────────────────────────
+  # ── WhatsApp Notification Microservice ────────────────────────────────
   whatsapp:
     build:
       context: ./apps/whatsapp
+      dockerfile: Dockerfile
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     volumes:
-      # Persistent WhatsApp session data (PENTING: jangan hilangkan)
+      # Persistent WhatsApp session data — WAJIB, scan QR ulang jika dihapus
       - wa_session:/app/wa-session
-      # Log files
       - wa_logs:/app/logs
     env_file:
       - ./apps/whatsapp/.env
     environment:
       NODE_ENV: production
+      # Override untuk Docker internal networking
       REDIS_HOST: redis
-      REDIS_PORT: 6379
-      # Override webhook URL untuk Docker networking
+      REDIS_PORT: "6379"
       WEBHOOK_URL: http://api:8000/notifications/webhook/whatsapp
     depends_on:
       redis:
         condition: service_healthy
+      api:
+        condition: service_healthy
     restart: unless-stopped
     # Puppeteer membutuhkan lebih banyak shared memory
     shm_size: '256mb'
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3100/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # ── Redis ──────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    # Port TIDAK di-expose ke host di production — internal only.
+    # Uncomment baris di bawah hanya untuk debugging lokal:
+    # ports:
+    #   - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     command: >
@@ -68,12 +95,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 5s
     restart: unless-stopped
 
+# ── Named Volumes ──────────────────────────────────────────────────────
 volumes:
   redis_data:
     driver: local
   wa_session:
     driver: local
   wa_logs:
+    driver: local
+  # Upload files disimpan di named volume agar tidak tercampur dengan source code
+  uploads_data:
     driver: local

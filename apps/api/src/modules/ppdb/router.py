@@ -397,12 +397,28 @@ def get_ppdb_dashboard(
     return service.get_dashboard_stats()
 
 
+def _verify_cron_secret(provided: str | None) -> None:
+    """
+    Verifikasi cron secret dengan constant-time comparison (mencegah timing attack).
+    Raises HTTP 401 jika secret tidak valid atau belum dikonfigurasi.
+    """
+    import hmac as _hmac
+
+    expected = settings.cron_secret
+    if not expected:
+        raise HTTPException(status_code=401, detail="Cron secret belum dikonfigurasi")
+    if not provided:
+        raise HTTPException(status_code=401, detail="Unauthorized cron request")
+    # constant-time compare — mencegah timing side-channel
+    if not _hmac.compare_digest(provided.encode(), expected.encode()):
+        raise HTTPException(status_code=401, detail="Unauthorized cron request")
+
+
 @router.post("/cron/soft-delete-expired")
 def soft_delete_expired_applicants(
     x_cron_secret: str = Header(None), service: PPDBService = Depends(get_ppdb_service)
 ):
-    if x_cron_secret != settings.cron_secret:
-        raise HTTPException(status_code=401, detail="Unauthorized cron request")
+    _verify_cron_secret(x_cron_secret)
     return service.soft_delete_expired_applicants()
 
 
@@ -410,6 +426,5 @@ def soft_delete_expired_applicants(
 def run_reminders(
     x_cron_secret: str = Header(None), service: PPDBService = Depends(get_ppdb_service)
 ):
-    if x_cron_secret != settings.cron_secret:
-        raise HTTPException(status_code=401, detail="Unauthorized cron request")
+    _verify_cron_secret(x_cron_secret)
     return service.run_reminders()

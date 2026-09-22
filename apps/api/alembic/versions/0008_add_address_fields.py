@@ -138,6 +138,19 @@ def _create_index(table: str, index: str, columns: list[str]) -> None:
 def _drop_index(table: str, index: str) -> None:
     if not _has_index(table, index):
         return
+    # MySQL cannot drop an index that currently back a FOREIGN KEY (error 1553),
+    # and a fresh database created by 0001 already carries the model-level FK
+    # with its supporting index. Keep the supporting index in that case.
+    if op.get_bind().dialect.name == "mysql":
+        inspector = sa.inspect(op.get_bind())
+        idx_cols = set()
+        for i in inspector.get_indexes(table):
+            if i["name"] == index:
+                idx_cols = set(i["column_names"] or [])
+                break
+        for fk in inspector.get_foreign_keys(table):
+            if set(fk.get("constrained_columns") or []) == idx_cols:
+                return
     with op.batch_alter_table(table) as batch:
         batch.drop_index(index)
 
@@ -198,7 +211,9 @@ def upgrade() -> None:
         "audit_log",
         "created_at",
         nullable=False,
-        server_default=sa.text("CURRENT_TIMESTAMP(3)"),
+        # MySQL requires the expression form `(CURRENT_TIMESTAMP(3))` in
+        # ALTER COLUMN ... SET DEFAULT (accepted since 8.0.13).
+        server_default=sa.text("(CURRENT_TIMESTAMP(3))"),
     )
     for idx in ("idx_audit_log_created", "idx_audit_log_entity", "idx_audit_log_user"):
         _drop_index("audit_log", idx)
@@ -317,7 +332,7 @@ def upgrade() -> None:
         "refresh_tokens",
         "created_at",
         nullable=False,
-        server_default=sa.text("CURRENT_TIMESTAMP(3)"),
+        server_default=sa.text("(CURRENT_TIMESTAMP(3))"),
     )
     for idx in ("idx_refresh_tokens_hash", "idx_refresh_tokens_user"):
         _drop_index("refresh_tokens", idx)

@@ -156,17 +156,22 @@ async def get_dashboard(user: dict[str, Any] = Depends(require_superadmin)):
     }
 
     notif_rows = (
-        execute_raw("SELECT `status`, `created_at` FROM `notification_logs`") or []
+        execute_raw(
+            "SELECT `status`, COUNT(*) AS `n`, "
+            "SUM(CASE WHEN DATE(`created_at`) = CURDATE() "
+            "AND `status` = 'sent' THEN 1 ELSE 0 END) AS `today_sent` "
+            "FROM `notification_logs` GROUP BY `status`"
+        )
+        or []
     )
-    today = datetime.now(WIB).strftime("%Y-%m-%d")
+    notif_by_status: dict[str, int] = {r["status"]: int(r["n"]) for r in notif_rows}
+    sent_today = sum(
+        int(r.get("today_sent", 0)) for r in notif_rows if r["status"] == "sent"
+    )
     notifications = {
-        "sent": sum(1 for r in notif_rows if r["status"] == "sent"),
-        "failed": sum(1 for r in notif_rows if r["status"] == "failed"),
-        "sent_today": sum(
-            1
-            for r in notif_rows
-            if r["status"] == "sent" and str(r["created_at"])[:10] == today
-        ),
+        "sent": notif_by_status.get("sent", 0),
+        "failed": notif_by_status.get("failed", 0),
+        "sent_today": sent_today,
     }
 
     # Get recent Audit Logs (max 5)
@@ -185,8 +190,8 @@ async def get_dashboard(user: dict[str, Any] = Depends(require_superadmin)):
 
 @router.get("/audit-logs")
 async def list_audit_logs(
-    page: int = Query(1),
-    per_page: int = Query(20),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=200),
     search: str = Query(""),
     entity_type: str = Query(""),
     action: str = Query(""),

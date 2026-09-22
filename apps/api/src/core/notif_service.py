@@ -275,61 +275,87 @@ async def _async_send_custom_notifications(
     body: str,
     event_key: str,
 ) -> None:
-    """Actual async implementation for custom blast — fire-and-forget."""
+    """Actual async implementation for custom blast — fire-and-forget.
+
+    FIX: Bulk-load semua user + applicant dalam 2 query (bukan 2N).
+    Sebelumnya: 2 query per user = 200 queries untuk 100 penerima.
+    Sekarang: 2 query total berapapun jumlah penerima.
+    """
     try:
+        if not recipient_user_ids:
+            return
+
         pool = get_raw_pool()
         with pool.connect() as conn:
-            for user_id in recipient_user_ids:
-                rows = (
-                    conn.execute(
-                        text("SELECT * FROM users WHERE id = :id"), {"id": user_id}
+            # Bulk-load semua user sekaligus
+            placeholders = ", ".join(f":uid{i}" for i in range(len(recipient_user_ids)))
+            uid_params: dict[str, Any] = {
+                f"uid{i}": uid for i, uid in enumerate(recipient_user_ids)
+            }
+
+            user_rows = (
+                conn.execute(
+                    text(f"SELECT * FROM users WHERE id IN ({placeholders})"),
+                    uid_params,
+                )
+                .mappings()
+                .all()
+            )
+            users_by_id: dict[str, dict[str, Any]] = {
+                str(r["id"]): dict(r) for r in user_rows
+            }
+
+            # Bulk-load semua applicant sekaligus
+            applicant_rows = (
+                conn.execute(
+                    text(
+                        f"SELECT * FROM ppdb_applicants WHERE user_id IN "
+                        f"({placeholders})"
+                    ),
+                    uid_params,
+                )
+                .mappings()
+                .all()
+            )
+            applicants_by_user_id: dict[str, dict[str, Any]] = {
+                str(r["user_id"]): dict(r) for r in applicant_rows
+            }
+
+        for user_id in recipient_user_ids:
+            user = users_by_id.get(user_id)
+            if not user:
+                logger.warning("User %s not found — skipping", user_id)
+                continue
+
+            applicant = applicants_by_user_id.get(user_id, {})
+            phone = applicant.get("phone") or user.get("phone", "")
+
+            _log_notification(
+                template_id=None,
+                event_key=event_key,
+                recipient_user_id=user["id"],
+                recipient_name=applicant.get("full_name") or user.get("full_name", ""),
+                recipient_email=user.get("email", ""),
+                recipient_phone=str(phone),
+                channel=channel,
+                subject_sent=subject,
+                body_sent=body,
+                status="queued",
+            )
+
+            if channel in ("whatsapp", "both") and phone:
+                try:
+                    await _async_send_to_wa_service(
+                        phone=str(phone),
+                        message=body,
+                        event_key=event_key,
+                        recipient_user_id=user["id"],
                     )
-                    .mappings()
-                    .all()
-                )
-                if not rows:
-                    continue
-                user = dict(rows[0])
-
-                arows = (
-                    conn.execute(
-                        text("SELECT * FROM ppdb_applicants WHERE user_id = :id"),
-                        {"id": user_id},
+                except Exception:
+                    logger.exception(
+                        "Failed to enqueue WA custom notification for user %s",
+                        user_id,
                     )
-                    .mappings()
-                    .all()
-                )
-                applicant = dict(arows[0]) if arows else {}
-
-                phone = applicant.get("phone") or user.get("phone", "")
-
-                _log_notification(
-                    template_id=None,
-                    event_key=event_key,
-                    recipient_user_id=user["id"],
-                    recipient_name=applicant.get("full_name")
-                    or user.get("full_name", ""),
-                    recipient_email=user.get("email", ""),
-                    recipient_phone=str(phone),
-                    channel=channel,
-                    subject_sent=subject,
-                    body_sent=body,
-                    status="queued",
-                )
-
-                if channel in ("whatsapp", "both") and phone:
-                    try:
-                        await _async_send_to_wa_service(
-                            phone=str(phone),
-                            message=body,
-                            event_key=event_key,
-                            recipient_user_id=user["id"],
-                        )
-                    except Exception:
-                        logger.exception(
-                            "Failed to enqueue WA custom notification for user %s",
-                            user_id,
-                        )
 
     except Exception:
         logger.exception("Async custom notification task failed")

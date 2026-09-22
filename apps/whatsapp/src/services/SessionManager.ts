@@ -58,13 +58,30 @@ export class SessionManager extends EventEmitter {
   /**
    * Initialize WhatsApp client.
    * Safe to call multiple times — idempotent.
+   * FIX: pakai flag _initializingPromise untuk mencegah double-init race condition.
    */
+  private _initializingPromise: Promise<void> | null = null;
+
   async initialize(): Promise<void> {
+    // FIX: Jika sedang dalam proses initialize, return promise yang sama.
+    // Mencegah dua Puppeteer process spawn saat dua caller concurrent.
+    if (this._initializingPromise) {
+      logger.info("[Session] Initialize already in progress, waiting...");
+      return this._initializingPromise;
+    }
+
     if (this.client && this.sessionInfo.status !== "destroyed") {
       logger.info("[Session] Already initialized, skipping");
       return;
     }
 
+    this._initializingPromise = this._doInitialize().finally(() => {
+      this._initializingPromise = null;
+    });
+    return this._initializingPromise;
+  }
+
+  private async _doInitialize(): Promise<void> {
     logger.info("[Session] Initializing WhatsApp client...");
     this.updateStatus("initializing");
 
@@ -149,13 +166,22 @@ export class SessionManager extends EventEmitter {
 
   /**
    * Logout from WhatsApp (clears auth data).
+   * FIX: Clear reconnect timer sebelum logout — tanpa ini, pending timer
+   * akan trigger reconnect otomatis setelah logout.
    */
   async logout(): Promise<void> {
     if (!this.client) throw new Error("No active session");
 
+    // Tandai shutdown agar scheduleReconnect tidak jalan lagi
+    this.isShuttingDown = true;
+    this.clearReconnectTimer();
+
     logger.info("[Session] Logging out...");
     await this.client.logout();
     this.updateStatus("destroyed");
+
+    // Reset flag setelah logout selesai agar bisa di-initialize ulang manual
+    this.isShuttingDown = false;
   }
 
   // ── SSE (Server-Sent Events) ───────────────────────────────────────────────

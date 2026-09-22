@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Wifi, WifiOff, RefreshCw, LogOut, Trash2,
-  CheckCircle2, XCircle, AlertTriangle, Activity,
+  CheckCircle2, XCircle, Activity,
   ChevronLeft, ChevronRight, Loader2,
   QrCode, PhoneCall, Server, BarChart3, FileText,
 } from 'lucide-react'
@@ -9,8 +9,7 @@ import { Button } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import {
   waGetSession, waInitSession, waLogoutSession, waDestroySession,
-  waGetQrImage, waGetQueueStats, waGetLogs, waGetHealth, waGetQrSseUrl,
-  WA_API_KEY,
+  waGetQrImage, waGetQueueStats, waGetLogs, waGetHealth,
   type WASessionInfo, type WAQueueStats, type WALogEntry,
 } from '../api/client'
 import PageHero from '../components/PageHero'
@@ -55,81 +54,47 @@ function QrPanel({
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [qrLoading, setQrLoading] = useState(true)
   const [qrError, setQrError] = useState<string | null>(null)
-  const sseRef = useRef<EventSource | null>(null)
-
-  // SSE — realtime QR updates
-  useEffect(() => {
-    if (!WA_API_KEY) return
-
-    const url = new URL(waGetQrSseUrl())
-    // Tambahkan key sebagai query param agar SSE bisa diauth
-    // (browser tidak support custom header di EventSource)
-
-    const es = new EventSource(url.toString())
-
-    es.addEventListener('qr', (e) => {
-      try {
-        const data = JSON.parse(e.data)
-        if (data?.qrCode) setQrDataUrl(data.qrCode)
-        setQrError(null)
-      } catch { /* ignore */ }
-    })
-
-    es.addEventListener('ready', () => {
-      setQrDataUrl(null)
-    })
-
-    es.addEventListener('status', (e) => {
-      try {
-        const data = JSON.parse(e.data)
-        if (data?.qrCode) setQrDataUrl(data.qrCode)
-        if (data?.status === 'ready') setQrDataUrl(null)
-      } catch { /* ignore */ }
-    })
-
-    es.onerror = () => {
-      // SSE gagal (mungkin karena butuh auth header, coba one-shot fallback)
-    }
-
-    sseRef.current = es
-    return () => es.close()
-  }, [])
-
-  // Fallback one-shot fetch jika SSE tidak bisa bawa header
-  const loadQr = useCallback(async () => {
-    const res = await waGetQrImage()
-    if (res.success && res.data.qrCode) return res.data.qrCode
-    return null
-  }, [])
+  // Tidak ada SSE langsung ke WA service — browser tidak bisa autentikasi
+  // EventSource dengan header. Gunakan polling via FastAPI proxy sebagai gantinya.
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchQrImage = useCallback(async () => {
     setQrLoading(true)
     setQrError(null)
     try {
-      const qr = await loadQr()
-      if (qr) setQrDataUrl(qr)
+      const res = await waGetQrImage()
+      if (res?.data?.qrCode) setQrDataUrl(res.data.qrCode)
     } catch (err) {
       setQrError((err as Error).message)
     } finally {
       setQrLoading(false)
     }
-  }, [loadQr])
+  }, [])
 
+  // Polling setiap 5 detik saat status === 'qr'
   useEffect(() => {
-    if (status.status !== 'qr' || qrDataUrl) return
-    let active = true
-    loadQr()
-      .then((qr) => {
-        if (active && qr) setQrDataUrl(qr)
-      })
-      .catch((err) => {
-        if (active) setQrError((err as Error).message)
-      })
-      .finally(() => {
-        if (active) setQrLoading(false)
-      })
-    return () => { active = false }
-  }, [status.status, qrDataUrl, loadQr])
+    if (status.status !== 'qr') {
+      if (pollRef.current) clearInterval(pollRef.current)
+      return
+    }
+    // Langsung fetch sekali
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchQrImage()
+    // Lalu polling tiap 5 detik sampai QR di-scan atau status berubah
+    pollRef.current = setInterval(fetchQrImage, 5_000)
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [status.status, fetchQrImage])
+
+  // Hentikan polling saat status bukan 'qr' lagi
+  useEffect(() => {
+    if (status.status === 'ready') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setQrDataUrl(null)
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [status.status])
 
   if (status.status === 'ready') {
     return (
@@ -244,7 +209,6 @@ export default function WhatsAppPage() {
   const [logsLoading, setLogsLoading] = useState(true)
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const notConfigured = !WA_API_KEY
 
   // ── Fetch helpers ──────────────────────────────────────────────────────
 
@@ -283,7 +247,6 @@ export default function WhatsAppPage() {
   // ── Initial load + polling ─────────────────────────────────────────────
 
   useEffect(() => {
-    if (notConfigured) return
     fetchSession()
     fetchQueueStats()
     fetchHealth()
@@ -298,12 +261,11 @@ export default function WhatsAppPage() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
-  }, [notConfigured, fetchHealth, fetchLogs, fetchQueueStats, fetchSession])
+  }, [fetchHealth, fetchLogs, fetchQueueStats, fetchSession])
 
   useEffect(() => {
-    if (notConfigured) return
     fetchLogs(logsPage, logsStatus)
-  }, [logsPage, logsStatus, fetchLogs, notConfigured])
+  }, [logsPage, logsStatus, fetchLogs])
 
   // ── Actions ────────────────────────────────────────────────────────────
 
@@ -353,32 +315,6 @@ export default function WhatsAppPage() {
   const meta = STATUS_META[session.status] ?? STATUS_META.disconnected
   const isReady = session.status === 'ready'
   const isActive = ['initializing', 'qr', 'authenticated', 'ready'].includes(session.status)
-
-  if (notConfigured) {
-    return (
-      <div className="space-y-6">
-        <PageHero
-          eyebrow="Konfigurasi"
-          title="WhatsApp"
-          description="Kelola sesi WhatsApp untuk notifikasi PPDB"
-        />
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 flex gap-4">
-          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-amber-800">Konfigurasi Belum Lengkap</p>
-            <p className="text-sm text-amber-700 mt-1">
-              Tambahkan variabel berikut ke <code className="bg-amber-100 px-1 rounded">.env</code> superadmin:
-            </p>
-            <pre className="mt-3 rounded-lg bg-amber-100 p-3 text-xs font-mono text-amber-900">
-{`VITE_WA_URL=http://localhost:3100
-VITE_WA_API_KEY=<api-key-yang-sama-dengan-apps/whatsapp/.env>`}
-            </pre>
-            <p className="text-xs text-amber-600 mt-2">Restart dev server setelah mengubah .env.</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-6">

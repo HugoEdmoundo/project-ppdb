@@ -130,11 +130,26 @@ class PaymentRepository:
         self.db.commit()
 
     def get_applicant_by_id(self, applicant_id: str) -> PPDBApplicant | None:
-        stmt = select(PPDBApplicant).where(PPDBApplicant.id == applicant_id)
+        """
+        Ambil applicant by ID — HANYA yang belum soft-deleted.
+        Filter deleted_at IS NULL mencegah admin mengkonfirmasi pembayaran
+        untuk akun expired (IDOR via soft-delete bypass).
+        """
+        stmt = select(PPDBApplicant).where(
+            PPDBApplicant.id == applicant_id,
+            PPDBApplicant.deleted_at.is_(None),
+        )
         return cast(PPDBApplicant | None, self.db.scalars(stmt).first())
 
     # Stage 2
     def get_stage2_applicants(self, wave_id: str) -> tuple[list[Any], int]:
+        """
+        Ambil semua applicant Tahap 2 dengan data discount/bills/mou-nya.
+
+        FIX: bulk-load semua relasi dalam 3 query tambahan (bukan 3N).
+        Sebelumnya: 1 + 3N queries untuk N applicant.
+        Sekarang: 4 queries total, berapapun jumlah applicant.
+        """
         stmt = (
             select(PPDBApplicant)
             .join(SelectionResult, SelectionResult.applicant_id == PPDBApplicant.id)
@@ -146,25 +161,38 @@ class PaymentRepository:
         )
 
         applicants = self.db.scalars(stmt).all()
+        if not applicants:
+            return [], 0
+
+        applicant_ids = [a.id for a in applicants]
+
+        # Bulk-load discounts (has_discount per applicant_id)
+        discount_rows = self.db.scalars(
+            select(PPDBApplicantDiscount.applicant_id).where(
+                PPDBApplicantDiscount.applicant_id.in_(applicant_ids)
+            )
+        ).all()
+        has_discount_set: set[str] = set(discount_rows)
+
+        # Bulk-load bills
+        bill_rows = self.db.scalars(
+            select(PPDBStage2Bill).where(PPDBStage2Bill.applicant_id.in_(applicant_ids))
+        ).all()
+        bills_by_applicant: dict[str, list[PPDBStage2Bill]] = {}
+        for b in bill_rows:
+            bills_by_applicant.setdefault(b.applicant_id, []).append(b)
+
+        # Bulk-load MOU statuses
+        mou_rows = self.db.execute(
+            select(PPDBBMOU.applicant_id, PPDBBMOU.status).where(
+                PPDBBMOU.applicant_id.in_(applicant_ids)
+            )
+        ).all()
+        mou_by_applicant: dict[str, str] = {r.applicant_id: r.status for r in mou_rows}
+
         results = []
         for app in applicants:
-            has_discount = (
-                self.db.scalar(
-                    select(PPDBApplicantDiscount.id)
-                    .where(PPDBApplicantDiscount.applicant_id == app.id)
-                    .limit(1)
-                )
-                is not None
-            )
-
-            bills = self.db.scalars(
-                select(PPDBStage2Bill).where(PPDBStage2Bill.applicant_id == app.id)
-            ).all()
-
-            mou = self.db.scalar(
-                select(PPDBBMOU.status).where(PPDBBMOU.applicant_id == app.id).limit(1)
-            )
-
+            bills = bills_by_applicant.get(app.id, [])
             app_dict = {
                 "id": app.id,
                 "full_name": app.full_name,
@@ -173,11 +201,11 @@ class PaymentRepository:
                 "phone": app.phone,
                 "registration_level": app.registration_level,
                 "registration_path": app.registration_path,
-                "discount_configured": has_discount,
+                "discount_configured": app.id in has_discount_set,
                 "bills_generated": len(bills) > 0,
                 "total_bills": len(bills),
                 "total_paid_bills": sum(1 for b in bills if b.status == "paid"),
-                "mou_status": mou,
+                "mou_status": mou_by_applicant.get(app.id),
             }
             results.append(app_dict)
 

@@ -44,6 +44,8 @@ const envSchema = z.object({
 
   // Webhook
   WEBHOOK_URL: z.string().url().optional(),
+  // WEBHOOK_SECRET wajib min 32 chars jika WEBHOOK_URL di-set.
+  // Validasi cross-field dilakukan di refine() di bawah.
   WEBHOOK_SECRET: z.string().default(""),
 
   // Logging
@@ -54,7 +56,22 @@ const envSchema = z.object({
 });
 
 function parseEnv() {
-  const result = envSchema.safeParse(process.env);
+  const result = envSchema
+    .refine(
+      (data) => {
+        // Jika WEBHOOK_URL di-set, WEBHOOK_SECRET WAJIB minimal 32 chars.
+        // Tanpa secret yang kuat, FastAPI akan fail-closed dan menolak semua webhook.
+        if (data.WEBHOOK_URL && data.WEBHOOK_SECRET.length < 32) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: "WEBHOOK_SECRET must be at least 32 characters when WEBHOOK_URL is set",
+        path: ["WEBHOOK_SECRET"],
+      }
+    )
+    .safeParse(process.env);
   if (!result.success) {
     const issues = result.error.issues ?? [];
     const formatted = issues

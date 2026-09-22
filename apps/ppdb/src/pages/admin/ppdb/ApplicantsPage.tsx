@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import * as api from '@/api/client'
 import { useToast } from '@/components/Toast'
@@ -56,14 +56,32 @@ export default function ApplicantsPage() {
   const hasActiveWave = !!activeWaveData
   const totalPages = data?.total ? Math.ceil(data.total / limit) : 1
 
+  // Ref untuk AbortController aktif — mencegah race condition saat dua klik
+  // cepat berurutan bisa menampilkan dokumen applicant yang salah.
+  const fetchDocsAbortRef = useRef<AbortController | null>(null)
+
   const fetchApplicantDocs = async (applicant: any) => {
+    // Batalkan fetch sebelumnya jika masih berjalan
+    if (fetchDocsAbortRef.current) {
+      fetchDocsAbortRef.current.abort()
+    }
+    const controller = new AbortController()
+    fetchDocsAbortRef.current = controller
+
     setVerifyApplicant(applicant)
     setApplicantDocs([])
     setRejectionReason('')
     try {
-      const res = await api.apiFetch<any>(`/ppdb/applicants/${applicant.id}/documents`)
-      setApplicantDocs(res.data || [])
-    } catch {
+      const res = await api.apiFetch<any>(
+        `/ppdb/applicants/${applicant.id}/documents`,
+        { signal: controller.signal }
+      )
+      // Jangan update state jika request sudah di-abort (user klik applicant lain)
+      if (!controller.signal.aborted) {
+        setApplicantDocs(res.data || [])
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return // diabaikan — bukan error nyata
       toast('error', 'Gagal memuat dokumen')
     }
   }

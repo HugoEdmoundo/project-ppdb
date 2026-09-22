@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   Send, FileText, Inbox, Bell, Edit2, Eye, EyeOff,
-  CheckCircle2, AlertTriangle, RefreshCw,
+  CheckCircle2, RefreshCw,
   ChevronLeft, ChevronRight, Users, MessageSquare, Mail,
   Zap, Search, Info, Copy, Check, Download,
 } from 'lucide-react'
@@ -485,13 +485,8 @@ function TemplateEditDialog({ template, open, onClose, onSaved }: {
       await api.apiFetch(`/notifications/templates/${template.id}`, {
         method: 'PUT', body: JSON.stringify(form),
       })
-      // Clear WA template cache silently
       try {
-        if (api.WA_API_KEY) {
-          await fetch(`${api.WA_API_BASE}/api/templates/cache/clear`, {
-            method: 'POST', headers: { 'X-API-Key': api.WA_API_KEY },
-          })
-        }
+        // Cache akan dihapus oleh backend secara otomatis (atau via SSE)
       } catch { /* silent */ }
       toast('success', 'Template berhasil disimpan')
       onSaved()
@@ -741,7 +736,6 @@ export default function NotificationsPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [tplLoading, setTplLoading] = useState(true)
   const { toast } = useToast()
-  const waConfigured = Boolean(api.WA_API_KEY)
 
   useEffect(() => {
     api.apiFetch<Template[]>('/notifications/templates')
@@ -762,23 +756,8 @@ export default function NotificationsPage() {
         chips={[
           { icon: Bell, label: `${templates.length} Template` },
           { icon: CheckCircle2, label: `${activeCount} Aktif` },
-          { icon: waConfigured ? Zap : AlertTriangle, label: waConfigured ? 'WA: Terhubung' : 'WA: Belum dikonfigurasi' },
         ]}
       />
-
-      {!waConfigured && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
-          <div>
-            <p className="font-semibold">WhatsApp Service Belum Dikonfigurasi</p>
-            <p className="text-xs text-amber-700 mt-0.5">
-              Tambahkan <code className="bg-amber-100 px-1 rounded">VITE_WA_URL</code> dan{' '}
-              <code className="bg-amber-100 px-1 rounded">VITE_WA_API_KEY</code> ke{' '}
-              <code className="bg-amber-100 px-1 rounded">.env</code> superadmin, lalu restart dev server.
-            </p>
-          </div>
-        </div>
-      )}
 
       <Tabs defaultValue="send">
         <TabsList className="mb-2">

@@ -32,6 +32,8 @@ from src.modules.ppdb.schemas import (
 )
 from src.repositories.ppdb_repository import PPDBRepository
 
+WIB = ZoneInfo("Asia/Jakarta")
+
 logger = logging.getLogger("ptdarrahman.ppdb")
 
 # Nama dokumen wajib (disinkronkan dengan REQUIRED_DOCUMENTS di frontend).
@@ -97,8 +99,8 @@ class PPDBService:
             academic_year=body.academic_year,
             description=body.description,
             status="inactive",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=datetime.now(WIB),
+            updated_at=datetime.now(WIB),
         )
         self.repository.create_period(period)
         return {c.name: getattr(period, c.name) for c in period.__table__.columns}
@@ -117,7 +119,7 @@ class PPDBService:
             period.academic_year = provided["academic_year"]
         if "description" in provided:
             period.description = provided["description"]
-        period.updated_at = datetime.now()
+        period.updated_at = datetime.now(WIB)
 
         self.repository.update_period(period)
         return {c.name: getattr(period, c.name) for c in period.__table__.columns}
@@ -218,8 +220,8 @@ class PPDBService:
             if body.second_stage_fee is not None
             else 0,
             status="inactive",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=datetime.now(WIB),
+            updated_at=datetime.now(WIB),
         )
         self.repository.create_wave(wave)
         return {c.name: getattr(wave, c.name) for c in wave.__table__.columns}
@@ -306,7 +308,7 @@ class PPDBService:
         ):
             if field in provided and provided[field] is not None:
                 setattr(wave, field, provided[field])
-        wave.updated_at = datetime.now()
+        wave.updated_at = datetime.now(WIB)
 
         self.repository.update_wave(wave)
         return {c.name: getattr(wave, c.name) for c in wave.__table__.columns}
@@ -366,8 +368,8 @@ class PPDBService:
             name=body.name,
             nominal=body.nominal,
             order_index=body.order_index,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=datetime.now(WIB),
+            updated_at=datetime.now(WIB),
         )
         self.repository.create_fee_item(item)
         return {c.name: getattr(item, c.name) for c in item.__table__.columns}
@@ -397,7 +399,7 @@ class PPDBService:
         if not wave:
             raise HTTPException(status_code=404, detail="Gelombang tidak ditemukan")
         wave.mou_template = body.mou_template
-        wave.updated_at = datetime.now()
+        wave.updated_at = datetime.now(WIB)
         self.repository.update_wave(wave)
         return {c.name: getattr(wave, c.name) for c in wave.__table__.columns}
 
@@ -467,7 +469,7 @@ class PPDBService:
         username = self.generate_unique_username(body.full_name)
         role_id = self.repository.get_role_id_by_name("Pendaftar")
 
-        now = datetime.now()
+        now = datetime.now(WIB)
         payment_deadline_wib = datetime.now(ZoneInfo("Asia/Jakarta")) + timedelta(
             days=7
         )
@@ -707,7 +709,7 @@ class PPDBService:
             upload=upload,
             file_id=file_id,
             uploaded_by=user["id"],
-            now=datetime.now(),
+            now=datetime.now(WIB),
         )
         for path in old_paths:
             delete_upload(path)
@@ -734,7 +736,7 @@ class PPDBService:
             )
 
         applicant.status = "document_uploaded"
-        applicant.updated_at = datetime.now()
+        applicant.updated_at = datetime.now(WIB)
         self.repository.update_applicant(applicant)
 
         return {
@@ -766,7 +768,7 @@ class PPDBService:
         applicant.rejection_reason = (
             rejection_reason.strip() if rejection_reason else None
         )
-        applicant.updated_at = datetime.now()
+        applicant.updated_at = datetime.now(WIB)
         self.repository.update_applicant(applicant)
 
         try:
@@ -984,7 +986,7 @@ class PPDBService:
             raise HTTPException(status_code=400, detail="Data tanda tangan wajib diisi")
         mou.signature_data = body.signature_data
         mou.status = "signed"
-        mou.signed_at = datetime.now()
-        mou.updated_at = datetime.now()
+        mou.signed_at = datetime.now(WIB)
+        mou.updated_at = datetime.now(WIB)
         self.repository.update_mou(mou)
         return {"success": True, "message": "MOU berhasil ditandatangani"}

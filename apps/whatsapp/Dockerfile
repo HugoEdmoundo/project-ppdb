@@ -7,7 +7,10 @@ WORKDIR /app
 
 # Install dependencies (including devDeps for TypeScript compilation)
 COPY package.json ./
-RUN npm install --frozen-lockfile
+# FIX: npm tidak mengenal --frozen-lockfile (itu flag pnpm).
+# Pakai --ci untuk npm agar lockfile-exact dan tidak modifikasi package-lock.json.
+COPY package-lock.json ./
+RUN npm ci
 
 # Copy source and compile TypeScript
 COPY tsconfig.json ./

@@ -10,7 +10,7 @@
 
 import { env } from "./config/env";
 import { logger } from "./lib/logger";
-import { getRedis, closeRedis } from "./lib/redis";
+import { getRedis, closeRedis, createRedisConnection } from "./lib/redis";
 import { closePool } from "./lib/database";
 import { createApp } from "./app";
 import { sessionManager } from "./services/SessionManager";
@@ -35,6 +35,13 @@ async function bootstrap(): Promise<void> {
 
   // 3. Start BullMQ worker
   const worker = createMessageWorker();
+
+  // QueueEvents untuk monitoring — harus di-close saat shutdown
+  // agar koneksi Redis tidak menggantung dan proses bisa exit bersih.
+  const { QueueEvents } = await import("bullmq");
+  const queueEvents = new QueueEvents(messageQueue.name, {
+    connection: createRedisConnection(),
+  });
 
   // 4. Initialize WhatsApp session (non-blocking)
   logger.info("Starting WhatsApp session initialization...");
@@ -75,9 +82,12 @@ async function bootstrap(): Promise<void> {
     }, 30_000);
 
     try {
-      // Close in order: worker → queue → session → db connections
+      // Close in order: worker → queueEvents → queue → session → db connections
       logger.info("Closing worker...");
       await worker.close();
+
+      logger.info("Closing queue events...");
+      await queueEvents.close();
 
       logger.info("Closing message queue...");
       await messageQueue.close();

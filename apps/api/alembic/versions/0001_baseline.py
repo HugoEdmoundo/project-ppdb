@@ -62,20 +62,33 @@ BASELINE_TABLES = frozenset(
 
 def upgrade() -> None:
     bind = op.get_bind()
-    inspector = sa.inspect(bind)
-    existing = set(inspector.get_table_names())
+    is_mysql = bind.dialect.name == "mysql"
+    # BASELINE_TABLES is a frozenset, so creation order is arbitrary. MySQL
+    # requires referenced tables to exist when a FOREIGN KEY is created (unlike
+    # SQLite), so disable FK checks while creating the baseline schema.
+    if is_mysql:
+        op.execute("SET FOREIGN_KEY_CHECKS=0")
 
-    created = []
-    for name in BASELINE_TABLES:
-        if name in existing:
-            continue
-        table = Base.metadata.tables.get(name)
-        if table is None:
-            continue
-        table.create(bind)
-        created.append(name)
+    try:
+        inspector = sa.inspect(bind)
+        existing = set(inspector.get_table_names())
 
-    print(f"baseline: created {created or ['nothing (all tables already present)']}")
+        created = []
+        for name in BASELINE_TABLES:
+            if name in existing:
+                continue
+            table = Base.metadata.tables.get(name)
+            if table is None:
+                continue
+            table.create(bind)
+            created.append(name)
+
+        print(
+            f"baseline: created {created or ['nothing (all tables already present)']}"
+        )
+    finally:
+        if is_mysql:
+            op.execute("SET FOREIGN_KEY_CHECKS=1")
 
 
 def downgrade() -> None:

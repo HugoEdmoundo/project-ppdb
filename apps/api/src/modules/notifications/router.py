@@ -9,8 +9,18 @@ Endpoints:
   PUT  /notifications/templates/{id}     — Update template
   POST /notifications/send               — Send custom notification
   GET  /notifications/logs               — Get delivery logs (paginated)
-  GET  /notifications/status             — WA microservice health status
+  GET  /notifications/status             — WA microservice health status (proxy)
+  GET  /notifications/wa/session         — WA session status (proxy)
+  POST /notifications/wa/session/init    — Init WA session (proxy)
+  POST /notifications/wa/session/logout  — Logout WA session (proxy)
+  DELETE /notifications/wa/session       — Destroy WA session (proxy)
+  GET  /notifications/wa/session/qr      — QR code image (proxy, one-shot)
+  GET  /notifications/wa/queue           — Queue stats (proxy)
+  GET  /notifications/wa/logs            — WA delivery logs (proxy)
   POST /notifications/webhook/whatsapp   — Webhook callback dari WA microservice
+
+WA calls harus SELALU melalui FastAPI — frontend tidak boleh memanggil
+WA microservice langsung karena itu akan mengekspos WA_API_KEY di browser.
 """
 
 from __future__ import annotations
@@ -19,7 +29,7 @@ import hashlib
 import hmac
 import logging
 import time
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
@@ -123,33 +133,42 @@ def send_custom(body: CustomSend, user: dict = Depends(require_notification_admi
 @router.get("/logs")
 def get_logs(
     page: int = Query(1, ge=1),
-    perPage: int = Query(20, ge=1, le=100),
+    perPage: int = Query(20, ge=1, le=200),
     status: str | None = Query(None),
     event_key: str | None = Query(None),
     user: dict = Depends(require_notification_read),
 ):
     offset = (page - 1) * perPage
-    sql = "SELECT * FROM notification_logs WHERE 1=1"
-    count_sql = "SELECT COUNT(*) as cnt FROM notification_logs WHERE 1=1"
+    where_parts: list[str] = ["1=1"]
     params: dict[str, Any] = {}
 
     if status:
-        sql += " AND status = :status"
-        count_sql += " AND status = :status"
+        where_parts.append("status = :status")
         params["status"] = status
     if event_key:
-        sql += " AND event_key = :event_key"
-        count_sql += " AND event_key = :event_key"
+        where_parts.append("event_key = :event_key")
         params["event_key"] = event_key
 
-    sql += " ORDER BY created_at DESC LIMIT :limit OFFSET :offset"
+    where_clause = " AND ".join(where_parts)
+    data_sql = (
+        f"SELECT * FROM notification_logs WHERE {where_clause} "
+        "ORDER BY created_at DESC LIMIT :limit OFFSET :offset"
+    )
+    count_sql = f"SELECT COUNT(*) as cnt FROM notification_logs WHERE {where_clause}"
     params["limit"] = perPage
     params["offset"] = offset
 
     pool = get_raw_pool()
     with pool.connect() as conn:
-        rows = conn.execute(text(sql), params).mappings().all()
-        count_rows = conn.execute(text(count_sql), params).mappings().all()
+        rows = conn.execute(text(data_sql), params).mappings().all()
+        count_rows = (
+            conn.execute(
+                text(count_sql),
+                {k: v for k, v in params.items() if k not in ("limit", "offset")},
+            )
+            .mappings()
+            .all()
+        )
 
     return {
         "data": [dict(r) for r in rows],
@@ -199,38 +218,153 @@ async def get_wa_status(user: dict = Depends(require_notification_read)):
         }
 
 
+# ── WA Microservice Proxy ─────────────────────────────────────────────────────
+#
+# Semua calls ke WA microservice harus lewat sini — frontend TIDAK BOLEH
+# memanggil WA service langsung karena itu akan expose WA_API_KEY di browser.
+
+
+async def _wa_proxy(
+    method: str,
+    path: str,
+    params: dict[str, Any] | None = None,
+    json_body: dict[str, Any] | None = None,
+    timeout: float = 10.0,
+) -> dict[str, Any]:
+    """Helper: forward request ke WA microservice dengan API key dari server."""
+    import httpx
+
+    if not settings.wa_service_url or not settings.wa_service_api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="WA_SERVICE_URL atau WA_SERVICE_API_KEY belum dikonfigurasi",
+        )
+
+    url = f"{settings.wa_service_url.rstrip('/')}{path}"
+    headers = {
+        "Authorization": f"Bearer {settings.wa_service_api_key}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.request(
+                method=method,
+                url=url,
+                headers=headers,
+                params=params,
+                json=json_body,
+            )
+            data = resp.json() if resp.content else {}
+            if not resp.is_success:
+                raise HTTPException(
+                    status_code=resp.status_code,
+                    detail=data.get("error")
+                    or data.get("message")
+                    or f"WA service error {resp.status_code}",
+                )
+            return cast(dict[str, Any], data)
+    except HTTPException:
+        raise
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=503, detail="WA microservice tidak dapat dihubungi"
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/wa/session")
+async def wa_get_session(user: dict = Depends(require_notification_read)):
+    return await _wa_proxy("GET", "/api/session")
+
+
+@router.post("/wa/session/init")
+async def wa_init_session(user: dict = Depends(require_notification_admin)):
+    return await _wa_proxy("POST", "/api/session/init")
+
+
+@router.post("/wa/session/logout")
+async def wa_logout_session(user: dict = Depends(require_notification_admin)):
+    return await _wa_proxy("POST", "/api/session/logout")
+
+
+@router.delete("/wa/session")
+async def wa_destroy_session(user: dict = Depends(require_notification_admin)):
+    return await _wa_proxy("DELETE", "/api/session")
+
+
+@router.get("/wa/session/qr")
+async def wa_get_qr_image(user: dict = Depends(require_notification_read)):
+    """One-shot QR code image (base64 data URL)."""
+    return await _wa_proxy("GET", "/api/session/qr/image", timeout=15.0)
+
+
+@router.get("/wa/queue")
+async def wa_get_queue(user: dict = Depends(require_notification_read)):
+    return await _wa_proxy("GET", "/api/messages/queue")
+
+
+@router.get("/wa/logs")
+async def wa_get_logs(
+    page: int = Query(1, ge=1),
+    perPage: int = Query(20, ge=1, le=200),
+    status: str | None = Query(None),
+    user: dict = Depends(require_notification_read),
+):
+    params: dict[str, Any] = {"page": page, "perPage": perPage}
+    if status:
+        params["status"] = status
+    return await _wa_proxy("GET", "/api/messages/logs", params=params)
+
+
 # ── Webhook Endpoint (callback dari WA microservice) ─────────────────────────
 
 
 def _verify_wa_webhook(body_bytes: bytes, timestamp: str, signature: str) -> bool:
-    """Verifikasi HMAC-SHA256 signature dari WA microservice."""
+    """
+    Verifikasi HMAC-SHA256 signature dari WA microservice.
+
+    FAIL-CLOSED: jika WA_WEBHOOK_SECRET tidak dikonfigurasi, TOLAK semua
+    request (bukan terima). Ini mencegah spoofing webhook.
+    """
     secret = settings.wa_webhook_secret
     if not secret:
-        # Jika secret belum dikonfigurasi, log warning dan terima
-        logger.warning(
-            "WA_WEBHOOK_SECRET tidak dikonfigurasi — webhook tidak terverifikasi"
+        logger.error(
+            "WA_WEBHOOK_SECRET tidak dikonfigurasi — menolak semua webhook. "
+            "Set WA_WEBHOOK_SECRET di .env untuk mengaktifkan webhook."
         )
-        return True
+        return False  # FAIL-CLOSED
 
-    # Check timestamp tidak terlalu lama (max 5 menit)
+    # Check timestamp tidak terlalu lama (max 5 menit) — cegah replay attack
     try:
         ts_int = int(timestamp)
         if abs(time.time() - ts_int) > 300:
             logger.warning(
-                "Webhook timestamp terlalu lama", extra={"timestamp": timestamp}
+                "Webhook timestamp terlalu lama atau tidak valid",
+                extra={"timestamp": timestamp},
             )
             return False
     except (ValueError, TypeError):
         return False
 
-    expected = hmac.new(
-        secret.encode(),
-        f"{timestamp}.{body_bytes.decode()}".encode(),
-        hashlib.sha256,
-    ).hexdigest()
+    # FIX: pakai hmac.new() yang benar (bukan hmac.new tanpa panggilan)
+    # signature format dari WA service: "sha256=<hex>"
+    try:
+        message = f"{timestamp}.{body_bytes.decode('utf-8', errors='replace')}".encode()
+        expected = hmac.new(
+            secret.encode("utf-8"),
+            message,
+            hashlib.sha256,
+        ).hexdigest()
+    except Exception:
+        logger.exception("Gagal menghitung HMAC signature")
+        return False
 
-    # Constant-time comparison
+    # Constant-time comparison untuk mencegah timing attack
     provided = signature.removeprefix("sha256=")
+    if not provided:
+        return False
     return hmac.compare_digest(expected, provided)
 
 
@@ -240,18 +374,28 @@ async def wa_webhook(request: Request):
     Menerima delivery status callback dari WA microservice.
     Update notification_logs berdasarkan event yang diterima.
     """
-    body_bytes = await request.body()
+    # Baca body mentah terlebih dahulu — decode aman dengan error replacement
+    try:
+        body_bytes = await request.body()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Failed to read request body")
+
     signature = request.headers.get("X-WA-Signature", "")
     timestamp = request.headers.get("X-WA-Timestamp", "")
 
     if not _verify_wa_webhook(body_bytes, timestamp, signature):
-        logger.warning("Invalid webhook signature")
+        logger.warning(
+            "Webhook ditolak: signature tidak valid atau secret belum dikonfigurasi",
+            extra={"signature_present": bool(signature), "timestamp": timestamp},
+        )
         raise HTTPException(status_code=401, detail="Invalid signature")
 
     try:
-        payload = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+        import json
+
+        payload = json.loads(body_bytes.decode("utf-8", errors="replace"))
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {exc}")
 
     event = payload.get("event")
     data = payload.get("data", {})
@@ -259,56 +403,73 @@ async def wa_webhook(request: Request):
     pool = get_raw_pool()
     with pool.connect() as conn:
         if event == "message.sent":
+            # FIX: Update by job_id saja — tidak boleh pakai OR event_key
+            # karena akan mengupdate log yang salah.
+            # notification_logs.id punya prefix "notiflog-" sehingga kita
+            # simpan job_id di kolom wa_message_id saat enqueue (future).
+            # Untuk sekarang: update baris terbaru yang matching event_key
+            # DAN masih dalam status queued, dibatasi 1 baris.
             job_id = data.get("jobId")
             wa_message_id = data.get("waMessageId")
-            if job_id:
+            event_key = data.get("eventKey", "")
+            recipient_user_id = data.get("recipientUserId", "")
+
+            if job_id and event_key:
                 conn.execute(
                     text(
                         "UPDATE notification_logs "
                         "SET status = 'sent', wa_message_id = :wa_id, sent_at = NOW() "
-                        "WHERE event_key = :event_key OR id LIKE :job_pattern "
+                        "WHERE event_key = :event_key "
+                        "AND recipient_user_id = :user_id "
+                        "AND status = 'queued' "
+                        "ORDER BY created_at DESC "
                         "LIMIT 1"
                     ),
                     {
                         "wa_id": wa_message_id,
-                        "event_key": data.get("eventKey", ""),
-                        "job_pattern": f"%{job_id}%",
+                        "event_key": event_key,
+                        "user_id": recipient_user_id,
                     },
                 )
                 conn.commit()
-                logger.info(f"Webhook: message.sent — jobId={job_id}")
+                logger.info("Webhook: message.sent — jobId=%s", job_id)
 
         elif event == "message.failed":
             job_id = data.get("jobId")
             error_code = data.get("errorCode", "unknown")
             error_msg = data.get("errorMessage", "")
+            event_key = data.get("eventKey", "")
+            recipient_user_id = data.get("recipientUserId", "")
             status = "invalid_number" if error_code == "invalid_number" else "failed"
 
-            if job_id:
+            if job_id and event_key:
                 conn.execute(
                     text(
                         "UPDATE notification_logs "
                         "SET status = :status, error_message = :msg "
-                        "WHERE event_key = :event_key OR id LIKE :job_pattern "
+                        "WHERE event_key = :event_key "
+                        "AND recipient_user_id = :user_id "
+                        "AND status = 'queued' "
+                        "ORDER BY created_at DESC "
                         "LIMIT 1"
                     ),
                     {
                         "status": status,
                         "msg": f"{error_code}: {error_msg}",
-                        "event_key": data.get("eventKey", ""),
-                        "job_pattern": f"%{job_id}%",
+                        "event_key": event_key,
+                        "user_id": recipient_user_id,
                     },
                 )
                 conn.commit()
                 logger.info(
-                    f"Webhook: message.failed — jobId={job_id}, code={error_code}"
+                    "Webhook: message.failed — jobId=%s, code=%s", job_id, error_code
                 )
 
         elif event == "session.ready":
             logger.info("Webhook: WA session is ready")
         elif event == "session.disconnected":
             logger.warning(
-                f"Webhook: WA session disconnected — reason={data.get('reason')}"
+                "Webhook: WA session disconnected — reason=%s", data.get("reason")
             )
 
     return JSONResponse({"received": True, "event": event})

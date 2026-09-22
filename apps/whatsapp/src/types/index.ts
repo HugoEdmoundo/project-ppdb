@@ -19,6 +19,8 @@ export interface WASessionInfo {
   phone?: string;       // Nomor WA yang tersambung (tersedia setelah ready)
   pushName?: string;    // Nama profil WhatsApp
   qrCode?: string;      // Data URL QR (base64 PNG) — hanya saat status = qr
+  pairingCode?: string; // Kode pairing ("Link with phone number instead") — saat login via nomor HP
+  pairingPhone?: string;// Nomor HP yang dipakai untuk pairing
   lastActivity?: Date;
   connectedAt?: Date;
 }

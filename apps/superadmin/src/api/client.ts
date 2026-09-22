@@ -1,6 +1,6 @@
 import type { AuthUser, LoginResponse, User, Role, Module, UserPagePermissions } from '../types'
 
-export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
+export const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '')
 
 async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Response> {
   const options = { ...opts, credentials: 'include' as RequestCredentials }
@@ -74,9 +74,7 @@ async function tryRefresh(): Promise<boolean> {
 
   refreshPromise = (async () => {
     try {
-      // FIX: Pakai /auth/refresh (endpoint generik), bukan /companyprofile/auth/refresh
-      // yang adalah endpoint CMS companyprofile dan bisa tidak ada / berbeda.
-      const res = await fetchWithFallback(`${API_BASE}/auth/refresh`, {
+      const res = await fetchWithFallback(`${API_BASE}/companyprofile/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -110,15 +108,11 @@ async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Promise<T>
     }))
     const firstMsg = extractErrorMessage(firstBody, `API ${res.status}`)
 
-    let refreshed = false
-    if (endpoint !== '/auth/login' && endpoint !== '/auth/refresh' && endpoint !== '/auth/logout') {
-      refreshed = await tryRefresh()
-      if (refreshed) {
-        res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers })
-      }
+    const refreshed = await tryRefresh()
+    if (refreshed) {
+      res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers })
     }
-
-    if (res.status === 401 || endpoint === '/auth/login') {
+    if (res.status === 401) {
       clearAuth()
       if (window.location.pathname !== '/auth/login') {
         window.location.href = '/auth/login'
@@ -137,14 +131,9 @@ async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Promise<T>
 }
 
 // ── Auth ──────────────────────────────────────────────────
-//
-// Superadmin panel pakai endpoint /auth/* (generik, tanpa module-access check).
-// Jangan pakai /companyprofile/auth/* — endpoint itu punya check has_module_access
-// yang bisa menolak superadmin jika konfigurasi permission tidak sempurna,
-// dan refresh-nya menggunakan cookie yang berbeda.
 
 export async function login(username: string, password: string): Promise<AuthUser> {
-  const data: LoginResponse = await apiFetch('/auth/login', {
+  const data: LoginResponse = await apiFetch('/companyprofile/auth/login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
   })
@@ -161,14 +150,14 @@ export async function login(username: string, password: string): Promise<AuthUse
 }
 
 export async function getMe(): Promise<AuthUser> {
-  const user = await apiFetch<AuthUser>('/auth/me')
+  const user = await apiFetch<AuthUser>('/companyprofile/auth/me')
   setStoredUser(user)
   return user
 }
 
 export async function logout() {
   try {
-    await fetchWithFallback(`${API_BASE}/auth/logout`, {
+    await fetchWithFallback(`${API_BASE}/companyprofile/auth/logout`, {
       method: 'POST',
       body: JSON.stringify({})
     })
@@ -184,7 +173,7 @@ export async function updateProfile(data: {
   old_password?: string
   new_password?: string
 }): Promise<unknown> {
-  return apiFetch('/auth/profile', {
+  return apiFetch('/companyprofile/auth/profile', {
     method: 'PUT',
     body: JSON.stringify(data),
   })
@@ -356,20 +345,30 @@ export async function getNotificationLogs(params?: any): Promise<any> {
 
 export { getStoredUser, clearAuth, apiFetch }
 
-// ── WhatsApp Service (via FastAPI proxy) ──────────────────────────────────
-//
-// SECURITY: WA microservice TIDAK dipanggil langsung dari browser.
-// Semua WA calls diproxy lewat FastAPI (/notifications/wa/*) sehingga
-// WA_API_KEY tidak pernah di-expose ke client-side.
-// Hapus VITE_WA_URL dan VITE_WA_API_KEY dari .env superadmin.
+// ── WhatsApp Service (via FastAPI proxy) ─────────────────────
 
-export interface WASessionInfo {
-  status: 'initializing' | 'qr' | 'authenticated' | 'ready' | 'disconnected' | 'destroyed'
+/**
+ * Semua panggilan WA lewat FastAPI (`/whatsapp/*`) — frontend TIDAK pernah
+ * menyentuh microservice :3100 langsung. Auth cukup cookie httpOnly (apiFetch).
+ * API key microservice hanya tersimpan di backend env (WA_SERVICE_API_KEY).
+ */
+
+export interface WAProxyStatus {
+  configured: boolean
+  message?: string
+  status: string
+  isReady: boolean
   phone?: string
   pushName?: string
-  qrCode?: string
   connectedAt?: string
   lastActivity?: string
+  pairingCode?: string
+  pairingPhone?: string
+  health?: { checks?: Record<string, { status: string; detail?: string }> } | null
+  webhookUrl?: string | null
+  webhookMismatch?: boolean | null
+  expectedWebhookUrl?: string | null
+  error?: string | null
 }
 
 export interface WAQueueStats {
@@ -395,28 +394,48 @@ export interface WALogEntry {
   sent_at?: string
 }
 
-export async function waGetSession(): Promise<{ success: boolean; data: WASessionInfo }> {
-  return apiFetch('/notifications/wa/session')
+export async function waGetStatus(): Promise<WAProxyStatus> {
+  return apiFetch('/whatsapp/status')
 }
 
-export async function waInitSession(): Promise<{ success: boolean; message: string }> {
-  return apiFetch('/notifications/wa/session/init', { method: 'POST' })
+export async function waGetQrImage(): Promise<any> {
+  return apiFetch('/whatsapp/qr')
 }
 
-export async function waLogoutSession(): Promise<{ success: boolean; message: string }> {
-  return apiFetch('/notifications/wa/session/logout', { method: 'POST' })
+export async function waInitSession(): Promise<any> {
+  return apiFetch('/whatsapp/connect', { method: 'POST' })
 }
 
-export async function waDestroySession(): Promise<{ success: boolean; message: string }> {
-  return apiFetch('/notifications/wa/session', { method: 'DELETE' })
+export async function waRequestPairingCode(phone: string): Promise<{
+  success: boolean
+  data?: { code: string; phone: string }
+  error?: string
+  message?: string
+}> {
+  return apiFetch('/whatsapp/pairing-code', {
+    method: 'POST',
+    body: JSON.stringify({ phone }),
+  })
 }
 
-export async function waGetQrImage(): Promise<{ success: boolean; data: { qrCode: string } }> {
-  return apiFetch('/notifications/wa/session/qr')
+export async function waCancelPairing(): Promise<any> {
+  return apiFetch('/whatsapp/pairing-code/cancel', { method: 'POST' })
+}
+
+export async function waLogoutSession(): Promise<any> {
+  return apiFetch('/whatsapp/disconnect', { method: 'POST' })
+}
+
+export async function waSendTest(phone: string): Promise<any> {
+  return apiFetch('/whatsapp/test', { method: 'POST', body: JSON.stringify({ phone }) })
+}
+
+export async function waClearTemplateCache(): Promise<any> {
+  return apiFetch('/whatsapp/template-cache/clear', { method: 'POST' })
 }
 
 export async function waGetQueueStats(): Promise<{ success: boolean; data: WAQueueStats }> {
-  return apiFetch('/notifications/wa/queue')
+  return apiFetch('/whatsapp/queue')
 }
 
 export async function waGetLogs(params?: {
@@ -428,21 +447,10 @@ export async function waGetLogs(params?: {
   if (params?.page) q.set('page', String(params.page))
   if (params?.perPage) q.set('perPage', String(params.perPage))
   if (params?.status) q.set('status', params.status)
-  return apiFetch(`/notifications/wa/logs${q.toString() ? '?' + q : ''}`)
+  return apiFetch(`/whatsapp/logs${q.toString() ? '?' + q : ''}`)
 }
 
-export async function waGetHealth(): Promise<any> {
-  return apiFetch('/notifications/status')
-}
-
-/**
- * SSE stream untuk QR code realtime — pakai FastAPI sebagai proxy SSE.
- * Karena FastAPI belum ada endpoint SSE proxy untuk WA, gunakan polling
- * waGetQrImage() tiap 3 detik sampai status ready/disconnected.
- * @deprecated Gunakan polling waGetQrImage() + waGetSession() sebagai gantinya.
- */
+/** SSE stream URL untuk QR realtime (via proxy FastAPI, cookie auth). */
 export function waGetQrSseUrl(): string {
-  // Tidak bisa proxy SSE via apiFetch (streaming). Gunakan polling instead.
-  // Lihat WhatsAppPage.tsx untuk implementasi polling.
-  return ''
+  return `${API_BASE}/whatsapp/qr-sse`
 }

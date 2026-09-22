@@ -1,30 +1,37 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  Wifi, WifiOff, RefreshCw, LogOut, Trash2,
-  CheckCircle2, XCircle, Activity,
+  Wifi, WifiOff, RefreshCw, LogOut,
+  CheckCircle2, XCircle, AlertTriangle, Activity,
   ChevronLeft, ChevronRight, Loader2,
-  QrCode, PhoneCall, Server, BarChart3, FileText,
+  QrCode, PhoneCall, Server, BarChart3, FileText, Send,
+  Smartphone, Copy,
 } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import {
-  waGetSession, waInitSession, waLogoutSession, waDestroySession,
-  waGetQrImage, waGetQueueStats, waGetLogs, waGetHealth,
-  type WASessionInfo, type WAQueueStats, type WALogEntry,
+  waGetStatus, waInitSession, waLogoutSession, waGetQrImage,
+  waGetQueueStats, waGetLogs, waSendTest, waGetQrSseUrl,
+  waRequestPairingCode, waCancelPairing,
+  type WAProxyStatus, type WAQueueStats, type WALogEntry,
 } from '../api/client'
 import PageHero from '../components/PageHero'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const STATUS_META: Record<WASessionInfo['status'], {
-  label: string; color: string; dot: string; icon: React.ElementType
+const STATUS_META: Record<string, {
+  label: string
+  color: string
+  dot: string
+  bg: string
+  icon: React.ElementType
 }> = {
-  initializing: { label: 'Inisialisasi...', color: 'text-slate-500', dot: 'bg-slate-400', icon: Loader2 },
-  qr:           { label: 'Menunggu Scan QR', color: 'text-amber-600', dot: 'bg-amber-400', icon: QrCode },
-  authenticated:{ label: 'Mengautentikasi...', color: 'text-blue-600', dot: 'bg-blue-400', icon: Loader2 },
-  ready:        { label: 'Terhubung', color: 'text-emerald-600', dot: 'bg-emerald-400', icon: CheckCircle2 },
-  disconnected: { label: 'Terputus', color: 'text-red-500', dot: 'bg-red-400', icon: WifiOff },
-  destroyed:    { label: 'Tidak Aktif', color: 'text-slate-400', dot: 'bg-slate-300', icon: XCircle },
+  initializing:  { label: 'Menghubungkan...', color: 'text-blue-600', dot: 'bg-blue-400', bg: 'bg-blue-50 border-blue-200', icon: Loader2 },
+  authenticated: { label: 'Menghubungkan...', color: 'text-blue-600', dot: 'bg-blue-400', bg: 'bg-blue-50 border-blue-200', icon: Loader2 },
+  qr:            { label: 'Perlu Scan QR', color: 'text-amber-600', dot: 'bg-amber-400', bg: 'bg-amber-50 border-amber-200', icon: QrCode },
+  ready:         { label: 'Terhubung', color: 'text-emerald-600', dot: 'bg-emerald-400', bg: 'bg-emerald-50 border-emerald-200', icon: CheckCircle2 },
+  disconnected:  { label: 'Terputus', color: 'text-red-500', dot: 'bg-red-400', bg: 'bg-red-50 border-red-200', icon: WifiOff },
+  destroyed:     { label: 'Terputus', color: 'text-slate-500', dot: 'bg-slate-400', bg: 'bg-slate-50 border-slate-200', icon: XCircle },
+  OFFLINE:       { label: 'Service Offline', color: 'text-red-500', dot: 'bg-red-400', bg: 'bg-red-50 border-red-200', icon: WifiOff },
 }
 
 const LOG_STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
@@ -42,61 +49,80 @@ function fmtDate(d?: string) {
   }).format(new Date(d))
 }
 
-// ── QR Panel ───────────────────────────────────────────────────────────────
+// ── QR Panel (SSE via FastAPI proxy) ────────────────────────────────────────
 
 function QrPanel({
   status,
-  onRefreshQr,
+  onRefresh,
 }: {
-  status: WASessionInfo
-  onRefreshQr: () => void
+  status: string
+  onRefresh: () => void
 }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [qrLoading, setQrLoading] = useState(true)
   const [qrError, setQrError] = useState<string | null>(null)
-  // Tidak ada SSE langsung ke WA service — browser tidak bisa autentikasi
-  // EventSource dengan header. Gunakan polling via FastAPI proxy sebagai gantinya.
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const sseRef = useRef<EventSource | null>(null)
 
+  // Proses event SSE yang datang dari proxy FastAPI (event microservice dipertahankan)
+  const handleSseData = useCallback((data: any) => {
+    if (!data) return
+    if (data?.qrCode) {
+      setQrDataUrl(data.qrCode)
+      setQrError(null)
+    }
+    if (data?.status === 'ready') setQrDataUrl(null)
+  }, [])
+
+  // SSE hanya dibuka saat state == 'qr' (auto-refresh QR tanpa polling manual)
+  useEffect(() => {
+    if (status !== 'qr') {
+      if (sseRef.current) {
+        sseRef.current.close()
+        sseRef.current = null
+      }
+      // Bersihkan QR yang sudah kadaluarsa ketika keluar dari state 'qr'
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setQrDataUrl(null)
+      return
+    }
+
+    const es = new EventSource(waGetQrSseUrl(), { withCredentials: true })
+
+    es.addEventListener('qr', (e) => { try { handleSseData(JSON.parse(e.data)) } catch { /* ignore */ } })
+    es.addEventListener('status', (e) => { try { handleSseData(JSON.parse(e.data)) } catch { /* ignore */ } })
+    es.addEventListener('ready', () => setQrDataUrl(null))
+    es.addEventListener('error', () => setQrError('Koneksi SSE terputus. Klik Segarkan QR jika perlu.'))
+
+    sseRef.current = es
+    return () => { es.close(); sseRef.current = null }
+  }, [status, handleSseData])
+
+  // Fallback satu-kali jika SSE belum mengirim
   const fetchQrImage = useCallback(async () => {
     setQrLoading(true)
     setQrError(null)
     try {
       const res = await waGetQrImage()
-      if (res?.data?.qrCode) setQrDataUrl(res.data.qrCode)
+      if (res?.success && res?.data?.qrCode) {
+        setQrDataUrl(res.data.qrCode)
+      } else {
+        setQrError(res?.error || res?.message || 'QR belum tersedia saat ini.')
+      }
     } catch (err) {
       setQrError((err as Error).message)
     } finally {
       setQrLoading(false)
     }
-  }, [])
+  }, [loadQr])
 
-  // Polling setiap 5 detik saat status === 'qr'
   useEffect(() => {
-    if (status.status !== 'qr') {
-      if (pollRef.current) clearInterval(pollRef.current)
-      return
-    }
-    // Langsung fetch sekali
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchQrImage()
-    // Lalu polling tiap 5 detik sampai QR di-scan atau status berubah
-    pollRef.current = setInterval(fetchQrImage, 5_000)
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
-  }, [status.status, fetchQrImage])
-
-  // Hentikan polling saat status bukan 'qr' lagi
-  useEffect(() => {
-    if (status.status === 'ready') {
+    if (status === 'qr' && !qrDataUrl) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setQrDataUrl(null)
-      if (pollRef.current) clearInterval(pollRef.current)
+      fetchQrImage()
     }
-  }, [status.status])
+  }, [status, qrDataUrl, fetchQrImage])
 
-  if (status.status === 'ready') {
+  if (status === 'ready') {
     return (
       <div className="flex flex-col items-center gap-3 py-8">
         <div className="rounded-full bg-emerald-100 p-4">
@@ -104,22 +130,13 @@ function QrPanel({
         </div>
         <div className="text-center">
           <p className="font-semibold text-slate-800">WhatsApp Terhubung</p>
-          {status.phone && (
-            <p className="text-sm text-slate-500 mt-1 flex items-center justify-center gap-1">
-              <PhoneCall className="h-3.5 w-3.5" />
-              +{status.phone}
-              {status.pushName && <span className="text-slate-400">({status.pushName})</span>}
-            </p>
-          )}
-          {status.connectedAt && (
-            <p className="text-xs text-slate-400 mt-1">Terhubung sejak {fmtDate(status.connectedAt)}</p>
-          )}
+          <p className="text-sm text-slate-500 mt-1">Sesi aktif dan siap mengirim notifikasi</p>
         </div>
       </div>
     )
   }
 
-  if (status.status === 'qr' || qrDataUrl) {
+  if (status === 'qr') {
     return (
       <div className="flex flex-col items-center gap-4">
         <p className="text-sm text-slate-600 text-center">
@@ -136,31 +153,40 @@ function QrPanel({
             <div className="w-52 h-52 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50">
               {qrLoading
                 ? <Loader2 className="h-8 w-8 text-slate-400 animate-spin" />
-                : <QrCode className="h-10 w-10 text-slate-300" />
-              }
+                : <QrCode className="h-10 w-10 text-slate-300" />}
             </div>
           )}
         </div>
-        {qrError && (
-          <p className="text-xs text-red-500">{qrError}</p>
-        )}
-        <Button variant="outline" size="sm" onClick={() => { fetchQrImage(); onRefreshQr() }} disabled={qrLoading}>
-          <RefreshCw className={cn("h-4 w-4 mr-2", qrLoading && "animate-spin")} />
-          Refresh QR
+        {qrError && <p className="text-xs text-red-500 max-w-xs text-center">{qrError}</p>}
+        <Button variant="outline" size="sm" onClick={() => { fetchQrImage(); onRefresh() }} disabled={qrLoading}>
+          <RefreshCw className={cn('h-4 w-4 mr-2', qrLoading && 'animate-spin')} />
+          Segarkan QR
         </Button>
-        <p className="text-xs text-slate-400">QR berlaku ~60 detik. Klik Refresh jika kadaluarsa.</p>
+        <p className="text-xs text-slate-400">QR otomatis diperbarui. Klik Segarkan jika kadaluarsa.</p>
       </div>
     )
   }
 
-  if (status.status === 'initializing' || status.status === 'authenticated') {
+  if (status === 'initializing' || status === 'authenticated') {
     return (
       <div className="flex flex-col items-center gap-3 py-8">
         <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-        <p className="text-sm text-slate-600">
-          {status.status === 'initializing' ? 'Menginisialisasi sesi WhatsApp...' : 'Mengautentikasi...'}
-        </p>
-        <p className="text-xs text-slate-400">Mohon tunggu, proses ini mungkin memakan waktu ~30 detik</p>
+        <p className="text-sm text-slate-600">Menginisialisasi sesi WhatsApp...</p>
+        <p className="text-xs text-slate-400">Mohon tunggu, proses ini mungkin memakan waktu beberapa detik</p>
+      </div>
+    )
+  }
+
+  if (status === 'OFFLINE') {
+    return (
+      <div className="flex flex-col items-center gap-4 py-6">
+        <div className="rounded-full bg-red-100 p-4">
+          <WifiOff className="h-10 w-10 text-red-400" />
+        </div>
+        <div className="text-center">
+          <p className="font-semibold text-slate-700">WhatsApp Microservice Offline</p>
+          <p className="text-sm text-slate-500 mt-1">Jalankan service-nya di port 3100 lalu klik Hubungkan</p>
+        </div>
       </div>
     )
   }
@@ -179,12 +205,139 @@ function QrPanel({
   )
 }
 
+// ── Phone / Pairing Code Panel (opsi selain scan QR) ────────────────────────
+
+function PhonePanel({
+  onRefresh,
+}: {
+  onRefresh: () => void
+}) {
+  const [phone, setPhone] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [code, setCode] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  // Kode pairing otomatis di-regenerate microservice tiap ~3 menit; ikuti via SSE.
+  useEffect(() => {
+    if (!code) return
+    const es = new EventSource(waGetQrSseUrl(), { withCredentials: true })
+    es.addEventListener('code', (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        if (data?.code) setCode(data.code)
+      } catch { /* ignore */ }
+    })
+    return () => es.close()
+  }, [code])
+
+  const handleGetCode = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await waRequestPairingCode(phone)
+      if (res?.success && res?.data?.code) {
+        setCode(res.data.code)
+      } else {
+        setError(res?.error || res?.message || 'Gagal membuat pairing code.')
+      }
+      onRefresh()
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCancel = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      await waCancelPairing()
+      setCode(null)
+      onRefresh()
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCopy = async () => {
+    try {
+      if (code) await navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch { /* ignore */ }
+  }
+
+  if (code) {
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-medium text-emerald-700">
+          <Smartphone className="h-3.5 w-3.5" />
+          Tautkan perangkat dengan nomor HP
+        </div>
+        <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/70 px-8 py-5 text-center select-all">
+          <span className="text-3xl font-mono font-bold tracking-[0.35em] text-slate-800">
+            {code}
+          </span>
+        </div>
+        <p className="text-xs text-slate-500 leading-relaxed text-center max-w-xs">
+          Buka <strong>WhatsApp</strong> di HP Anda → <strong>Setelan</strong> →{' '}
+          <strong>Perangkat Tertaut</strong> → <strong>Tautkan Perangkat</strong> →{' '}
+          <strong>Tautkan dengan nomor HP</strong>, lalu masukkan kode di atas.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleCopy} disabled={loading}>
+            <Copy className="h-4 w-4 mr-1.5" />
+            {copied ? 'Tersalin!' : 'Salin Kode'}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleCancel} disabled={loading}>
+            <XCircle className="h-4 w-4 mr-1.5" />
+            Batalkan
+          </Button>
+        </div>
+        <p className="text-[11px] text-slate-400">Kode berubah otomatis tiap beberapa menit.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-full space-y-2">
+        <label className="text-xs font-medium text-slate-500" htmlFor="pairing-phone">
+          Nomor WhatsApp (otomatis ditautkan ke sesi ini)
+        </label>
+        <input
+          id="pairing-phone"
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="628123456789"
+          autoComplete="off"
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+      <Button className="w-full" onClick={handleGetCode} disabled={loading || phone.trim().length < 10}>
+        {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Smartphone className="h-4 w-4 mr-2" />}
+        Ambil Kode Aktivasi
+      </Button>
+      <p className="text-[11px] text-slate-400 leading-relaxed text-center">
+        Anda akan menerima kode 8 karakter. Masukkan di WhatsApp HP Anda melalui
+        menu <strong>Perangkat Tertaut</strong>. Cocok untuk perangkat tanpa kamera.
+      </p>
+      {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+    </div>
+  )
+}
+
 // ── Queue Stats ────────────────────────────────────────────────────────────
 
 function QueueCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="flex flex-col items-center gap-1 rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-      <span className={cn("text-2xl font-bold tabular-nums", color)}>{value}</span>
+      <span className={cn('text-2xl font-bold tabular-nums', color)}>{value}</span>
       <span className="text-xs text-slate-500 font-medium">{label}</span>
     </div>
   )
@@ -193,13 +346,12 @@ function QueueCard({ label, value, color }: { label: string; value: number; colo
 // ── Main Page ──────────────────────────────────────────────────────────────
 
 export default function WhatsAppPage() {
-  const [session, setSession] = useState<WASessionInfo>({ status: 'initializing' })
+  const [session, setSession] = useState<WAProxyStatus | null>(null)
   const [sessionLoading, setSessionLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const [queueStats, setQueueStats] = useState<WAQueueStats | null>(null)
-  const [healthData, setHealthData] = useState<any>(null)
 
   const [logs, setLogs] = useState<WALogEntry[]>([])
   const [logsTotal, setLogsTotal] = useState(0)
@@ -208,72 +360,88 @@ export default function WhatsAppPage() {
   const [logsStatus, setLogsStatus] = useState('')
   const [logsLoading, setLogsLoading] = useState(true)
 
+  // Form test (hanya saat READY)
+  const [testPhone, setTestPhone] = useState('')
+  const [sendingTest, setSendingTest] = useState(false)
+
+  // Opsi login: scan QR (default) atau nomor HP + pairing code
+  const [loginMethod, setLoginMethod] = useState<'qr' | 'phone'>('qr')
+
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // ── Fetch helpers ──────────────────────────────────────────────────────
 
-  const fetchSession = useCallback((silent = false) => {
-    return waGetSession()
-      .then((res) => { setSession(res.data) })
-      .catch(() => {
-        // service mungkin belum jalan
-      })
-      .finally(() => { if (!silent) setSessionLoading(false) })
+  const fetchSession = useCallback(async (silent = false) => {
+    if (!silent) setSessionLoading(true)
+    try {
+      const data = await waGetStatus()
+      setSession(data)
+    } catch {
+      setSession(null)
+    } finally {
+      if (!silent) setSessionLoading(false)
+    }
   }, [])
 
-  const fetchQueueStats = useCallback(() => {
-    return waGetQueueStats()
-      .then((res) => { setQueueStats(res.data) })
-      .catch(() => { /* ignore */ })
+  const fetchQueueStats = useCallback(async () => {
+    try {
+      const res = await waGetQueueStats()
+      if (res?.success && res?.data) setQueueStats(res.data)
+    } catch { /* ignore */ }
   }, [])
 
-  const fetchHealth = useCallback(() => {
-    return waGetHealth()
-      .then((data) => { setHealthData(data) })
-      .catch(() => { /* ignore */ })
+  const fetchLogs = useCallback(async (page = 1, status = '') => {
+    setLogsLoading(true)
+    try {
+      const res = await waGetLogs({ page, perPage: 10, status: status || undefined })
+      if (res?.success) {
+        setLogs(res.data || [])
+        setLogsTotal(res.total || 0)
+        setLogsTotalPages(res.totalPages || 1)
+      }
+    } catch { /* ignore */ } finally {
+      setLogsLoading(false)
+    }
   }, [])
 
-  const fetchLogs = useCallback((page = 1, status = '') => {
-    return waGetLogs({ page, perPage: 10, status: status || undefined })
-      .then((res) => {
-        setLogs(res.data)
-        setLogsTotal(res.total)
-        setLogsTotalPages(res.totalPages)
-      })
-      .catch(() => { /* ignore */ })
-      .finally(() => { setLogsLoading(false) })
-  }, [])
-
-  // ── Initial load + polling ─────────────────────────────────────────────
+  // ── Initial load + polling 8 detik ─────────────────────────────────────
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchSession()
     fetchQueueStats()
-    fetchHealth()
     fetchLogs(1, '')
 
-    // Poll session + queue setiap 5 detik
     pollRef.current = setInterval(() => {
       fetchSession(true)
       fetchQueueStats()
-    }, 5_000)
+    }, 8_000)
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
-  }, [fetchHealth, fetchLogs, fetchQueueStats, fetchSession])
+  }, [fetchSession, fetchQueueStats, fetchLogs])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLogs(logsPage, logsStatus)
   }, [logsPage, logsStatus, fetchLogs])
 
   // ── Actions ────────────────────────────────────────────────────────────
 
+  // Kembali ke mode 'phone' jika masih ada pairing code aktif dari sesi lalu
+  useEffect(() => {
+    if (session?.status === 'qr' && session?.pairingCode && loginMethod === 'qr') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoginMethod('phone')
+    }
+  }, [session?.status, session?.pairingCode, loginMethod])
+
   async function handleInit() {
     setActionLoading(true); setActionMsg(null)
     try {
-      await waInitSession()
-      setActionMsg({ type: 'success', text: 'Inisialisasi dimulai. Scan QR yang muncul.' })
+      const res = await waInitSession()
+      setActionMsg({ type: 'success', text: res?.message || 'Inisialisasi dimulai. Scan QR yang muncul.' })
       setTimeout(() => fetchSession(), 2_000)
     } catch (err) {
       setActionMsg({ type: 'error', text: (err as Error).message })
@@ -282,12 +450,12 @@ export default function WhatsAppPage() {
     }
   }
 
-  async function handleLogout() {
-    if (!confirm('Logout akan menghapus sesi WhatsApp. Lanjutkan?')) return
+  async function handleDisconnect() {
+    if (!confirm('Putus koneksi akan menghapus sesi WhatsApp dan wajib scan QR ulang. Lanjutkan?')) return
     setActionLoading(true); setActionMsg(null)
     try {
-      await waLogoutSession()
-      setActionMsg({ type: 'success', text: 'Berhasil logout dari WhatsApp.' })
+      const res = await waLogoutSession()
+      setActionMsg({ type: 'success', text: res?.message || 'Sesi WhatsApp diputus.' })
       await fetchSession()
     } catch (err) {
       setActionMsg({ type: 'error', text: (err as Error).message })
@@ -296,25 +464,45 @@ export default function WhatsAppPage() {
     }
   }
 
-  async function handleDestroy() {
-    if (!confirm('Hapus sesi akan membutuhkan scan ulang QR. Yakin?')) return
-    setActionLoading(true); setActionMsg(null)
+  async function handleSendTest() {
+    if (!testPhone.trim()) {
+      setActionMsg({ type: 'error', text: 'Masukkan nomor telepon tujuan terlebih dahulu.' })
+      return
+    }
+    setSendingTest(true); setActionMsg(null)
     try {
-      await waDestroySession()
-      setActionMsg({ type: 'success', text: 'Sesi dihapus.' })
-      await fetchSession()
+      const res = await waSendTest(testPhone.trim())
+      if (res?.success) {
+        setActionMsg({ type: 'success', text: res?.message || 'Pesan uji coba berhasil dikirim!' })
+        setTestPhone('')
+      } else {
+        setActionMsg({ type: 'error', text: res?.error || res?.message || 'Gagal mengirim pesan uji coba.' })
+      }
     } catch (err) {
       setActionMsg({ type: 'error', text: (err as Error).message })
     } finally {
-      setActionLoading(false)
+      setSendingTest(false)
     }
   }
 
   // ── Render ─────────────────────────────────────────────────────────────
 
-  const meta = STATUS_META[session.status] ?? STATUS_META.disconnected
-  const isReady = session.status === 'ready'
-  const isActive = ['initializing', 'qr', 'authenticated', 'ready'].includes(session.status)
+  async function handleMethodChange(method: 'qr' | 'phone') {
+    if (method === 'qr' && loginMethod === 'phone' && session?.pairingCode) {
+      try {
+        await waCancelPairing()
+        fetchSession(true)
+      } catch { /* ignore */ }
+    }
+    setLoginMethod(method)
+  }
+
+  const statusLabel = session?.status ?? 'OFFLINE'
+  const meta = STATUS_META[statusLabel] ?? STATUS_META.OFFLINE
+  const isReady = statusLabel === 'ready'
+  const isActive = ['initializing', 'qr', 'authenticated', 'ready'].includes(statusLabel)
+  const notConfigured = session?.configured === false
+  const webhookMismatch = session?.webhookMismatch === true
 
   return (
     <div className="space-y-6">
@@ -324,19 +512,75 @@ export default function WhatsAppPage() {
         description="Kelola sesi WhatsApp untuk notifikasi PPDB"
       />
 
+      {/* Konfigurasi backend belum lengkap */}
+      {notConfigured && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 flex gap-4">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-amber-800">Konfigurasi Backend Belum Lengkap</p>
+            <p className="text-sm text-amber-700 mt-1">
+              Tambahkan variabel berikut ke <code className="bg-amber-100 px-1 rounded">apps/api/.env</code>:
+            </p>
+            <pre className="mt-3 rounded-lg bg-amber-100 p-3 text-xs font-mono text-amber-900 whitespace-pre-wrap">
+{`API_BASE_URL=http://localhost:8000
+WA_SERVICE_URL=http://localhost:3100
+WA_SERVICE_API_KEY=<api-key-yang-sama-dengan-apps/whatsapp/.env>`}
+            </pre>
+            <p className="text-xs text-amber-600 mt-2">Restart backend setelah mengubah .env.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Hint webhook mismatch */}
+      {!notConfigured && webhookMismatch && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-amber-800">Konfigurasi Webhook Mismatch</p>
+            <p className="text-sm text-amber-700 mt-1">
+              WA microservice mengarahkan callback ke <code className="bg-amber-100 px-1 rounded">{session?.webhookUrl || '—'}</code>,
+              tetapi API ini diharapkan menerima di{' '}
+              <code className="bg-amber-100 px-1 rounded">{session?.expectedWebhookUrl || '—'}</code>.
+            </p>
+            <p className="text-xs text-amber-600 mt-2">
+              Perbaiki <code className="bg-amber-100 px-1 rounded">WEBHOOK_URL</code> di{' '}
+              <code className="bg-amber-100 px-1 rounded">apps/whatsapp/.env</code> agar status pengiriman tercatat.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Action feedback */}
       {actionMsg && (
         <div className={cn(
-          "flex items-center gap-3 rounded-xl border px-4 py-3 text-sm",
+          'flex items-center gap-3 rounded-xl border px-4 py-3 text-sm',
           actionMsg.type === 'success'
-            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-            : "border-red-200 bg-red-50 text-red-800"
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+            : 'border-red-200 bg-red-50 text-red-800'
         )}>
           {actionMsg.type === 'success'
             ? <CheckCircle2 className="h-4 w-4 shrink-0" />
             : <XCircle className="h-4 w-4 shrink-0" />}
           {actionMsg.text}
           <button onClick={() => setActionMsg(null)} className="ml-auto text-current/60 hover:text-current">✕</button>
+        </div>
+      )}
+
+      {/* Alert service offline */}
+      {!notConfigured && statusLabel === 'OFFLINE' && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2">
+          <div className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+            <AlertTriangle className="h-4 w-4" /> Layanan WhatsApp Microservice Belum Dijalankan
+          </div>
+          <p className="text-xs text-amber-700 leading-relaxed">
+            WhatsApp Gateway berjalan sebagai service di port 3100. Jalankan dari root monorepo:
+          </p>
+          <div className="bg-slate-900 text-emerald-400 px-3 py-2 rounded-lg text-xs font-mono select-all inline-block">
+            pnpm --filter whatsapp dev
+          </div>
+          <p className="text-[11px] text-slate-500">
+            *Setelah service menyala, tombol scan QR akan otomatis aktif.
+          </p>
         </div>
       )}
 
@@ -348,8 +592,13 @@ export default function WhatsAppPage() {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <div className="flex items-center gap-3">
-                <div className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-offset-1", meta.dot, isReady ? "ring-emerald-200" : "ring-slate-200", (session.status === 'initializing' || session.status === 'authenticated') && "animate-pulse")} />
-                <span className={cn("text-sm font-semibold", meta.color)}>
+                <div className={cn(
+                  'h-2.5 w-2.5 rounded-full ring-2 ring-offset-1',
+                  meta.dot,
+                  isReady ? 'ring-emerald-200' : 'ring-slate-200',
+                  (statusLabel === 'initializing' || statusLabel === 'authenticated') && 'animate-pulse'
+                )} />
+                <span className={cn('text-sm font-semibold', meta.color)}>
                   {sessionLoading ? 'Memuat...' : meta.label}
                 </span>
               </div>
@@ -362,60 +611,134 @@ export default function WhatsAppPage() {
               </button>
             </div>
 
+            {/* Pilih metode login: Scan QR / Nomor HP */}
+            {!isReady && statusLabel !== 'OFFLINE' && (
+              <div className="grid grid-cols-2 gap-1 border-b border-slate-100 px-5 py-3">
+                {([
+                  { key: 'qr', label: 'Scan QR', desc: 'Pindai dengan HP', Icon: QrCode },
+                  { key: 'phone', label: 'Nomor HP', desc: 'Kode aktivasi', Icon: Smartphone },
+                ] as const).map(({ key, label, desc, Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => handleMethodChange(key)}
+                    className={cn(
+                      'flex items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors border',
+                      loginMethod === key
+                        ? 'border-primary/30 bg-primary/5 text-slate-800'
+                        : 'border-transparent text-slate-500 hover:bg-slate-50'
+                    )}
+                  >
+                    <Icon className={cn('h-4 w-4 shrink-0', loginMethod === key ? 'text-primary' : 'text-slate-400')} />
+                    <span>
+                      <span className="block text-xs font-semibold leading-tight">{label}</span>
+                      <span className="block text-[10px] leading-tight text-slate-400">{desc}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* QR / Status visual */}
             <div className="px-5 py-4">
               {sessionLoading
                 ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
-                : <QrPanel status={session} onRefreshQr={fetchSession} />
-              }
+                : loginMethod === 'phone'
+                  ? <PhonePanel onRefresh={() => fetchSession()} />
+                  : <QrPanel status={statusLabel} onRefresh={fetchSession} />}
             </div>
 
             {/* Action buttons */}
             <div className="border-t border-slate-100 px-5 py-4 flex flex-col gap-2">
-              {!isActive ? (
-                <Button
-                  className="w-full"
-                  onClick={handleInit}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wifi className="h-4 w-4 mr-2" />}
-                  Hubungkan WhatsApp
-                </Button>
+              {isReady ? (
+                <>
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
+                    <div className="text-xs font-semibold text-emerald-800 flex items-center gap-1.5">
+                      <PhoneCall className="h-3.5 w-3.5" />
+                      Nomor WhatsApp Terhubung
+                    </div>
+                    {session?.phone && (
+                      <div className="text-sm font-bold text-slate-800 mt-0.5">
+                        +{session.phone}{session.pushName ? ` (${session.pushName})` : ''}
+                      </div>
+                    )}
+                    {session?.connectedAt && (
+                      <div className="text-xs text-slate-400 mt-0.5">Sejak {fmtDate(session.connectedAt)}</div>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={handleDisconnect}
+                    disabled={actionLoading}
+                  >
+                    {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <LogOut className="h-4 w-4 mr-2" />}
+                    Putus Koneksi
+                  </Button>
+                </>
               ) : (
                 <>
-                  {!isReady && (
-                    <Button className="w-full" onClick={handleInit} disabled={actionLoading} variant="outline">
-                      <RefreshCw className={cn("h-4 w-4 mr-2", actionLoading && "animate-spin")} />
+                  {!isActive && statusLabel !== 'OFFLINE' && (
+                    <Button className="w-full" onClick={handleInit} disabled={actionLoading}>
+                      {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wifi className="h-4 w-4 mr-2" />}
+                      Hubungkan WhatsApp
+                    </Button>
+                  )}
+                  {(isActive && !isReady) && (
+                    <Button className="w-full" variant="outline" onClick={handleInit} disabled={actionLoading}>
+                      <RefreshCw className={cn('h-4 w-4 mr-2', actionLoading && 'animate-spin')} />
                       Inisialisasi Ulang
                     </Button>
                   )}
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1 text-amber-600 border-amber-200 hover:bg-amber-50" onClick={handleLogout} disabled={actionLoading}>
-                      <LogOut className="h-4 w-4 mr-1.5" />
-                      Logout
+                  {(statusLabel === 'OFFLINE' || statusLabel === 'disconnected' || statusLabel === 'destroyed') && (
+                    <Button className="w-full" onClick={handleInit} disabled={actionLoading}>
+                      {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wifi className="h-4 w-4 mr-2" />}
+                      Hubungkan WhatsApp
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1 text-red-600 border-red-200 hover:bg-red-50" onClick={handleDestroy} disabled={actionLoading}>
-                      <Trash2 className="h-4 w-4 mr-1.5" />
-                      Hapus Sesi
-                    </Button>
-                  </div>
+                  )}
                 </>
               )}
             </div>
           </div>
 
+          {/* Test send — hanya saat READY */}
+          {isReady && (
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <Send className="h-4 w-4 text-slate-400" />
+                Uji Coba Pengiriman Pesan
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={testPhone}
+                  onChange={(e) => setTestPhone(e.target.value)}
+                  placeholder="Nomor tujuan (cth: 08123456789)"
+                  disabled={sendingTest}
+                  className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+                <Button onClick={handleSendTest} disabled={sendingTest}>
+                  {sendingTest ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                  Kirim Test
+                </Button>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Pesan uji coba dikirim dari nomor WhatsApp yang terhubung di atas.
+              </p>
+            </div>
+          )}
+
           {/* Health check mini card */}
-          {healthData && (
+          {session?.health && (
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                 <Server className="h-4 w-4 text-slate-400" />
                 Status Infrastruktur
               </div>
-              {Object.entries((healthData.checks as Record<string, { status: string; detail?: string }>) ?? {}).map(([key, val]) => (
+              {Object.entries((session.health.checks as Record<string, { status: string; detail?: string }>) ?? {}).map(([key, val]) => (
                 <div key={key} className="flex items-center justify-between text-sm">
                   <span className="capitalize text-slate-600">{key}</span>
                   <span className={cn(
-                    "flex items-center gap-1 font-medium",
+                    'flex items-center gap-1 font-medium',
                     val.status === 'ok' ? 'text-emerald-600' : 'text-red-500'
                   )}>
                     {val.status === 'ok'
@@ -471,7 +794,6 @@ export default function WhatsAppPage() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {/* Status filter */}
                 <select
                   value={logsStatus}
                   onChange={e => { setLogsLoading(true); setLogsStatus(e.target.value); setLogsPage(1) }}
@@ -527,7 +849,7 @@ export default function WhatsAppPage() {
                           </td>
                           <td className="px-4 py-3">
                             <span className={cn(
-                              "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold",
+                              'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold',
                               sm.bg, sm.color
                             )}>
                               {sm.label}
@@ -541,8 +863,7 @@ export default function WhatsAppPage() {
                           <td className="px-4 py-3 text-center">
                             {log.retry_count > 0
                               ? <span className="text-amber-600 font-medium">{log.retry_count}×</span>
-                              : <span className="text-slate-300">—</span>
-                            }
+                              : <span className="text-slate-300">—</span>}
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
                             {fmtDate(log.sent_at || log.created_at)}

@@ -1,5 +1,6 @@
 // ── Primitives ────────────────────────────────────────────────────────────────
 export * from "./lib/utils";
+export * from "./hooks/useBrand";
 export * from "./components/ui/avatar";
 export * from "./components/ui/badge";
 export * from "./components/ui/button";

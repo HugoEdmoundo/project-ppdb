@@ -16,6 +16,7 @@ import PaymentStatusBadge from '@/components/shared/PaymentStatusBadge'
 import ApplicantsTable from '@/components/shared/ApplicantsTable'
 import PageHeaderCard from '@/components/shared/PageHeaderCard'
 import ToolbarCard from '@/components/shared/ToolbarCard'
+import TabsBarCard from '@/components/shared/TabsBarCard'
 import { REQUIRED_DOCUMENTS } from '@/constants/documents'
 
 export default function ApplicantsPage() {
@@ -157,19 +158,17 @@ export default function ApplicantsPage() {
         onSearchSubmit={handleSearch}
         onRefresh={() => refetch()}
         refreshing={isFetching}
-      >
-        {!loading && (
-          <Tabs value={statusFilter} onValueChange={handleStatusChange}>
-            <TabsList className="inline-flex h-10 w-max rounded-full bg-slate-100/80 p-1">
-              <TabsTrigger value="all" className="rounded-full text-xs sm:text-sm">Semua</TabsTrigger>
-              <TabsTrigger value="document_uploaded" className="rounded-full text-xs sm:text-sm">Menunggu Verifikasi</TabsTrigger>
-              <TabsTrigger value="document_approved" className="rounded-full text-xs sm:text-sm">Disetujui</TabsTrigger>
-              <TabsTrigger value="document_rejected" className="rounded-full text-xs sm:text-sm">Ditolak</TabsTrigger>
-              <TabsTrigger value="expired" className="rounded-full text-xs sm:text-sm">Expired</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        )}
-      </ToolbarCard>
+      />
+
+      {!loading && (
+        <TabsBarCard value={statusFilter} onValueChange={handleStatusChange}>
+          <TabsTrigger value="all" className="flex-1 rounded-full text-xs sm:text-sm">Semua</TabsTrigger>
+          <TabsTrigger value="document_uploaded" className="flex-1 rounded-full text-xs sm:text-sm">Menunggu Verifikasi</TabsTrigger>
+          <TabsTrigger value="document_approved" className="flex-1 rounded-full text-xs sm:text-sm">Disetujui</TabsTrigger>
+          <TabsTrigger value="document_rejected" className="flex-1 rounded-full text-xs sm:text-sm">Ditolak</TabsTrigger>
+          <TabsTrigger value="expired" className="flex-1 rounded-full text-xs sm:text-sm">Expired</TabsTrigger>
+        </TabsBarCard>
+      )}
 
       <Card>
         <CardContent className="p-0">

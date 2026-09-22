@@ -43,6 +43,10 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
+      '/whatsapp': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
     },
   },
 })

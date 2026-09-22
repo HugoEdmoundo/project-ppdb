@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import { Menu, X, ChevronDown } from 'lucide-react'
 import AnimatedLogo from '../ui/AnimatedLogo'
 import MagneticButton from '../ui/MagneticButton'
-import { getSettings } from '@/app/lib/api'
+import { useBrand } from '@repo/ui'
 
 const PORTAL_URL =
   process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:5174'
@@ -43,7 +43,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
-  const [logoUrl, setLogoUrl] = useState<string>('')
+  const { logoUrl } = useBrand(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000')
   const pathname = usePathname()
   const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -75,15 +75,6 @@ export default function Navbar() {
       setScrolled(window.scrollY > 80)
     }, 0)
     return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  useEffect(() => {
-    getSettings()
-      .then((settings) => {
-        const logo = settings.find((s) => s.key === 'logo')?.value
-        if (logo) setLogoUrl(logo)
-      })
-      .catch(() => {})
   }, [])
 
   const handleDropdownEnter = (key: string) => {

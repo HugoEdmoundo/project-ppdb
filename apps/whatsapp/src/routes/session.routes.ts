@@ -4,6 +4,8 @@
  * WhatsApp Session Management Routes:
  *   GET  /api/session           — Get current session status
  *   POST /api/session/init      — Initialize / reconnect session
+ *   POST /api/session/pairing-code     — Generate pairing code (login via nomor HP)
+ *   POST /api/session/pairing-code/cancel — Cancel pairing & kembali ke mode QR
  *   POST /api/session/logout    — Logout (clears auth data)
  *   DELETE /api/session         — Destroy session (no reconnect)
  *   GET  /api/session/qr        — Get QR code (SSE stream)
@@ -54,6 +56,56 @@ router.post("/init", async (_req: Request, res: Response) => {
     success: true,
     message: "Session initialization started. Connect to /api/session/qr for QR code.",
   });
+});
+
+// POST /api/session/pairing-code — login via nomor HP + pairing code
+router.post("/pairing-code", async (req: Request, res: Response) => {
+  const phone = String(req.body?.phone ?? "").trim();
+  const showNotification = req.body?.showNotification !== false;
+
+  if (!phone) {
+    res.status(400).json({
+      success: false,
+      error: "Nomor HP wajib diisi.",
+    });
+    return;
+  }
+
+  const current = sessionManager.getStatus();
+  if (current.status === "ready") {
+    res.status(400).json({
+      success: false,
+      error: "WhatsApp sudah terhubung. Putus koneksi dulu untuk login ulang.",
+    });
+    return;
+  }
+
+  try {
+    const result = await sessionManager.requestPairingCode(phone, showNotification);
+    res.json({
+      success: true,
+      data: result,
+      hint: "Masukkan kode ini di WhatsApp HP: Settings > Linked Devices > Link a Device > Link with phone number instead.",
+    });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      error: (err as Error).message,
+    });
+  }
+});
+
+// POST /api/session/pairing-code/cancel — batalkan pairing, kembali ke QR
+router.post("/pairing-code/cancel", async (_req: Request, res: Response) => {
+  try {
+    await sessionManager.cancelPairingCode();
+    res.json({ success: true, message: "Pairing code dibatalkan. Kembali ke mode QR." });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      error: (err as Error).message,
+    });
+  }
 });
 
 // POST /api/session/logout

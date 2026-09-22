@@ -103,10 +103,10 @@ async function tryRefresh(): Promise<string | null> {
 }
 
 async function fetchApi<T>(endpoint: string, opts?: RequestInit): Promise<T> {
-  const res = await fetchWithFallback(`${API_BASE}/companyprofile${endpoint}`, {
-    cache: 'no-store',
-    ...opts,
-  })
+  const finalOpts: RequestInit = { next: { revalidate: 60 }, ...opts }
+  if (opts?.cache) delete finalOpts.next
+
+  const res = await fetchWithFallback(`${API_BASE}/companyprofile${endpoint}`, finalOpts)
   if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`)
   return parseJsonSafe<T>(res, `API ${endpoint}`)
 }
@@ -209,6 +209,7 @@ export async function logout() {
 
 async function fetchApiWithAuth<T>(endpoint: string, opts: RequestInit): Promise<T> {
   let res = await fetchWithFallback(`${API_BASE}/companyprofile${endpoint}`, {
+    cache: 'no-store',
     ...opts,
     credentials: 'include' as RequestCredentials,
     headers: {

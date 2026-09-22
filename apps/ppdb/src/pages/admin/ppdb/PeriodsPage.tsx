@@ -55,14 +55,16 @@ export default function PeriodsPage() {
   // Aktivasi/deaktivasi periode menonaktifkan wave global → semua data
   // wave-scoped ikut basi. Samakan dengan WavesSheet (invalidasi luas).
   const invalidateWaveScoped = () => {
-    queryClient.invalidateQueries({ queryKey: ['periods'] })
-    queryClient.invalidateQueries({ queryKey: ['waves'] })
-    queryClient.invalidateQueries({ queryKey: ['applicants'] })
-    queryClient.invalidateQueries({ queryKey: ['transactions'] })
-    queryClient.invalidateQueries({ queryKey: ['stage2-applicants'] })
-    queryClient.invalidateQueries({ queryKey: ['stage2-bills'] })
-    queryClient.invalidateQueries({ queryKey: ['mou-applicants'] })
-    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['periods'] }),
+      queryClient.invalidateQueries({ queryKey: ['waves'] }),
+      queryClient.invalidateQueries({ queryKey: ['applicants'] }),
+      queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+      queryClient.invalidateQueries({ queryKey: ['stage2-applicants'] }),
+      queryClient.invalidateQueries({ queryKey: ['stage2-bills'] }),
+      queryClient.invalidateQueries({ queryKey: ['mou-applicants'] }),
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+    ])
   }
 
   const handleSave = async (data: PeriodFormData) => {
@@ -75,8 +77,8 @@ export default function PeriodsPage() {
         await ppdbService.createPeriod(data)
         toast('success', 'Periode berhasil ditambahkan')
       }
+      await invalidateWaveScoped()
       setShowForm(false)
-      invalidateWaveScoped()
     } catch (e: any) {
       toast('error', e.message || 'Gagal menyimpan periode')
     }
@@ -87,7 +89,7 @@ export default function PeriodsPage() {
     try {
       await ppdbService.deletePeriod(deletingId)
       toast('success', 'Periode berhasil dihapus')
-      invalidateWaveScoped()
+      await invalidateWaveScoped()
     } catch (e: any) {
       toast('error', e.message || 'Gagal menghapus periode')
     } finally {
@@ -105,7 +107,7 @@ export default function PeriodsPage() {
         await ppdbService.deactivatePeriod(actionId.id)
         toast('success', 'Periode berhasil dinonaktifkan')
       }
-      invalidateWaveScoped()
+      await invalidateWaveScoped()
     } catch (e: any) {
       toast('error', e.message || `Gagal ${actionId.type} periode`)
     } finally {
@@ -150,7 +152,7 @@ export default function PeriodsPage() {
         ]}
       />
 
-      <Card className="glass-card">
+      <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader className="bg-primary/5">

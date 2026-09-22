@@ -48,7 +48,11 @@ class Settings(BaseSettings):
     ppdb_frontend_url: str = "http://localhost:5174"
     superadmin_frontend_url: str = "http://localhost:5173"
 
-    # ── WhatsApp Microservice ─────────────────────────────────────────────────
+    # --- WhatsApp Microservice ---
+    # Base URL publik dari API ini (dipakai panel WhatsApp untuk memvalidasi
+    # WEBHOOK_URL microservice). Sesuaikan dengan domain/port FastAPI.
+    api_base_url: str = "http://localhost:8000"
+    # URL ke apps/whatsapp/ Express service
     wa_service_url: str = "http://localhost:3100"
     wa_service_api_key: str = ""
     wa_webhook_secret: str = ""

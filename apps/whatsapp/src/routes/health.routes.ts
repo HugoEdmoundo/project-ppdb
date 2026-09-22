@@ -12,6 +12,7 @@ import { getRedis } from "../lib/redis";
 import { getPool } from "../lib/database";
 import { sessionManager } from "../services/SessionManager";
 import { getQueueStats } from "../queues/messageQueue";
+import { env } from "../config/env";
 
 const router: ExpressRouter = Router();
 
@@ -67,6 +68,7 @@ router.get("/detailed", async (_req: Request, res: Response) => {
     ts: new Date().toISOString(),
     checks,
     queue: queueStats,
+    webhookUrl: env.WEBHOOK_URL || null,
     session: {
       status: sessionInfo.status,
       phone: sessionInfo.phone

@@ -18,9 +18,9 @@ import { Input } from "@/components/ui"
 import { Label } from "@/components/ui"
 import { Card, CardContent } from "@/components/ui"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
-import { apiFetch } from '@/api/client'
+import { apiFetch, API_BASE } from '@/api/client'
 import { useToast } from '@/components/Toast'
-import { settingsService } from '../../services/index'
+import { useBrand } from '@repo/ui'
 import { cn } from '@/lib/utils'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -111,20 +111,10 @@ export default function LoginPage() {
   const [shakeKey, setShakeKey] = useState(0)
   const [loginSuccess, setLoginSuccess] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const [logoUrl, setLogoUrl] = useState('')
+  const { logoUrl } = useBrand(API_BASE)
 
   const [showRecover, setShowRecover] = useState(false)
   const [recoverMessage, setRecoverMessage] = useState<string | null>(null)
-
-  useEffect(() => {
-    settingsService
-      .getAll()
-      .then((settings) => {
-        const logo = settings.find((s) => s.key === 'logo')?.value
-        if (logo) setLogoUrl(logo)
-      })
-      .catch(() => {})
-  }, [])
 
   const canAdmin = isAdmin()
   const canApplicant = hasApplicantAccess()

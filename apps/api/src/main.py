@@ -20,6 +20,7 @@ from src.modules.selection.router import router as selection_router
 from src.modules.superadmin.router import router as superadmin_router
 from src.modules.uploads.router import router as uploads_router
 from src.modules.users.router import router as users_router
+from src.modules.whatsapp.router import router as whatsapp_router
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
@@ -160,6 +161,7 @@ app.include_router(
     notifications_router, prefix="/notifications", tags=["Notifications"]
 )
 app.include_router(selection_router, prefix="/selection", tags=["Selection"])
+app.include_router(whatsapp_router, prefix="/whatsapp", tags=["WhatsApp"])
 if settings.upload_provider == "db":
     app.include_router(uploads_router, tags=["Uploads"])
 elif settings.upload_provider == "local":

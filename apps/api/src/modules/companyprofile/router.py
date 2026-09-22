@@ -459,7 +459,25 @@ async def cp_entity_list(entity: str, skip: int = 0, limit: int = 100):
         if entity == "news"
         else ("year.desc" if entity == "achievements" else None)
     )
-    return list_all(table, order=order, skip=skip, limit=limit)
+    items = list_all(table, order=order, skip=skip, limit=limit)
+    
+    import json
+    for item in items:
+        # Strip heavy rich-text content for list view
+        if "content" in item and isinstance(item["content"], str):
+            try:
+                c_data = json.loads(item["content"])
+                if isinstance(c_data, dict) and "content" in c_data:
+                    c_data.pop("content", None)
+                    item["content"] = json.dumps(c_data, ensure_ascii=False)
+            except Exception:
+                pass
+        
+        # Strip gallery arrays for list view
+        if "gallery" in item:
+            item["gallery"] = None
+            
+    return items
 
 
 @router.get("/{entity}/{slug}")

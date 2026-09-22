@@ -22,6 +22,7 @@ import type { WASessionInfo, WASessionStatus } from "../types";
 export type SessionEvent =
   | { type: "status"; data: WASessionInfo }
   | { type: "qr"; data: { qrCode: string; dataUrl: string } }
+  | { type: "code"; data: { code: string; phone?: string } }
   | { type: "ready"; data: WASessionInfo }
   | { type: "disconnected"; data: { reason: string } }
   | { type: "message_create"; data: Message };
@@ -33,6 +34,8 @@ export class SessionManager extends EventEmitter {
   private reconnectAttempts = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = 10;
   private isShuttingDown = false;
+  private initializePromise: Promise<void> | null = null;
+  private pairingActive = false;
 
   // SSE subscribers
   private sseClients: Set<{
@@ -63,6 +66,11 @@ export class SessionManager extends EventEmitter {
     if (this.client && this.sessionInfo.status !== "destroyed") {
       logger.info("[Session] Already initialized, skipping");
       return;
+    }
+
+    if (this.initializePromise) {
+      logger.info("[Session] Initialization already in progress, awaiting...");
+      return this.initializePromise;
     }
 
     logger.info("[Session] Initializing WhatsApp client...");
@@ -100,14 +108,23 @@ export class SessionManager extends EventEmitter {
 
     this.attachEventHandlers();
 
+    const initPromise = (async () => {
+      try {
+        await this.client!.initialize();
+      } catch (err) {
+        logger.error("[Session] Failed to initialize client", {
+          error: (err as Error).message,
+        });
+        this.updateStatus("disconnected");
+        this.scheduleReconnect();
+      }
+    })();
+
+    this.initializePromise = initPromise;
     try {
-      await this.client.initialize();
-    } catch (err) {
-      logger.error("[Session] Failed to initialize client", {
-        error: (err as Error).message,
-      });
-      this.updateStatus("disconnected");
-      this.scheduleReconnect();
+      await initPromise;
+    } finally {
+      if (this.initializePromise === initPromise) this.initializePromise = null;
     }
   }
 
@@ -158,6 +175,78 @@ export class SessionManager extends EventEmitter {
     this.updateStatus("destroyed");
   }
 
+  /**
+   * Generate pairing code via "Link with phone number instead" (bukan QR).
+   * @param phone Nomor HP internasional tanpa simbol (cth 628123456789)
+   * @param showNotification Tampilkan notifikasi pairing di HP target
+   */
+  async requestPairingCode(
+    phone: string,
+    showNotification = true
+  ): Promise<{ code: string; phone: string }> {
+    if (this.isReady()) {
+      throw new Error("WhatsApp sudah terhubung — tidak perlu pairing.");
+    }
+
+    const normalized = phone.replace(/[^0-9]/g, "").replace(/^0/, "62");
+    if (normalized.length < 10) {
+      throw new Error(
+        "Nomor HP tidak valid. Gunakan format internasional, mis. 628123456789"
+      );
+    }
+
+    // Pastikan client sudah siap (halaman WA terbuka) sebelum request kode.
+    if (!this.client || this.sessionInfo.status === "destroyed") {
+      await this.initialize();
+    }
+    if (this.initializePromise) {
+      await this.initializePromise;
+    }
+    if (!this.client) {
+      throw new Error("WhatsApp client tidak tersedia.");
+    }
+
+    this.pairingActive = true;
+    this.updateStatus("qr", { pairingPhone: normalized });
+
+    let code: string;
+    try {
+      code = await this.client.requestPairingCode(normalized, showNotification);
+    } catch (err) {
+      this.pairingActive = false;
+      throw new Error(
+        `Gagal membuat pairing code: ${(err as Error).message}. ` +
+          "Pastikan sesi dalam kondisi menunggu taut (bukan sudah terhubung)."
+      );
+    }
+
+    this.updateStatus("qr", { pairingPhone: normalized, pairingCode: code });
+    this.broadcastSse("code", { code, phone: normalized });
+    logger.info("[Session] Pairing code generated", { phone: `***${normalized.slice(-4)}` });
+
+    return { code, phone: normalized };
+  }
+
+  /**
+   * Batalkan pairing code dan kembali ke mode QR.
+   */
+  async cancelPairingCode(): Promise<void> {
+    this.pairingActive = false;
+    if (this.client) {
+      try {
+        await this.client.cancelPairingCode();
+      } catch (err) {
+        logger.warn("[Session] cancelPairingCode error", {
+          error: (err as Error).message,
+        });
+      }
+    }
+    delete this.sessionInfo.pairingCode;
+    delete this.sessionInfo.pairingPhone;
+    this.updateStatus("qr");
+    logger.info("[Session] Pairing code dibatalkan, kembali ke mode QR");
+  }
+
   // ── SSE (Server-Sent Events) ───────────────────────────────────────────────
 
   /**
@@ -190,6 +279,12 @@ export class SessionManager extends EventEmitter {
     if (!this.client) return;
 
     this.client.on("qr", async (qr) => {
+      if (this.pairingActive) {
+        // Login via pairing code aktif — QR tidak relevan, jangan timpa state.
+        logger.debug("[Session] Pairing code aktif, QR diabaikan");
+        return;
+      }
+
       logger.info("[Session] QR code received — scan with WhatsApp");
       this.reconnectAttempts = 0;
 
@@ -207,8 +302,18 @@ export class SessionManager extends EventEmitter {
     });
 
     this.client.on("authenticated", () => {
+      this.pairingActive = false;
       logger.info("[Session] Authenticated successfully");
       this.updateStatus("authenticated");
+    });
+
+    this.client.on("code", (code: string) => {
+      logger.info("[Session] Pairing code diterima dari client");
+      this.updateStatus("qr", {
+        pairingPhone: this.sessionInfo.pairingPhone,
+        pairingCode: code,
+      });
+      this.broadcastSse("code", { code, phone: this.sessionInfo.pairingPhone });
     });
 
     this.client.on("auth_failure", (msg) => {
@@ -220,6 +325,7 @@ export class SessionManager extends EventEmitter {
     });
 
     this.client.on("ready", async () => {
+      this.pairingActive = false;
       this.reconnectAttempts = 0;
       this.clearReconnectTimer();
 
@@ -253,6 +359,7 @@ export class SessionManager extends EventEmitter {
 
     this.client.on("disconnected", (reason) => {
       logger.warn("[Session] Disconnected", { reason });
+      this.pairingActive = false;
       this.updateStatus("disconnected");
       this.broadcastSse("disconnected", { reason });
 
@@ -277,9 +384,11 @@ export class SessionManager extends EventEmitter {
       ...extra,
     };
 
-    // Clear QR when no longer needed
+    // Clear QR & pairing code when no longer needed
     if (status !== "qr") {
       delete this.sessionInfo.qrCode;
+      delete this.sessionInfo.pairingCode;
+      delete this.sessionInfo.pairingPhone;
     }
 
     this.broadcastSse("status", this.sessionInfo);

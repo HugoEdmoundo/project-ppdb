@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { getSettings } from '../api/client'
+import { API_BASE } from '../api/client'
 import { AlertCircle, ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, Lock, ShieldCheck, User } from 'lucide-react'
 import AnimatedLogo from '../components/AnimatedLogo'
+import { useBrand } from '@repo/ui'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -15,19 +16,10 @@ export default function LoginPage() {
   const [success, setSuccess] = useState(false)
   const [showPw, setShowPw] = useState(false)
   const [redirecting, setRedirecting] = useState(false)
-  const [logoUrl, setLogoUrl] = useState<string>('')
+  // Logo diambil dinamis via hook useBrand (fetch /companyprofile/settings/logo
+  // + live-update via SSE). Tidak ada aset logo statis — fallback text mark.
+  const { logoUrl } = useBrand(API_BASE)
   const [successName, setSuccessName] = useState('')
-
-  // Load logo dynamically (login pakai logo, bukan favicon).
-  // Tidak ada aset logo statis — fallback ke text mark jika belum tersedia.
-  useEffect(() => {
-    getSettings()
-      .then((settings) => {
-        const logo = settings.find((s) => s.key === 'logo')?.value
-        if (logo) setLogoUrl(logo)
-      })
-      .catch(() => {})
-  }, [])
 
   const isSuperadmin = !!user && (user.user_type === 'superadmin' || !!user.is_superadmin)
 

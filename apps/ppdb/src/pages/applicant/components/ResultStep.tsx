@@ -1,5 +1,5 @@
 import { CheckCircle, X, Upload, FileSignature, Receipt, PenLine } from 'lucide-react'
-import { Badge, Button } from '@/components/ui'
+import { Badge, Button, Card, CardContent } from '@/components/ui'
 
 const formatRp = (n: number) => 'Rp ' + (n || 0).toLocaleString('id-ID')
 
@@ -18,37 +18,39 @@ export default function ResultStep({ applicant, selectionResult, mou, stage2Bill
       {applicant?.status === 'passed' ? (
         <div className="space-y-6">
           {/* Pass Banner */}
-          <div className="p-6 border rounded-xl bg-emerald-50 border-emerald-200">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-6 h-6" />
+          <Card className="border-emerald-200 bg-emerald-50/80 shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-4 text-center sm:text-left">
+                <div className="w-12 h-12 shrink-0 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-emerald-800">Selamat! Anda Dinyatakan Lulus</h3>
+                  <p className="text-emerald-700 text-sm mt-1">Selamat, Anda telah lulus seleksi PPDB Pesantren Ar-Rahman.</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-emerald-800">Selamat! Anda Dinyatakan Lulus</h3>
-                <p className="text-emerald-700 text-sm">Selamat, Anda telah lulus seleksi PPDB Pesantren Ar-Rahman.</p>
-              </div>
-            </div>
 
-            {selectionResult && selectionResult.scores && selectionResult.scores.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                {selectionResult.scores.map((sc: any, idx: number) => (
-                  <div key={idx} className="bg-white border rounded-md p-3 flex justify-between items-center shadow-sm">
-                    <div>
-                      <p className="text-xs text-muted-foreground">{sc.category_name}</p>
-                      <p className="text-sm font-medium">{sc.criteria_name}</p>
+              {selectionResult && selectionResult.scores && selectionResult.scores.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+                  {selectionResult.scores.map((sc: any, idx: number) => (
+                    <div key={idx} className="bg-white border border-emerald-100 rounded-lg p-3 flex justify-between items-center shadow-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground">{sc.category_name}</p>
+                        <p className="text-sm font-medium text-emerald-900">{sc.criteria_name}</p>
+                      </div>
+                      <div className="text-xl font-bold text-emerald-700">{sc.score}</div>
                     </div>
-                    <div className="text-xl font-bold">{sc.score}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {selectionResult?.notes && (
-              <div className="mt-4 p-3 bg-white/60 border border-emerald-100 rounded-md">
-                <p className="text-xs font-medium text-emerald-800 mb-1">Catatan Kelulusan:</p>
-                <p className="text-sm text-emerald-700">{selectionResult.notes}</p>
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+              {selectionResult?.notes && (
+                <div className="mt-4 p-4 bg-white/70 border border-emerald-100 rounded-lg">
+                  <p className="text-xs font-semibold text-emerald-800 mb-1">Catatan Kelulusan:</p>
+                  <p className="text-sm text-emerald-700 leading-relaxed">{selectionResult.notes}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* MOU Section */}
           {mou ? (

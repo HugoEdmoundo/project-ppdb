@@ -106,7 +106,10 @@ export default function PaymentsPage() {
               </TableRow>
             ) : (
               transactions.map((trx: Transaction) => (
-                <TableRow key={trx.id}>
+                <TableRow 
+                  key={trx.id}
+                  className={trx.method === 'offline' && trx.status === 'pending' ? 'bg-amber-50/50 hover:bg-amber-50/80' : ''}
+                >
                   <TableCell className="font-medium">
                     {trx.full_name || trx.applicant_name || '-'}
                     <div className="text-xs text-muted-foreground font-normal">{trx.wave_name || activeWaveData?.name || '-'}</div>

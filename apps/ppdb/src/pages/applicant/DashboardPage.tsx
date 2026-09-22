@@ -5,7 +5,7 @@ import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Skele
 import { ConfirmDialog } from "@/components/ui"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
 import {
-  CheckCircle, ChevronDown, ChevronUp, Lock, Wallet, FileUp, ClipboardCheck, Trophy,
+  CheckCircle, ChevronDown, ChevronUp, Lock, Wallet, FileUp, ClipboardCheck, Trophy, AlertCircle,
   type LucideIcon,
 } from 'lucide-react'
 import { apiFetch } from '@/api/client'
@@ -353,9 +353,69 @@ export default function ApplicantDashboardPage() {
           </div>
         </div>
 
-        {/* Step Timeline */}
-        <div className="relative space-y-6 pb-2">
-          <div className="absolute bottom-8 left-[1.375rem] top-8 w-0.5 -translate-x-px bg-slate-200" />
+        {status === 'document_rejected' && (
+          <div className="bg-red-50 border border-red-200 p-5 rounded-2xl shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500" />
+            <h3 className="text-red-800 font-semibold text-lg flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" /> Dokumen Ditolak
+            </h3>
+            <p className="text-red-700 mt-2 text-sm leading-relaxed">
+              Terdapat kekurangan atau kesalahan pada dokumen Anda dengan alasan:
+              <br />
+              <strong className="mt-1 block p-2 bg-white/60 rounded text-red-900 border border-red-100">
+                "{applicant?.rejection_reason || 'Silakan perbaiki dokumen Anda sesuai ketentuan.'}"
+              </strong>
+            </p>
+            <p className="text-red-700/80 mt-3 text-xs">
+              Buka bagian "Upload Dokumen Persyaratan" di bawah untuk mengunggah ulang dokumen yang ditolak.
+            </p>
+          </div>
+        )}
+
+        {/* Visual Timeline (Stepper) */}
+        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 overflow-x-auto hide-scrollbar">
+          <div className="min-w-[600px]">
+            <div className="flex items-center justify-between relative">
+              <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full z-0" />
+              <div
+                className="absolute left-6 top-1/2 -translate-y-1/2 h-1 bg-emerald-primary rounded-full z-0 transition-all duration-500"
+                style={{ width: `calc(${((doneSteps) / (steps.length - 1)) * 100}% - ${doneSteps === steps.length ? 3 : 1}rem)` }}
+              />
+              
+              {steps.map((step, idx) => {
+                const isCompleted = step.status === 'completed'
+                const isActive = step.status === 'active'
+                const StepIcon = STEP_ICONS[step.number - 1]
+                
+                let circleCls = "bg-slate-100 text-slate-400 border-2 border-white ring-4 ring-slate-50"
+                if (isCompleted) circleCls = "bg-emerald-primary text-white border-2 border-white ring-4 ring-emerald-50 shadow-md"
+                else if (isActive) circleCls = "bg-white text-emerald-primary border-2 border-emerald-primary ring-4 ring-emerald-50 shadow-md"
+
+                return (
+                  <div key={step.number} className="relative z-10 flex flex-col items-center gap-3 w-32">
+                    <div className={cn("w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300", circleCls)}>
+                      {isCompleted ? <CheckCircle className="w-5 h-5" /> : <StepIcon className="w-5 h-5" />}
+                    </div>
+                    <div className="text-center">
+                      <p className={cn("text-xs font-bold", isActive ? "text-emerald-primary" : isCompleted ? "text-slate-800" : "text-slate-400")}>
+                        Tahap {step.number}
+                      </p>
+                      <p className={cn("text-[10px] uppercase tracking-wider mt-0.5", isActive ? "font-semibold text-emerald-700" : "text-slate-500")}>
+                        {step.title.replace(' Persyaratan', '')}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Task Details */}
+        <div className="pt-4 pb-2">
+          <h2 className="text-lg font-semibold text-slate-800 mb-4 px-2">Detail Tugas Anda</h2>
+          <div className="relative space-y-6">
+            <div className="absolute bottom-8 left-[1.375rem] top-8 w-0.5 -translate-x-px bg-slate-200" />
           {steps.map((step) => {
             const isCompleted = step.status === 'completed'
             const isActive = step.status === 'active'
@@ -439,6 +499,7 @@ export default function ApplicantDashboardPage() {
               </div>
             )
           })}
+          </div>
         </div>
 
         <ConfirmDialog

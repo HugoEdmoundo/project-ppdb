@@ -13,6 +13,7 @@ import LandingPage from './pages/public/LandingPage'
 import RegisterPage from './pages/public/RegisterPage'
 import CheckoutPage from './pages/applicant/CheckoutPage'
 import ApplicantDashboardPage from './pages/applicant/DashboardPage'
+import ExamCardPage from './pages/applicant/ExamCardPage'
 import PaymentsPage from './pages/admin/ppdb/PaymentsPage'
 import NotificationsPage from './pages/admin/notifications/NotificationsPage'
 import ApplicantsPage from './pages/admin/ppdb/ApplicantsPage'
@@ -69,6 +70,7 @@ export default function App() {
             <Route path="/checkout" element={<ProtectedRoute role="applicant"><CheckoutPage /></ProtectedRoute>} />
 
             <Route path="/applicant" element={<ProtectedRoute role="applicant" requirePaid={true}><ApplicantDashboardPage /></ProtectedRoute>} />
+            <Route path="/applicant/kartu-ujian" element={<ProtectedRoute role="applicant" requirePaid={true}><ExamCardPage /></ProtectedRoute>} />
 
 
             <Route path="/403" element={<ForbiddenPage />} />

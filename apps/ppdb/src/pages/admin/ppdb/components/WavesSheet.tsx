@@ -204,10 +204,12 @@ const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
         await ppdbService.createWave({ ...payload, period_id: period.id })
         toast('success', 'Gelombang berhasil ditambahkan')
       }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['waves', period.id] }),
+        queryClient.invalidateQueries({ queryKey: ['waves'] }),
+        queryClient.invalidateQueries({ queryKey: ['periods'] })
+      ])
       setShowForm(false)
-      queryClient.invalidateQueries({ queryKey: ['waves', period.id] })
-      queryClient.invalidateQueries({ queryKey: ['waves'] })
-      queryClient.invalidateQueries({ queryKey: ['periods'] })
     } catch (e: any) {
       const msg = e.message || 'Gagal menyimpan gelombang'
       setFormError(msg)
@@ -222,9 +224,11 @@ const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
     try {
       await ppdbService.deleteWave(deletingId)
       toast('success', 'Gelombang berhasil dihapus')
-      queryClient.invalidateQueries({ queryKey: ['waves', period.id] })
-      queryClient.invalidateQueries({ queryKey: ['waves'] })
-      queryClient.invalidateQueries({ queryKey: ['periods'] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['waves', period.id] }),
+        queryClient.invalidateQueries({ queryKey: ['waves'] }),
+        queryClient.invalidateQueries({ queryKey: ['periods'] })
+      ])
     } catch (e: any) {
       toast('error', e.message || 'Gagal menghapus gelombang')
     } finally {
@@ -242,12 +246,14 @@ const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
         await ppdbService.deactivateWave(actionId.id)
         toast('success', 'Gelombang berhasil dinonaktifkan')
       }
-      queryClient.invalidateQueries({ queryKey: ['waves', period.id] })
-      queryClient.invalidateQueries({ queryKey: ['waves'] })
-      queryClient.invalidateQueries({ queryKey: ['periods'] })
-      queryClient.invalidateQueries({ queryKey: ['applicants'] })
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
-      queryClient.invalidateQueries({ queryKey: ['stage2-bills'] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['waves', period.id] }),
+        queryClient.invalidateQueries({ queryKey: ['waves'] }),
+        queryClient.invalidateQueries({ queryKey: ['periods'] }),
+        queryClient.invalidateQueries({ queryKey: ['applicants'] }),
+        queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+        queryClient.invalidateQueries({ queryKey: ['stage2-bills'] })
+      ])
       queryClient.invalidateQueries({ queryKey: ['stage2-applicants'] })
       queryClient.invalidateQueries({ queryKey: ['mou-applicants'] })
     } catch (e: any) {

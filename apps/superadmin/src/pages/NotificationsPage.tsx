@@ -375,7 +375,10 @@ function TemplateTab() {
       .finally(() => { setLoading(false) })
   }, [toast])
 
-  useEffect(() => { fetchTemplates() }, [fetchTemplates])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchTemplates()
+  }, [fetchTemplates])
 
   const activeCount = templates.filter(t => t.is_active).length
 
@@ -485,13 +488,9 @@ function TemplateEditDialog({ template, open, onClose, onSaved }: {
       await api.apiFetch(`/notifications/templates/${template.id}`, {
         method: 'PUT', body: JSON.stringify(form),
       })
-      // Clear WA template cache silently
+      // Clear WA template cache silently (via FastAPI proxy)
       try {
-        if (api.WA_API_KEY) {
-          await fetch(`${api.WA_API_BASE}/api/templates/cache/clear`, {
-            method: 'POST', headers: { 'X-API-Key': api.WA_API_KEY },
-          })
-        }
+        await api.waClearTemplateCache()
       } catch { /* silent */ }
       toast('success', 'Template berhasil disimpan')
       onSaved()
@@ -613,7 +612,15 @@ function LogTab() {
       .finally(() => { setLoading(false) })
   }, [page, statusFilter, eventFilter, toast])
 
-  useEffect(() => { fetchLogs(1, statusFilter, eventFilter) }, [fetchLogs, statusFilter, eventFilter])
+  // Reset ke halaman 1 saat filter berubah. fetchLogs sengaja TIDAK di deps:
+  // identitasnya berubah saat page berubah (memicu fetch ganda/duplikat).
+  // Setter loading di dalamnya dipanggil sinkron, jadi efek luar dan dalam
+  // aturan ini ditekan eksplisit.
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  useEffect(() => {
+    fetchLogs(1, statusFilter, eventFilter)
+  }, [statusFilter, eventFilter])
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   useEffect(() => {
     if (!autoRefresh) return
@@ -741,7 +748,20 @@ export default function NotificationsPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [tplLoading, setTplLoading] = useState(true)
   const { toast } = useToast()
-  const waConfigured = Boolean(api.WA_API_KEY)
+  const [waConfigured, setWaConfigured] = useState(false)
+  const [waReady, setWaReady] = useState(false)
+
+  useEffect(() => {
+    api.waGetStatus()
+      .then(s => {
+        setWaConfigured(s?.configured === true)
+        setWaReady(s?.isReady === true)
+      })
+      .catch(() => {
+        setWaConfigured(false)
+        setWaReady(false)
+      })
+  }, [])
 
   useEffect(() => {
     api.apiFetch<Template[]>('/notifications/templates')
@@ -762,7 +782,7 @@ export default function NotificationsPage() {
         chips={[
           { icon: Bell, label: `${templates.length} Template` },
           { icon: CheckCircle2, label: `${activeCount} Aktif` },
-          { icon: waConfigured ? Zap : AlertTriangle, label: waConfigured ? 'WA: Terhubung' : 'WA: Belum dikonfigurasi' },
+          { icon: waReady ? Zap : AlertTriangle, label: waReady ? 'WA: Terhubung' : waConfigured ? 'WA: Offline' : 'WA: Belum dikonfigurasi' },
         ]}
       />
 
@@ -772,9 +792,10 @@ export default function NotificationsPage() {
           <div>
             <p className="font-semibold">WhatsApp Service Belum Dikonfigurasi</p>
             <p className="text-xs text-amber-700 mt-0.5">
-              Tambahkan <code className="bg-amber-100 px-1 rounded">VITE_WA_URL</code> dan{' '}
-              <code className="bg-amber-100 px-1 rounded">VITE_WA_API_KEY</code> ke{' '}
-              <code className="bg-amber-100 px-1 rounded">.env</code> superadmin, lalu restart dev server.
+              Tambahkan <code className="bg-amber-100 px-1 rounded">WA_SERVICE_URL</code> dan{' '}
+              <code className="bg-amber-100 px-1 rounded">WA_SERVICE_API_KEY</code> ke{' '}
+              <code className="bg-amber-100 px-1 rounded">apps/api/.env</code>, lalu restart backend.
+              Detail selengkapnya ada di halaman <strong>WhatsApp</strong>.
             </p>
           </div>
         </div>

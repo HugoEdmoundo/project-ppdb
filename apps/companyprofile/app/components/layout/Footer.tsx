@@ -4,7 +4,9 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { MapPin, Phone, Mail, ArrowUpRight } from 'lucide-react'
 import VerseStrip from '../ui/VerseStrip'
-import { getContactInfo, getSettings, getSocialLinks } from '@/app/lib/api'
+import { socialLinks as staticSocialLinks } from '@/app/data/social'
+import { getContactInfo, getSocialLinks } from '@/app/lib/api'
+import { useBrand } from '@repo/ui'
 
 interface SocialItem {
   label: string
@@ -25,19 +27,11 @@ const FALLBACK_CONTACT: ContactState = {
 }
 
 export default function Footer() {
-  const [logoUrl, setLogoUrl] = useState('')
-  // Initial state kosong — social links diambil dari API (dinamis).
-  // Fallback ke array kosong jika API gagal (footer tetap render tanpa social icons).
-  const [socials, setSocials] = useState<SocialItem[]>([])
+  const { logoUrl } = useBrand(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000')
+  const [socials, setSocials] = useState<SocialItem[]>(staticSocialLinks)
   const [contact, setContact] = useState<ContactState>(FALLBACK_CONTACT)
 
   useEffect(() => {
-    getSettings()
-      .then((settings) => {
-        const logo = settings.find((s) => s.key === 'logo')?.value
-        if (logo) setLogoUrl(logo)
-      })
-      .catch(() => {})
     // Tautan sosial & info kontak dinamis dari API; fallback statis jika kosong/error.
     getSocialLinks()
       .then((items) => {

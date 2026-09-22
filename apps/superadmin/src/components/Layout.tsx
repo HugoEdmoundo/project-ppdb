@@ -5,7 +5,7 @@ import {
   ChevronLeft, Menu, GraduationCap, Bell, History, MessageCircle
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { getSettings, API_BASE } from '../api/client'
+import { API_BASE } from '../api/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui'
 import { Button } from '@/components/ui'
 import {
@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui'
 import { cn } from '@/lib/utils'
+import { useBrand } from '@repo/ui'
 
 const NAV_ITEMS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -34,29 +35,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sa_collapsed') === 'true')
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [logoUrl, setLogoUrl] = useState('')
-
-  // Load favicon dynamically (sidebar pakai favicon, bukan logo)
-  useEffect(() => {
-    const loadLogo = () => {
-      getSettings()
-        .then((settings) => {
-          const favicon = settings.find((s) => s.key === 'favicon')?.value
-          if (favicon) setLogoUrl(favicon)
-        })
-        .catch(() => {})
-    }
-    loadLogo()
-
-    const sseUrl = `${API_BASE}/companyprofile/events`
-    const es = new EventSource(sseUrl)
-    es.addEventListener('change', () => {
-      loadLogo()
-    })
-    return () => {
-      es.close()
-    }
-  }, [])
+  const { logoUrl } = useBrand(API_BASE)
 
   // Close mobile sidebar on route change
   // eslint-disable-next-line react-hooks/set-state-in-effect

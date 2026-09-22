@@ -11,7 +11,7 @@ import {
 } from '@/components/ui'
 import { SuccessState } from "@/components/ui"
 import { CredentialsCard } from '@/components/CredentialsCard'
-import { ArrowLeft, ArrowRight, LogIn, BookOpen, GraduationCap } from 'lucide-react'
+import { ArrowLeft, ArrowRight, LogIn, BookOpen, GraduationCap, Check } from 'lucide-react'
 
 // Batas maksimal tanggal lahir = hari ini (tidak boleh lahir di masa depan)
 const todayStr = new Date().toISOString().split('T')[0]
@@ -214,9 +214,9 @@ export default function RegisterPage() {
         titleEn="Registration Successful"
         description="Terima kasih! Data pendaftaran Anda telah kami terima. Simpan akun di bawah ini untuk login, lalu tunggu pesan dari kami melalui email atau WhatsApp untuk langkah selanjutnya."
         actions={
-          <Button onClick={handleFinish} size="lg" className="w-full sm:w-auto">
-            <LogIn className="h-4 w-4" />
-            Lanjut ke Login
+          <Button onClick={handleFinish} size="lg" className="w-full sm:w-auto bg-emerald-primary hover:bg-emerald-dark">
+            <LogIn className="h-4 w-4 mr-2" />
+            Login ke Dashboard Sekarang
           </Button>
         }
       >
@@ -226,17 +226,69 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30 py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center">
-      <div className="max-w-2xl w-full">
-        <Button variant="ghost" onClick={handleBack} className="mb-4">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Kembali
+    <div className="relative min-h-screen bg-background font-sans flex flex-col items-center pt-12 pb-24 px-4 sm:px-6 lg:px-8">
+      {/* Decorative Background */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(26,107,71,0.08),transparent_60%)] pointer-events-none" />
+      <div
+        className="fixed inset-0 opacity-[0.35] pointer-events-none"
+        style={{ backgroundImage: 'radial-gradient(circle, rgba(26,107,71,0.15) 1px, transparent 1px)', backgroundSize: '24px 24px' }}
+      />
+      {/* Arabic watermark */}
+      <div className="pointer-events-none fixed -left-20 top-20 select-none font-heading text-[15rem] font-bold leading-none text-emerald-primary/[0.03] md:text-[25rem]">
+        ار
+      </div>
+
+      <div className="relative z-10 w-full max-w-3xl">
+        <div className="mb-8 text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold-dark mb-2">Penerimaan Peserta Didik Baru</p>
+          <h1 className="font-heading text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">
+            Pendaftaran <span className="bg-gradient-to-r from-emerald-dark to-emerald-primary bg-clip-text text-transparent">Online</span>
+          </h1>
+        </div>
+
+        {/* Stepper */}
+        {!successData && (
+          <div className="mb-10 px-4 md:px-12">
+            <div className="relative flex items-center justify-between">
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 w-full bg-slate-200 -z-10" />
+              {[
+                { title: 'Jalur', desc: 'Pilihan Jalur' },
+                { title: 'Jenjang', desc: 'Pilihan Jenjang' },
+                { title: 'Biodata', desc: 'Lengkapi Data' }
+              ].map((s, i) => {
+                const isActive = step === i + 1
+                const isPassed = step > i + 1
+                return (
+                  <div key={s.title} className="flex flex-col items-center bg-background px-2">
+                    <div className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-300",
+                      isActive ? "border-emerald-primary bg-emerald-light/30 text-emerald-primary shadow-md shadow-emerald-primary/20 scale-110" :
+                        isPassed ? "border-emerald-primary bg-emerald-primary text-white" :
+                          "border-slate-200 bg-white text-slate-400"
+                    )}>
+                      {isPassed ? <Check className="h-5 w-5" /> : <span className="font-bold">{i + 1}</span>}
+                    </div>
+                    <div className="mt-2 text-center">
+                      <p className={cn("text-sm font-bold", isActive ? "text-slate-900" : isPassed ? "text-emerald-primary" : "text-slate-400")}>{s.title}</p>
+                      <p className="hidden md:block text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">{s.desc}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        <Button variant="ghost" onClick={handleBack} className="mb-4 text-slate-500 hover:text-slate-900">
+          <ArrowLeft className="mr-2 h-4 w-4" /> {step === 1 ? 'Ke Beranda' : 'Kembali'}
         </Button>
 
         {step === 1 && (
-          <Card className="glass-card shadow-xl border-primary/10 animate-in fade-in slide-in-from-right-4 duration-300">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold font-heading">Jalur Pendaftaran</CardTitle>
-              <CardDescription>Pilih jalur pendaftaran yang sesuai dengan kondisi Anda.</CardDescription>
+          <Card className="glass-card shadow-2xl border-white/50 bg-white/80 backdrop-blur-xl animate-in fade-in slide-in-from-right-4 duration-500 overflow-hidden">
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-primary to-gold-accent" />
+            <CardHeader className="text-center pt-8">
+              <CardTitle className="text-2xl font-bold font-heading">Pilih Jalur Pendaftaran</CardTitle>
+              <CardDescription className="text-base">Tentukan jalur pendaftaran yang sesuai dengan riwayat pendidikan calon siswa.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {noActiveWave && (
@@ -245,45 +297,59 @@ export default function RegisterPage() {
                 </Alert>
               )}
               {[
-                { value: 'reguler', icon: BookOpen, title: 'Reguler (Peserta Didik Baru)', desc: "Pendaftaran untuk lulusan jenjang sebelumnya (SD ke SMP, atau SMP ke SMK) yang ingin masuk pada tahun ajaran baru tingkat awal.", bg: 'bg-blue-100 text-blue-600' },
-                { value: 'pindahan', icon: ArrowRight, title: 'Pindahan (Mutasi Masuk)', desc: 'Pendaftaran untuk siswa yang pindah sekolah di pertengahan tahun ajaran atau naik kelas namun pindah sekolah.', bg: 'bg-amber-100 text-amber-600' },
+                { value: 'reguler', icon: BookOpen, title: 'Reguler (Peserta Didik Baru)', desc: "Untuk lulusan jenjang sebelumnya yang ingin masuk pada tahun ajaran baru.", bg: 'bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-emerald-500/20' },
+                { value: 'pindahan', icon: ArrowRight, title: 'Pindahan (Mutasi Masuk)', desc: 'Untuk siswa yang pindah sekolah di pertengahan tahun ajaran atau naik kelas.', bg: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/20' },
               ].map(opt => {
                 const open = isPathOpen(opt.value)
                 const active = formData.registration_path === opt.value
                 return (
                   <div
                     key={opt.value}
-                    className={`p-4 border-2 rounded-xl transition-all ${open ? 'cursor-pointer hover:border-primary/50' : 'opacity-50 cursor-not-allowed'} ${active && open ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}
+                    className={cn(
+                      "group relative p-5 rounded-2xl border-2 transition-all duration-300 overflow-hidden",
+                      open ? "cursor-pointer hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50" : "opacity-50 cursor-not-allowed",
+                      active && open ? "border-emerald-primary bg-emerald-50/50 ring-4 ring-emerald-primary/10" : "border-slate-100 bg-white hover:border-emerald-primary/30"
+                    )}
                     onClick={() => { if (!open) return; setFormData({...formData, registration_path: opt.value, registration_level: ''}) }}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className={`p-3 rounded-lg ${opt.bg}`}><opt.icon className="h-6 w-6" /></div>
-                      <div>
-                        <h3 className="font-bold text-lg flex items-center gap-2">
+                    {active && <div className="absolute right-4 top-4 h-3 w-3 rounded-full bg-emerald-primary animate-pulse" />}
+                    <div className="flex items-start gap-4">
+                      <div className={cn("p-3.5 rounded-xl shadow-lg transition-transform duration-300 group-hover:scale-110", opt.bg)}>
+                        <opt.icon className="h-6 w-6" />
+                      </div>
+                      <div className="pt-1">
+                        <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
                           {opt.title}
-                          {!open && <span className="text-xs font-semibold text-rose-danger border border-rose-danger/30 bg-rose-light rounded-md px-2 py-0.5">Ditutup</span>}
+                          {!open && <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 border border-rose-200 bg-rose-50 rounded-full px-2.5 py-0.5">Ditutup</span>}
                         </h3>
-                        <p className="text-sm text-muted-foreground mt-1">{opt.desc}</p>
+                        <p className="text-sm text-slate-500 mt-1.5 leading-relaxed pr-6">{opt.desc}</p>
                       </div>
                     </div>
                   </div>
                 )
               })}
 
-              <div className="flex justify-end pt-4">
-                <Button onClick={handleNext} disabled={!formData.registration_path}>Lanjut <ArrowRight className="ml-2 h-4 w-4" /></Button>
+              <div className="flex justify-end pt-6">
+                <Button 
+                  onClick={handleNext} 
+                  disabled={!formData.registration_path}
+                  className="rounded-full bg-emerald-primary px-8 h-12 text-base font-bold shadow-lg shadow-emerald-primary/25 transition-all hover:bg-emerald-dark hover:shadow-emerald-primary/40"
+                >
+                  Lanjut <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
         {step === 2 && (
-          <Card className="glass-card shadow-xl border-primary/10 animate-in fade-in slide-in-from-right-4 duration-300">
-            <CardHeader className="text-center">
+          <Card className="glass-card shadow-2xl border-white/50 bg-white/80 backdrop-blur-xl animate-in fade-in slide-in-from-right-4 duration-500 overflow-hidden">
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-primary to-gold-accent" />
+            <CardHeader className="text-center pt-8">
               <CardTitle className="text-2xl font-bold font-heading">Jenjang Pendidikan</CardTitle>
-              <CardDescription>Pilih jenjang dan kelas tujuan pendaftaran.</CardDescription>
+              <CardDescription className="text-base">Pilih jenjang dan tingkat tujuan pendaftaran calon siswa.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {availableLevels.length === 0 ? (
                 <Alert type="warning" title="Jenjang Tidak Tersedia">
                   Gelombang yang aktif saat ini tidak membuka jenjang untuk jalur {formData.registration_path === 'pindahan' ? 'pindahan' : 'reguler'}. Silakan pilih jalur lain atau hubungi panitia.
@@ -293,35 +359,58 @@ export default function RegisterPage() {
                   {availableLevels.map(lvl => (
                     <div
                       key={lvl}
-                      className={`p-4 border-2 rounded-xl cursor-pointer text-center transition-all hover:border-primary/50 ${effectiveRegistrationLevel === lvl ? 'border-primary bg-primary/5' : 'border-border bg-background'}`}
+                      className={cn(
+                        "group p-6 border-2 rounded-2xl cursor-pointer text-center transition-all duration-300",
+                        effectiveRegistrationLevel === lvl 
+                          ? "border-emerald-primary bg-emerald-50/50 ring-4 ring-emerald-primary/10 shadow-lg shadow-emerald-primary/10" 
+                          : "border-slate-100 bg-white hover:border-emerald-primary/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50"
+                      )}
                       onClick={() => setFormData({...formData, registration_level: lvl})}
                     >
-                      <GraduationCap className={`h-8 w-8 mx-auto mb-2 ${effectiveRegistrationLevel === lvl ? 'text-primary' : 'text-muted-foreground'}`} />
-                      <h3 className="font-bold text-lg">{lvl}</h3>
+                      <div className={cn(
+                        "mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-300 group-hover:scale-110",
+                        effectiveRegistrationLevel === lvl ? "bg-emerald-primary text-white shadow-md shadow-emerald-primary/30" : "bg-slate-100 text-slate-400"
+                      )}>
+                        <GraduationCap className="h-7 w-7" />
+                      </div>
+                      <h3 className={cn("font-bold text-lg", effectiveRegistrationLevel === lvl ? "text-emerald-900" : "text-slate-700")}>{lvl}</h3>
                     </div>
                   ))}
                 </div>
               )}
 
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={handleBack}>Kembali</Button>
-                <Button onClick={handleNext} disabled={!effectiveRegistrationLevel}>Lanjut <ArrowRight className="ml-2 h-4 w-4" /></Button>
+              <div className="flex justify-end pt-6 border-t border-slate-100">
+                <Button 
+                  onClick={handleNext} 
+                  disabled={!effectiveRegistrationLevel}
+                  className="rounded-full bg-emerald-primary px-8 h-12 text-base font-bold shadow-lg shadow-emerald-primary/25 transition-all hover:bg-emerald-dark hover:shadow-emerald-primary/40"
+                >
+                  Lanjut ke Biodata <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
         {step === 3 && (
-          <Card className="glass-card shadow-xl border-primary/10 animate-in fade-in slide-in-from-right-4 duration-300">
-            <CardHeader className="text-center">
+          <Card className="glass-card shadow-2xl border-white/50 bg-white/80 backdrop-blur-xl animate-in fade-in slide-in-from-right-4 duration-500 overflow-hidden">
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-primary to-gold-accent" />
+            <CardHeader className="text-center pt-8 border-b border-slate-100/50 bg-white/50 pb-6 mb-6">
               <CardTitle className="text-2xl font-bold font-heading">Formulir Biodata</CardTitle>
-              <CardDescription>
+              <CardDescription className="text-base">
                 Lengkapi data calon siswa dengan benar sesuai dokumen resmi.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="px-6 md:px-10 pb-10">
+              <form onSubmit={handleSubmit} className="space-y-8">
+                
+                {/* Section: Data Diri */}
+                <div className="space-y-5">
+                  <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
+                    <div className="h-6 w-1.5 rounded-full bg-emerald-primary" />
+                    <h3 className="text-lg font-bold text-slate-800">Identitas Calon Siswa</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="full_name">Nama Lengkap (Sesuai Ijazah/Akta) *</Label>
                     <Input
@@ -365,22 +454,34 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="birth_place">Tempat Lahir *</Label>
+                    <Label htmlFor="birth_place" className="font-semibold text-slate-700">Tempat Lahir *</Label>
                     <Input
                       id="birth_place" required maxLength={100}
                       value={formData.birth_place}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, birth_place: e.target.value})}
+                      className="transition-shadow focus-visible:ring-emerald-primary/30 focus-visible:border-emerald-primary"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="birth_date">Tanggal Lahir *</Label>
+                    <Label htmlFor="birth_date" className="font-semibold text-slate-700">Tanggal Lahir *</Label>
                     <Input
                       id="birth_date" type="date" required max={todayStr}
                       value={formData.birth_date}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, birth_date: e.target.value})}
+                      className="transition-shadow focus-visible:ring-emerald-primary/30 focus-visible:border-emerald-primary"
                     />
                   </div>
+                  </div>
+                </div>
+                
+                {/* Section: Kontak & Asal */}
+                <div className="space-y-5 pt-4">
+                  <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
+                    <div className="h-6 w-1.5 rounded-full bg-emerald-primary" />
+                    <h3 className="text-lg font-bold text-slate-800">Kontak & Asal Sekolah</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Aktif *</Label>
@@ -412,18 +513,25 @@ export default function RegisterPage() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="previous_school">Asal Sekolah (TK/SD/SMP) *</Label>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="previous_school" className="font-semibold text-slate-700">Asal Sekolah (TK/SD/SMP) *</Label>
                     <Input
                       id="previous_school" required maxLength={150}
                       value={formData.previous_school}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, previous_school: e.target.value})}
+                      className="transition-shadow focus-visible:ring-emerald-primary/30 focus-visible:border-emerald-primary"
                     />
                   </div>
-
-                  <div className="md:col-span-2 pt-4 pb-2">
-                    <h3 className="text-lg font-semibold border-b pb-2">Data Domisili</h3>
                   </div>
+                </div>
+
+                {/* Section: Domisili */}
+                <div className="space-y-5 pt-4">
+                  <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
+                    <div className="h-6 w-1.5 rounded-full bg-emerald-primary" />
+                    <h3 className="text-lg font-bold text-slate-800">Data Domisili</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
                   <div className="space-y-2">
                     <Label htmlFor="province">Provinsi *</Label>
@@ -473,19 +581,25 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="address">Alamat Detail *</Label>
+                    <Label htmlFor="address" className="font-semibold text-slate-700">Alamat Detail *</Label>
                     <Textarea
                       id="address" required maxLength={500}
                       placeholder="Contoh: Jl. Ahmad Yani No. 12 RT 01/RW 03, Perumahan ABC Blok C5"
                       value={formData.address}
                       onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({...formData, address: e.target.value})}
-                      className="min-h-[80px]"
+                      className="min-h-[100px] transition-shadow focus-visible:ring-emerald-primary/30 focus-visible:border-emerald-primary resize-y"
                     />
                   </div>
+                  </div>
+                </div>
 
-                  {showMajor && (
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="major_choice">Pilihan Kompetensi Keahlian *</Label>
+                {showMajor && (
+                  <div className="space-y-5 pt-4">
+                    <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
+                      <div className="h-6 w-1.5 rounded-full bg-emerald-primary" />
+                      <h3 className="text-lg font-bold text-slate-800">Pilihan Keahlian</h3>
+                    </div>
+                    <div className="space-y-2">
                       <Select required value={formData.major_choice} onValueChange={(v: string) => setFormData({...formData, major_choice: v})}>
                         <SelectTrigger><SelectValue placeholder="Pilih kompetensi keahlian..." /></SelectTrigger>
                         <SelectContent>
@@ -498,23 +612,31 @@ export default function RegisterPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                  )}
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <Alert type="warning" title="Periksa Email & No. WhatsApp Anda" className="border-amber-200 bg-amber-50">
+                    <span className="text-amber-800">Pastikan email dan nomor WhatsApp yang Anda isi sudah benar, karena sistem akan mengirim kredensial login (username & password) ke alamat email dan nomor WhatsApp tersebut.</span>
+                  </Alert>
                 </div>
 
-                <Alert type="warning" title="Periksa Email & No. WhatsApp Anda">
-                  Pastikan email dan nomor WhatsApp yang Anda isi sudah benar, karena sistem akan mengirim
-                  kredensial login (username &amp; password) ke alamat email dan nomor WhatsApp tersebut.
-                </Alert>
-
-                <div className="flex justify-between pt-4 border-t border-border">
-                  <Button type="button" variant="outline" onClick={handleBack}>Kembali</Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? 'Memproses...' : 'Selesaikan Pendaftaran'}
+                <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-8 border-t border-slate-100">
+                  <Button 
+                    type="submit" 
+                    disabled={loading}
+                    className="w-full sm:w-auto rounded-full bg-emerald-primary px-8 h-12 text-base font-bold shadow-lg shadow-emerald-primary/25 transition-all hover:bg-emerald-dark hover:shadow-emerald-primary/40 disabled:opacity-70"
+                  >
+                    {loading ? (
+                      <span className="flex items-center gap-2">Memproses... <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /></span>
+                    ) : (
+                      <span className="flex items-center gap-2">Selesaikan Pendaftaran <Check className="h-5 w-5" /></span>
+                    )}
                   </Button>
                 </div>
 
                 {submitError && (
-                  <Alert type="error" title="Pendaftaran gagal">
+                  <Alert type="error" title="Pendaftaran gagal" className="mt-4">
                     {submitError}
                   </Alert>
                 )}

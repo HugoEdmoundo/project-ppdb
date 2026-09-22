@@ -345,35 +345,30 @@ export async function getNotificationLogs(params?: any): Promise<any> {
 
 export { getStoredUser, clearAuth, apiFetch }
 
-// ── WhatsApp Service ──────────────────────────────────────
+// ── WhatsApp Service (via FastAPI proxy) ─────────────────────
 
-export const WA_API_BASE = (import.meta.env.VITE_WA_URL || 'http://localhost:3100').replace(/\/+$/, '')
-export const WA_API_KEY = import.meta.env.VITE_WA_API_KEY || ''
+/**
+ * Semua panggilan WA lewat FastAPI (`/whatsapp/*`) — frontend TIDAK pernah
+ * menyentuh microservice :3100 langsung. Auth cukup cookie httpOnly (apiFetch).
+ * API key microservice hanya tersimpan di backend env (WA_SERVICE_API_KEY).
+ */
 
-async function waFetch<T>(endpoint: string, opts: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${WA_API_BASE}${endpoint}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': WA_API_KEY,
-      ...(opts.headers as Record<string, string>),
-    },
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: res.statusText }))
-    throw new Error(body?.error || `WA API ${res.status}`)
-  }
-  if (res.status === 204) return undefined as T
-  return res.json() as Promise<T>
-}
-
-export interface WASessionInfo {
-  status: 'initializing' | 'qr' | 'authenticated' | 'ready' | 'disconnected' | 'destroyed'
+export interface WAProxyStatus {
+  configured: boolean
+  message?: string
+  status: string
+  isReady: boolean
   phone?: string
   pushName?: string
-  qrCode?: string
   connectedAt?: string
   lastActivity?: string
+  pairingCode?: string
+  pairingPhone?: string
+  health?: { checks?: Record<string, { status: string; detail?: string }> } | null
+  webhookUrl?: string | null
+  webhookMismatch?: boolean | null
+  expectedWebhookUrl?: string | null
+  error?: string | null
 }
 
 export interface WAQueueStats {
@@ -399,28 +394,48 @@ export interface WALogEntry {
   sent_at?: string
 }
 
-export async function waGetSession(): Promise<{ success: boolean; data: WASessionInfo }> {
-  return waFetch('/api/session')
+export async function waGetStatus(): Promise<WAProxyStatus> {
+  return apiFetch('/whatsapp/status')
 }
 
-export async function waInitSession(): Promise<{ success: boolean; message: string }> {
-  return waFetch('/api/session/init', { method: 'POST' })
+export async function waGetQrImage(): Promise<any> {
+  return apiFetch('/whatsapp/qr')
 }
 
-export async function waLogoutSession(): Promise<{ success: boolean; message: string }> {
-  return waFetch('/api/session/logout', { method: 'POST' })
+export async function waInitSession(): Promise<any> {
+  return apiFetch('/whatsapp/connect', { method: 'POST' })
 }
 
-export async function waDestroySession(): Promise<{ success: boolean; message: string }> {
-  return waFetch('/api/session', { method: 'DELETE' })
+export async function waRequestPairingCode(phone: string): Promise<{
+  success: boolean
+  data?: { code: string; phone: string }
+  error?: string
+  message?: string
+}> {
+  return apiFetch('/whatsapp/pairing-code', {
+    method: 'POST',
+    body: JSON.stringify({ phone }),
+  })
 }
 
-export async function waGetQrImage(): Promise<{ success: boolean; data: { qrCode: string } }> {
-  return waFetch('/api/session/qr/image')
+export async function waCancelPairing(): Promise<any> {
+  return apiFetch('/whatsapp/pairing-code/cancel', { method: 'POST' })
+}
+
+export async function waLogoutSession(): Promise<any> {
+  return apiFetch('/whatsapp/disconnect', { method: 'POST' })
+}
+
+export async function waSendTest(phone: string): Promise<any> {
+  return apiFetch('/whatsapp/test', { method: 'POST', body: JSON.stringify({ phone }) })
+}
+
+export async function waClearTemplateCache(): Promise<any> {
+  return apiFetch('/whatsapp/template-cache/clear', { method: 'POST' })
 }
 
 export async function waGetQueueStats(): Promise<{ success: boolean; data: WAQueueStats }> {
-  return waFetch('/api/messages/queue')
+  return apiFetch('/whatsapp/queue')
 }
 
 export async function waGetLogs(params?: {
@@ -432,17 +447,10 @@ export async function waGetLogs(params?: {
   if (params?.page) q.set('page', String(params.page))
   if (params?.perPage) q.set('perPage', String(params.perPage))
   if (params?.status) q.set('status', params.status)
-  return waFetch(`/api/messages/logs${q.toString() ? '?' + q : ''}`)
+  return apiFetch(`/whatsapp/logs${q.toString() ? '?' + q : ''}`)
 }
 
-export async function waGetHealth(): Promise<any> {
-  const res = await fetch(`${WA_API_BASE}/health/detailed`, {
-    headers: { 'X-API-Key': WA_API_KEY },
-  })
-  return res.json()
-}
-
-/** SSE stream URL untuk QR code realtime */
+/** SSE stream URL untuk QR realtime (via proxy FastAPI, cookie auth). */
 export function waGetQrSseUrl(): string {
-  return `${WA_API_BASE}/api/session/qr`
+  return `${API_BASE}/whatsapp/qr-sse`
 }

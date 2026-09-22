@@ -12,9 +12,11 @@ import CrossTabSync from '@/app/components/CrossTabSync'
 import {
   Newspaper, GraduationCap, Building2, Users, Trophy,
   Image as ImageIcon, MessageSquare, Link as LinkIcon, Phone, Settings,
-  Menu, ChevronLeft, LogOut,
+  Menu, ChevronLeft, ChevronDown, ChevronRight, LogOut,
   LayoutDashboard, ArrowRight, Calendar, Sparkles, PenSquare, PictureInPicture2,
+  Globe, ExternalLink, User as UserIcon,
 } from 'lucide-react'
+import ProfileModal from '@/app/components/ProfileModal'
 import {
   Avatar,
   AvatarFallback,
@@ -24,7 +26,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/DropdownMenu'
@@ -68,6 +69,12 @@ const SECTIONS: SectionDef[] = [
   { key: 'settings', label: 'Pengaturan', icon: Settings, tint: 'from-slate-600 to-slate-800', href: '/admin/dashboard?tab=settings', description: 'Konfigurasi situs' },
 ]
 
+const SIDEBAR_GROUPS: { label: string; keys: string[] }[] = [
+  { label: 'Konten', keys: ['news', 'programs', 'facilities', 'gallery', 'testimonials'] },
+  { label: 'Informasi', keys: ['staff', 'achievements', 'social', 'contact'] },
+  { label: 'Sistem', keys: ['settings'] },
+]
+
 // ─── Main Component ─────────────────────────────────────────
 
 export default function AdminOverview() {
@@ -80,6 +87,7 @@ export default function AdminOverview() {
   const [error, setError] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
   const [logoUrl, setLogoUrl] = useState('/download.png')
 
   useSSE('companyprofile')
@@ -229,6 +237,7 @@ export default function AdminOverview() {
     <div className="min-h-dvh bg-background flex">
       <AdminToast />
       <CrossTabSync />
+      {profileOpen && <ProfileModal open onClose={() => setProfileOpen(false)} />}
 
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -238,67 +247,144 @@ export default function AdminOverview() {
       {/* ── Sidebar ── */}
       <aside
         className={cn(
-          'fixed md:sticky top-0 left-0 z-40 h-dvh glass-sidebar flex flex-col transition-all duration-300',
+          'fixed md:sticky top-0 left-0 z-40 h-dvh bg-gradient-to-b from-white/80 to-white/60 backdrop-blur-xl flex flex-col border-r border-border/50 transition-all duration-300',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-          collapsed ? 'w-16' : 'w-60'
+          collapsed ? 'w-16' : 'w-64'
         )}
       >
-        <div className={cn('relative flex items-center border-b border-border/60 bg-white/40', collapsed ? 'justify-center px-2 py-3' : 'px-5 py-4')}>
+        {/* Header */}
+        <div className={cn('relative flex items-center border-b border-border/60 bg-white/30', collapsed ? 'justify-center px-2 py-4' : 'px-5 py-4')}>
           {collapsed ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-auto max-w-8 object-contain" />
+            logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-auto max-w-8 object-contain drop-shadow-sm" />
+            ) : (
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-emerald-700 text-white flex items-center justify-center font-bold text-lg select-none shadow-sm">ار</div>
+            )
           ) : (
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 object-contain shrink-0" />
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 object-contain shrink-0 drop-shadow-sm" />
+              ) : (
+                <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-primary to-emerald-700 text-white flex items-center justify-center font-bold text-lg shrink-0 select-none shadow-sm">ار</div>
+              )}
               <div className="min-w-0">
                 <div className="font-heading text-sm font-bold text-foreground truncate">PTDARRAHMAN</div>
-                <div className="text-[11px] text-muted-foreground">Admin CMS</div>
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]" />
+                  Admin CMS
+                </div>
               </div>
             </div>
           )}
           <button
-            onClick={() => { setCollapsed((p) => { const v = !p; localStorage.setItem('cp_collapsed', String(v)); return v }) }}
-            className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 h-6 w-6 items-center justify-center rounded-full border border-border bg-white text-muted-foreground shadow-sm transition-all hover:text-foreground"
+            onClick={() => { setCollapsed(p => { const v = !p; localStorage.setItem('cp_collapsed', String(v)); return v }) }}
+            className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 h-6 w-6 items-center justify-center rounded-full border border-border bg-white/90 text-muted-foreground shadow-sm transition-all hover:text-foreground hover:scale-110"
+            title={collapsed ? 'Perlebar sidebar' : 'Sempitkan sidebar'}
           >
             <ChevronLeft className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1 no-scrollbar">
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5 no-scrollbar">
           <Link
             href="/admin/overview"
+            onClick={() => setSidebarOpen(false)}
             className={cn(
-              'w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-150 text-left',
+              'group/btn relative w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-150 text-left',
               collapsed ? 'justify-center p-2' : 'px-3 py-2.5',
-              'sidebar-item-active scale-[1.01]'
+              'sidebar-item-active bg-primary/10 text-foreground font-semibold shadow-sm'
             )}
             title={collapsed ? 'Dashboard' : undefined}
           >
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-full bg-primary" />
             <LayoutDashboard className="h-4 w-4 shrink-0" />
             {!collapsed && <span className="truncate">Dashboard</span>}
           </Link>
 
-          {filteredSections.map((s) => {
-            const Icon = s.icon
-            return (
-              <Link
-                key={s.key}
-                href={s.href}
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  'w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-150 text-left',
-                  collapsed ? 'justify-center p-2' : 'px-3 py-2.5',
-                  'text-muted-foreground hover:bg-primary/10 hover:text-foreground'
-                )}
-                title={collapsed ? s.label : undefined}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {!collapsed && <span className="truncate">{s.label}</span>}
-              </Link>
-            )
-          })}
+          {!collapsed ? (
+            SIDEBAR_GROUPS.map((group) => {
+              const items = filteredSections.filter((s) => group.keys.includes(s.key))
+              if (items.length === 0) return null
+              return (
+                <div key={group.label}>
+                  <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/80 select-none">
+                    {group.label}
+                  </p>
+                  <div className="space-y-0.5">
+                    {items.map((s) => {
+                      const Icon = s.icon
+                      return (
+                        <Link
+                          key={s.key}
+                          href={s.href}
+                          onClick={() => setSidebarOpen(false)}
+                          className={cn(
+                            'group/btn relative w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-150 text-left',
+                            collapsed ? 'justify-center p-2' : 'px-3 py-2.5',
+                            'text-muted-foreground hover:bg-primary/10 hover:text-foreground'
+                          )}
+                          title={collapsed ? s.label : undefined}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          {!collapsed && <span className="truncate">{s.label}</span>}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            filteredSections.map((s) => {
+              const Icon = s.icon
+              return (
+                <Link
+                  key={s.key}
+                  href={s.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    'group/btn relative w-full flex items-center justify-center rounded-xl p-2 text-sm font-medium transition-all duration-150',
+                    'text-muted-foreground hover:bg-primary/10 hover:text-foreground'
+                  )}
+                  title={s.label}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                </Link>
+              )
+            })
+          )}
         </nav>
+
+        {/* Footer */}
+        <div className={cn('border-t border-border/60 px-3 py-4 space-y-2', collapsed && 'px-2')}>
+          <Link
+            href="/"
+            target="_blank"
+            onClick={() => setSidebarOpen(false)}
+            className={cn(
+              'group/link w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-150 text-left',
+              collapsed ? 'justify-center p-2' : 'px-3 py-2.5',
+              'text-muted-foreground hover:bg-primary/10 hover:text-foreground'
+            )}
+            title="Lihat Situs"
+          >
+            <Globe className="h-4 w-4 shrink-0" />
+            {!collapsed && (
+              <>
+                <span className="truncate">Lihat Situs</span>
+                <ExternalLink className="h-3.5 w-3.5 ml-auto text-muted-foreground/60 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+              </>
+            )}
+          </Link>
+          {!collapsed && (
+            <p className="px-3 pt-1 text-[10px] text-muted-foreground/70 leading-relaxed select-none">
+              © {new Date().getFullYear()} PTDARRAHMAN
+            </p>
+          )}
+        </div>
       </aside>
 
       {/* ── Main Area ── */}
@@ -312,35 +398,79 @@ export default function AdminOverview() {
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <h1 className="hidden sm:block font-heading text-base font-bold text-foreground">
-                Dashboard
-              </h1>
+              <div className="hidden sm:flex items-center gap-2 text-sm">
+                <span className="font-heading text-base font-bold text-foreground">Admin CMS</span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
+                <span className="text-muted-foreground">Dashboard</span>
+              </div>
             </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="inline-flex items-center gap-2 rounded-xl p-2 transition-all hover:bg-primary/10">
-                  <Avatar className="h-8 w-8">
+                <button
+                  className="group flex items-center gap-2.5 rounded-xl border border-transparent bg-white/50 py-1.5 pl-1.5 pr-2.5 sm:pr-3 text-left transition-all duration-200 hover:bg-white/80 hover:border-emerald-primary/20 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  <Avatar className="h-8 w-8 ring-1 ring-emerald-primary/20 transition-shadow group-hover:ring-emerald-primary/40">
                     <AvatarImage src={adminUser?.avatar_url || undefined} className="object-cover" />
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
+                    <AvatarFallback className="bg-gradient-to-br from-emerald-primary to-[#145337] text-white text-sm font-bold">
                       {adminUser?.full_name?.[0] || adminUser?.username?.[0] || 'A'}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="hidden sm:block text-left">
-                    <div className="text-sm font-semibold text-foreground leading-tight">{adminUser?.full_name || adminUser?.username}</div>
-                    <div className="text-[11px] text-muted-foreground">{adminUser?.role_name || adminUser?.user_type}</div>
+                  <div className="hidden sm:block min-w-0">
+                    <div className="text-sm font-bold text-foreground leading-tight truncate">
+                      {adminUser?.full_name || adminUser?.username}
+                    </div>
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <span className="h-1 w-1 rounded-full bg-emerald-500" />
+                      <span className="truncate">{adminUser?.role_name || adminUser?.user_type}</span>
+                    </div>
                   </div>
+                  <ChevronDown className="hidden sm:block h-3.5 w-3.5 text-muted-foreground/60 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="flex flex-col gap-0.5">
-                  <span className="text-sm font-semibold text-foreground">{adminUser?.full_name || adminUser?.username}</span>
-                  <span className="text-xs font-normal text-muted-foreground">{adminUser?.email}</span>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer text-rose-danger focus:text-rose-danger focus:bg-rose-light/60" onSelect={handleLogout}>
+              <DropdownMenuContent align="end" sideOffset={10} className="w-64 p-1.5">
+                {/* User card header */}
+                <div className="rounded-xl border border-emerald-primary/15 bg-gradient-to-br from-emerald-primary/10 to-emerald-primary/5 p-3 mb-1.5">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
+                      <AvatarImage src={adminUser?.avatar_url || undefined} className="object-cover" />
+                      <AvatarFallback className="bg-gradient-to-br from-emerald-primary to-[#145337] text-white text-sm font-bold">
+                        {adminUser?.full_name?.[0] || adminUser?.username?.[0] || 'A'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-foreground leading-tight">
+                        {adminUser?.full_name || adminUser?.username}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{adminUser?.email}</p>
+                    </div>
+                  </div>
+                  <div className="mt-2.5 flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-primary">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      {adminUser?.role_name || adminUser?.user_type || 'Admin'}
+                    </span>
+                  </div>
+                </div>
+
+                <DropdownMenuItem className="cursor-pointer rounded-lg px-2.5 py-2" onSelect={() => setProfileOpen(true)}>
+                  <UserIcon className="h-4 w-4 text-emerald-primary" />
+                  <span>Lihat Profil</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer rounded-lg px-2.5 py-2" onSelect={() => window.open('/', '_blank')}>
+                  <Globe className="h-4 w-4 text-emerald-primary" />
+                  <span>Lihat Situs</span>
+                  <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground/50" />
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                <DropdownMenuItem
+                  className="cursor-pointer rounded-lg px-2.5 py-2 text-rose-danger focus:bg-rose-light/60 focus:text-rose-danger"
+                  onSelect={handleLogout}
+                >
                   <LogOut className="h-4 w-4" />
-                  Logout
+                  <span>Keluar</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

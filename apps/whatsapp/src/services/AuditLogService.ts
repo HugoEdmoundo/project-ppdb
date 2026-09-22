@@ -7,7 +7,6 @@
 
 import { v4 as uuidv4 } from "uuid";
 import { execute, query } from "../lib/database";
-import { logger } from "../lib/logger";
 import type {
   NotificationLog,
   NotificationLogStatus,

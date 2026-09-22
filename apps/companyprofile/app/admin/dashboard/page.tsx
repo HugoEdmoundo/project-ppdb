@@ -31,7 +31,7 @@ import { SettingsEditor } from './SettingsEditor'
 import { ContactEditor } from './ContactEditor'
 import { CrudFormDialog } from './CrudFormDialog'
 import {
-  TABS, TABLE_COLS, FORM_FIELDS, CONTENT_FIELDS, HAS_CONTENT, truncate,
+  TABS, TABLE_COLS, FORM_FIELDS, CONTENT_FIELDS, truncate,
 } from './_constants'
 import type { RowRecord, FormState, AdminUser } from './_types'
 
@@ -119,7 +119,8 @@ export default function AdminDashboard() {
     const params = new URLSearchParams(window.location.search)
     const tab = params.get('tab')
     if (tab && TABS.some((t) => t.key === tab)) {
-      setActiveTab(tab)
+      const id = window.setTimeout(() => setActiveTab(tab), 0)
+      return () => window.clearTimeout(id)
     }
   }, [])
 
@@ -228,34 +229,39 @@ export default function AdminDashboard() {
 
   // ── Bootstrap: load user & sidebar state ─────────────────────────────────
   useEffect(() => {
-    const saved = localStorage.getItem('cp_collapsed')
-    if (saved) setCollapsed(saved === 'true')
+    // Deferred ke async boundary: membaca localStorage untuk inisialisasi
+    // post-hydration (SSR-safe) tanpa setState sinkron dalam effect.
+    const id = window.setTimeout(() => {
+      const saved = localStorage.getItem('cp_collapsed')
+      if (saved) setCollapsed(saved === 'true')
 
-    const userRaw = localStorage.getItem('admin_user')
-    if (!userRaw) {
-      ;(async () => {
-        try {
-          const me = await api.getMe()
-          if (me) {
-            localStorage.setItem('admin_user', JSON.stringify(me))
-            setAdminUser(me)
+      const userRaw = localStorage.getItem('admin_user')
+      if (!userRaw) {
+        ;(async () => {
+          try {
+            const me = await api.getMe()
+            if (me) {
+              localStorage.setItem('admin_user', JSON.stringify(me))
+              setAdminUser(me)
+            }
+          } catch {
+            localStorage.removeItem('admin_user')
+            router.replace('/auth/login')
           }
-        } catch {
-          localStorage.removeItem('admin_user')
-          router.replace('/auth/login')
-        }
-      })()
-      return
-    }
-    try {
-      const parsed = JSON.parse(userRaw)
-      setAdminUser(parsed)
-      if (parsed.page_permissions?.length > 0) {
-        setPagePermissions(parsed.page_permissions)
+        })()
+        return
       }
-    } catch {
-      localStorage.removeItem('admin_user')
-    }
+      try {
+        const parsed = JSON.parse(userRaw)
+        setAdminUser(parsed)
+        if (parsed.page_permissions?.length > 0) {
+          setPagePermissions(parsed.page_permissions)
+        }
+      } catch {
+        localStorage.removeItem('admin_user')
+      }
+    }, 0)
+    return () => window.clearTimeout(id)
   }, [router])
 
   useEffect(() => {
@@ -263,7 +269,8 @@ export default function AdminDashboard() {
       router.replace('/auth/login')
       return
     }
-    fetchData()
+    const id = window.setTimeout(() => fetchData(), 0)
+    return () => window.clearTimeout(id)
   }, [activeTab, fetchData, router])
 
   // Lock body scroll when form is open

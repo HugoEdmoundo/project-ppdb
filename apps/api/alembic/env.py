@@ -2,9 +2,9 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import URL, engine_from_config, pool
+from sqlalchemy import engine_from_config, pool
 
-from alembic import context
+from alembic import context  # type: ignore[attr-defined]
 
 # Make `src` importable when alembic runs from the api/ directory.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -20,17 +20,7 @@ target_metadata = Base.metadata
 
 
 def _database_url() -> str:
-    if settings.database_url:
-        return settings.database_url
-    url = URL.create(
-        drivername="mysql+pymysql",
-        username=settings.mysql_user,
-        password=settings.mysql_password,
-        host=settings.mysql_host,
-        port=settings.mysql_port,
-        database=settings.mysql_database,
-    )
-    return url.render_as_string(hide_password=False)
+    return settings.database_url
 
 
 def run_migrations_offline() -> None:

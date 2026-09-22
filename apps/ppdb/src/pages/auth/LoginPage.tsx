@@ -136,9 +136,7 @@ export default function LoginPage() {
   // mengembalikan user baru, padahal pengguna belum bermaksud login ulang.
   useEffect(() => {
     if (!loginSuccess || !user) return
-    const isSuperadminUser = user.is_superadmin || user.user_type === 'superadmin'
     const isApplicantUser = user.user_type === 'applicant'
-    const isAdminUser = isSuperadminUser || (!isApplicantUser && Object.values(user.permissions || {}).some(v => v !== 'none'))
 
     const dest = isApplicantUser ? '/applicant' : '/admin/dashboard'
     const timer = setTimeout(() => navigate(dest, { replace: true }), 1200)

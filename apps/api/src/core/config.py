@@ -1,7 +1,9 @@
 from functools import lru_cache
+from typing import cast
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy import URL
 
 
 class Settings(BaseSettings):
@@ -70,6 +72,21 @@ class Settings(BaseSettings):
     @property
     def jwt_refresh_expiry_days(self) -> int:
         return 7
+
+    @property
+    def database_url(self) -> str:
+        """MySQL connection URL (single source of truth for alembic/seed)."""
+        return cast(
+            str,
+            URL.create(
+                drivername="mysql+pymysql",
+                username=self.mysql_user,
+                password=self.mysql_password,
+                host=self.mysql_host,
+                port=self.mysql_port,
+                database=self.mysql_database,
+            ).render_as_string(hide_password=False),
+        )
 
     @property
     def cloudinary_configured(self) -> bool:

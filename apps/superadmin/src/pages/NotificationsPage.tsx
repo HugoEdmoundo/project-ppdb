@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   Send, FileText, Inbox, Bell, Edit2, Eye, EyeOff,
-  CheckCircle2, XCircle, Clock, AlertTriangle, RefreshCw,
+  CheckCircle2, AlertTriangle, RefreshCw,
   ChevronLeft, ChevronRight, Users, MessageSquare, Mail,
   Zap, Search, Info, Copy, Check, Download,
 } from 'lucide-react'
@@ -163,7 +163,7 @@ function VarChip({ varKey, desc, onInsert }: { varKey: string; desc: string; onI
 function SendTab({ templates }: { templates: Template[] }) {
   const { toast } = useToast()
   const [recipients, setRecipients] = useState<Recipient[]>([])
-  const [recLoading, setRecLoading] = useState(false)
+  const [recLoading, setRecLoading] = useState(true)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [filter, setFilter] = useState('')
   const [channel, setChannel] = useState('whatsapp')
@@ -175,7 +175,6 @@ function SendTab({ templates }: { templates: Template[] }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   useEffect(() => {
-    setRecLoading(true)
     Promise.all([
       api.getUsers({ per_page: 500 }),
       api.getApplicants({ perPage: 500 }),
@@ -203,7 +202,12 @@ function SendTab({ templates }: { templates: Template[] }) {
   })
 
   function toggle(id: string) {
-    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+    setSelected(prev => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
   }
 
   function onTplChange(id: string) {
@@ -362,16 +366,13 @@ function TemplateTab() {
   const [loading, setLoading] = useState(true)
   const [editTarget, setEditTarget] = useState<Template | null>(null)
 
-  const fetchTemplates = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await api.apiFetch<Template[]>('/notifications/templates')
-      setTemplates(res)
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal memuat template')
-    } finally {
-      setLoading(false)
-    }
+  const fetchTemplates = useCallback(() => {
+    return api.apiFetch<Template[]>('/notifications/templates')
+      .then((res) => { setTemplates(res) })
+      .catch((e: any) => {
+        toast('error', e.message || 'Gagal memuat template')
+      })
+      .finally(() => { setLoading(false) })
   }, [toast])
 
   useEffect(() => { fetchTemplates() }, [fetchTemplates])
@@ -593,27 +594,26 @@ function LogTab() {
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
   const [eventFilter, setEventFilter] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [autoRefresh, setAutoRefresh] = useState(false)
 
-  const fetchLogs = useCallback(async (p = page, status = statusFilter, event = eventFilter) => {
-    setLoading(true)
-    try {
-      const qs = new URLSearchParams({ page: String(p), perPage: '20' })
-      if (status) qs.set('status', status)
-      if (event) qs.set('event_key', event)
-      const res = await api.apiFetch<any>(`/notifications/logs?${qs}`)
-      setLogs(res?.data || [])
-      setTotal(res?.total ?? 0)
-      setTotalPages(res?.totalPages ?? Math.ceil((res?.total ?? 0) / 20))
-    } catch (e: any) {
-      toast('error', e.message || 'Gagal memuat log')
-    } finally {
-      setLoading(false)
-    }
+  const fetchLogs = useCallback((p = page, status = statusFilter, event = eventFilter) => {
+    const qs = new URLSearchParams({ page: String(p), perPage: '20' })
+    if (status) qs.set('status', status)
+    if (event) qs.set('event_key', event)
+    return api.apiFetch<any>(`/notifications/logs?${qs}`)
+      .then((res) => {
+        setLogs(res?.data || [])
+        setTotal(res?.total ?? 0)
+        setTotalPages(res?.totalPages ?? Math.ceil((res?.total ?? 0) / 20))
+      })
+      .catch((e: any) => {
+        toast('error', e.message || 'Gagal memuat log')
+      })
+      .finally(() => { setLoading(false) })
   }, [page, statusFilter, eventFilter, toast])
 
-  useEffect(() => { fetchLogs(1, statusFilter, eventFilter) }, [statusFilter, eventFilter])
+  useEffect(() => { fetchLogs(1, statusFilter, eventFilter) }, [fetchLogs, statusFilter, eventFilter])
 
   useEffect(() => {
     if (!autoRefresh) return

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  MessageCircle, Wifi, WifiOff, RefreshCw, LogOut, Trash2,
-  CheckCircle2, XCircle, Clock, AlertTriangle, Activity,
+  Wifi, WifiOff, RefreshCw, LogOut, Trash2,
+  CheckCircle2, XCircle, AlertTriangle, Activity,
   ChevronLeft, ChevronRight, Loader2,
   QrCode, PhoneCall, Server, BarChart3, FileText,
 } from 'lucide-react'
@@ -53,7 +53,7 @@ function QrPanel({
   onRefreshQr: () => void
 }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
-  const [qrLoading, setQrLoading] = useState(false)
+  const [qrLoading, setQrLoading] = useState(true)
   const [qrError, setQrError] = useState<string | null>(null)
   const sseRef = useRef<EventSource | null>(null)
 
@@ -96,26 +96,40 @@ function QrPanel({
   }, [])
 
   // Fallback one-shot fetch jika SSE tidak bisa bawa header
+  const loadQr = useCallback(async () => {
+    const res = await waGetQrImage()
+    if (res.success && res.data.qrCode) return res.data.qrCode
+    return null
+  }, [])
+
   const fetchQrImage = useCallback(async () => {
     setQrLoading(true)
     setQrError(null)
     try {
-      const res = await waGetQrImage()
-      if (res.success && res.data.qrCode) {
-        setQrDataUrl(res.data.qrCode)
-      }
+      const qr = await loadQr()
+      if (qr) setQrDataUrl(qr)
     } catch (err) {
       setQrError((err as Error).message)
     } finally {
       setQrLoading(false)
     }
-  }, [])
+  }, [loadQr])
 
   useEffect(() => {
-    if (status.status === 'qr' && !qrDataUrl) {
-      fetchQrImage()
-    }
-  }, [status.status])
+    if (status.status !== 'qr' || qrDataUrl) return
+    let active = true
+    loadQr()
+      .then((qr) => {
+        if (active && qr) setQrDataUrl(qr)
+      })
+      .catch((err) => {
+        if (active) setQrError((err as Error).message)
+      })
+      .finally(() => {
+        if (active) setQrLoading(false)
+      })
+    return () => { active = false }
+  }, [status.status, qrDataUrl, loadQr])
 
   if (status.status === 'ready') {
     return (
@@ -227,49 +241,43 @@ export default function WhatsAppPage() {
   const [logsTotalPages, setLogsTotalPages] = useState(1)
   const [logsPage, setLogsPage] = useState(1)
   const [logsStatus, setLogsStatus] = useState('')
-  const [logsLoading, setLogsLoading] = useState(false)
+  const [logsLoading, setLogsLoading] = useState(true)
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const notConfigured = !WA_API_KEY
 
   // ── Fetch helpers ──────────────────────────────────────────────────────
 
-  const fetchSession = useCallback(async (silent = false) => {
-    if (!silent) setSessionLoading(true)
-    try {
-      const res = await waGetSession()
-      setSession(res.data)
-    } catch {
-      // service mungkin belum jalan
-    } finally {
-      if (!silent) setSessionLoading(false)
-    }
+  const fetchSession = useCallback((silent = false) => {
+    return waGetSession()
+      .then((res) => { setSession(res.data) })
+      .catch(() => {
+        // service mungkin belum jalan
+      })
+      .finally(() => { if (!silent) setSessionLoading(false) })
   }, [])
 
-  const fetchQueueStats = useCallback(async () => {
-    try {
-      const res = await waGetQueueStats()
-      setQueueStats(res.data)
-    } catch { /* ignore */ }
+  const fetchQueueStats = useCallback(() => {
+    return waGetQueueStats()
+      .then((res) => { setQueueStats(res.data) })
+      .catch(() => { /* ignore */ })
   }, [])
 
-  const fetchHealth = useCallback(async () => {
-    try {
-      const data = await waGetHealth()
-      setHealthData(data)
-    } catch { /* ignore */ }
+  const fetchHealth = useCallback(() => {
+    return waGetHealth()
+      .then((data) => { setHealthData(data) })
+      .catch(() => { /* ignore */ })
   }, [])
 
-  const fetchLogs = useCallback(async (page = 1, status = '') => {
-    setLogsLoading(true)
-    try {
-      const res = await waGetLogs({ page, perPage: 10, status: status || undefined })
-      setLogs(res.data)
-      setLogsTotal(res.total)
-      setLogsTotalPages(res.totalPages)
-    } catch { /* ignore */ } finally {
-      setLogsLoading(false)
-    }
+  const fetchLogs = useCallback((page = 1, status = '') => {
+    return waGetLogs({ page, perPage: 10, status: status || undefined })
+      .then((res) => {
+        setLogs(res.data)
+        setLogsTotal(res.total)
+        setLogsTotalPages(res.totalPages)
+      })
+      .catch(() => { /* ignore */ })
+      .finally(() => { setLogsLoading(false) })
   }, [])
 
   // ── Initial load + polling ─────────────────────────────────────────────
@@ -290,12 +298,12 @@ export default function WhatsAppPage() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
-  }, [notConfigured])
+  }, [notConfigured, fetchHealth, fetchLogs, fetchQueueStats, fetchSession])
 
   useEffect(() => {
     if (notConfigured) return
     fetchLogs(logsPage, logsStatus)
-  }, [logsPage, logsStatus])
+  }, [logsPage, logsStatus, fetchLogs, notConfigured])
 
   // ── Actions ────────────────────────────────────────────────────────────
 
@@ -343,7 +351,6 @@ export default function WhatsAppPage() {
   // ── Render ─────────────────────────────────────────────────────────────
 
   const meta = STATUS_META[session.status] ?? STATUS_META.disconnected
-  const StatusIcon = meta.icon
   const isReady = session.status === 'ready'
   const isActive = ['initializing', 'qr', 'authenticated', 'ready'].includes(session.status)
 
@@ -531,7 +538,7 @@ VITE_WA_API_KEY=<api-key-yang-sama-dengan-apps/whatsapp/.env>`}
                 {/* Status filter */}
                 <select
                   value={logsStatus}
-                  onChange={e => { setLogsStatus(e.target.value); setLogsPage(1) }}
+                  onChange={e => { setLogsLoading(true); setLogsStatus(e.target.value); setLogsPage(1) }}
                   className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">Semua Status</option>
@@ -540,7 +547,7 @@ VITE_WA_API_KEY=<api-key-yang-sama-dengan-apps/whatsapp/.env>`}
                   <option value="failed">Gagal</option>
                   <option value="invalid_number">No. Tidak Valid</option>
                 </select>
-                <button onClick={() => fetchLogs(logsPage, logsStatus)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 transition-colors">
+                <button onClick={() => { setLogsLoading(true); fetchLogs(logsPage, logsStatus) }} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 transition-colors">
                   <RefreshCw className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -622,7 +629,7 @@ VITE_WA_API_KEY=<api-key-yang-sama-dengan-apps/whatsapp/.env>`}
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setLogsPage(p => Math.max(1, p - 1))}
+                    onClick={() => { setLogsLoading(true); setLogsPage(p => Math.max(1, p - 1)) }}
                     disabled={logsPage === 1}
                     className="h-7 w-7 p-0"
                   >
@@ -631,7 +638,7 @@ VITE_WA_API_KEY=<api-key-yang-sama-dengan-apps/whatsapp/.env>`}
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setLogsPage(p => Math.min(logsTotalPages, p + 1))}
+                    onClick={() => { setLogsLoading(true); setLogsPage(p => Math.min(logsTotalPages, p + 1)) }}
                     disabled={logsPage === logsTotalPages}
                     className="h-7 w-7 p-0"
                   >

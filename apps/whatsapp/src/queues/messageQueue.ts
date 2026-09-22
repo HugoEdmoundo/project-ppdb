@@ -12,7 +12,6 @@
  */
 
 import { Queue, QueueEvents, JobsOptions } from "bullmq";
-import { env } from "../config/env";
 import { createRedisConnection } from "../lib/redis";
 import { logger } from "../lib/logger";
 import { MAX_RETRY_ATTEMPTS } from "../lib/retry";

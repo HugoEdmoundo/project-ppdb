@@ -7,6 +7,7 @@
  */
 
 import { Request, Response, NextFunction } from "express";
+import { timingSafeEqual } from "crypto";
 import { env } from "../config/env";
 
 export function apiKeyAuth(
@@ -40,7 +41,7 @@ export function apiKeyAuth(
 
   if (
     expected.length !== provided.length ||
-    !require("crypto").timingSafeEqual(expected, provided)
+    !timingSafeEqual(expected, provided)
   ) {
     res.status(401).json({ success: false, error: "Invalid API key" });
     return;

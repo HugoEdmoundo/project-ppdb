@@ -5,13 +5,13 @@
  * Separate limits for general API and send endpoint.
  */
 
-import rateLimit from "express-rate-limit";
+import rateLimit, { type RateLimitRequestHandler } from "express-rate-limit";
 import { env } from "../config/env";
 
 /**
  * General API rate limiter.
  */
-export const apiRateLimiter = rateLimit({
+export const apiRateLimiter: RateLimitRequestHandler = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
   max: env.RATE_LIMIT_MAX,
   standardHeaders: true,
@@ -27,7 +27,7 @@ export const apiRateLimiter = rateLimit({
  * Stricter rate limiter for the send endpoint.
  * Prevents API abuse for bulk sending.
  */
-export const sendRateLimiter = rateLimit({
+export const sendRateLimiter: RateLimitRequestHandler = rateLimit({
   windowMs: 60_000,   // 1 minute
   max: 50,            // Max 50 send requests per minute per IP
   standardHeaders: true,
@@ -41,7 +41,7 @@ export const sendRateLimiter = rateLimit({
 /**
  * Rate limiter for SSE connections.
  */
-export const sseRateLimiter = rateLimit({
+export const sseRateLimiter: RateLimitRequestHandler = rateLimit({
   windowMs: 60_000,
   max: 10,
   standardHeaders: true,

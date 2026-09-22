@@ -33,7 +33,7 @@ export function AvatarEditor({
 
   async function handleFile(file: File | null | undefined) {
     if (!file) return
-    if (!ACCEPTED_TYPES.includes(file.type)) {
+    if (ACCEPTED_TYPES.indexOf(file.type) === -1) {
       setError('Format tidak didukung. Gunakan JPG, PNG, WebP, atau GIF.')
       return
     }

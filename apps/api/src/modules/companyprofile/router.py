@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from typing import Any
 
@@ -148,12 +149,12 @@ async def cp_login(
 ):
     from src.core.dependencies import AccessLevel, Module, has_module_access
 
-    result = service.login(body.username, body.password)
+    result = await asyncio.to_thread(service.login, body.username, body.password)
     user = result["user"]
 
     # Per-user profile overrides need the raw users row (has_module_access
     # reads user["profile"]); enrich from DB so overrides keep working.
-    raw_user = get_by_id("users", user["id"]) or {}
+    raw_user = await asyncio.to_thread(get_by_id, "users", user["id"]) or {}
     raw_user["role_permissions"] = user.get("permissions", {})
     raw_user["permissions"] = user.get("permissions", {})
     raw_user["is_superadmin"] = user.get("is_superadmin", False)
@@ -190,7 +191,7 @@ async def cp_login(
 
 
 @router.post("/auth/refresh")
-async def cp_refresh(
+def cp_refresh(
     request: Request,
     response: Response,
     body: RefreshReq | None = None,
@@ -226,7 +227,7 @@ async def cp_refresh(
 
 
 @router.post("/auth/logout")
-async def cp_logout(
+def cp_logout(
     request: Request,
     response: Response,
     body: RefreshReq | None = None,
@@ -246,7 +247,7 @@ async def cp_logout(
 
 
 @router.get("/auth/me")
-async def cp_me(
+def cp_me(
     user: dict[str, Any] = Depends(get_current_user),
     service: AuthService = Depends(get_auth_service),
 ):
@@ -256,7 +257,7 @@ async def cp_me(
 
 
 @router.put("/auth/profile")
-async def cp_profile(
+def cp_profile(
     body: ProfileUpdateReq, user: dict[str, Any] = Depends(get_current_user)
 ):
     data: dict[str, Any] = {}
@@ -328,7 +329,8 @@ async def cp_upload(
         stored_name = result.public_url.rsplit("/", 1)[-1]
     else:
         stored_name = result.storage_path.split("/")[-1]
-    record = create_record(
+    record = await asyncio.to_thread(
+        create_record,
         "file_uploads",
         {
             "id": record_id,
@@ -349,9 +351,7 @@ async def cp_upload(
 
 
 @router.delete("/uploads/{filename}")
-async def cp_delete_upload(
-    filename: str, user: dict[str, Any] = Depends(require_cp_crud())
-):
+def cp_delete_upload(filename: str, user: dict[str, Any] = Depends(require_cp_crud())):
     if not filename or ".." in filename or "/" in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
     record = get_by_column("file_uploads", "stored_name", filename)
@@ -368,13 +368,13 @@ async def cp_delete_upload(
 
 
 @router.get("/settings")
-async def cp_settings_list():
+def cp_settings_list():
     all_settings = list_all("site_settings")
     return [s for s in all_settings if s["key"] in PUBLIC_SETTINGS_KEYS]
 
 
 @router.get("/settings-admin")
-async def cp_settings_admin_list(
+def cp_settings_admin_list(
     user: dict[str, Any] = Depends(require_cp_crud()),
 ):
     """Semua kunci settings termasuk admin-only (whatsapp_number, to_email).
@@ -386,7 +386,7 @@ async def cp_settings_admin_list(
 
 
 @router.get("/settings/{key}")
-async def cp_settings_get(key: str):
+def cp_settings_get(key: str):
     if key not in PUBLIC_SETTINGS_KEYS:
         raise HTTPException(status_code=400, detail=f"Unknown key: {key}")
     setting = get_by_column("site_settings", "key", key)
@@ -400,7 +400,7 @@ class SettingUpdateReq(BaseModel):
 
 
 @router.put("/settings/{key}")
-async def cp_settings_update(
+def cp_settings_update(
     key: str, body: SettingUpdateReq, user: dict[str, Any] = Depends(require_cp_crud())
 ):
     if key not in ADMIN_SETTINGS_KEYS:
@@ -425,7 +425,7 @@ class ContactInfoUpdateReq(BaseModel):
 
 
 @router.get("/contact-info")
-async def cp_contact_info():
+def cp_contact_info():
     info = get_first("contact_info")
     if not info:
         raise HTTPException(status_code=404, detail="Not found")
@@ -433,7 +433,7 @@ async def cp_contact_info():
 
 
 @router.put("/contact-info")
-async def cp_contact_update(
+def cp_contact_update(
     body: ContactInfoUpdateReq, user: dict[str, Any] = Depends(require_cp_crud())
 ):
     existing = get_first("contact_info")
@@ -450,7 +450,7 @@ async def cp_contact_update(
 
 
 @router.get("/{entity}")
-async def cp_entity_list(entity: str, skip: int = 0, limit: int = 100):
+def cp_entity_list(entity: str, skip: int = 0, limit: int = 100):
     if entity in ("settings", "contact-info", "auth", "upload", "events"):
         raise HTTPException(status_code=404, detail="Not found")
     table = get_table(entity)
@@ -460,8 +460,9 @@ async def cp_entity_list(entity: str, skip: int = 0, limit: int = 100):
         else ("year.desc" if entity == "achievements" else None)
     )
     items = list_all(table, order=order, skip=skip, limit=limit)
-    
+
     import json
+
     for item in items:
         # Strip heavy rich-text content for list view
         if "content" in item and isinstance(item["content"], str):
@@ -472,16 +473,16 @@ async def cp_entity_list(entity: str, skip: int = 0, limit: int = 100):
                     item["content"] = json.dumps(c_data, ensure_ascii=False)
             except Exception:
                 pass
-        
+
         # Strip gallery arrays for list view
         if "gallery" in item:
             item["gallery"] = None
-            
+
     return items
 
 
 @router.get("/{entity}/{slug}")
-async def cp_entity_get(entity: str, slug: str):
+def cp_entity_get(entity: str, slug: str):
     if entity in ("settings", "contact-info"):
         raise HTTPException(status_code=404, detail="Not found")
     table = get_table(entity)
@@ -508,7 +509,7 @@ async def cp_entity_create(
         payload = sanitize_entity_payload(entity, body)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    record = create_record(table, payload)
+    record = await asyncio.to_thread(create_record, table, payload)
     companyprofile_hub.broadcast()
     return record
 
@@ -523,7 +524,7 @@ async def cp_entity_update(
     from src.modules.companyprofile.schemas import sanitize_entity_payload
 
     table = get_table(entity)
-    if not get_by_id(table, id):
+    if not await asyncio.to_thread(get_by_id, table, id):
         raise HTTPException(status_code=404, detail=f"{entity} not found")
     body = await request.json()
     if not isinstance(body, dict):
@@ -532,13 +533,13 @@ async def cp_entity_update(
         payload = sanitize_entity_payload(entity, body)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    record = update_record(table, id, payload)
+    record = await asyncio.to_thread(update_record, table, id, payload)
     companyprofile_hub.broadcast()
     return record
 
 
 @router.delete("/{entity}/{id}")
-async def cp_entity_delete(
+def cp_entity_delete(
     entity: str, id: str, user: dict[str, Any] = Depends(require_cp_crud())
 ):
     table = get_table(entity)

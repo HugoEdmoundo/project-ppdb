@@ -74,7 +74,15 @@ def get_engine() -> Engine:
         port=settings.mysql_port,
         database=settings.mysql_database,
     )
-    connect_args: dict[str, Any] = {"charset": "utf8mb4"}
+    connect_args: dict[str, Any] = {
+        "charset": "utf8mb4",
+        # Timeout pada koneksi/query jauh dari client (DB remote hostinger).
+        # Tanpa ini, pymysql yang menggantung pada handshake/read akan
+        # memblokir event loop tanpa batas → seluruh API tidak responsif.
+        "connect_timeout": 5,
+        "read_timeout": 30,
+        "write_timeout": 30,
+    }
     if settings.mysql_ssl:
         connect_args["ssl"] = {}
 

@@ -84,10 +84,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Pesantren Tahfidz Qur'an dan Digital Arrahman API",
-    description=(
-        "Backend API (FastAPI) for the PTDARRAHMAN company profile, PPDB, auth, "
-        "and user/role management."
-    ),
+    description=("Backend API (FastAPI) for the PTDARRAHMAN"),
     version="0.1.0",
     docs_url=None,
     redoc_url=None,
@@ -120,7 +117,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # --- Utility routes ---
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "ptdarrahman-api"}
+    return {"status": "gwenchana", "service": "Ehemm President WNI"}
 
 
 @app.get("/scalar", include_in_schema=False)

@@ -166,6 +166,19 @@ Pendaftaran hanya bisa dilakukan jika **tepat 1 Periode DAN 1 Gelombang** bersta
 - **Shared UI**: `packages/ui` exports reusable React/Tailwind components; apps import from `@repo/ui` rather than maintaining duplicates.
 - **Python/API**: `apps/api` uses ruff + mypy (see `.pre-commit-config.yaml`) and runs on Python 3.12 with its own dependency files.
 
+## Local Docker Runtime (WSL2)
+
+Runbook lengkap & verbatim untuk AGENT AI: **`docs/DOCKER_SETUP.md`**. Jangan skip dokumen itu saat diminta "setup docker".
+
+Ringkasan yang TIDAK BOLEH dilanggar:
+- **Docker engine jalan di DALAM WSL2** (Ubuntu), repo kerja di ext4 WSL (`/home/<user>/project-ppdb`), **bukan** di `/mnt/c` (sangat lambat). Tidak perlu Docker Desktop.
+- Akses dari browser Windows via **IP VM WSL** (`wsl hostname -I`), bukan `localhost`. **Dilarang `networkingMode=mirrored`** — sudah diuji bentrok dengan publish port Docker.
+- `docker-compose.yml` berisi ruas `dns: [8.8.8.8, 1.1.1.1]` di `api` & `whatsapp` dan redis `--maxmemory-policy noeviction` — **jangan dihapus** (perbaikan bug nyata).
+- `apps/whatsapp/.env` wajib `CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium`; Dockerfile-nya `useradd --system --create-home`; `SessionManager.ts` memakai `--disable-crash-reporter`.
+- Build args frontend: `{NEXT_PUBLIC,VITE}_API_URL` default `http://localhost:8080`, di-bake saat build — set `FRONTEND_*` ke `http://<vm-ip>:8080` bila integrasi API harus jalan dari browser Windows.
+- Start/stop: `docker compose up -d` / `docker compose stop` / (mati total) `wsl --shutdown` dari PowerShell.
+- WhatsApp QR discan dari panel Superadmin (render via QR JS); session persist di volume `wa_session`.
+
 ## Dynamic Branding (Frontend Rule)
 - **Logo & Favicon** di semua frontend (PPDB, Superadmin) WAJIB diambil secara **dinamis** dari API via endpoint `/companyprofile/settings/{key}` (key: `logo`, `favicon`, `site_name`, dll).
 - **⚠️ No Static Brand Assets:** Tidak ada file logo/favicon statis di project ini. Jangan pernah gunakan `<img src="/logo.png">` atau path statis lainnya.

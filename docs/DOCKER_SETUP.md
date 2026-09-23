@@ -30,7 +30,8 @@ docker-compose.yml
   - WSL dimatikan dari Windows kapan pun: `wsl --shutdown` (jangan matikan lewat "kill terminal").
 - **JANGAN pernah** build/up dari direktori `/mnt/c/...` (9p = sangat lambat, context walk ~1GB).
   Repo kerja WAJIB berada di filesystem ext4 WSL, contoh `/home/<user>/project-ppdb`.
-- `.wslconfig` Windows yang terbukti stabil (opsional tapi disarankan):
+- `.wslconfig` Windows berikut dipakai laptop owner (Cuma acuan, **jangan wajibkan** ke mesin lain;
+  ini pengaturan GLOBAL untuk seluruh WSL di satu Windows, bukan per-project):
 
   ```ini
   [wsl2]
@@ -42,6 +43,12 @@ docker-compose.yml
   [experimental]
   autoMemoryReclaim=gradual
   ```
+
+  > Konfigurasi ini **machine-global** (membatasi seluruh WSL di laptop itu), jadi jangan dipaksakan
+  > ke laptop/buddy lain. Batasan RAM **khusus project ini** sudah dibawa sendiri oleh repo melalui
+  > `mem_limit` per-container di `docker-compose.yml` (frontend 512m, api 512m, whatsapp 768m,
+  > redis 256m) — cukup jalankan `docker compose up -d` tanpa perlu mengubah `.wslconfig` mereka.
+  > Topologi total ~2GB → ringan & aman berdampingan dengan project lain.
 
   > ⚠️ **JANGAN pasang `networkingMode=mirrored`.** Sudah diuji: bentrok dengan publish port Docker
   > (browser tidak bisa akses, port container tidak ter-forward). Setup valid 100% memakai mode NAT bawaan WSL.

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import * as api from '@/app/lib/api'
 import { eventBus } from '@/app/lib/event-bus'
 import { useSSE } from '@/app/hooks/useSSE'
@@ -18,11 +19,6 @@ import ProfileModal from '@/app/components/ProfileModal'
 import CrossTabSync from '@/app/components/CrossTabSync'
 import EmptyState from '@/app/components/ui/EmptyState'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/Avatar'
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '@/app/components/ui/Avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,10 +38,6 @@ import { DashboardSidebar } from './DashboardSidebar'
 import { SettingsEditor } from './SettingsEditor'
 import { ContactEditor } from './ContactEditor'
 import { CrudFormDialog } from './CrudFormDialog'
-import {
-  TABS, TABLE_COLS, FORM_FIELDS, CONTENT_FIELDS, truncate,
-} from './_constants'
-import type { RowRecord, FormState, AdminUser } from './_types'
 
 interface TabDef {
   key: string
@@ -798,7 +790,7 @@ export default function AdminDashboard() {
             </p>
           )}
         </div>
-      </aside>
+      </div>
 
       {/* ── Main Area ── */}
       <div className="flex-1 flex flex-col min-w-0">

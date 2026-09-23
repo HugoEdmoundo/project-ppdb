@@ -1,0 +1,79 @@
+# ============================================================
+# PTDARRAHMAN — FRONTEND CONTAINER (Node/pnpm → HANYA menyajikan UI)
+# ============================================================
+# Build context: repository ROOT (./)
+#
+# Isi image ini HANYA 3 buah frontend:
+#   - companyprofile (Next.js 16)  → port 3000  (next start)
+#   - ppdb            (Vite/React) → port 5173  (vite preview)
+#   - superadmin      (Vite/React) → port 5174  (vite preview)
+#
+# Tidak ada backend/DB/Redis/WhatsApp di container ini. Semua lalu lintas API
+# diarahkan ke service `api` (FastAPI) lewat Build ARG:
+#   --build-arg NEXT_PUBLIC_API_URL=http://localhost:8080
+#   --build-arg VITE_API_URL=http://localhost:8080
+#
+# WhatsApp microservice (apps/whatsapp) TIDAK termasuk pnpm workspace — ia
+# service Node/npm sendiri yang berjalan di container terpisah.
+# ============================================================
+
+ARG NODE_VERSION=22
+
+# ── Stage 1: install dependencies ────────────────────────────────────────────
+FROM node:${NODE_VERSION}-slim AS deps
+ENV PNPM_HOME="/pnpm"
+ENV PATH="${PNPM_HOME}:${PATH}"
+RUN corepack enable && corepack prepare pnpm@9.10.0 --activate
+
+WORKDIR /workspace
+
+# Copy manifest workspace saja untuk memaksimalkan docker layer cache
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json ./
+COPY packages/ui/package.json ./packages/ui/package.json
+COPY packages/typescript-config/package.json ./packages/typescript-config/package.json
+COPY apps/companyprofile/package.json ./apps/companyprofile/package.json
+COPY apps/ppdb/package.json ./apps/ppdb/package.json
+COPY apps/superadmin/package.json ./apps/superadmin/package.json
+
+# Install (pnpm 9: build scripts dijalankan → sharp/esbuild ter-build untuk linux)
+RUN pnpm install --frozen-lockfile
+
+# ── Stage 2: build UI ─────────────────────────────────────────────────────────
+FROM node:${NODE_VERSION}-slim AS builder
+ENV PNPM_HOME="/pnpm"
+ENV PATH="${PNPM_HOME}:${PATH}"
+RUN corepack enable && corepack prepare pnpm@9.10.0 --activate
+
+WORKDIR /workspace
+
+COPY --from=deps /workspace/node_modules ./node_modules
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json ./
+COPY packages/ ./packages/
+COPY apps/companyprofile/ ./apps/companyprofile/
+COPY apps/ppdb/ ./apps/ppdb/
+COPY apps/superadmin/ ./apps/superadmin/
+
+# URL API yang di-bake ke bundle client. Sesuaikan dengan publish port service `api`.
+ARG NEXT_PUBLIC_API_URL=http://localhost:8080
+ARG VITE_API_URL=http://localhost:8080
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV VITE_API_URL=${VITE_API_URL}
+
+RUN pnpm build
+
+# ── Stage 3: runtime — serve UI only ──────────────────────────────────────────
+FROM node:${NODE_VERSION}-slim AS runtime
+ENV NODE_ENV=production
+WORKDIR /workspace
+
+COPY --from=builder /workspace/node_modules ./node_modules
+COPY --from=builder /workspace/pnpm-workspace.yaml /workspace/pnpm-lock.yaml /workspace/package.json /workspace/turbo.json ./
+COPY --from=builder /workspace/packages ./packages
+COPY --from=builder /workspace/apps ./apps
+
+COPY docker/frontend-entrypoint.sh /usr/local/bin/frontend-entrypoint.sh
+RUN chmod +x /usr/local/bin/frontend-entrypoint.sh
+
+EXPOSE 3000 5173 5174
+
+CMD ["/usr/local/bin/frontend-entrypoint.sh"]

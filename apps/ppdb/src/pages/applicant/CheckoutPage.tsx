@@ -7,7 +7,7 @@ import { Alert } from "@/components/ui"
 import { useToast } from '@/components/Toast'
 import { apiFetch } from '@/api/client'
 import { useQuery } from '@tanstack/react-query'
-import { MessageCircle, CreditCard, Building } from 'lucide-react'
+import { MessageCircle, Building } from 'lucide-react'
 
 const FORMATTER = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
 
@@ -162,8 +162,8 @@ export default function CheckoutPage() {
               </div>
 
               <div className="pt-2 border-t border-blue-100/50 flex flex-col sm:flex-row gap-3 items-center">
-                <Button 
-                  className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white shadow-md shadow-emerald-200" 
+                <Button
+                  className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white shadow-md shadow-emerald-200"
                   onClick={() => window.open(`https://wa.me/${WA_NUMBER}?text=Halo%20Panitia%20PPDB%2C%20saya%20telah%20melakukan%20pembayaran%20atas%20nama%20${user?.full_name}%20dengan%20tagihan%20${FORMATTER.format(amount)}`, '_blank')}
                 >
                   <MessageCircle className="mr-2 h-4 w-4" /> Konfirmasi via WhatsApp

@@ -398,7 +398,12 @@ export async function waGetStatus(): Promise<WAProxyStatus> {
   return apiFetch('/whatsapp/status')
 }
 
-export async function waGetQrImage(): Promise<any> {
+export async function waGetQrRaw(): Promise<{
+  success: boolean
+  data?: { raw: string }
+  error?: string
+  message?: string
+}> {
   return apiFetch('/whatsapp/qr')
 }
 

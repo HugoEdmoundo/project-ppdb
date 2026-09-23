@@ -6,6 +6,4 @@ logs/
 *.log
 .turbo/
 coverage/
-src/
-tsconfig.json
 README.md

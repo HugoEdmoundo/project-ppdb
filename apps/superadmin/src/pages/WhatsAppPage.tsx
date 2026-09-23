@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
 import {
   Wifi, WifiOff, RefreshCw, LogOut,
   CheckCircle2, XCircle, AlertTriangle, Activity,
@@ -9,7 +10,7 @@ import {
 import { Button } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import {
-  waGetStatus, waInitSession, waLogoutSession, waGetQrImage,
+  waGetStatus, waInitSession, waLogoutSession, waGetQrRaw,
   waGetQueueStats, waGetLogs, waSendTest, waGetQrSseUrl,
   waRequestPairingCode, waCancelPairing,
   type WAProxyStatus, type WAQueueStats, type WALogEntry,
@@ -58,19 +59,21 @@ function QrPanel({
   status: string
   onRefresh: () => void
 }) {
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [qrRaw, setQrRaw] = useState<string | null>(null)
   const [qrLoading, setQrLoading] = useState(true)
   const [qrError, setQrError] = useState<string | null>(null)
   const sseRef = useRef<EventSource | null>(null)
 
-  // Proses event SSE yang datang dari proxy FastAPI (event microservice dipertahankan)
+  // Proses event SSE yang datang dari proxy FastAPI (event microservice dipertahankan).
+  // Backend mengirim RAW QR string — rendering jadi QR visual dilakukan di client
+  // via library qrcode.react (bukan gambar PNG dari server).
   const handleSseData = useCallback((data: any) => {
     if (!data) return
-    if (data?.qrCode) {
-      setQrDataUrl(data.qrCode)
+    if (data?.raw) {
+      setQrRaw(data.raw)
       setQrError(null)
     }
-    if (data?.status === 'ready') setQrDataUrl(null)
+    if (data?.status === 'ready') setQrRaw(null)
   }, [])
 
   // SSE hanya dibuka saat state == 'qr' (auto-refresh QR tanpa polling manual)
@@ -82,7 +85,7 @@ function QrPanel({
       }
       // Bersihkan QR yang sudah kadaluarsa ketika keluar dari state 'qr'
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setQrDataUrl(null)
+      setQrRaw(null)
       return
     }
 
@@ -90,7 +93,7 @@ function QrPanel({
 
     es.addEventListener('qr', (e) => { try { handleSseData(JSON.parse(e.data)) } catch { /* ignore */ } })
     es.addEventListener('status', (e) => { try { handleSseData(JSON.parse(e.data)) } catch { /* ignore */ } })
-    es.addEventListener('ready', () => setQrDataUrl(null))
+    es.addEventListener('ready', () => setQrRaw(null))
     es.addEventListener('error', () => setQrError('Koneksi SSE terputus. Klik Segarkan QR jika perlu.'))
 
     sseRef.current = es
@@ -98,13 +101,13 @@ function QrPanel({
   }, [status, handleSseData])
 
   // Fallback satu-kali jika SSE belum mengirim
-  const fetchQrImage = useCallback(async () => {
+  const fetchQrRaw = useCallback(async () => {
     setQrLoading(true)
     setQrError(null)
     try {
-      const res = await waGetQrImage()
-      if (res?.success && res?.data?.qrCode) {
-        setQrDataUrl(res.data.qrCode)
+      const res = await waGetQrRaw()
+      if (res?.success && res?.data?.raw) {
+        setQrRaw(res.data.raw)
       } else {
         setQrError(res?.error || res?.message || 'QR belum tersedia saat ini.')
       }
@@ -113,14 +116,14 @@ function QrPanel({
     } finally {
       setQrLoading(false)
     }
-  }, [loadQr])
+  }, [])
 
   useEffect(() => {
-    if (status === 'qr' && !qrDataUrl) {
+    if (status === 'qr' && !qrRaw) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      fetchQrImage()
+      fetchQrRaw()
     }
-  }, [status, qrDataUrl, fetchQrImage])
+  }, [status, qrRaw, fetchQrRaw])
 
   if (status === 'ready') {
     return (
@@ -142,15 +145,19 @@ function QrPanel({
         <p className="text-sm text-slate-600 text-center">
           Buka <strong>WhatsApp</strong> di HP → Perangkat Tertaut → Tautkan Perangkat → Scan QR
         </p>
-        <div className="relative">
-          {qrDataUrl ? (
-            <img
-              src={qrDataUrl}
-              alt="WhatsApp QR Code"
-              className="w-52 h-52 rounded-xl border-2 border-slate-200 shadow-sm"
+        <div className="relative rounded-2xl bg-white border border-slate-200 shadow-sm p-3">
+          {qrRaw ? (
+            <QRCodeSVG
+              value={qrRaw}
+              size={200}
+              level="M"
+              marginSize={1}
+              bgColor="#ffffff"
+              fgColor="#0f172a"
+              className="h-50 w-50 block"
             />
           ) : (
-            <div className="w-52 h-52 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50">
+            <div className="h-50 w-50 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 overflow-hidden">
               {qrLoading
                 ? <Loader2 className="h-8 w-8 text-slate-400 animate-spin" />
                 : <QrCode className="h-10 w-10 text-slate-300" />}
@@ -158,11 +165,11 @@ function QrPanel({
           )}
         </div>
         {qrError && <p className="text-xs text-red-500 max-w-xs text-center">{qrError}</p>}
-        <Button variant="outline" size="sm" onClick={() => { fetchQrImage(); onRefresh() }} disabled={qrLoading}>
+        <Button variant="outline" size="sm" onClick={() => { fetchQrRaw(); onRefresh() }} disabled={qrLoading}>
           <RefreshCw className={cn('h-4 w-4 mr-2', qrLoading && 'animate-spin')} />
           Segarkan QR
         </Button>
-        <p className="text-xs text-slate-400">QR otomatis diperbarui. Klik Segarkan jika kadaluarsa.</p>
+        <p className="text-xs text-slate-400">QR dirender dari raw string via qrcode.react dan diperbarui otomatis.</p>
       </div>
     )
   }
@@ -576,7 +583,7 @@ WA_SERVICE_API_KEY=<api-key-yang-sama-dengan-apps/whatsapp/.env>`}
             WhatsApp Gateway berjalan sebagai service di port 3100. Jalankan dari root monorepo:
           </p>
           <div className="bg-slate-900 text-emerald-400 px-3 py-2 rounded-lg text-xs font-mono select-all inline-block">
-            pnpm --filter whatsapp dev
+            cd apps/whatsapp && npm run dev
           </div>
           <p className="text-[11px] text-slate-500">
             *Setelah service menyala, tombol scan QR akan otomatis aktif.

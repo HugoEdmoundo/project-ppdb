@@ -381,12 +381,12 @@ export default function ApplicantDashboardPage() {
                 className="absolute left-6 top-1/2 -translate-y-1/2 h-1 bg-emerald-primary rounded-full z-0 transition-all duration-500"
                 style={{ width: `calc(${((doneSteps) / (steps.length - 1)) * 100}% - ${doneSteps === steps.length ? 3 : 1}rem)` }}
               />
-              
-              {steps.map((step, idx) => {
+
+              {steps.map((step) => {
                 const isCompleted = step.status === 'completed'
                 const isActive = step.status === 'active'
                 const StepIcon = STEP_ICONS[step.number - 1]
-                
+
                 let circleCls = "bg-slate-100 text-slate-400 border-2 border-white ring-4 ring-slate-50"
                 if (isCompleted) circleCls = "bg-emerald-primary text-white border-2 border-white ring-4 ring-emerald-50 shadow-md"
                 else if (isActive) circleCls = "bg-white text-emerald-primary border-2 border-emerald-primary ring-4 ring-emerald-50 shadow-md"

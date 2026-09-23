@@ -1,15 +1,47 @@
 # ============================================================
 # PTDARRAHMAN — Production Docker Compose
 # ============================================================
+# 3 container + Redis (semua di Docker, bukan local):
+#
+#   1. frontend (Node/pnpm)     → HANYA menyajikan UI (port 3000/5173/5174)
+#   2. api       (Python/FastAPI)→ Bisnis logika + database (port 8080)
+#   3. whatsapp  (Node.js/npm)  → bridge whatsapp-web.js (port 3100, internal);
+#                                 komunikasi dengan FastAPI via HTTP REST / webhook
+#   4. redis                     → cache & queue (internal only)
+#
 # Setup:
-#   1. Pastikan apps/api/.env dan apps/whatsapp/.env sudah diisi
-#   2. docker compose up -d
-#   3. Scan WA QR: docker compose logs -f whatsapp
-#      atau: GET http://localhost:3100/api/session/qr/image
+#   1. Pastikan apps/api/.env dan apps/whatsapp/.env sudah diisi.
+#   2. docker compose up -d --build
+#   3. Scan WA QR dari panel Superadmin (render via QR JS, bukan PNG).
 # ============================================================
 
 services:
-  # ── FastAPI Backend ────────────────────────────────────────────────────
+  # ── Container 1: Frontend (Node/pnpm — only serves UI) ────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        # URL yang di-bake ke bundle client. Sesuaikan dengan publish port service `api`.
+        # (Browser user memanggil API dari desktop, jadi pakai alamat host.)
+        NEXT_PUBLIC_API_URL: ${FRONTEND_NEXT_PUBLIC_API_URL:-http://localhost:8080}
+        VITE_API_URL: ${FRONTEND_VITE_API_URL:-http://localhost:8080}
+    ports:
+      - "3000:3000"   # companyprofile (Next.js)
+      - "5173:5173"   # ppdb (Vite)
+      - "5174:5174"   # superadmin (Vite)
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http=require('http');const ok=p=>new Promise(r=>{http.get(p,res=>{res.resume();r(res.statusCode===200)}).on('error',()=>r(false))});Promise.all([ok('http://localhost:3000'),ok('http://localhost:5173'),ok('http://localhost:5174')]).then(a=>process.exit(a.every(Boolean)?0:1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── Container 2: Backend (Python/FastAPI — business logic + DB) ────────────
   api:
     build:
       context: ./apps/api
@@ -39,7 +71,7 @@ services:
       retries: 3
       start_period: 20s
 
-  # ── WhatsApp Notification Microservice ────────────────────────────────
+  # ── Container 3: WhatsApp Microservice (Node.js/npm — WA bridge only) ──────
   whatsapp:
     build:
       context: ./apps/whatsapp
@@ -54,9 +86,11 @@ services:
       - ./apps/whatsapp/.env
     environment:
       NODE_ENV: production
-      # Override untuk Docker internal networking
+      # Override untuk Docker internal networking (Redis DI DALAM docker, bukan local)
       REDIS_HOST: redis
       REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""
+      REDIS_DB: "1"
       WEBHOOK_URL: http://api:8000/notifications/webhook/whatsapp
     depends_on:
       redis:
@@ -67,16 +101,17 @@ services:
     # Puppeteer membutuhkan lebih banyak shared memory
     shm_size: '256mb'
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3100/health"]
+      # node (bukan wget) — wget tidak tersedia di image node:slim
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3100/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
 
-  # ── Redis ──────────────────────────────────────────────────────────────
+  # ── Redis (dalam Docker, internal only) ────────────────────────────────────
   redis:
     image: redis:7-alpine
-    # Port TIDAK di-expose ke host di production — internal only.
+    # Port TIDAK di-expose ke host — internal only.
     # Uncomment baris di bawah hanya untuk debugging lokal:
     # ports:
     #   - "127.0.0.1:6379:6379"
@@ -98,7 +133,7 @@ services:
       start_period: 5s
     restart: unless-stopped
 
-# ── Named Volumes ──────────────────────────────────────────────────────
+# ── Named Volumes ──────────────────────────────────────────────────────────
 volumes:
   redis_data:
     driver: local

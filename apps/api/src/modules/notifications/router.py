@@ -14,7 +14,7 @@ Endpoints:
   POST /notifications/wa/session/init    — Init WA session (proxy)
   POST /notifications/wa/session/logout  — Logout WA session (proxy)
   DELETE /notifications/wa/session       — Destroy WA session (proxy)
-  GET  /notifications/wa/session/qr      — QR code image (proxy, one-shot)
+  GET  /notifications/wa/session/qr      — QR code raw string (proxy, one-shot)
   GET  /notifications/wa/queue           — Queue stats (proxy)
   GET  /notifications/wa/logs            — WA delivery logs (proxy)
   POST /notifications/webhook/whatsapp   — Webhook callback dari WA microservice
@@ -296,8 +296,8 @@ async def wa_destroy_session(user: dict = Depends(require_notification_admin)):
 
 @router.get("/wa/session/qr")
 async def wa_get_qr_image(user: dict = Depends(require_notification_read)):
-    """One-shot QR code image (base64 data URL)."""
-    return await _wa_proxy("GET", "/api/session/qr/image", timeout=15.0)
+    """One-shot raw QR string (dirender frontend via QR JS library)."""
+    return await _wa_proxy("GET", "/api/session/qr/raw", timeout=15.0)
 
 
 @router.get("/wa/queue")

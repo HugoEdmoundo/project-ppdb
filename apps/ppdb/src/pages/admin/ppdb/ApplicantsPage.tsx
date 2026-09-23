@@ -6,7 +6,7 @@ import { useCan } from '@/hooks/useCan'
 import { Card, CardContent } from "@/components/ui"
 import { Button, buttonVariants } from "@/components/ui"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui"
+import { TabsTrigger } from "@/components/ui"
 import { Textarea } from "@/components/ui"
 import { ArrowRight, Activity, Users, FileText, CheckCircle, XCircle } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'

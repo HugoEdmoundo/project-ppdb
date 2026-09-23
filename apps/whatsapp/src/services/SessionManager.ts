@@ -13,7 +13,6 @@
 
 import path from "path";
 import { EventEmitter } from "events";
-import qrcode from "qrcode";
 import { Client, LocalAuth, Message } from "whatsapp-web.js";
 import { env } from "../config/env";
 import { logger } from "../lib/logger";
@@ -21,7 +20,7 @@ import type { WASessionInfo, WASessionStatus } from "../types";
 
 export type SessionEvent =
   | { type: "status"; data: WASessionInfo }
-  | { type: "qr"; data: { qrCode: string; dataUrl: string } }
+  | { type: "qr"; data: { raw: string } }
   | { type: "code"; data: { code: string; phone?: string } }
   | { type: "ready"; data: WASessionInfo }
   | { type: "disconnected"; data: { reason: string } }
@@ -288,17 +287,10 @@ export class SessionManager extends EventEmitter {
       logger.info("[Session] QR code received — scan with WhatsApp");
       this.reconnectAttempts = 0;
 
-      let dataUrl = "";
-      try {
-        dataUrl = await qrcode.toDataURL(qr);
-      } catch (err) {
-        logger.warn("[Session] Failed to generate QR data URL", {
-          error: (err as Error).message,
-        });
-      }
-
-      this.updateStatus("qr", { qrCode: dataUrl });
-      this.broadcastSse("qr", { qrCode: dataUrl, raw: qr });
+      // Kirim RAW QR string saja — rendering QR jadi tanggung jawab frontend
+      // (library QR JS), bukan PNG/image yang digenerate server.
+      this.updateStatus("qr", { qrCode: qr });
+      this.broadcastSse("qr", { raw: qr });
     });
 
     this.client.on("authenticated", () => {

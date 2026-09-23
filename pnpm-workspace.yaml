@@ -1,3 +1,13 @@
+# Workspace globs — HANYA frontend packages + shared libs.
+#
+# ⚠️ apps/whatapp di-EXCLUDE dari workspace pnpm/turbo secara sengaja.
+# WhatsApp microservice adalah Node.js/Express standalone (npm, package-lock.json)
+# yang berjalan di container sendiri (docker-compose service "whatsapp").
+# Ini mencegah `pnpm dev` meng-start WhatsApp bersama Turbo, dan membuat
+# batas container: frontend (pnpm) vs whatsapp-service (npm) tetap terpisah.
 packages:
-  - "apps/*"
-  - "packages/*"
+  - "apps/companyprofile"
+  - "apps/ppdb"
+  - "apps/superadmin"
+  - "packages/ui"
+  - "packages/typescript-config"

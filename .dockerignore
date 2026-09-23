@@ -1,0 +1,40 @@
+# ============================================================
+# Root .dockerignore — berlaku untuk build context repository ROOT
+# (dipakai oleh docker-compose service `frontend` via docker/Dockerfile.frontend).
+# Service api/whatsapp memakai context mereka sendiri (.dockerignore masing-masing).
+# ============================================================
+
+# Secrets — jangan pernah masuk image
+.env
+.env.*
+!.env.example
+
+# Git / tooling
+.git
+.gitignore
+.gitattributes
+.turbo
+coverage
+
+# Node / build artifacts
+node_modules
+.pnpm-store
+dist
+.next
+*.tsbuildinfo
+*.log
+
+# Backend & WhatsApp service — TIDAK diperlukan oleh container frontend
+apps/api
+apps/whatsapp
+
+# Python artifacts (jika ada di root kebetulan)
+.venv
+venv
+__pycache__
+*.pyc
+
+# Docker config sendiri
+Dockerfile
+.dockerignore
+docker-compose*.yml

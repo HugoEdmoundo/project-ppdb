@@ -15,11 +15,13 @@ Managed as a **pnpm workspace + Turborepo** monorepo. Run cross-package scripts 
 | **WhatsApp Service** | `apps/whatsapp/` | Node.js 20, Express, whatsapp-web.js, BullMQ, Redis | WhatsApp notification microservice. Sends messages, manages session, queues delivery. |
 
 ### Workspace Layout
-- `apps/*`: Deployable applications (the four services above).
-- `packages/*`: Shared internal libraries — `ui` (shared React/Tailwind UI components) and `typescript-config` (shared TypeScript/tsconfig presets).
-- `pnpm-workspace.yaml`: Workspace globs (`apps/*`, `packages/*`).
-- `turbo.json`: Task orchestration for `build`/`dev`/`lint`/`test`.
+- `apps/*`: Deployable applications. **Frontend apps** (`companyprofile`, `ppdb`, `superadmin`) adalah pnpm workspace member. **`apps/whatsapp` DI-EXCLUDE dari pnpm workspace** — ia project Node/npm standalone (`package-lock.json`) yang berjalan di container sendiri (`whatsapp`), jadi `pnpm dev`/`pnpm build` TIDAK ikut menjalankannya.
+- `packages/*`: Shared internal libraries — `ui` (shared React/Tailwind UI components) dan `typescript-config` (shared TypeScript/tsconfig presets).
+- `pnpm-workspace.yaml`: Workspace globs — EKSPLISIT mencantumkan 3 frontend + 2 packages (tanpa `apps/whatsapp`).
+- `turbo.json`: Task orchestration untuk `build`/`dev`/`lint`/`test`.
 - `.pre-commit-config.yaml`: Pre-commit hooks (ruff, mypy, trailing-whitespace, etc.) installed on commit.
+- `docker-compose.yml`: 3 container + Redis — `frontend` (Node/pnpm, UI only), `api` (FastAPI), `whatsapp` (Node/npm), `redis` (internal). Semua berjalan di Docker, **tidak ada Redis/servis lokal**.
+- `docker/Dockerfile.frontend`: Multi-stage Dockerfile untuk container ui-container… → `frontend` (serves all three UIs).
 
 ## Backend (`apps/api/`)
 
@@ -257,7 +259,7 @@ apps/whatsapp/src/
 - `POST /api/session/logout` — Logout
 - `DELETE /api/session` — Destroy session
 - `GET /api/session/qr` — QR code via SSE (text/event-stream)
-- `GET /api/session/qr/image` — QR as base64 data URL (one-shot)
+- `GET /api/session/qr/raw` — Raw QR string (one-shot; dirender frontend via library QR JS seperti qrcode.react, BUKAN gambar PNG)
 - `POST /api/messages/send` — Send direct message
 - `POST /api/messages/send-template` — Send via event template
 - `POST /api/messages/bulk` — Bulk send (max 100)
@@ -309,8 +311,8 @@ Di `apps/api/src/core/notif_service.py`:
 3. Set `WA_SERVICE_API_KEY` dan `WA_WEBHOOK_SECRET` di `apps/api/.env` (nilai sama)
 4. Run `alembic upgrade head` untuk migration `0021_wa_notification_fields`
 5. Start Redis: `docker compose up redis -d`
-6. Start service: `cd apps/whatsapp && pnpm dev`
-7. Scan QR di `GET /api/session/qr` (SSE) atau `GET /api/session/qr/image`
+6. Start service: `cd apps/whatsapp && npm run dev`
+7. Scan QR di `GET /api/session/qr` (SSE) atau `GET /api/session/qr/raw`
 8. Tes kirim: `POST /api/messages/send` dengan API key
 
 ### Docker
@@ -321,7 +323,7 @@ docker compose up -d
 
 # Lihat QR code (scan sekali, session tersimpan di volume)
 docker compose logs -f whatsapp
-# atau hit: GET http://localhost:3100/api/session/qr/image
+# atau dari panel Superadmin → WhatsApp (QR dirender via QR JS, bukan gambar PNG)
 
 # Re-scan QR (setelah session expired)
 docker compose exec whatsapp curl -X DELETE http://localhost:3100/api/session \
@@ -371,8 +373,8 @@ Di `apps/api/src/core/notif_service.py`:
 3. Set `WA_SERVICE_API_KEY` dan `WA_WEBHOOK_SECRET` di `apps/api/.env` (nilai sama)
 4. Run `alembic upgrade head` untuk migration `0021_wa_notification_fields`
 5. Start Redis: `docker compose up redis -d`
-6. Start service: `cd apps/whatsapp && pnpm dev`
-7. Scan QR di `GET /api/session/qr` (SSE) atau `GET /api/session/qr/image`
+6. Start service: `cd apps/whatsapp && npm run dev`
+7. Scan QR di `GET /api/session/qr` (SSE) atau `GET /api/session/qr/raw`
 8. Tes kirim: `POST /api/messages/send` dengan API key
 
 ### Docker
@@ -383,7 +385,7 @@ docker compose up -d
 
 # Lihat QR code (scan sekali, session tersimpan di volume)
 docker compose logs -f whatsapp
-# atau hit: GET http://localhost:3100/api/session/qr/image
+# atau dari panel Superadmin → WhatsApp (QR dirender via QR JS, bukan gambar PNG)
 
 # Re-scan QR (setelah session expired)
 docker compose exec whatsapp curl -X DELETE http://localhost:3100/api/session \

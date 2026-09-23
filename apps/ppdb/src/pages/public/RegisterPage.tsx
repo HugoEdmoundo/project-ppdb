@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ppdbService } from '@/services'
 import { useToast } from '@/components/Toast'
 import { useActiveWave } from '@/hooks/useActiveWave'
+import { cn } from '@/lib/utils'
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
   Button, Input, Label, Alert, ConfirmDialog,
@@ -330,8 +331,8 @@ export default function RegisterPage() {
               })}
 
               <div className="flex justify-end pt-6">
-                <Button 
-                  onClick={handleNext} 
+                <Button
+                  onClick={handleNext}
                   disabled={!formData.registration_path}
                   className="rounded-full bg-emerald-primary px-8 h-12 text-base font-bold shadow-lg shadow-emerald-primary/25 transition-all hover:bg-emerald-dark hover:shadow-emerald-primary/40"
                 >
@@ -361,8 +362,8 @@ export default function RegisterPage() {
                       key={lvl}
                       className={cn(
                         "group p-6 border-2 rounded-2xl cursor-pointer text-center transition-all duration-300",
-                        effectiveRegistrationLevel === lvl 
-                          ? "border-emerald-primary bg-emerald-50/50 ring-4 ring-emerald-primary/10 shadow-lg shadow-emerald-primary/10" 
+                        effectiveRegistrationLevel === lvl
+                          ? "border-emerald-primary bg-emerald-50/50 ring-4 ring-emerald-primary/10 shadow-lg shadow-emerald-primary/10"
                           : "border-slate-100 bg-white hover:border-emerald-primary/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50"
                       )}
                       onClick={() => setFormData({...formData, registration_level: lvl})}
@@ -380,8 +381,8 @@ export default function RegisterPage() {
               )}
 
               <div className="flex justify-end pt-6 border-t border-slate-100">
-                <Button 
-                  onClick={handleNext} 
+                <Button
+                  onClick={handleNext}
                   disabled={!effectiveRegistrationLevel}
                   className="rounded-full bg-emerald-primary px-8 h-12 text-base font-bold shadow-lg shadow-emerald-primary/25 transition-all hover:bg-emerald-dark hover:shadow-emerald-primary/40"
                 >
@@ -403,7 +404,7 @@ export default function RegisterPage() {
             </CardHeader>
             <CardContent className="px-6 md:px-10 pb-10">
               <form onSubmit={handleSubmit} className="space-y-8">
-                
+
                 {/* Section: Data Diri */}
                 <div className="space-y-5">
                   <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
@@ -474,7 +475,7 @@ export default function RegisterPage() {
                   </div>
                   </div>
                 </div>
-                
+
                 {/* Section: Kontak & Asal */}
                 <div className="space-y-5 pt-4">
                   <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
@@ -622,8 +623,8 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-8 border-t border-slate-100">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={loading}
                     className="w-full sm:w-auto rounded-full bg-emerald-primary px-8 h-12 text-base font-bold shadow-lg shadow-emerald-primary/25 transition-all hover:bg-emerald-dark hover:shadow-emerald-primary/40 disabled:opacity-70"
                   >

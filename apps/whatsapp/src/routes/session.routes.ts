@@ -9,7 +9,7 @@
  *   POST /api/session/logout    — Logout (clears auth data)
  *   DELETE /api/session         — Destroy session (no reconnect)
  *   GET  /api/session/qr        — Get QR code (SSE stream)
- *   GET  /api/session/qr/image  — Get QR code as data URL (one-shot)
+ *   GET  /api/session/qr/raw    — Get raw QR string (one-shot, dirender frontend via JS lib)
  */
 
 import { Router, Request, Response } from "express";
@@ -28,8 +28,8 @@ router.get("/", (_req: Request, res: Response) => {
     success: true,
     data: {
       ...status,
-      // Never expose full QR in status — use /qr/image endpoint
-      qrCode: status.qrCode ? "[available at GET /api/session/qr/image]" : undefined,
+      // Never expose full QR in status — use /qr/raw endpoint
+      qrCode: status.qrCode ? "[available at GET /api/session/qr/raw]" : undefined,
     },
   });
 });
@@ -168,8 +168,8 @@ router.get("/qr", sseRateLimiter, (req: Request, res: Response) => {
   logger.debug("[SSE] Client connected", { clientId });
 });
 
-// GET /api/session/qr/image — one-shot QR data URL
-router.get("/qr/image", (_req: Request, res: Response) => {
+// GET /api/session/qr/raw — one-shot raw QR string
+router.get("/qr/raw", (_req: Request, res: Response) => {
   const status = sessionManager.getStatus();
 
   if (status.status !== "qr" || !status.qrCode) {
@@ -184,7 +184,7 @@ router.get("/qr/image", (_req: Request, res: Response) => {
   res.json({
     success: true,
     data: {
-      qrCode: status.qrCode,
+      raw: status.qrCode,
       hint: "Scan this QR with WhatsApp on your phone",
     },
   });

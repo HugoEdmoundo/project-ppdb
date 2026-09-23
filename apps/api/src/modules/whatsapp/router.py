@@ -5,7 +5,7 @@ Proxy ke WhatsApp microservice (apps/whatsapp/) untuk Superadmin panel.
 
 Endpoints (semua require_superadmin):
   GET  /whatsapp/status        — status sesi + health + hint webhook
-  GET  /whatsapp/qr            — QR code one-shot (data URL)
+  GET  /whatsapp/qr            — QR code one-shot (raw, dirender via QR JS)
   GET  /whatsapp/qr-sse        — QR realtime (SSE proxy dari microservice)
   POST /whatsapp/connect       — inisialisasi / reconnect sesi
   POST /whatsapp/pairing-code  — buat pairing code (login via nomor HP)
@@ -119,7 +119,7 @@ async def _proxy_json(
             status_code=503,
             detail=(
                 "WhatsApp microservice tidak dapat dihubungi. "
-                "Pastikan sudah dijalankan (cd apps/whatsapp && pnpm dev)."
+                "Pastikan sudah dijalankan (cd apps/whatsapp && npm run dev)."
             ),
         ) from exc
 
@@ -143,9 +143,11 @@ def _json_response(resp: httpx.Response) -> JSONResponse:
     if resp.status_code >= 400:
         body.setdefault("success", False)
         if "error" not in body:
-            body["error"] = body.get("message") or body.get(
-                "detail"
-            ) or f"WA microservice error (HTTP {resp.status_code})"
+            body["error"] = (
+                body.get("message")
+                or body.get("detail")
+                or f"WA microservice error (HTTP {resp.status_code})"
+            )
     elif "success" not in body:
         body["success"] = True
 
@@ -241,8 +243,8 @@ async def whatsapp_status(
 async def whatsapp_qr(
     user: dict[str, Any] = Depends(require_superadmin),
 ) -> JSONResponse:
-    """One-shot QR code (data URL) dari microservice."""
-    resp = await _proxy_json("GET", "/api/session/qr/image", timeout=6.0)
+    """One-shot raw QR string dari microservice (rendering via QR JS di frontend)."""
+    resp = await _proxy_json("GET", "/api/session/qr/raw", timeout=6.0)
     return _json_response(resp)
 
 

@@ -85,6 +85,7 @@ export class SessionManager extends EventEmitter {
       "--no-first-run",
       "--no-zygote",
       "--single-process",
+      "--disable-crash-reporter",
     ];
 
     this.client = new Client({

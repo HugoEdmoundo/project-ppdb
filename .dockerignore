@@ -33,6 +33,8 @@ apps/whatsapp
 venv
 __pycache__
 *.pyc
+.mypy_cache
+.ruff_cache
 
 # Docker config sendiri
 Dockerfile

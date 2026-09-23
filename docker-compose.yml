@@ -60,6 +60,13 @@ services:
       REDIS_URL: redis://redis:6379/0
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    dns:
+      # Query DNS publik dari dalam container langsung via Google/Cloudflare,
+      # tidak lewat resolver WSL (10.255.255.254) yang kadang gagal menjawab
+      # dari bridge Docker. Service-name Docker (redis/api/whatsapp) tetap
+      # tersolve via embedded DNS 127.0.0.11.
+      - 8.8.8.8
+      - 1.1.1.1
     depends_on:
       redis:
         condition: service_healthy
@@ -92,6 +99,10 @@ services:
       REDIS_PASSWORD: ""
       REDIS_DB: "1"
       WEBHOOK_URL: http://api:8000/notifications/webhook/whatsapp
+    dns:
+      # Sama seperti api: hindari resolver WSL yang flaky dari bridge Docker
+      - 8.8.8.8
+      - 1.1.1.1
     depends_on:
       redis:
         condition: service_healthy
@@ -122,7 +133,7 @@ services:
         --appendonly yes
         --appendfsync everysec
         --maxmemory 256mb
-        --maxmemory-policy allkeys-lru
+        --maxmemory-policy noeviction
         --save 60 1
         --loglevel notice
     healthcheck:

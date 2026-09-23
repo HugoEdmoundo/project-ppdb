@@ -15,30 +15,19 @@
 #
 # WhatsApp microservice (apps/whatsapp) TIDAK termasuk pnpm workspace — ia
 # service Node/npm sendiri yang berjalan di container terpisah.
+#
+# CATATAN BUILD (pnpm 9 via Docker):
+#   Satu stage builder agar pnpm install + source copy + build di stage yang
+#   sama. Symlink node_modules per paket workspace (yang dibuat pnpm saat
+#   install) TIDAK hilang oleh COPY berikutnya — Docker COPY hanya menyalin
+#   file yang ada di source, tidak menghapus node_modules yang sudah ada.
+#   Skema lama (copy node_modules antar-stage) menghasilkan symlink per-paket
+#   hilang → "package.json exists but node_modules missing".
 # ============================================================
 
 ARG NODE_VERSION=22
 
-# ── Stage 1: install dependencies ────────────────────────────────────────────
-FROM node:${NODE_VERSION}-slim AS deps
-ENV PNPM_HOME="/pnpm"
-ENV PATH="${PNPM_HOME}:${PATH}"
-RUN corepack enable && corepack prepare pnpm@9.10.0 --activate
-
-WORKDIR /workspace
-
-# Copy manifest workspace saja untuk memaksimalkan docker layer cache
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json ./
-COPY packages/ui/package.json ./packages/ui/package.json
-COPY packages/typescript-config/package.json ./packages/typescript-config/package.json
-COPY apps/companyprofile/package.json ./apps/companyprofile/package.json
-COPY apps/ppdb/package.json ./apps/ppdb/package.json
-COPY apps/superadmin/package.json ./apps/superadmin/package.json
-
-# Install (pnpm 9: build scripts dijalankan → sharp/esbuild ter-build untuk linux)
-RUN pnpm install --frozen-lockfile
-
-# ── Stage 2: build UI ─────────────────────────────────────────────────────────
+# ── Stage: builder — install + build seluruh UI ──────────────────────────────
 FROM node:${NODE_VERSION}-slim AS builder
 ENV PNPM_HOME="/pnpm"
 ENV PATH="${PNPM_HOME}:${PATH}"
@@ -46,8 +35,18 @@ RUN corepack enable && corepack prepare pnpm@9.10.0 --activate
 
 WORKDIR /workspace
 
-COPY --from=deps /workspace/node_modules ./node_modules
+# Copy manifer workspace saja → docker layer cache optimal
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json ./
+COPY packages/ui/package.json ./packages/ui/package.json
+COPY packages/typescript-config/package.json ./packages/typescript-config/package.json
+COPY apps/companyprofile/package.json ./apps/companyprofile/package.json
+COPY apps/ppdb/package.json ./apps/ppdb/package.json
+COPY apps/superadmin/package.json ./apps/superadmin/package.json
+
+# Install terlebih dahulu (pnpm 9: build scripts berjalan → sharp/esbuild th-build untuk linux)
+RUN pnpm install --frozen-lockfile
+
+# Source — node_modules per paket yang sudah ada dipertahankan oleh COPY
 COPY packages/ ./packages/
 COPY apps/companyprofile/ ./apps/companyprofile/
 COPY apps/ppdb/ ./apps/ppdb/
@@ -61,7 +60,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 
 RUN pnpm build
 
-# ── Stage 3: runtime — serve UI only ──────────────────────────────────────────
+# ── Stage: runtime — serve UI only ──────────────────────────────────────────
 FROM node:${NODE_VERSION}-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /workspace

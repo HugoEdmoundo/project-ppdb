@@ -49,7 +49,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user untuk keamanan
-RUN groupadd --system ppuser && useradd --system --gid ppuser ppuser
+RUN groupadd --system ppuser && useradd --system --create-home --gid ppuser ppuser
 
 WORKDIR /app
 

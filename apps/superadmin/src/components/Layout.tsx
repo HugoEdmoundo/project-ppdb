@@ -35,7 +35,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sa_collapsed') === 'true')
   const [mobileOpen, setMobileOpen] = useState(false)
-  const { logoUrl } = useBrand(API_BASE)
+  const { faviconUrl } = useBrand(API_BASE)
 
   // Close mobile sidebar on route change
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -68,10 +68,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Header */}
         <div className={`relative flex h-16 items-center border-b border-slate-100 ${collapsed ? 'justify-center px-2' : 'px-6'}`}>
           {collapsed ? (
-            logoUrl ? <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-auto max-w-8 object-contain transition-transform hover:scale-105" /> : <div className="h-9 w-9 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-lg select-none shadow-sm">ار</div>
+            faviconUrl ? <img src={faviconUrl} alt="PTDARRAHMAN" className="h-8 w-8 object-contain transition-transform hover:scale-105" /> : <div className="h-9 w-9 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-lg select-none shadow-sm">ار</div>
           ) : (
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              {logoUrl ? <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 shrink-0 object-contain transition-transform hover:scale-105" /> : <div className="h-9 w-9 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-lg shrink-0 select-none shadow-sm">ار</div>}
+              {faviconUrl ? <img src={faviconUrl} alt="PTDARRAHMAN" className="h-9 w-9 object-contain shrink-0 transition-transform hover:scale-105" /> : <div className="h-9 w-9 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-lg shrink-0 select-none shadow-sm">ار</div>}
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-bold text-slate-900 tracking-tight">PTDARRAHMAN</div>
                 <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Superadmin</div>

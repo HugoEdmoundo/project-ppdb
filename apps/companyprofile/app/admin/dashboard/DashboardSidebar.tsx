@@ -35,7 +35,7 @@ export function DashboardSidebar({
         {collapsed ? (
           logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-auto max-w-8 object-contain" />
+            <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-8 object-contain" />
           ) : (
             <div className="h-8 w-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg select-none">ار</div>
           )
@@ -43,7 +43,7 @@ export function DashboardSidebar({
           <div className="flex items-center gap-3 min-w-0 flex-1">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 object-contain shrink-0" />
+              <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-9 object-contain shrink-0" />
             ) : (
               <div className="h-9 w-9 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg shrink-0 select-none">ار</div>
             )}

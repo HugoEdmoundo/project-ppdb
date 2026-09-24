@@ -171,12 +171,15 @@ Pendaftaran hanya bisa dilakukan jika **tepat 1 Periode DAN 1 Gelombang** bersta
 Runbook lengkap & verbatim untuk AGENT AI: **`docs/DOCKER_SETUP.md`**. Jangan skip dokumen itu saat diminta "setup docker".
 
 Ringkasan yang TIDAK BOLEH dilanggar:
+- **DUA COPY REPO (sumber "ga update"):** Ada dua copy repo di mesin owner. Copy **Windows** (`C:\ptdarrahman.sch.id\project-ppdb`) adalah repo git asli tempat AGENT bekerja (edit/commit). Copy **WSL** (`/home/<user>/project-ppdb`, ext4, tanpa .git) adalah SATU-SATUNYA yang dipakai Docker build & run. **Alur update kode: edit di copy Windows → sync file ke copy WSL → `docker compose up -d --build` di copy WSL.** Jangan pernah build dari `/mnt/c` (sangat lambat) dan jangan heran kalau build dari copy WSL yang belum di-sync menghasilkan versi lama.
+- **Docker engine MANUAL-START:** `docker.service`, `containerd.service`, `docker.socket` sengaja di-`disable` (owner menolak auto-start saat boot WSL). Setelah WSL boot / `wsl --shutdown`, wajib mulai manual: `wsl -e sudo systemctl start docker` lalu `docker compose up -d`.
+- **WSL TIDAK boleh mati sendiri (idle):** `.wslconfig` owner wajib berisi `[general] instanceIdleTimeout=-1` DAN `[wsl2] vmIdleTimeout=-1` (nilai negatif = never). Tanpa pasangan ini, VM/distro mati sendiri ~70 detik setelah sesi `wsl.exe` terakhir ditutup → dockerd & semua container ikut mati. `vmIdleTimeout` saja atau nilai `2147483647` TIDAK cukup.
 - **Docker engine jalan di DALAM WSL2** (Ubuntu), repo kerja di ext4 WSL (`/home/<user>/project-ppdb`), **bukan** di `/mnt/c` (sangat lambat). Tidak perlu Docker Desktop.
 - Akses dari browser Windows via **IP VM WSL** (`wsl hostname -I`), bukan `localhost`. **Dilarang `networkingMode=mirrored`** — sudah diuji bentrok dengan publish port Docker.
 - `docker-compose.yml` berisi ruas `dns: [8.8.8.8, 1.1.1.1]` di `api` & `whatsapp` dan redis `--maxmemory-policy noeviction` — **jangan dihapus** (perbaikan bug nyata).
 - `apps/whatsapp/.env` wajib `CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium`; Dockerfile-nya `useradd --system --create-home`; `SessionManager.ts` memakai `--disable-crash-reporter`.
 - Build args frontend: `{NEXT_PUBLIC,VITE}_API_URL` default `http://localhost:8080`, di-bake saat build — set `FRONTEND_*` ke `http://<vm-ip>:8080` bila integrasi API harus jalan dari browser Windows.
-- Start/stop: `docker compose up -d` / `docker compose stop` / (mati total) `wsl --shutdown` dari PowerShell.
+- Start/stop: `docker compose up -d` (tanpa perubahan kode) / `docker compose stop` / (mati total) `wsl --shutdown` dari PowerShell. **Update kode = `docker compose up -d --build` SEKALI cukup** (build + recreate + start), dari copy WSL setelah sync.
 - WhatsApp QR discan dari panel Superadmin (render via QR JS); session persist di volume `wa_session`.
 
 ## Dynamic Branding (Frontend Rule)

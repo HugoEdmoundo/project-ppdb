@@ -30,24 +30,39 @@ docker-compose.yml
   - WSL dimatikan dari Windows kapan pun: `wsl --shutdown` (jangan matikan lewat "kill terminal").
 - **JANGAN pernah** build/up dari direktori `/mnt/c/...` (9p = sangat lambat, context walk ~1GB).
   Repo kerja WAJIB berada di filesystem ext4 WSL, contoh `/home/<user>/project-ppdb`.
-- `.wslconfig` Windows berikut dipakai laptop owner (Cuma acuan, **jangan wajibkan** ke mesin lain;
-  ini pengaturan GLOBAL untuk seluruh WSL di satu Windows, bukan per-project):
+- `.wslconfig` Windows berikut **WAJIB dipasang** di mesin yang dipakai owner — ini yang membuat
+  runtime TIDAK mati sendiri. File ini **machine-global** (mempengaruhi seluruh WSL di satu Windows):
 
   ```ini
+  [general]
+  # Nonaktifkan idle-terminate di LEVEL DISTRO. Tanpa ini, WSL mematikan distro
+  # beberapa detik setelah tidak ada sesi wsl.exe → dockerd & container mati sendiri.
+  # Nilai NEGATIF = never. (Pernah dicoba 2147483647, TIDAK bekerja — terbukti.)
+  instanceIdleTimeout=-1
+
   [wsl2]
   guiApplications=false
-  memory=3GB
+  memory=3GB          # boleh sesuaikan kapasitas mesin; batas project diatur mem_limit di compose
   processors=2
   swap=4GB
+  # Nonaktifkan idle-terminate di LEVEL VM. WAJIB berpasangan dengan
+  # instanceIdleTimeout di atas — hanya dengan dua-duanya VM bertahan walau semua
+  # terminal ditutup (Docker tetap jalan). VM baru mati saat `wsl --shutdown`.
+  vmIdleTimeout=-1
 
   [experimental]
   autoMemoryReclaim=gradual
   ```
 
-  > Konfigurasi ini **machine-global** (membatasi seluruh WSL di laptop itu), jadi jangan dipaksakan
-  > ke laptop/buddy lain. Batasan RAM **khusus project ini** sudah dibawa sendiri oleh repo melalui
-  > `mem_limit` per-container di `docker-compose.yml` (frontend 512m, api 512m, whatsapp 768m,
-  > redis 256m) — cukup jalankan `docker compose up -d` tanpa perlu mengubah `.wslconfig` mereka.
+  > **Kenapa WAJIB (bug nyata):** dengan `docker compose up` "4/4 healthy", VM tetap mati sendiri
+  > dalam ~70 detik begitu tidak ada sesi `wsl.exe` — dockerd ikut mati. `vmIdleTimeout` SAJA tidak
+  > cukup; kombinasi `[general] instanceIdleTimeout=-1` + `[wsl2] vmIdleTimeout=-1` terbukti membuat
+  > VM bertahan (diuji idle 80+ detik, tetap `Running`). Nilai `2147483647` pada `vmIdleTimeout`
+  > juga TERBUKTI tidak menahan distro — gunakan `-1`.
+
+  > Konfigurasi ini **machine-global** (membatasi seluruh WSL di laptop itu). Batasan RAM **khusus
+  > project ini** dibawa sendiri oleh repo melalui `mem_limit` per-container di `docker-compose.yml`
+  > (frontend 512m, api 512m, whatsapp 768m, redis 256m) — cukup jalankan `docker compose up -d`.
   > Topologi total ~2GB → ringan & aman berdampingan dengan project lain.
 
   > ⚠️ **JANGAN pasang `networkingMode=mirrored`.** Sudah diuji: bentrok dengan publish port Docker
@@ -68,6 +83,9 @@ docker-compose.yml
 | 6 | `SessionManager.ts` puppeteer args **wajib** mengandung `--disable-crash-reporter`. | Container minimal → `chrome_crashpad_handler: --database is required` crash-loop. |
 | 7 | Akses browser Windows hanya via **IP VM WSL** (`http://<vm-ip>:3000` dst). `localhost` dari Windows TIDAK tembus ke container. | Mode NAT WSL; sudah diuji (mirrored gagal). |
 | 8 | Jika Chromium error "The profile appears to be in use by another Chromium process", hapus symlink stale: `SingletonLock`, `SingletonCookie`, `SingletonSocket` di dalam volume `wa_session` lalu restart whatsapp. | Stale lock tersisa dari crash/kill × container recreate; lokasinya persist di volume. |
+| 9 | `.wslconfig` HARUS memuat `[general] instanceIdleTimeout=-1` DAN `[wsl2] vmIdleTimeout=-1` (nilai negatif = never). | Tanpa pasangan ini, VM/distro WSL mati sendiri ~70 detik setelah sesi `wsl.exe` terakhir ditutup → dockerd & semua container ikut mati. `vmIdleTimeout` saja atau nilai `2147483647` TIDAK cukup (terbukti di mesin owner). |
+| 10 | `docker.service`, `containerd.service`, `docker.socket` sengaja di-SET `disabled` (manual-start). Setelah boot / `wsl --shutdown`, WAJIB `sudo systemctl start docker` dulu. | Owner MENOLAK auto-start saat boot WSL (mau kontrol manual penuh, bukan karena proses laptop idle). Kalau dinyalakan otomatis, dockerd ikut menyala setiap WSL boot. |
+| 11 | Update kode = **sync ke copy WSL dulu, LALU `docker compose up -d --build`**. `up -d` TANPA `--build` TIDAK menerapkan perubahan. | Frontend & API di-bake ke image saat build (bukan bind-mount live). Tanpa `--build`, container tetap pakai image lama yang sudah ada. `--build` sekali jalan = build + recreate + start, tidak perlu `up -d` lagi. |
 
 ## 4. Langkah Setup (verbatim)
 
@@ -95,14 +113,18 @@ cp apps/whatsapp/.env.example apps/whatsapp/.env
 #    export FRONTEND_VITE_API_URL=http://<vm-ip>:8080
 #    export FRONTEND_NEXT_PUBLIC_API_URL=http://<vm-ip>:8080
 
-# ── 5. Build + start SEMUA service (jalankan dari repo dir)
-docker compose up -d --build
+# ── 5. Docker = MANUAL-START (aturan #10, preferensi owner — jangan enable otomatis):
+sudo systemctl disable docker.service containerd.service docker.socket
+sudo systemctl start docker            # setiap habis boot / wsl --shutdown
 
-# ── 6. Tunggu sehat (healthcheck aktif)
+# ── 6. Build + start SEMUA service (jalankan dari repo dir)
+docker compose up -d --build           # SEKALI saja cukup = build + recreate + start
+
+# ── 7. Tunggu sehat (healthcheck aktif)
 docker compose ps
 #   Semua service harus tercantum "healthy" (api + whatsapp butuh waktu beberapa detik/menit).
 
-# ── 7. Scan WhatsApp QR (SESI SEKALI SAJA, setelah itu tersimpan di volume wa_session)
+# ── 8. Scan WhatsApp QR (SESI SEKALI SAJA, setelah itu tersimpan di volume wa_session)
 #   Buka panel Superadmin di browser → menu WhatsApp → tampil QR (render via qr JS).
 #   Alternatif CLI (verifikasi saja):
 #   API_KEY=$(grep -E '^API_KEY=' apps/whatsapp/.env | cut -d= -f2-)
@@ -113,6 +135,34 @@ docker compose ps
 > Catatan build: `apps/api/Dockerfile` memakai mirror PyPI `mirrors.aliyun.com` + `--retries 10 --timeout 60`
 > (cepat & stabil untuk wilayah Indonesia/Asia). Biarkan; jika di jaringan lain bermasalah, boleh ganti ke
 > index resmi, TAPI pertahankan `--retries` & `--timeout` karena ganti itu bukan bagian setup inti.
+
+## 4a. DUA COPY REPO (kunci masalah "ga update") — WAJIB paham
+
+Setup nyata owner memakai **dua copy repo**, dan ini sumber kebingungan paling sering:
+
+| Copy | Lokasi | Git? | Dipakai untuk |
+|---|---|---|---|
+| **Copy Windows** | `C:\ptdarrahman.sch.id\project-ppdb` | **YA** (repo asli, tempat AGENT/opencode & editor bekerja) | edit kode, commit |
+| **Copy WSL** | `/home/<user>/project-ppdb` (ext4) | TIDAK (tanpa .git, bisa stale) | **Docker build & run** (satu-satunya yang dipakai dockerd) |
+
+**ALUR UPDATE KODE yang benar:**
+1. Edit di **copy Windows** (git repo, tempat agent bekerja).
+2. **Sync file yang berubah ke copy WSL** (jalankan dari dalam WSL), contoh:
+   ```bash
+   cp /mnt/c/ptdarrahman.sch.id/project-ppdb/apps/api/src/modules/companyprofile/router.py \
+      /home/<user>/project-ppdb/apps/api/src/modules/companyprofile/router.py
+   ```
+   (opsional: sync seluruh `apps/` & `packages/` via `rsync`, tapi JANGAN timpa `.env`).
+3. Build ulang & jalankan dari **copy WSL** (aturan #11):
+   ```bash
+   cd /home/<user>/project-ppdb
+   docker compose up -d --build
+   ```
+4. Tanpa perubahan kode cukup: `docker compose up -d` (pakai image lama).
+
+> **Gejala khas kalau salah urutan:** kode sudah diedit di Windows + `up -d --build` dijalankan,
+> tapi UI/API tetap versi lama. Penyebab: yang di-build adalah **copy WSL yang belum di-sync**.
+> Ingat: dockerd HANYA melihat `/home/<user>/project-ppdb`, TIDAK pernah melihat `C:\...`.
 
 ## 5. Akses dari Browser Windows (penting!)
 
@@ -159,8 +209,12 @@ Setup dinyatakan **BERHASIL** jika kelima item di atas lolos DAN QR WhatsApp bis
 ## 7. Operasional Harian
 
 ```bash
-# Nyalain (dari dalam WSL, di folder repo):
-docker compose up -d
+# NYALAIN setiap habis WSL boot (dockerd MANUAL-START — aturan #10; jalankan dari PowerShell):
+wsl -e sudo systemctl start docker
+# lalu (dari dalam WSL, di folder repo copy WSL):
+docker compose up -d                 # tanpa perubahan kode
+# atau kalau ada update kode (setelah sync dari copy Windows — lihat 4a):
+docker compose up -d --build         # SEKALI cukup
 
 # Matiin container saja (port dibebaskan, dockerd tetap jalan, balik cepat):
 docker compose stop
@@ -174,6 +228,10 @@ docker compose logs -f api          # FastAPI
 docker compose logs -f whatsapp     # WhatsApp session/QR
 ```
 
+> ⚠️ Karena `.wslconfig` memakai `instanceIdleTimeout=-1`/`vmIdleTimeout=-1` (aturan #9),
+> VM TIDAK akan mati sendiri walau laptop idle — untuk benar-benar mematikan total, WAJIB
+> `wsl --shutdown` manual.
+
 ## 8. Troubleshooting Ringkas
 
 | Gejala | Penyebab | Solusi |
@@ -186,3 +244,32 @@ docker compose logs -f whatsapp     # WhatsApp session/QR
 | whatsapp: `IMPORTANT! Eviction policy is allkeys-lru...` | Redis policy salah | Pastikan `--maxmemory-policy noeviction` (aturan #3), recreate redis |
 | Browser Windows tidak bisa buka `localhost:3000` | Mode NAT WSL | Gunakan IP VM (`wsl hostname -I`), bukan `localhost` (aturan #7) |
 | `docker compose up` sempat gagal lalu `wsl: connection failed 0x8007274c` | Koneksi WSL transient | Retry sebentar (bukan masalah repo) |
+| **Semua container berhenti tiba-tiba, `wsl -l -v` → `Stopped`** walau tidak `docker compose stop` | VM WSL auto-shutdown karena idle | Pastikan `.wslconfig` punya `instanceIdleTimeout=-1` + `vmIdleTimeout=-1` (aturan #9). Setelah boot lagi jangan lupa `sudo systemctl start docker`. |
+| **Kode sudah diedit tapi build/output tetap versi lama ("ga update")** | (a) Build dari copy WSL yang belum di-sync dari copy Windows, dan/atau (b) `up -d` tanpa `--build` | Sync file ke `/home/<user>/project-ppdb` dulu (bagian 4a), lalu `docker compose up -d --build` (aturan #11). |
+| `socket.gaierror` / API hang saat dipanggil karena koneksi DB | Panggilan DB blocking di event loop | Endpoint async jangan memanggil DB sinkron langsung; pakai `asyncio.to_thread` atau jadikan endpoint `def` (lihat fix `apps/api/src/modules/companyprofile/router.py`). |
+| API log: `pymysql ... socket.readinto` / event loop blocked, `/health` lambat | `connect_timeout`/`read_timeout` tidak diset | Pastikan engine `connect_args` memuat `connect_timeout=5, read_timeout=30, write_timeout=30` (`apps/api/src/core/database.py`). |
+
+## 9. Pindah Device / Setup di Mesin Baru (reproduksi 1:1)
+
+Kalau owner pindah laptop/PC, agar perilaku runtime PERSIS seperti sekarang (manual-start + tidak
+mati sendiri + dua-copy repo), ikuti urutan ini:
+
+1. **Instal Windows + WSL2 Ubuntu.** Cek: `wsl --version` (WSL 2.5.x+ mendukung
+   `instanceIdleTimeout` — versi lama mengabaikan section `[general]`).
+2. **Buat `.wslconfig`** di `%USERPROFILE%\.wslconfig` dengan konten dari bagian 2 (termasuk
+   `[general] instanceIdleTimeout=-1`). Jalankan `wsl --shutdown` + `wsl` sekali agar diterapkan.
+3. **Clone repo git di copy Windows** (`C:\ptdarrahman.sch.id\project-ppdb`) SEMALAMAN
+   **buat copy kerja WSL** di `/home/<user>/project-ppdb` (ext4). Cara tercepat:
+   `cp -a /mnt/c/ptdarrahman.sch.id/project-ppdb /home/<user>/project-ppdb` dari dalam WSL,
+   lalu hapus folder `.git` di copy WSL agar tidak ada dua git yang saling bingung.
+4. **Env files**: `cp apps/api/.env.example apps/api/.env`, `cp apps/whatsapp/.env.example
+   apps/whatsapp/.env`, lalu isi dengan nilai yang benar (creds DB, JWT, API key, WEBHOOK secret).
+   Set `CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium` di whatsapp/.env.
+5. **Manual-start (aturan #10)**: `sudo systemctl disable docker.service containerd.service
+   docker.socket` — ini memastikan dockerd TIDAK ikut nyala saat WSL boot.
+6. Build & jalankan: `sudo systemctl start docker` lalu `docker compose up -d --build`.
+7. Verifikasi lengkap (bagian 6) + scan QR WhatsApp dari Superadmin.
+
+> Setelah mesin baru aktif: selama bertahun-tahun rutinitas cuma 3 perintah —
+> `wsl -e sudo systemctl start docker` → `docker compose up -d` (tanpa perubahan) /
+> `docker compose up -d --build` (setelah sync kode per bagian 4a) → matikan `wsl --shutdown`.

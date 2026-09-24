@@ -10,10 +10,19 @@ export default function ExamCardPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    // Ambil logo perusahaan untuk header kartu
-    fetch(`${API_BASE}/companyprofile/settings/logo`)
-      .then(res => res.ok ? res.json() : null)
-      .then(data => { if (data?.value) setLogoUrl(data.value) })
+    // Slot emblem persegi — utamakan favicon, fallback ke logo.
+    Promise.all([
+      fetch(`${API_BASE}/companyprofile/settings/favicon`),
+      fetch(`${API_BASE}/companyprofile/settings/logo`),
+    ])
+      .then(([faviconRes, logoRes]) => Promise.all([
+        faviconRes.ok ? faviconRes.json() : null,
+        logoRes.ok ? logoRes.json() : null,
+      ]))
+      .then(([favicon, logo]) => {
+        const url = favicon?.value || logo?.value
+        if (url) setLogoUrl(url)
+      })
       .catch(() => {})
   }, [])
 
@@ -81,7 +90,7 @@ export default function ExamCardPage() {
 
         {/* The Card (Printable Area) */}
         <div className="relative overflow-hidden rounded-xl border-2 border-slate-800 bg-white shadow-xl print:rounded-none print:border-none print:shadow-none">
-          
+
           {/* Header Section */}
           <div className="flex items-center gap-6 border-b-2 border-slate-800 bg-slate-50 px-8 py-6 print:bg-transparent">
             {logoUrl ? (
@@ -106,7 +115,7 @@ export default function ExamCardPage() {
 
           <div className="p-8">
             <div className="flex gap-10">
-              
+
               {/* Left Column (Photo & QR) */}
               <div className="w-[150px] shrink-0 space-y-6">
                 <div className="aspect-[3/4] w-full overflow-hidden rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 relative">
@@ -114,7 +123,7 @@ export default function ExamCardPage() {
                     <span className="text-sm font-medium text-slate-400">Tempel Pas Foto 3x4</span>
                   </div>
                 </div>
-                
+
                 <div className="flex flex-col items-center justify-center space-y-2">
                   {/* Fake QR Code using SVG patterns to look realistic */}
                   <svg className="h-24 w-24 rounded-md border border-slate-200 p-1" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -128,7 +137,7 @@ export default function ExamCardPage() {
 
               {/* Right Column (Data & Schedule) */}
               <div className="flex-1 space-y-6">
-                
+
                 {/* Data Peserta */}
                 <div>
                   <h3 className="mb-4 inline-block border-b-2 border-primary pb-1 text-sm font-bold uppercase tracking-wider text-slate-800">Biodata Peserta</h3>
@@ -169,7 +178,7 @@ export default function ExamCardPage() {
                     <CalendarDays className="h-4 w-4 text-blue-600 print:text-slate-800" />
                     Jadwal & Lokasi Ujian
                   </h3>
-                  
+
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
                       <div className="mt-0.5 rounded bg-blue-100 p-1.5 print:bg-slate-100">
@@ -182,7 +191,7 @@ export default function ExamCardPage() {
                         <p className="text-sm text-slate-600">{session.start_time.slice(0,5)} - {session.end_time.slice(0,5)} WIB</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-start gap-3">
                       <div className="mt-0.5 rounded bg-blue-100 p-1.5 print:bg-slate-100">
                         <MapPin className="h-4 w-4 text-blue-700 print:text-slate-700" />
@@ -197,7 +206,7 @@ export default function ExamCardPage() {
 
               </div>
             </div>
-            
+
             {/* Tata Tertib */}
             <div className="mt-10 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 print:bg-transparent">
               <h4 className="mb-3 font-bold text-slate-800">Tata Tertib Peserta Ujian:</h4>
@@ -209,7 +218,7 @@ export default function ExamCardPage() {
                 <li>Dilarang membawa alat komunikasi (HP/Smartwatch) ke dalam ruang ujian.</li>
               </ol>
             </div>
-            
+
             {/* Tanda Tangan */}
             <div className="mt-10 flex justify-end">
               <div className="w-48 text-center text-sm">
@@ -218,11 +227,10 @@ export default function ExamCardPage() {
                 <p className="mt-2 font-bold text-slate-800">Ketua Panitia</p>
               </div>
             </div>
-            
+
           </div>
         </div>
       </div>
     </div>
   )
 }
-

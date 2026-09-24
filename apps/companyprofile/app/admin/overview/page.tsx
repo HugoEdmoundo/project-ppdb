@@ -152,8 +152,8 @@ export default function AdminOverview() {
         .then((settings) => {
           const logo = settings.find((s) => s.key === 'logo')?.value
           const favicon = settings.find((s) => s.key === 'favicon')?.value
-          if (logo) setLogoUrl(logo)
-          else if (favicon) setLogoUrl(favicon)
+          if (favicon) setLogoUrl(favicon)
+          else if (logo) setLogoUrl(logo)
           else setLogoUrl('/download.png')
         })
         .catch(() => {})
@@ -257,7 +257,7 @@ export default function AdminOverview() {
           {collapsed ? (
             logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-auto max-w-8 object-contain drop-shadow-sm" />
+              <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-8 object-contain drop-shadow-sm" />
             ) : (
               <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-emerald-700 text-white flex items-center justify-center font-bold text-lg select-none shadow-sm">ار</div>
             )
@@ -265,7 +265,7 @@ export default function AdminOverview() {
             <div className="flex items-center gap-3 min-w-0 flex-1">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-auto max-w-36 object-contain shrink-0 drop-shadow-sm" />
+                <img src={logoUrl} alt="PTDARRAHMAN" className="h-9 w-9 object-contain shrink-0 drop-shadow-sm" />
               ) : (
                 <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-primary to-emerald-700 text-white flex items-center justify-center font-bold text-lg shrink-0 select-none shadow-sm">ار</div>
               )}

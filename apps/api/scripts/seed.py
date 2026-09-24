@@ -122,8 +122,14 @@ SITE_SETTINGS = [
         "site_description",
         "Membentuk generasi Qurani yang tangguh dan adaptif di era digital.",
     ),
-    ("favicon", ""),
-    ("logo", ""),
+    (
+        "favicon",
+        "https://res.cloudinary.com/dunynusuh/image/upload/v1782693726/download_cxdfqr.png",
+    ),
+    (
+        "logo",
+        "https://res.cloudinary.com/dunynusuh/image/upload/v1755771459/Logo-Ar-Rahman_fm4mgg.png",
+    ),
     ("whatsapp", ""),
     ("whatsapp_number", ""),
     ("whatsapp_message", ""),
@@ -362,7 +368,7 @@ NOTIF_TEMPLATES = [
 def _now() -> str:
     from src.core.database import utcnow
 
-    return utcnow()
+    return str(utcnow())
 
 
 def ensure_modules_and_pages() -> None:
@@ -462,10 +468,15 @@ def ensure_applicant_roles() -> None:
 
 
 def ensure_site_settings() -> None:
+    defaults = dict(SITE_SETTINGS)
     for key, value in SITE_SETTINGS:
-        if not get_by_column("site_settings", "key", key):
+        existing = get_by_column("site_settings", "key", key)
+        if not existing:
             create_record("site_settings", {"key": key, "value": value})
             print(f"  setting created: {key}")
+        elif not (existing.get("value") or "").strip() and defaults.get(key):
+            update_record("site_settings", existing["key"], {"value": value})
+            print(f"  setting backfilled: {key}")
 
 
 def ensure_notification_templates() -> None:

@@ -48,20 +48,20 @@ export function PageLoader() {
           {/* Outer spinning arc (emerald) */}
           <svg
             className="animate-ring-spin absolute"
-            width="88"
-            height="88"
-            viewBox="0 0 88 88"
+            width="240"
+            height="240"
+            viewBox="0 0 240 240"
             fill="none"
             aria-hidden="true"
           >
             <circle
-              cx="44"
-              cy="44"
-              r="40"
+              cx="120"
+              cy="120"
+              r="116"
               stroke="hsl(var(--primary))"
               strokeWidth="2.5"
               strokeLinecap="round"
-              strokeDasharray="60 192"
+              strokeDasharray="174 555"
               opacity="0.7"
             />
           </svg>
@@ -70,31 +70,31 @@ export function PageLoader() {
           <svg
             className="absolute"
             style={{ animation: 'ring-spin 2.4s linear infinite reverse' }}
-            width="70"
-            height="70"
-            viewBox="0 0 70 70"
+            width="190"
+            height="190"
+            viewBox="0 0 190 190"
             fill="none"
             aria-hidden="true"
           >
             <circle
-              cx="35"
-              cy="35"
-              r="31"
+              cx="95"
+              cy="95"
+              r="91"
               stroke="hsl(var(--accent))"
               strokeWidth="1.5"
               strokeLinecap="round"
-              strokeDasharray="30 164"
+              strokeDasharray="88 484"
               opacity="0.5"
             />
           </svg>
 
           {/* Logo mark — dynamically fetched from API */}
-          <div className="animate-logo-pulse h-14 w-14 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden">
+          <div className="animate-logo-pulse h-16 max-w-[260px] rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden px-4">
             {logoUrl ? (
               <img
                 src={logoUrl}
                 alt="Logo Ar-Rahman"
-                className="h-full w-full object-contain p-1"
+                className="h-full w-auto object-contain"
               />
             ) : (
               /* Fallback text mark saat logo belum di-fetch atau tidak tersedia */

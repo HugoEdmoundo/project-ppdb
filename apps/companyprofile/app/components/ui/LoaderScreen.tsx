@@ -20,7 +20,9 @@ export default function LoaderScreen() {
     getSettings()
       .then((settings) => {
         const logo = settings.find((s) => s.key === 'logo')?.value
+        const favicon = settings.find((s) => s.key === 'favicon')?.value
         if (logo) setLogoUrl(logo)
+        else if (favicon) setLogoUrl(favicon)
       })
       .catch(() => {})
   }, [])
@@ -142,16 +144,16 @@ export default function LoaderScreen() {
 
         <div className="relative inline-block">
           <div className="absolute inset-0 rounded-full bg-[var(--color-gold)] blur-2xl opacity-10 scale-150" />
-          <div ref={logoWrapperRef} style={{ opacity: 0 }} className="relative mx-auto mb-4 h-16 w-16">
+          <div ref={logoWrapperRef} style={{ opacity: 0 }} className="relative mx-auto mb-4 h-16">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={logoUrl}
                 alt="Ar-Rahman"
-                className="h-full w-full object-contain"
+                className="h-full w-auto object-contain"
               />
             ) : (
-              <div className="h-full w-full rounded-lg bg-[var(--color-emerald)] flex items-center justify-center text-white font-bold text-2xl select-none">ار</div>
+              <div className="h-16 w-16 rounded-lg bg-[var(--color-emerald)] flex items-center justify-center text-white font-bold text-2xl select-none">ار</div>
             )}
           </div>
         </div>

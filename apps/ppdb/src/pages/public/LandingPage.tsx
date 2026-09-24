@@ -8,7 +8,6 @@ import {
   LayoutDashboard, Zap, Headphones, GraduationCap, ArrowRightLeft, Waves,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { HeroLoader } from '@repo/ui'
 
 interface ActiveWave {
   active: boolean
@@ -30,12 +29,6 @@ export default function LandingPage() {
   const [wave, setWave] = useState<ActiveWave | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const [isHeroLoading, setIsHeroLoading] = useState(true)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsHeroLoading(false), 2000)
-    return () => clearTimeout(timer)
-  }, [])
 
   useEffect(() => {
     settingsService.getAll()
@@ -79,7 +72,6 @@ export default function LandingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans">
-      {isHeroLoading && <HeroLoader logoUrl={logoUrl || undefined} fast />}
       {/* ── Navbar ── */}
       <header className={cn(
         'fixed top-0 left-0 right-0 z-50 border-b bg-white/85 backdrop-blur-xl transition-shadow duration-300',

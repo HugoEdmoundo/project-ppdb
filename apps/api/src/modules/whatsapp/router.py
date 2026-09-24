@@ -197,7 +197,7 @@ async def whatsapp_status(
 
         try:
             h = await client.get(f"{_wa_base()}/health/detailed", headers=_wa_headers())
-            if h.status_code == 200:
+            if h.status_code in (200, 503):
                 health = h.json()
         except httpx.HTTPError:
             pass

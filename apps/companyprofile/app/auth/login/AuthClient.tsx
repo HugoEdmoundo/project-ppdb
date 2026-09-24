@@ -31,7 +31,7 @@ export default function AuthClient() {
       await login(username, password)
       setSuccessName(username)
       setSuccess(true)
-      setTimeout(() => router.push('/admin/overview'), 900)
+      setTimeout(() => router.push('/admin/overview'), 500)
     } catch (err: unknown) {
       setSuccess(false)
       const msg = err instanceof Error ? err.message : 'Login gagal'

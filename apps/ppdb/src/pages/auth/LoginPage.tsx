@@ -94,7 +94,7 @@ export default function LoginPage() {
     const dest = isApplicantUser ? '/applicant' : '/admin/dashboard'
 
     if (loginSuccess) {
-      const timer = setTimeout(() => navigate(dest, { replace: true }), 1200)
+      const timer = setTimeout(() => navigate(dest, { replace: true }), 500)
       return () => clearTimeout(timer)
     } else {
       navigate(dest, { replace: true })

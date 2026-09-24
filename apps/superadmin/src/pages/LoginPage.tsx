@@ -41,7 +41,7 @@ export default function LoginPage() {
       setSuccessName(loggedInUser?.full_name || loggedInUser?.username || username)
       setSuccess(true)
       setRedirecting(true)
-      setTimeout(() => navigate('/', { replace: true }), 1200)
+      setTimeout(() => navigate('/', { replace: true }), 500)
     } catch (e: any) {
       setSuccess(false)
       setError(e.message || 'Login gagal')

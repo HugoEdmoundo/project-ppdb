@@ -1,6 +1,6 @@
 import Navbar from "@/app/components/layout/Navbar"
 import Footer from "@/app/components/layout/Footer"
-import { HeroLoader } from "@repo/ui"
+import LoaderScreen from "@/app/components/ui/LoaderScreen"
 import ScrollProgress from "@/app/components/ui/ScrollProgress"
 import SupportFabInit from "@/app/components/ui/SupportFabInit"
 import PageTransition from "@/app/components/ui/PageTransition"
@@ -19,7 +19,7 @@ export default async function MainLayout({
   return (
     <>
       <RealtimeWatcher module="companyprofile" />
-      <HeroLoader logoUrl={logoUrl} />
+      <LoaderScreen logoUrl={logoUrl} />
       <ScrollProgress />
       <SupportFabInit />
       <Navbar />

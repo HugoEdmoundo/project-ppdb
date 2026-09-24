@@ -1,12 +1,12 @@
 'use client'
 
-import Image from 'next/image'
 import { useState, useRef, useEffect } from 'react'
 import PageHeader from '@/app/components/layout/PageHeader'
 import { useScrollReveal } from '@/app/hooks/useScrollAnimations'
 import type { Facility } from '@/app/lib/types'
-import { ChevronDown, Play } from 'lucide-react'
-import TiltCard from '@/app/components/ui/TiltCard'
+import { Play } from 'lucide-react'
+import InteractiveImageAccordion from '@/app/components/ui/InteractiveImageAccordion'
+import EmptyState from '@/app/components/ui/EmptyState'
 
 const categories = [
   { key: 'all', idn: 'Semua' },
@@ -19,7 +19,6 @@ const categories = [
 
 export default function FacilitiesClient({ facilities }: { facilities: Facility[] }) {
   const [filter, setFilter] = useState('all')
-  const [activeId, setActiveId] = useState<string | null>(null)
   const sectionRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -59,37 +58,25 @@ export default function FacilitiesClient({ facilities }: { facilities: Facility[
             ))}
           </div>
 
-          {/* Facilities Grid */}
-          <div className="grid md:grid-cols-2 gap-6 mb-16">
-            {filtered.map((f) => {
-              const info = f.content ?? {}
-              const isActive = activeId === f.id
-              return (
-                <TiltCard key={f.id} glare={false} maxTilt={4} className="glass-card rounded-2xl overflow-hidden transition-all cursor-pointer"
-                  onClick={() => setActiveId(isActive ? null : f.id)}>
-                  <div className="aspect-[16/9] overflow-hidden relative">
-                    {f.image ? <Image src={f.image} alt={info.name || ''} fill className="object-cover group-hover:scale-105 transition-transform duration-700" sizes="(max-width: 768px) 100vw, 50vw" loading="lazy" /> : <div className="w-full h-full bg-[var(--bg-secondary)]" />}
-                  </div>
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-[var(--font-heading)] text-lg font-bold">{info.name}</h3>
-                        <p className="text-sm text-[var(--text-secondary)] mt-1">{info.desc}</p>
-                      </div>
-                      <ChevronDown className={`w-5 h-5 text-[var(--text-muted)] transition-transform flex-shrink-0 mt-1 ${isActive ? 'rotate-180' : ''}`} />
-                    </div>
-                    <div className={`overflow-hidden transition-all duration-300 ${isActive ? 'max-h-40' : 'max-h-0'}`}>
-                      <div className="verse-strip my-4" />
-                      <div className="flex flex-wrap gap-2">
-                        {(info.features || []).map((feat, j) => (
-                          <span key={j} className="text-[10px] sm:text-xs px-2.5 py-1 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] font-medium">{feat}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </TiltCard>
-              )
-            })}
+          {/* Facilities Accordion */}
+          <div className="mb-16">
+            {filtered.length > 0 ? (
+              <InteractiveImageAccordion
+                key={filter}
+                items={filtered.map((f) => ({
+                  id: f.id,
+                  title: f.content?.name ?? 'Fasilitas',
+                  description: f.content?.desc,
+                  features: f.content?.features,
+                  image: f.image,
+                }))}
+              />
+            ) : (
+              <EmptyState
+                title="Belum ada fasilitas di kategori ini"
+                description="Fasilitas pada kategori tersebut belum tersedia. Silakan pilih kategori lain."
+              />
+            )}
           </div>
 
           {/* Virtual Tour */}

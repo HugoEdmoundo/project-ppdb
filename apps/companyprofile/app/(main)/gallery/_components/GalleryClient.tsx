@@ -148,6 +148,7 @@ export default function GalleryClient({ gallery }: { gallery: GalleryItem[] }) {
         title="Galeri"
         subtitle="Jelajahi momen dan kenangan dari seluruh pesantren dan komunitas kami"
         badge="MOMEN"
+        align="center"
       />
 
       <section ref={sectionRef} className="py-16 sm:py-20 bg-[var(--bg)]">

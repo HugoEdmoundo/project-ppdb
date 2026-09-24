@@ -5,12 +5,20 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
+# Runtime memakai system chromium (CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium),
+# jadi jangan unduh browser bawaan puppeteer saat install (hemat waktu & bandwidth).
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
 # Install dependencies (including devDeps for TypeScript compilation)
 COPY package.json ./
 # FIX: npm tidak mengenal --frozen-lockfile (itu flag pnpm).
 # Pakai --ci untuk npm agar lockfile-exact dan tidak modifikasi package-lock.json.
 COPY package-lock.json ./
-RUN npm ci
+# Network flaky: cache-mount /root/.npm supaya download yang terputus lanjut
+# dari cache antar-build, plus fetch-retries tinggi. (Sama pola pip --retries di api.)
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --fetch-retries=10 --fetch-retry-maxtimeout=120000
 
 # Copy source and compile TypeScript
 COPY tsconfig.json ./

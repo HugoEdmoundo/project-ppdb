@@ -346,6 +346,16 @@ h1, h2, h3, h4, h5, h6 {
   from { opacity: 0; transform: scale(0.95) translateY(8px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-dropdown-in { animation: dropdownIn 0.18s ease-out; transform-origin: top; }
+@keyframes fadeUpIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up-in { animation: fadeUpIn 0.3s ease-out both; }
 /* ── Hide scrollbar in modals (still scrollable) ── */
 .modal-scroll, .modal-content { scrollbar-width: none; -ms-overflow-style: none; }
 .modal-scroll::-webkit-scrollbar, .modal-content::-webkit-scrollbar { display: none; }

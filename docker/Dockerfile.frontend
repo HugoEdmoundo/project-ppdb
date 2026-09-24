@@ -44,7 +44,10 @@ COPY apps/ppdb/package.json ./apps/ppdb/package.json
 COPY apps/superadmin/package.json ./apps/superadmin/package.json
 
 # Install terlebih dahulu (pnpm 9: build scripts berjalan → sharp/esbuild th-build untuk linux)
-RUN pnpm install --frozen-lockfile
+# Network flaky: cache-mount pnpm store agar install yang terputus lanjut dari
+# cache antar-build, plus retry & concurrency rendah.
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --fetch-retries=8 --network-concurrency=4
 
 # Source — node_modules per paket yang sudah ada dipertahankan oleh COPY
 COPY packages/ ./packages/

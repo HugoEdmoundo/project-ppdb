@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import GalleryClient from './_components/GalleryClient'
 import { getGallery } from '@/app/lib/api'
+import { getGalleryDummyFallback } from '@/app/lib/dummyGallery'
 import type { GalleryItem } from '@/app/lib/types'
 
 export const metadata: Metadata = {
@@ -35,7 +36,7 @@ export default async function GalleryPage() {
   try { gallery = await getGallery() } catch { gallery = null }
   return (
     <Suspense>
-      <GalleryClient gallery={gallery ?? []} />
+      <GalleryClient gallery={getGalleryDummyFallback(gallery)} />
     </Suspense>
   )
 }

@@ -81,7 +81,7 @@ export default function AboutClient({ staff }: { staff: Staff[] }) {
             </div>
             <div className="relative">
               <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-lg relative">
-                <Image src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop" alt="Arrahman Boarding School" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" priority />
+                <Image src="https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=2070&auto=format&fit=crop" alt="Arrahman Boarding School" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" priority />
               </div>
               <div className="absolute -bottom-4 sm:-bottom-6 -left-4 sm:-left-6 bg-[var(--accent)] text-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
                 <div className="font-[var(--font-display)] text-2xl sm:text-3xl font-bold">5+</div>

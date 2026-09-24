@@ -52,7 +52,7 @@ export default function StaffClient({ staff }: { staff: Staff[] }) {
               {filtered.map((person) => {
               const p = person.content ?? {}
               return (
-                <TiltCard key={person.id} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6 card-hover">
+                <TiltCard key={person.id} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6 transition-all duration-300 hover:border-[var(--accent)] hover:shadow-lg">
                   <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-4 border-2 border-[var(--accent)]/20 relative">
                     {person.image ? <Image src={person.image} alt={p.name || ''} fill className="object-cover" sizes="80px" /> : <div className="w-full h-full bg-[var(--bg-secondary)] rounded-full" />}
                   </div>

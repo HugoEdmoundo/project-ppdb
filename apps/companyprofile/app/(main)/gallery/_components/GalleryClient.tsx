@@ -2,11 +2,13 @@
 
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import PageHeader from '@/app/components/layout/PageHeader'
 import { useScrollReveal } from '@/app/hooks/useScrollAnimations'
 import type { GalleryItem } from '@/app/lib/types'
 import { X, Play } from 'lucide-react'
+import { CoverflowCarousel } from '@/app/components/ui/CoverflowCarousel'
+import EmptyState from '@/app/components/ui/EmptyState'
 
 const categories = [
   { key: 'all', idn: 'Semua' },
@@ -103,6 +105,17 @@ export default function GalleryClient({ gallery }: { gallery: GalleryItem[] }) {
 
   const filtered = filter === 'all' ? gallery : gallery.filter((g) => g.category === filter)
 
+  const slides = useMemo(
+    () =>
+      filtered.map((item) => ({
+        src: item.image,
+        alt: item.content?.title ?? 'Galeri',
+        title: item.content?.title,
+        subtitle: item.category,
+      })),
+    [filtered],
+  )
+
   const closeAll = () => { setSelected(null); setVideoModal(null) }
 
   useEffect(() => {
@@ -157,26 +170,22 @@ export default function GalleryClient({ gallery }: { gallery: GalleryItem[] }) {
             ))}
           </div>
 
-          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
-            {filtered.map((item) => {
-              const info = item.content ?? {}
-              return (
-                <div
-                  key={item.id}
-                  className="break-inside-avoid img-overlay rounded-2xl shadow-sm cursor-pointer"
-                  onClick={() => setSelected(item)}
-                >
-                  <div className="relative w-full">
-                    {item.image ? <Image src={item.image} alt={info.title || ''} width={800} height={600} className="w-full h-auto object-cover" loading="lazy" /> : <div className="w-full h-full bg-[var(--bg-secondary)]" />}
-                  </div>
-                  <div className="overlay">
-                    <h4 className="text-white text-base font-bold font-[var(--font-heading)]">{info.title}</h4>
-                    <span className="text-white/60 text-xs uppercase tracking-wider">{item.category}</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          {filtered.length > 0 ? (
+            <CoverflowCarousel
+              key={filter}
+              slides={slides}
+              showCaption
+              showPagination
+              showNavigation
+              onSlideClick={(index) => setSelected(filtered[index])}
+              label="Galeri Pesantren"
+            />
+          ) : (
+            <EmptyState
+              title="Belum ada foto di kategori ini"
+              description="Foto pada kategori tersebut belum tersedia. Silakan pilih kategori lain."
+            />
+          )}
 
           <div className="mt-12 sm:mt-16 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--color-border)] overflow-hidden">
             <div className="p-6 sm:p-10">

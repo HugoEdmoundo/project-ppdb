@@ -7,12 +7,27 @@ import { usePathname } from 'next/navigation'
 import { Menu, X, ChevronDown } from 'lucide-react'
 import AnimatedLogo from '../ui/AnimatedLogo'
 import MagneticButton from '../ui/MagneticButton'
+import { useProgramLinks } from '@/app/hooks/useProgramLinks'
 import { useBrand } from '@repo/ui'
 
 const PORTAL_URL =
   process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:5174'
 
-const navItems = [
+interface NavChild {
+  href: string
+  label: string
+  programKey?: string
+}
+
+interface NavItem {
+  key: string
+  href: string
+  label: string
+  dropdown?: boolean
+  children?: NavChild[]
+}
+
+const navItems: NavItem[] = [
   { key: 'home', href: '/', label: 'Beranda', dropdown: false },
   {
     key: 'about', href: '/about', label: 'Tentang', dropdown: true,
@@ -28,10 +43,10 @@ const navItems = [
   {
     key: 'programs', href: '/programs', label: 'Program', dropdown: true,
     children: [
-      { href: '/programs/tahfidz', label: 'Tahfidz Al-Quran' },
-      { href: '/programs/digital', label: 'Teknologi Digital' },
-      { href: '/programs/bilingual', label: 'Program Bilingual' },
-      { href: '/programs/leadership', label: 'Akademi Kepemimpinan' },
+      { href: '/programs/tahfidz', label: 'Tahfidz Al-Quran', programKey: 'tahfidz' },
+      { href: '/programs/digital', label: 'Teknologi Digital', programKey: 'digital' },
+      { href: '/programs/bilingual', label: 'Program Bilingual', programKey: 'bilingual' },
+      { href: '/programs/leadership', label: 'Akademi Kepemimpinan', programKey: 'leadership' },
     ],
   },
   { key: 'ppdb', href: '/ppdb', label: 'PPDB', dropdown: false },
@@ -44,8 +59,11 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const { logoUrl } = useBrand(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000')
+  const { hrefFor } = useProgramLinks()
   const pathname = usePathname()
   const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const childHref = (child: NavChild) => (child.programKey ? hrefFor(child.programKey) : child.href)
 
   // Sync state with pathname change during rendering instead of useEffect to avoid cascading render lint warning
   const [prevPathname, setPrevPathname] = useState(pathname)
@@ -161,13 +179,13 @@ export default function Navbar() {
                   <div
                     onMouseEnter={handleDropdownContentEnter}
                     onMouseLeave={handleDropdownLeave}
-                    className="absolute top-full left-0 mt-2 w-56 bg-white/90 backdrop-blur-xl border border-[var(--color-border)] rounded-2xl shadow-xl py-3 animate-in"
+                    className="absolute top-full left-0 mt-2 w-56 bg-white/90 backdrop-blur-xl border border-[var(--color-border)] rounded-2xl shadow-xl py-3 animate-dropdown-in"
                   >
                     {item.children?.map((child) => (
                       <Link
                         key={child.href}
-                        href={child.href}
-                        onClick={(e) => handleNavClick(e, child.href)}
+                        href={childHref(child)}
+                        onClick={(e) => handleNavClick(e, childHref(child))}
                         className="block px-5 py-2.5 text-sm text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)] transition-colors"
                       >
                         {child.label}
@@ -239,9 +257,9 @@ export default function Navbar() {
                       {item.children?.map((child) => (
                         <Link
                           key={child.href}
-                          href={child.href}
+                          href={childHref(child)}
                           onClick={(e) => {
-                            handleNavClick(e, child.href)
+                            handleNavClick(e, childHref(child))
                           }}
                           className="block py-3 text-sm md:text-base text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors font-medium"
                         >

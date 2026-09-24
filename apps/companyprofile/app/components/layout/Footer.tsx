@@ -6,6 +6,7 @@ import { MapPin, Phone, Mail, ArrowUpRight } from 'lucide-react'
 import VerseStrip from '../ui/VerseStrip'
 import { socialLinks as staticSocialLinks } from '@/app/data/social'
 import { getContactInfo, getSocialLinks } from '@/app/lib/api'
+import { useProgramLinks } from '@/app/hooks/useProgramLinks'
 import { useBrand } from '@repo/ui'
 
 interface SocialItem {
@@ -28,6 +29,7 @@ const FALLBACK_CONTACT: ContactState = {
 
 export default function Footer() {
   const { logoUrl } = useBrand(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000')
+  const { hrefFor } = useProgramLinks()
   const [socials, setSocials] = useState<SocialItem[]>(staticSocialLinks)
   const [contact, setContact] = useState<ContactState>(FALLBACK_CONTACT)
 
@@ -139,10 +141,10 @@ export default function Footer() {
             </h4>
             <ul className="space-y-3">
               {[
-                { href: '/programs/tahfidz', label: 'Tahfidz Al-Quran' },
-                { href: '/programs/digital', label: 'Teknologi Digital' },
-                { href: '/programs/bilingual', label: 'Program Bilingual' },
-                { href: '/programs/leadership', label: 'Akademi Kepemimpinan' },
+                { href: hrefFor('tahfidz'), label: 'Tahfidz Al-Quran' },
+                { href: hrefFor('digital'), label: 'Teknologi Digital' },
+                { href: hrefFor('bilingual'), label: 'Program Bilingual' },
+                { href: hrefFor('leadership'), label: 'Akademi Kepemimpinan' },
                 { href: '/ppdb', label: 'Pendaftaran PPDB' },
               ].map((l) => (
                 <li key={l.href}>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 
 import { ArrowRight, BookOpen, Cpu, Globe, Award } from 'lucide-react'
 import { useScrollReveal } from '../../hooks/useScrollAnimations'
+import { useProgramLinks } from '../../hooks/useProgramLinks'
 import TiltCard from '../ui/TiltCard'
 
 const programData = [
@@ -40,6 +41,7 @@ const programData = [
 
 export default function ProgramsPreview() {
   const sectionRef = useRef<HTMLElement>(null)
+  const { hrefFor } = useProgramLinks()
 
   useScrollReveal(sectionRef, { start: 'top 80%', stagger: 0.1 })
 
@@ -66,7 +68,7 @@ export default function ProgramsPreview() {
             return (
               <TiltCard key={prog.id} className="group">
                 <Link
-                  href={`/programs/${prog.id}`}
+                  href={hrefFor(prog.id)}
                   className="glass-card rounded-2xl overflow-hidden !no-underline block h-full"
                   style={{ animationDelay: `${i * 0.1}s` }}
                 >

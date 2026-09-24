@@ -216,7 +216,8 @@ export class SessionManager extends EventEmitter {
       this.pairingActive = false;
       throw new Error(
         `Gagal membuat pairing code: ${(err as Error).message}. ` +
-          "Pastikan sesi dalam kondisi menunggu taut (bukan sudah terhubung)."
+          "Pastikan sesi dalam kondisi menunggu taut (bukan sudah terhubung).",
+        { cause: err }
       );
     }
 

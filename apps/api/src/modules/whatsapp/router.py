@@ -231,6 +231,7 @@ async def whatsapp_status(
         "lastActivity": session.get("lastActivity"),
         "pairingCode": session.get("pairingCode"),
         "pairingPhone": session.get("pairingPhone"),
+        "lastError": session.get("lastError"),
         "health": health,
         "webhookUrl": webhook_url,
         "webhookMismatch": _webhook_warning(webhook_url, expected),

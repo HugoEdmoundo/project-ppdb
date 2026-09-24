@@ -1,15 +1,14 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { PageLoader, useBrand } from "@repo/ui"
+import { API_BASE } from '../api/client'
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const { logoUrl } = useBrand(API_BASE)
 
   if (loading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    )
+    return <PageLoader logoUrl={logoUrl || undefined} />
   }
 
   if (!user) {

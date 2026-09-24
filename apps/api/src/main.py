@@ -35,6 +35,20 @@ FAVICON_SVG = (
 )
 
 
+import threading
+import time
+from src.core.database import execute_raw
+
+def keep_db_alive():
+    while True:
+        try:
+            time.sleep(15)
+            # Execute 5 times to hit multiple connections in the pool
+            for _ in range(5):
+                execute_raw('SELECT 1')
+        except Exception as e:
+            pass
+
 def _validate_secrets() -> None:
     weak_secrets = {
         "dev-only-secret-change-me",
@@ -79,6 +93,8 @@ async def lifespan(app: FastAPI):
             "Redis cache: NOT connected — rate limiter & session cache degraded. "
             "Set REDIS_URL in .env to enable."
         )
+    
+    threading.Thread(target=keep_db_alive, daemon=True).start()
     yield
 
 

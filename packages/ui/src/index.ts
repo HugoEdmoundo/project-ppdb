@@ -1,3 +1,5 @@
+'use client'
+
 // ── Primitives ────────────────────────────────────────────────────────────────
 export * from "./lib/utils";
 export * from "./hooks/useBrand";
@@ -29,3 +31,6 @@ export * from "./components/ui/section-card";
 export * from "./components/ui/error-state";
 export * from "./components/ui/success-state";
 export * from "./components/ui/confirm-dialog";
+export * from "./components/ui/auth-card";
+export * from "./components/ui/page-loader";
+export * from "./components/ui/hero-loader";

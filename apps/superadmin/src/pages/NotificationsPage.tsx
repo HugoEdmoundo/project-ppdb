@@ -376,7 +376,7 @@ function TemplateTab() {
   }, [toast])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     fetchTemplates()
   }, [fetchTemplates])
 
@@ -616,11 +616,11 @@ function LogTab() {
   // identitasnya berubah saat page berubah (memicu fetch ganda/duplikat).
   // Setter loading di dalamnya dipanggil sinkron, jadi efek luar dan dalam
   // aturan ini ditekan eksplisit.
-  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     fetchLogs(1, statusFilter, eventFilter)
   }, [statusFilter, eventFilter])
-  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
     if (!autoRefresh) return

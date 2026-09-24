@@ -546,16 +546,20 @@ class PPDBService:
             send_notifications(
                 [
                     (
-                        "welcome",
+                        "registration_welcome",
                         {
+                            "username": user.username,
+                            "nama_peserta": user.full_name,
                             "password": raw_password,
                             "link_login": f"{settings.ppdb_frontend_url}/auth/login",
                             "batas_waktu_bayar": applicant.payment_deadline,
                         },
                     ),
                     (
-                        "payment_reminder",
+                        "payment_reminder_day7",
                         {
+                            "username": user.username,
+                            "nama_peserta": user.full_name,
                             "link_pembayaran": f"{settings.ppdb_frontend_url}/checkout",
                             "batas_waktu_bayar": applicant.payment_deadline,
                         },
@@ -884,7 +888,7 @@ class PPDBService:
         )
         for app in payment_apps:
             send_notification(
-                "payment_reminder_d7",
+                "payment_reminder_day7",
                 app.user_id,
                 {"batas_waktu_bayar": tomorrow_wib_str},
             )
@@ -906,9 +910,9 @@ class PPDBService:
 
             days_left = (end_date - now_wib.date()).days
             if days_left == 3:
-                send_notification("document_reminder_d3", app.user_id, {})
+                send_notification("document_reminder_3days", app.user_id, {})
             elif days_left == 1:
-                send_notification("document_reminder_d1", app.user_id, {})
+                send_notification("document_reminder_1day", app.user_id, {})
 
         # Selection reminders
         sel_apps = self.repository.get_applicants_for_selection_reminder()
@@ -927,9 +931,9 @@ class PPDBService:
 
             days_left = (sel_date - now_wib.date()).days
             if days_left == 5:
-                send_notification("selection_reminder_d5", app.user_id, {})
+                send_notification("selection_reminder_5days", app.user_id, {})
             elif days_left == 1:
-                send_notification("selection_reminder_d1", app.user_id, {})
+                send_notification("selection_reminder_1day", app.user_id, {})
 
         return {"success": True}
 

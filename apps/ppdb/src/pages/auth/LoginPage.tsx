@@ -1,37 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth, usePermission } from '../../contexts/AuthContext'
-import {
-  AlertCircle,
-  CheckCircle2,
-  Eye,
-  EyeOff,
-  LayoutDashboard,
-  User,
-  ArrowRight,
-  BookOpenCheck,
-  MonitorSmartphone,
-  HeartHandshake,
-} from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
+import { BookOpenCheck, MonitorSmartphone, HeartHandshake } from 'lucide-react'
 import { Button } from "@/components/ui"
 import { Input } from "@/components/ui"
 import { Label } from "@/components/ui"
-import { Card, CardContent } from "@/components/ui"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
 import { apiFetch, API_BASE } from '@/api/client'
 import { useToast } from '@/components/Toast'
-import { useBrand } from '@repo/ui'
-import { cn } from '@/lib/utils'
+import { useBrand, AuthCard } from '@repo/ui'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-
-const loginSchema = z.object({
-  username: z.string().min(1, 'Username wajib diisi'),
-  password: z.string().min(1, 'Password wajib diisi'),
-})
-
-type LoginData = z.infer<typeof loginSchema>
 
 const recoverSchema = z.object({
   nik: z.string().min(1, 'NIK wajib diisi'),
@@ -87,16 +67,7 @@ function translateLoginError(message: string): string {
 export default function LoginPage() {
   const { login, user } = useAuth()
   const { toast } = useToast()
-  const { isAdmin, hasApplicantAccess } = usePermission()
   const navigate = useNavigate()
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginData>({
-    resolver: zodResolver(loginSchema),
-  })
 
   const {
     register: registerRecover,
@@ -107,31 +78,32 @@ export default function LoginPage() {
     resolver: zodResolver(recoverSchema),
   })
 
-  const [showPw, setShowPw] = useState(false)
-  const [shakeKey, setShakeKey] = useState(0)
   const [loginSuccess, setLoginSuccess] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [successName, setSuccessName] = useState('')
   const { logoUrl } = useBrand(API_BASE)
 
   const [showRecover, setShowRecover] = useState(false)
   const [recoverMessage, setRecoverMessage] = useState<string | null>(null)
 
-  const canAdmin = isAdmin()
-  const canApplicant = hasApplicantAccess()
-  const canChoose = canAdmin && canApplicant && user?.user_type !== 'superadmin'
-
-  // Redirect hanya dilakukan setelah loginSuccess=true — TIDAK pada setiap
-  // perubahan user. Ini mencegah redirect prematur yang bisa terjadi saat
-  // AuthContext melakukan periodic getMe() refresh (tiap 30 detik) dan
-  // mengembalikan user baru, padahal pengguna belum bermaksud login ulang.
+  // Redirect to dashboard logic
   useEffect(() => {
-    if (!loginSuccess || !user) return
+    if (!user) return
     const isApplicantUser = user.user_type === 'applicant'
-
     const dest = isApplicantUser ? '/applicant' : '/admin/dashboard'
-    const timer = setTimeout(() => navigate(dest, { replace: true }), 1200)
-    return () => clearTimeout(timer)
+
+    if (loginSuccess) {
+      const timer = setTimeout(() => navigate(dest, { replace: true }), 1200)
+      return () => clearTimeout(timer)
+    } else {
+      navigate(dest, { replace: true })
+    }
   }, [loginSuccess, user, navigate])
+
+  if (user && !loginSuccess) {
+    return null
+  }
 
   const onRecover = async (data: RecoverData) => {
     try {
@@ -145,15 +117,18 @@ export default function LoginPage() {
     }
   }
 
-  const onSubmit = async (data: LoginData) => {
+  const handleLogin = async (username: string, password: string) => {
     try {
       setErrorMsg('')
-      await login(data.username, data.password)
+      setLoading(true)
+      await login(username, password)
+      setSuccessName(username)
       setLoginSuccess(true)
     } catch (err) {
       setLoginSuccess(false)
       setErrorMsg(translateLoginError(err instanceof Error ? err.message : 'Login gagal'))
-      setShakeKey((k) => k + 1)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -220,137 +195,19 @@ export default function LoginPage() {
 
       {/* ── RIGHT FORM ── */}
       <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-10 lg:px-12 lg:py-12">
-        <div className="w-full max-w-md">
-          <div className="relative">
-            <div className="absolute -inset-4 rounded-3xl bg-gradient-to-b from-primary/5 via-transparent to-gold-accent/10 blur-xl" />
-            <Card
-              key={shakeKey}
-              className={cn('relative glass-panel p-8 md:p-10 text-center', shakeKey > 0 && 'animate-shake')}
-            >
-              <CardContent className="p-0">
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-
-                {/* Logo */}
-                {logoUrl ? (
-                  <img
-                    src={logoUrl}
-                    alt="Logo Ar-Rahman"
-                    className="mx-auto mb-6 h-11 w-auto max-w-full object-contain"
-                  />
-                ) : (
-                  <div className="mx-auto mb-6 h-11 w-11 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-2xl select-none">ار</div>
-                )}
-
-                <h1 className="font-heading text-2xl font-bold text-foreground mb-1">
-                  {user && canChoose ? 'Pilih Dashboard' : 'Masuk ke Akun'}
-                </h1>
-                <p className="mb-6 text-xs text-muted-foreground">
-                  {user && canChoose
-                    ? `Selamat datang, ${user.full_name || user.username}`
-                    : 'Silakan masuk untuk melanjutkan ke PPDB Ar-Rahman'}
-                </p>
-
-                {/* Alerts */}
-                {loginSuccess && user && (
-                  <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-emerald-primary/25 bg-emerald-light px-4 py-3 text-left text-xs font-medium text-emerald-dark animate-fade-in">
-                    <CheckCircle2 className="mt-px h-4 w-4 shrink-0" />
-                    <span>
-                      Login berhasil! Selamat datang,{' '}
-                      <strong>{user.full_name || user.username}</strong>.{' '}
-                      Mengalihkan ke{' '}
-                      {user.user_type === 'applicant' ? 'Dashboard Peserta' : 'Admin Dashboard'}
-                      {' '}…
-                    </span>
-                  </div>
-                )}
-                {errorMsg && (
-                  <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-rose-danger/25 bg-rose-light px-4 py-3 text-left text-xs font-medium text-rose-dark animate-fade-in">
-                    <AlertCircle className="mt-px h-4 w-4 shrink-0" />
-                    <span>{errorMsg}</span>
-                  </div>
-                )}
-
-                {user && canChoose ? (
-                  <div className="space-y-4">
-                    <Button className="w-full" size="lg" onClick={() => navigate('/admin/dashboard')}>
-                      <LayoutDashboard className="h-5 w-5" />
-                      Masuk Admin Dashboard
-                    </Button>
-                    <Button variant="outline" size="lg" className="w-full" onClick={() => navigate('/applicant')}>
-                      <User className="h-5 w-5" />
-                      Masuk Dashboard Peserta
-                    </Button>
-                  </div>
-                ) : !user ? (
-                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 text-left">
-                    <div>
-                      <Label htmlFor="username" className="mb-1.5 block text-xs font-semibold text-foreground">
-                        Username
-                      </Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          id="username"
-                          {...register('username')}
-                          placeholder="Masukkan username"
-                          error={errors.username?.message}
-                          autoFocus
-                          autoComplete="username"
-                          className="h-11 rounded-xl bg-white/80 pl-9"
-                        />
-                      </div>
-                      {errors.username && <p className="mt-1 text-xs text-red-500">{errors.username.message}</p>}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-foreground">
-                        Password
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="password"
-                          type={showPw ? 'text' : 'password'}
-                          {...register('password')}
-                          placeholder="Masukkan password"
-                          error={errors.password?.message}
-                          autoComplete="current-password"
-                          className="h-11 rounded-xl bg-white/80 pr-10"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPw(!showPw)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                          tabIndex={-1}
-                          aria-label={showPw ? 'Sembunyikan password' : 'Tampilkan password'}
-                        >
-                          {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                      {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
-                    </div>
-
-                    <Button type="submit" size="lg" className="w-full" disabled={isSubmitting || loginSuccess} loading={isSubmitting || loginSuccess}>
-                      {isSubmitting ? (
-                        'Memproses...'
-                      ) : (
-                        <>
-                          Masuk
-                          <ArrowRight className="h-4 w-4" />
-                        </>
-                      )}
-                    </Button>
-
-                    <div className="pt-2 text-center text-xs text-muted-foreground">
-                      Lupa kredensial?{' '}
-                      <button type="button" onClick={() => setShowRecover(true)} className="font-semibold text-primary hover:underline">
-                        Pulihkan Akun
-                      </button>
-                    </div>
-                  </form>
-                ) : null}
-              </CardContent>
-            </Card>
-          </div>
+        <div className="w-full max-w-md flex flex-col items-center justify-center">
+          <AuthCard
+            title="Masuk ke Akun"
+            logoUrl={logoUrl || undefined}
+            loading={loading}
+            success={loginSuccess}
+            error={errorMsg}
+            successName={successName}
+            onSubmit={handleLogin}
+            submitText="Masuk"
+            forgotText="Pulihkan Akun"
+            onForgotClick={() => setShowRecover(true)}
+          />
 
           <p className="mt-6 text-center text-xs text-muted-foreground">
             Butuh bantuan? Silakan hubungi admin PPDB Ar-Rahman.

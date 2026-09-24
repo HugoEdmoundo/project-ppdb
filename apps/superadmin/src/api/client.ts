@@ -364,6 +364,7 @@ export interface WAProxyStatus {
   lastActivity?: string
   pairingCode?: string
   pairingPhone?: string
+  lastError?: string
   health?: { checks?: Record<string, { status: string; detail?: string }> } | null
   webhookUrl?: string | null
   webhookMismatch?: boolean | null

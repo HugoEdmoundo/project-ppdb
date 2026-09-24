@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth, usePermission } from '../contexts/AuthContext'
-import { PageLoader } from "@/components/ui"
+import { PageLoader, useBrand } from "@repo/ui"
+import { API_BASE } from '../api/client'
 
 export default function ProtectedRoute({
   children,
@@ -14,9 +15,10 @@ export default function ProtectedRoute({
   const { user, loading } = useAuth()
   const { isAdmin, hasApplicantAccess } = usePermission()
   const location = useLocation()
+  const { logoUrl } = useBrand(API_BASE)
 
   if (loading) {
-    return <PageLoader />
+    return <PageLoader logoUrl={logoUrl || undefined} />
   }
 
   if (!user) {

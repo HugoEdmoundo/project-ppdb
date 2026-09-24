@@ -28,7 +28,7 @@ export type SessionEvent =
 
 export class SessionManager extends EventEmitter {
   private client: Client | null = null;
-  private sessionInfo: WASessionInfo = { status: "initializing" };
+  private sessionInfo: WASessionInfo = { status: "disconnected" };
   private reconnectTimer: NodeJS.Timeout | null = null;
   private reconnectAttempts = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = 10;
@@ -110,13 +110,21 @@ export class SessionManager extends EventEmitter {
 
     const initPromise = (async () => {
       try {
-        await this.client!.initialize();
+        // Timeout 90 detik supaya tidak macet selamanya jika Chromium/WA hang
+        await Promise.race([
+          this.client!.initialize(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Inisialisasi timeout (90s) — cek Chromium/Redis/port")), 90_000)
+          ),
+        ]);
+        // Sukses → lastError dibersihkan via updateStatus("ready"/"qr"/"authenticated")
       } catch (err) {
-        logger.error("[Session] Failed to initialize client", {
-          error: (err as Error).message,
-        });
-        this.updateStatus("disconnected");
-        this.scheduleReconnect();
+        const msg = (err as Error).message;
+        logger.error("[Session] Failed to initialize client", { error: msg });
+        this.updateStatus("disconnected", { lastError: msg });
+        if (!this.isShuttingDown) {
+          this.scheduleReconnect();
+        }
       }
     })();
 
@@ -383,6 +391,11 @@ export class SessionManager extends EventEmitter {
       delete this.sessionInfo.qrCode;
       delete this.sessionInfo.pairingCode;
       delete this.sessionInfo.pairingPhone;
+    }
+
+    // Clear lastError when reaching a good/active state
+    if (status === "ready" || status === "qr" || status === "authenticated") {
+      delete this.sessionInfo.lastError;
     }
 
     this.broadcastSse("status", this.sessionInfo);

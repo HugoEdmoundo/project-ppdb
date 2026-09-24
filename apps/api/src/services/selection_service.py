@@ -297,6 +297,27 @@ class SelectionService:
             self.repo.update_selection_result_notes(applicant_id, body.reason, now)
 
         self.repo.db.commit()
+
+        # Send notification if passed or failed
+        if body.status == "passed":
+            # We would need to pass deadline_daftar_ulang here, but since it's not directly on applicant, we pass empty string or find it
+            # Actually, `deadline_daftar_ulang` is just for template
+            from src.core.config import settings
+            send_notifications(
+                [
+                    (
+                        "selection_passed",
+                        {
+                            "link_login": f"{settings.ppdb_frontend_url}/auth/login",
+                            "deadline_daftar_ulang": "Lihat di dashboard akun Anda",
+                        },
+                    )
+                ],
+                app.user_id,
+            )
+        elif body.status == "failed":
+            send_notifications([("selection_failed", {})], app.user_id)
+
         return {"message": f"Status pendaftar diubah menjadi {body.status}"}
 
     def applicant_get_my_session(self, user_id: str) -> dict[str, Any]:

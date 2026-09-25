@@ -1,4 +1,6 @@
 import logging
+import threading
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -8,6 +10,7 @@ from scalar_fastapi import get_scalar_api_reference
 
 from src.core.config import settings
 from src.core.cors import setup_cors
+from src.core.database import execute_raw
 from src.core.middleware import ServerErrorJSONMiddleware
 from src.modules.auth.router import router as auth_router
 from src.modules.companyprofile.router import router as companyprofile_router
@@ -35,19 +38,16 @@ FAVICON_SVG = (
 )
 
 
-import threading
-import time
-from src.core.database import execute_raw
-
 def keep_db_alive():
     while True:
         try:
             time.sleep(15)
             # Execute 5 times to hit multiple connections in the pool
             for _ in range(5):
-                execute_raw('SELECT 1')
-        except Exception as e:
+                execute_raw("SELECT 1")
+        except Exception:
             pass
+
 
 def _validate_secrets() -> None:
     weak_secrets = {
@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
             "Redis cache: NOT connected — rate limiter & session cache degraded. "
             "Set REDIS_URL in .env to enable."
         )
-    
+
     threading.Thread(target=keep_db_alive, daemon=True).start()
     yield
 

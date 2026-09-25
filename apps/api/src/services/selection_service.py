@@ -300,9 +300,11 @@ class SelectionService:
 
         # Send notification if passed or failed
         if body.status == "passed":
-            # We would need to pass deadline_daftar_ulang here, but since it's not directly on applicant, we pass empty string or find it
+            # The deadline is shown in the applicant dashboard rather than
+            # stored directly on the applicant record.
             # Actually, `deadline_daftar_ulang` is just for template
             from src.core.config import settings
+
             send_notifications(
                 [
                     (

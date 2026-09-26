@@ -172,11 +172,10 @@ export function CrudFormDialog({
                             key={preset.label}
                             type="button"
                             onClick={() => setFormData({ ...formData, [f.name]: preset.path })}
-                            className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${
-                              formData[f.name] === preset.path
+                            className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${formData[f.name] === preset.path
                                 ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
                                 : 'border-border hover:border-primary/50 hover:bg-primary/5'
-                            }`}
+                              }`}
                             title={preset.label}
                           >
                             <svg className="w-6 h-6 text-foreground" viewBox="0 0 24 24" fill="currentColor">
@@ -370,11 +369,10 @@ function ModeToggle({
       {(['upload', 'url'] as const).map((m) => (
         <button
           key={m} type="button" onClick={() => onMode(m)}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-all ${
-            mode === m
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-all ${mode === m
               ? 'bg-[var(--accent)] text-white shadow-sm'
               : 'border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)]'
-          }`}
+            }`}
         >
           {m === 'upload' ? <Upload className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
           {m === 'upload' ? 'Upload' : 'URL'}

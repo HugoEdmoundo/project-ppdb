@@ -2,8 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Transisi navbar melayang (efek yang sama dengan Navbar companyprofile).
+ *
+ * DuaArbitrary value Tailwind v3 TIDAK bisa dipakai di sini dan harus ditulis
+ * manual — sudah diuji lewat isi bundle CSS hasil build:
+ *   1. `ease-[cubic-bezier(0.22,1,0.36,1)]` → tidak ter-generate (kurung + koma).
+ *   2. `duration-[450ms]`               → tidak ter-generate.
+ * Kalau tidak, diam-diam fallback ke `transition-duration: .15s` + easing
+ * default Tailwind, dan transisinya terasa "tidak mulus".
+ *
+ * WAJIB di `@layer utilities` (bukan `components`): utility Tailwind
+ * `transition-[padding]` dsb. juga menulis `transition-duration` +
+ * `transition-timing-function`. Lapisan `components` diletakkan SEBELUM
+ * `utilities`, jadi kalau di sana, class ini kalah dan ditimpa.
+ */
+@layer utilities {
+  .ease-brand-pill {
+    transition-duration: 400ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
 @layer base {
   :root {
+    /* Acuan geometri hero. `min(56rem, 92vw)` = lebar kolom konten (896px di
+       desktop); `--hero-edge` adalah setengahnya, dipakai semua dekorasi luar
+       kolom supaya posisinya selalu simetris terhadap teks. */
+    --hero-col-width: min(56rem, 92vw);
+    --hero-edge: calc(var(--hero-col-width) / 2);
+
     --background: 43 30% 95%;
     --foreground: 0 0% 10%;
     --card: 0 0% 100%;
@@ -26,8 +54,12 @@
     --radius: 0.75rem;
 
     --font-heading: 'DM Sans', system-ui, sans-serif;
+    /* Display face untuk H1 brand. Playfair sudah di-load di index.html; dulu
+       tidak terpakai sama sekali, jadi sia-sia. */
+    --font-brand: 'Playfair Display', Georgia, serif;
     --font-display: 'Inter', system-ui, sans-serif;
     --font-body: 'Inter', system-ui, sans-serif;
+    --font-arabic: 'Amiri', 'Scheherazade New', 'Traditional Arabic', serif;
   }
 
   * {
@@ -101,6 +133,77 @@
   .glow-gold {
     box-shadow: 0 0 25px rgba(212, 168, 83, 0.25);
   }
+
+  /* Mirrors apps/companyprofile/app/globals.css — Amiri is loaded in index.html */
+  .arabic-quote {
+    font-family: var(--font-arabic);
+    direction: rtl;
+    line-height: 1.75;
+  }
+
+  /* ── Verse Strip ── */
+  .verse-strip {
+    height: 2px;
+    background: linear-gradient(90deg, #1A6B47 0%, #D4A853 50%, #1A6B47 100%);
+    position: relative;
+    overflow: visible;
+  }
+
+  /*
+   * Kolom konten hero — dipakai oleh H1/CTA sekaligus semua dekorasi hero
+   * (pola, lengkung, glow, panel warna) supaya posisinya diturunkan dari satu
+   * acuan yang sama, bukan ditebak per-layer. `max-w-4xl` (56rem) = 896px.
+   *
+   * `--hero-edge` = jarak dari titik tengah viewport ke tepi kolom. Karena
+   * kolomnya `mx-auto`, titik tengahnya selalu sama dengan titik tengah
+   * viewport, jadi semua dekorasi luar kolom bisa dihitung dari satu angka.
+   */
+  .hero-column {
+    width: var(--hero-col-width);
+  }
+
+  /*
+   * Panel warna di luar kolom konten. Lebarnya persis ruang antara tepi
+   * viewport dan tepi kolom, jadi ikut berubah saat viewport berubah — bukan
+   * lagi bidang polos. Kiri emerald, kanan gold, keduanya memudar ke arah
+    * kolom supaya tidak bersaing dengan teks.
+   */
+  .hero-wash-left {
+    width: calc(50% - var(--hero-edge));
+    @apply bg-gradient-to-r from-emerald-light/70 via-emerald-light/25 to-transparent;
+  }
+  .hero-wash-right {
+    width: calc(50% - var(--hero-edge));
+    @apply bg-gradient-to-l from-gold-bg via-gold-light/25 to-transparent;
+  }
+
+  /*
+   * Tekstur arabesque di luar kolom. Polanya tetap full-bleed, tapi pita
+   * tengah (tepi kolom) ditembus supaya area teks tetap bersih. Efeknya
+   * kepadatan tekstur naik menjauh dari teks — jadi mata tetap di H1.
+   * Hanya muncul di `lg` ke atas; di bawah itu kolomnya sudah hampir
+   * memenuhi layar sehingga tidak ada ruang untuk panel samping.
+   */
+  .hero-texture-outside {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      #000 0,
+      #000 calc(50% - var(--hero-edge) - 88px),
+      transparent calc(50% - var(--hero-edge)),
+      transparent calc(50% + var(--hero-edge)),
+      #000 calc(50% + var(--hero-edge) + 88px),
+      #000 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      #000 0,
+      #000 calc(50% - var(--hero-edge) - 88px),
+      transparent calc(50% - var(--hero-edge)),
+      transparent calc(50% + var(--hero-edge)),
+      #000 calc(50% + var(--hero-edge) + 88px),
+      #000 100%
+    );
+  }
 }
 
 .pb-safe {
@@ -169,4 +272,46 @@
 
 .animate-ring-spin {
   animation: ring-spin 1.1s linear infinite;
+}
+
+/* --- ScrollGlobe (components/ui/globe.tsx + landing-page.tsx) --- */
+@keyframes globeDrift {
+  to { background-position: 16px 0; }
+}
+
+@keyframes globeDriftAlt {
+  to { background-position: -24px 0; }
+}
+
+@keyframes globeOrbit {
+  to { transform: translate(-50%, -50%) rotateX(74deg) rotate(360deg); }
+}
+
+@keyframes globeOrbitAlt {
+  to { transform: translate(-50%, -50%) rotateX(64deg) rotate(-360deg); }
+}
+
+@keyframes fadeOutLabel {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(0.5rem) scale(0.95);
+  }
+}
+
+.animate-fadeOut {
+  animation: fadeOutLabel 0.3s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .globe-motion {
+    animation: none !important;
+  }
 }

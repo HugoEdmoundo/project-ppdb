@@ -4,6 +4,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import PageHeader from '@/app/components/layout/PageHeader'
 import SectionTitle from '@/app/components/ui/SectionTitle'
+import AboutProgramCarousel from '@/app/components/sections/AboutProgramCarousel'
+import FlowArt, { FlowSection } from '@/app/components/ui/story-scroll'
 
 import { useScrollReveal } from '@/app/hooks/useScrollAnimations'
 import type { Staff } from '@/app/lib/types'
@@ -92,183 +94,171 @@ export default function AboutClient({ staff }: { staff: Staff[] }) {
         </div>
       </section>
 
-      {/* Vision, Mission & Goals */}
-      <section id="vision" className="relative py-16 sm:py-20 md:py-28 bg-[var(--bg-secondary)] overflow-hidden">
-        <div className="absolute inset-0 bg-pattern-grid opacity-[0.03]" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
-          <SectionTitle
-            center
-            badge="VISI & MISI"
-            title="Arah dan Tujuan Kami"
-          />
+      {/* Program Carousel: auto-scroll ala PulseFit */}
+      <AboutProgramCarousel />
 
-          {/* Vision */}
-          <div className="max-w-5xl mx-auto mb-16">
-            <div className="relative bg-[var(--bg-elevated)] rounded-2xl p-8 md:p-12 shadow-md border border-[var(--color-border)] text-center">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--accent)] via-[var(--accent-gold)] to-[var(--accent)] rounded-t-2xl" />
-              <div className="w-14 h-14 rounded-2xl bg-[var(--accent-subtle)] flex items-center justify-center mx-auto mb-6">
-                <Target className="w-7 h-7 text-[var(--accent)]" />
-              </div>
-              <h3 className="font-[var(--font-display)] text-xl sm:text-2xl md:text-3xl font-bold mb-6 leading-tight">
-                {'VISI'}
-              </h3>
-              <div className="relative">
-                <span className="absolute -top-4 -left-2 text-5xl leading-none text-[var(--accent)]/10 font-serif select-none">&ldquo;</span>
-                <p className="text-sm sm:text-base md:text-lg text-[var(--text-secondary)] leading-relaxed max-w-4xl mx-auto italic px-4">
-                  {'"Menjadi Lembaga Pendidikan Terbaik bagi generasi Islam dengan memberikan penghayatan dan bekal hidup agar dapat berkembang menjadi generasi Islam yang berakhlak mulia, berkepribadian kuat, memiliki kompetensi hafizh Al-Quran dan IT serta berjiwa mandiri dan mempunyai daya juang tinggi dalam menghadapi tantangan masa depan."'}
+      {/* Story Scroll Program Unggulan & Core Info */}
+      <FlowArt aria-label="Tentang Kami">
+        {/* SECTION 1: Program Unggulan */}
+        <FlowSection aria-label="Program Unggulan" style={{ backgroundColor: '#F7F5F0', color: '#1A1A1A' }}>
+          <div className="absolute inset-0 bg-pattern-dots opacity-[0.04]" />
+          
+          <div className="relative z-10 flex flex-col h-full">
+            <p className="text-sm md:text-base font-bold uppercase tracking-[0.2em] text-[var(--accent)] pt-2 shrink-0">01 — Program Unggulan</p>
+            <hr className="my-4 border-none border-t border-[var(--border-strong)] shrink-0" />
+            
+            <div className="flex-1 flex flex-col justify-center">
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-[var(--text)] mb-6">
+                Tahfidz
+                <br />
+                <span className="text-[var(--accent-gold)]">& Digital</span>
+              </h1>
+              <p className="max-w-[48ch] text-lg md:text-xl lg:text-2xl font-light leading-relaxed text-[var(--text-secondary)]">
+                Perpaduan hafalan Al-Quran dengan kompetensi teknologi, bahasa, dan kepemimpinan — <strong className="font-semibold text-[var(--text)]">membentuk santri unggul sejak hari pertama.</strong>
+              </p>
+            </div>
+            
+            <hr className="my-4 border-none border-t border-[var(--border-strong)] shrink-0 opacity-0" />
+          </div>
+        </FlowSection>
+
+        {/* SECTION 2: Visi & Misi */}
+        <FlowSection aria-label="Visi Misi" style={{ backgroundColor: '#EFEDE8', color: '#1A1A1A' }}>
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5" />
+          
+          <div className="relative z-10 flex flex-col h-full overflow-y-auto no-scrollbar">
+            <p className="text-sm md:text-base font-bold uppercase tracking-[0.2em] text-[var(--text-secondary)] pt-2 shrink-0">02 — Arah dan Tujuan</p>
+            <hr className="my-4 border-none border-t border-[var(--border-strong)] shrink-0" />
+            
+            <div className="flex-1 flex flex-col justify-center py-2 gap-4 md:gap-6">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--text)]">
+                Visi & <span className="text-[var(--accent)]">Misi</span>
+              </h1>
+              
+              {/* Visi Card */}
+              <div className="solid-card relative max-w-full">
+                <span className="absolute -top-4 -left-2 text-4xl md:text-5xl text-[var(--accent-gold)] font-serif leading-none">"</span>
+                <p className="text-base md:text-lg lg:text-xl font-light leading-relaxed italic text-[var(--text-secondary)] relative z-10 pl-6 md:pl-8">
+                  Menjadi Lembaga Pendidikan Terbaik bagi generasi Islam dengan memberikan penghayatan dan bekal hidup agar dapat berkembang menjadi generasi Islam yang berakhlak mulia, berkepribadian kuat, memiliki kompetensi hafizh Al-Quran dan IT serta berjiwa mandiri...
                 </p>
-                <span className="absolute -bottom-8 -right-2 text-5xl leading-none text-[var(--accent)]/10 font-serif select-none">&rdquo;</span>
+              </div>
+              
+              {/* Misi & Tujuan Cards */}
+              <div className="grid md:grid-cols-2 gap-4 md:gap-6 pb-4">
+                 <div className="solid-card">
+                    <h3 className="text-base md:text-lg font-bold uppercase tracking-widest text-[var(--text)] flex items-center gap-3 mb-4">
+                      <Target className="w-5 h-5 text-[var(--accent)]" /> Misi Kami
+                    </h3>
+                    <ul className="space-y-3 text-sm md:text-base font-normal text-[var(--text-secondary)]">
+                      <li className="flex items-start gap-3"><span className="w-5 h-5 rounded bg-[var(--accent-subtle)] text-[var(--accent)] font-bold mt-0.5 text-[10px] flex items-center justify-center shrink-0">01</span> <span className="leading-snug">Menciptakan lingkungan yang islami, bersih, nyaman, dan bersahabat</span></li>
+                      <li className="flex items-start gap-3"><span className="w-5 h-5 rounded bg-[var(--accent-subtle)] text-[var(--accent)] font-bold mt-0.5 text-[10px] flex items-center justify-center shrink-0">02</span> <span className="leading-snug">Menumbuhkan akidah yang lurus, berakhlak mulia, berkepribadian kuat</span></li>
+                      <li className="flex items-start gap-3"><span className="w-5 h-5 rounded bg-[var(--accent-subtle)] text-[var(--accent)] font-bold mt-0.5 text-[10px] flex items-center justify-center shrink-0">03</span> <span className="leading-snug">Mencetak generasi penerus yang hafal Al-Quran</span></li>
+                      <li className="flex items-start gap-3"><span className="w-5 h-5 rounded bg-[var(--accent-subtle)] text-[var(--accent)] font-bold mt-0.5 text-[10px] flex items-center justify-center shrink-0">04</span> <span className="leading-snug">Memiliki kemampuan di bidang informasi & teknologi</span></li>
+                    </ul>
+                 </div>
+                 <div className="solid-card">
+                    <h3 className="text-base md:text-lg font-bold uppercase tracking-widest text-[var(--text)] flex items-center gap-3 mb-4">
+                      <Award className="w-5 h-5 text-[var(--accent)]" /> Tujuan Kami
+                    </h3>
+                    <ul className="space-y-3 text-sm md:text-base font-normal text-[var(--text-secondary)]">
+                      <li className="flex items-start gap-3"><span className="w-5 h-5 rounded bg-[var(--accent-subtle)] text-[var(--accent)] font-bold mt-0.5 text-[10px] flex items-center justify-center shrink-0">01</span> <span className="leading-snug">Membangun peradaban Islam di muka bumi</span></li>
+                      <li className="flex items-start gap-3"><span className="w-5 h-5 rounded bg-[var(--accent-subtle)] text-[var(--accent)] font-bold mt-0.5 text-[10px] flex items-center justify-center shrink-0">02</span> <span className="leading-snug">Menumbuhkan kecintaan pada Allah dan Rasul-Nya</span></li>
+                      <li className="flex items-start gap-3"><span className="w-5 h-5 rounded bg-[var(--accent-subtle)] text-[var(--accent)] font-bold mt-0.5 text-[10px] flex items-center justify-center shrink-0">03</span> <span className="leading-snug">Meningkatkan mutu Islam melalui teknologi mutakhir</span></li>
+                      <li className="flex items-start gap-3"><span className="w-5 h-5 rounded bg-[var(--accent-subtle)] text-[var(--accent)] font-bold mt-0.5 text-[10px] flex items-center justify-center shrink-0">04</span> <span className="leading-snug">Mencetak para pemimpin Muslim dan penggerak dakwah</span></li>
+                    </ul>
+                 </div>
               </div>
             </div>
           </div>
+        </FlowSection>
 
-          {/* Mission & Goals Grid */}
-          <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {/* Mission */}
-            <div className="bg-[var(--bg-elevated)] rounded-2xl p-8 shadow-md border border-[var(--color-border)]">
-              <div className="w-12 h-12 rounded-2xl bg-[var(--accent-subtle)] flex items-center justify-center mb-5">
-                <BookMarked className="w-6 h-6 text-[var(--accent)]" />
-              </div>
-              <h3 className="font-[var(--font-display)] text-xl font-bold mb-6">
-                {'MISI'}
-              </h3>
-              <ul className="space-y-4">
-                {[
-                  'Menciptakan lingkungan yang islami, bersih, nyaman, dan bersahabat',
-                  'Menumbuhkan akidah yang lurus, berakhlak mulia, berkepribadian kuat, dan berdaya juang tinggi',
-                  'Mencetak generasi penerus yang hafal Al-Quran',
-                  'Memiliki kemampuan dalam bidang informasi & teknologi',
-                  'Menjalin kerjasama dengan berbagai pihak baik dalam dan luar negeri untuk meningkatkan mutu pendidikan',
-                ].map((mission, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm md:text-base text-[var(--text-secondary)] leading-relaxed">
-                    <span className="w-6 h-6 rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                      {i + 1}
-                    </span>
-                    {mission}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Goals */}
-            <div className="bg-[var(--bg-elevated)] rounded-2xl p-8 shadow-md border border-[var(--color-border)]">
-              <div className="w-12 h-12 rounded-2xl bg-[var(--color-gold-subtle)] flex items-center justify-center mb-5">
-                <Award className="w-6 h-6 text-[var(--accent-gold)]" />
-              </div>
-              <h3 className="font-[var(--font-display)] text-xl font-bold mb-6">
-                {'TUJUAN'}
-              </h3>
-              <ul className="space-y-4">
-                {[
-                  'Membangun peradaban Islam di muka bumi',
-                  'Menumbuhkan kecintaan pada Allah dan Rasul-Nya melalui hafalan Al-Quran dan pemahaman Islam',
-                  'Meningkatkan mutu perkembangan Islam melalui informasi dan teknologi mutakhir',
-                  'Mencetak para pemimpin Muslim dan penggerak dakwah',
-                ].map((goal, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm md:text-base text-[var(--text-secondary)] leading-relaxed">
-                    <span className="w-6 h-6 rounded-lg bg-[var(--color-gold-subtle)] text-[var(--accent-gold)] text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                      {i + 1}
-                    </span>
-                    {goal}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Student Values (Nilai Santri) */}
-      <section className="relative py-16 sm:py-20 md:py-28 bg-[var(--bg)]">
-        <div className="absolute inset-0 bg-pattern-dots opacity-[0.04]" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
-          <SectionTitle
-            center
-            badge="NILAI SANTRI"
-            title="Profil Santri Arrahman"
-          />
-
-          <p className="text-center text-[var(--text-secondary)] mb-12 max-w-2xl mx-auto text-sm">
-            {'Pesantren Tahfidz Quran dan Digital Arrahman membentuk santri dengan nilai-nilai inti berikut'}
-          </p>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {studentValues.map((cat, i) => {
-              return (
-                <div key={i} className="glass-card p-6 sm:p-7">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] text-[10px] font-bold tracking-widest mb-5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-                    {cat.categoryId}
-                  </div>
-                  {cat.values.length === 0 ? (
-                    <p className="text-xs text-[var(--text-muted)] italic leading-relaxed">
-                      {'Mengembangkan hubungan yang bermakna dengan teman, guru, dan masyarakat luas'}
-                    </p>
-                  ) : (
-                    <div className="flex flex-wrap gap-x-4 gap-y-2.5">
-                      {cat.values.map((v, j) => (
-                        <span key={j} className="flex items-center gap-2 text-sm font-medium text-[var(--text)]">
-                          <span className="w-1 h-1 rounded-full bg-[var(--accent-gold)]" />
-                          {v}
-                        </span>
-                      ))}
+        {/* SECTION 3: Nilai Santri */}
+        <FlowSection aria-label="Nilai Santri" style={{ backgroundColor: '#F7F5F0', color: '#1A1A1A' }}>
+          <div className="absolute inset-0 bg-pattern-dots-gold opacity-[0.04]" />
+          
+          <div className="relative z-10 flex flex-col h-full overflow-y-auto no-scrollbar">
+            <p className="text-sm md:text-base font-bold uppercase tracking-[0.2em] text-[var(--accent-gold)] pt-2 shrink-0">03 — Profil Santri</p>
+            <hr className="my-4 border-none border-t border-[var(--border-strong)] shrink-0" />
+            
+            <div className="flex-1 flex flex-col justify-center py-4">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-8 text-[var(--text)]">
+                Nilai Santri
+              </h1>
+              
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 w-full max-w-6xl pb-4">
+                {studentValues.map((cat, i) => (
+                  <div key={i} className="glass-card p-5 hover:bg-[var(--bg-elevated)] transition-colors">
+                    <div className="text-xs md:text-sm font-bold tracking-widest uppercase text-[var(--accent)] mb-3 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]"></span>
+                      {cat.categoryId}
                     </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Tagline */}
-          <div className="text-center mt-16 p-8 sm:p-10 rounded-2xl bg-gradient-to-br from-[var(--accent-subtle)] to-transparent border border-[var(--accent)]/10 max-w-3xl mx-auto">
-            <span className="arabic-quote text-2xl sm:text-3xl text-[var(--accent-gold)] opacity-60 block mb-4 leading-relaxed">
-              «جَعَلَكُمْ رَحْمَةً لِلْعَالَمِينَ»
-            </span>
-            <p className="font-[var(--font-display)] text-xl sm:text-2xl font-bold text-[var(--text)] mb-3">
-              {'Jadilah Generasi Rahmatan lil \'Alamin'}
-            </p>
-            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[var(--text-secondary)]">
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-                {'Perubahan diri sendiri'}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
-                {'Keberanian mencetak satu langkah'}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-                {'Pantang menunda'}
-              </span>
+                    {cat.values.length === 0 ? (
+                      <p className="text-xs md:text-sm font-light text-[var(--text-muted)] leading-relaxed italic">
+                        {'Mengembangkan hubungan sosial yang bermakna.'}
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {cat.values.map((v, j) => (
+                          <span key={j} className="text-[11px] md:text-xs font-medium text-[var(--text)] px-2.5 py-1 rounded-md bg-[var(--accent-subtle)] border border-[var(--accent)]/10">
+                            {v}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <hr className="my-4 border-none border-t border-[var(--border-strong)] shrink-0" />
+            
+            <div className="mt-auto flex flex-col md:flex-row gap-4 md:gap-6 items-start md:items-center pb-6 shrink-0">
+               <div className="px-5 py-3 rounded-xl bg-gradient-to-br from-[var(--accent-subtle)] to-transparent border border-[var(--accent)]/10">
+                 <span className="arabic-quote text-xl md:text-2xl text-[var(--accent-gold)]">«جَعَلَكُمْ رَحْمَةً لِلْعَالَمِينَ»</span>
+               </div>
+               <div className="flex-1">
+                 <p className="text-lg md:text-xl font-medium leading-snug text-[var(--text)]">
+                   {'Jadilah Generasi Rahmatan lil \'Alamin'}
+                 </p>
+                 <p className="text-xs md:text-sm text-[var(--accent)] mt-1 uppercase tracking-[0.1em] font-semibold">Membawa Manfaat Bagi Semesta</p>
+               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </FlowSection>
 
-      {/* Core Values (original) */}
-      <section className="py-16 sm:py-20 md:py-28 bg-[var(--bg-secondary)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <SectionTitle
-            center
-            badge="NILAI INTI"
-            title="Apa yang Kami Perjuangkan"
-          />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {coreValues.map((v, i) => {
-              const Icon = v.icon
-              return (
-                <div key={i} className="solid-card text-center p-6">
-                  <div className="w-12 h-12 rounded-xl bg-[var(--accent-subtle)] flex items-center justify-center mx-auto mb-4">
-                    <Icon className="w-6 h-6 text-[var(--accent)]" />
-                  </div>
-                  <h4 className="font-[var(--font-heading)] text-sm font-bold mb-2">{v.idn}</h4>
-                  <p className="text-xs text-[var(--text-secondary)]">{v.descId}</p>
-                </div>
-              )
-            })}
+        {/* SECTION 4: Core Values */}
+        <FlowSection aria-label="Nilai Inti" style={{ backgroundColor: '#EFEDE8', color: '#1A1A1A' }}>
+          <div className="absolute inset-0 bg-pattern-grid opacity-[0.03]" />
+          
+          <div className="relative z-10 flex flex-col h-full overflow-y-auto no-scrollbar">
+            <p className="text-sm md:text-base font-bold uppercase tracking-[0.2em] text-[var(--text-secondary)] pt-2 shrink-0">04 — Nilai Inti</p>
+            <hr className="my-4 border-none border-t border-[var(--border-strong)] shrink-0" />
+            
+            <div className="flex-1 flex flex-col justify-center py-4 gap-6">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--text)]">
+                Apa Yang Kami <span className="text-[var(--accent-gold)]">Perjuangkan</span>
+              </h1>
+              
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 max-w-6xl pb-4">
+                {coreValues.map((v, i) => {
+                  const Icon = v.icon
+                  return (
+                    <div key={i} className="solid-card text-center group">
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-[var(--accent-subtle)] text-[var(--accent)] flex items-center justify-center mx-auto mb-4 group-hover:scale-110 group-hover:bg-[var(--accent)] group-hover:text-white transition-all duration-300">
+                        <Icon className="w-5 h-5 md:w-6 md:h-6" />
+                      </div>
+                      <h4 className="font-bold text-base md:text-lg tracking-tight mb-2 text-[var(--text)]">{v.idn}</h4>
+                      <p className="text-xs md:text-sm font-light text-[var(--text-secondary)] leading-relaxed">{v.descId}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            
+            <hr className="my-4 border-none border-t border-[var(--border-strong)] shrink-0 opacity-0" />
           </div>
-        </div>
-      </section>
+        </FlowSection>
+      </FlowArt>
 
       {/* Leadership */}
       <section className="py-16 sm:py-20 md:py-28 bg-[var(--bg)]">
@@ -316,7 +306,7 @@ export default function AboutClient({ staff }: { staff: Staff[] }) {
           <p className="text-white/60 max-w-lg mx-auto mb-8">
             {'Ambil langkah pertama menuju pendidikan kelas dunia yang menggabungkan keunggulan Al-Quran dengan inovasi digital.'}
           </p>
-          <Link href="/ppdb" className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[var(--accent)] text-sm font-bold rounded-full hover:bg-white/90 transition-all shadow-md">
+          <Link href={process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:5174'} className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[var(--accent)] text-sm font-bold rounded-full hover:bg-white/90 transition-all shadow-md">
             {'Daftar Sekarang'}
             <ArrowRight className="w-4 h-4" />
           </Link>

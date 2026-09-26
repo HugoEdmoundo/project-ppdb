@@ -110,7 +110,7 @@ export default function AdminOverview() {
   useEffect(() => {
     const saved = localStorage.getItem('admin_user')
     if (!saved) {
-      ;(async () => {
+      ; (async () => {
         try {
           const me = await api.getMe()
           if (me) {
@@ -156,7 +156,7 @@ export default function AdminOverview() {
           else if (logo) setLogoUrl(logo)
           else setLogoUrl('/download.png')
         })
-        .catch(() => {})
+        .catch(() => { })
     }
     loadLogo()
     return eventBus.on('companyprofile:refresh', loadLogo)

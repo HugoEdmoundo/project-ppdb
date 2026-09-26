@@ -1222,187 +1222,116 @@ function makeIdle(scene) {
 }
 
 
-function createGraduationAccessories(scene) {
-  // Color palette — Dark charcoal gown + Metallic gold accents (matching reference)
-  const gownMat = new MeshStandardMaterial2({ color: 0x333333, roughness: 0.65, metalness: 0.02, side: 2 });
-  const capMat = new MeshStandardMaterial2({ color: 0x2A2A2A, roughness: 0.55, metalness: 0.03, side: 2 });
-  const goldMat = new MeshStandardMaterial2({ color: 0xD4A853, roughness: 0.20, metalness: 0.90, side: 2 });
-  const whiteMat = new MeshStandardMaterial2({ color: 0xF0EDE5, roughness: 0.75, side: 2 });
+function createSantriAccessories(scene) {
+  // 1. Topi sekarang sudah baked di body mesh + texture hitam (peak collapsed)
+  //    → tidak perlu prop peci terpisah lagi (menghindari clipping & duplikasi)
 
-  // 1. Mortarboard Cap — Black with Gold band + Gold tassel
-  const headBone = scene.getObjectByName("Head");
-  if (headBone && !headBone.getObjectByName("GraduationCap")) {
-    const capGroup = new Group3();
-    capGroup.name = "GraduationCap";
-
-    // Skullcap base
-    const capBase = new Mesh3(new CylinderGeometry3(0.148, 0.132, 0.10, 28), capMat);
-    capBase.position.set(0, 0.050, 0);
-    capGroup.add(capBase);
-
-    // Gold band around skullcap
-    const goldBand = new Mesh3(new CylinderGeometry3(0.153, 0.153, 0.025, 28, 1, true), goldMat);
-    goldBand.position.set(0, 0.012, 0);
-    capGroup.add(goldBand);
-
-    // Flat square mortarboard (NOT diamond-rotated)
-    const board = new Mesh3(new BoxGeometry3(0.40, 0.015, 0.40), capMat);
-    board.position.set(0, 0.105, 0);
-    capGroup.add(board);
-
-    // Center button
-    const button = new Mesh3(new CylinderGeometry3(0.013, 0.013, 0.016, 10), capMat);
-    button.position.set(0, 0.116, 0);
-    capGroup.add(button);
-
-    // Gold tassel cord
-    const cord = new Mesh3(new CylinderGeometry3(0.004, 0.004, 0.19, 8), goldMat);
-    cord.position.set(0.12, 0.01, 0.09);
-    cord.rotation.set(0.22, 0, -0.42);
-    capGroup.add(cord);
-
-    // Tassel knob at attachment
-    const knob = new Mesh3(new CylinderGeometry3(0.013, 0.013, 0.022, 8), goldMat);
-    knob.position.set(0.05, 0.07, 0.04);
-    capGroup.add(knob);
-
-    // Tassel brush (cone shape)
-    const tassel = new Mesh3(new ConeGeometry3(0.020, 0.06, 10), goldMat);
-    tassel.position.set(0.17, -0.08, 0.12);
-    tassel.rotation.set(Math.PI, 0, 0);
-    capGroup.add(tassel);
-
-    capGroup.position.set(0, 0.22, -0.02);
-    headBone.add(capGroup);
-  }
-
-  // 2. White collar peek at neck
-  const neckBone = scene.getObjectByName("neck");
-  if (neckBone && !neckBone.getObjectByName("WhiteCollar")) {
-    const collar = new Mesh3(new CylinderGeometry3(0.115, 0.125, 0.035, 20, 1, true), whiteMat);
-    collar.name = "WhiteCollar";
-    collar.position.set(0, 0.10, 0);
-    neckBone.add(collar);
-  }
-
-  // 3. Gown Body + Gold V-stole (front & back)
-  const spineBone = scene.getObjectByName("Spine02") || scene.getObjectByName("neck");
-  if (spineBone && !spineBone.getObjectByName("GownBody")) {
-    const gownGroup = new Group3();
-    gownGroup.name = "GownBody";
-
-    // Main torso cylinder wrap
-    const torso = new Mesh3(new CylinderGeometry3(0.215, 0.235, 0.42, 28, 1, true), gownMat);
-    torso.position.set(0, -0.09, 0);
-    gownGroup.add(torso);
-
-    // Front V-stole left
-    const stoleFrontL = new Mesh3(new BoxGeometry3(0.048, 0.28, 0.013), goldMat);
-    stoleFrontL.position.set(-0.055, -0.04, 0.22);
-    stoleFrontL.rotation.set(0.10, 0, 0.18);
-    gownGroup.add(stoleFrontL);
-
-    // Front V-stole right
-    const stoleFrontR = new Mesh3(new BoxGeometry3(0.048, 0.28, 0.013), goldMat);
-    stoleFrontR.position.set(0.055, -0.04, 0.22);
-    stoleFrontR.rotation.set(0.10, 0, -0.18);
-    gownGroup.add(stoleFrontR);
-
-    // Back V-stole left
-    const stoleBackL = new Mesh3(new BoxGeometry3(0.048, 0.22, 0.013), goldMat);
-    stoleBackL.position.set(-0.048, 0.01, -0.22);
-    stoleBackL.rotation.set(-0.10, 0, 0.22);
-    gownGroup.add(stoleBackL);
-
-    // Back V-stole right
-    const stoleBackR = new Mesh3(new BoxGeometry3(0.048, 0.22, 0.013), goldMat);
-    stoleBackR.position.set(0.048, 0.01, -0.22);
-    stoleBackR.rotation.set(-0.10, 0, -0.22);
-    gownGroup.add(stoleBackR);
-
-    // Front center gold trim line
-    const centerTrim = new Mesh3(new BoxGeometry3(0.016, 0.42, 0.008), goldMat);
-    centerTrim.position.set(0, -0.09, 0.23);
-    gownGroup.add(centerTrim);
-
-    spineBone.add(gownGroup);
-  }
-
-  // 4. Bell Sleeves + Gold cuffs
-  const leftArm = scene.getObjectByName("LeftArm");
-  if (leftArm && !leftArm.getObjectByName("GownSleeveL")) {
-    const grpL = new Group3();
-    grpL.name = "GownSleeveL";
-    const slvL = new Mesh3(new CylinderGeometry3(0.078, 0.135, 0.24, 20, 1, true), gownMat);
-    slvL.position.set(0, 0.10, 0);
-    grpL.add(slvL);
-    const cufL = new Mesh3(new CylinderGeometry3(0.137, 0.137, 0.024, 20, 1, true), goldMat);
-    cufL.position.set(0, -0.01, 0);
-    grpL.add(cufL);
-    leftArm.add(grpL);
-  }
-
-  const rightArm = scene.getObjectByName("RightArm");
-  if (rightArm && !rightArm.getObjectByName("GownSleeveR")) {
-    const grpR = new Group3();
-    grpR.name = "GownSleeveR";
-    const slvR = new Mesh3(new CylinderGeometry3(0.078, 0.135, 0.24, 20, 1, true), gownMat);
-    slvR.position.set(0, 0.10, 0);
-    grpR.add(slvR);
-    const cufR = new Mesh3(new CylinderGeometry3(0.137, 0.137, 0.024, 20, 1, true), goldMat);
-    cufR.position.set(0, -0.01, 0);
-    grpR.add(cufR);
-    rightArm.add(grpR);
-  }
-
-  // 5. Long Gown Skirt + Gold hem
-  const hipsBone = scene.getObjectByName("Hips");
-  if (hipsBone && !hipsBone.getObjectByName("GownSkirt")) {
-    const skirtGroup = new Group3();
-    skirtGroup.name = "GownSkirt";
-
-    const skirt = new Mesh3(new CylinderGeometry3(0.19, 0.30, 0.50, 28, 1, true), gownMat);
-    skirt.position.set(0, -0.26, 0);
-    skirtGroup.add(skirt);
-
-    // Front gold trim on skirt
-    const skirtTrim = new Mesh3(new BoxGeometry3(0.016, 0.50, 0.008), goldMat);
-    skirtTrim.position.set(0, -0.26, 0.28);
-    skirtGroup.add(skirtTrim);
-
-    // Gold hem band at bottom
-    const hem = new Mesh3(new CylinderGeometry3(0.302, 0.302, 0.024, 28, 1, true), goldMat);
-    hem.position.set(0, -0.50, 0);
-    skirtGroup.add(hem);
-
-    hipsBone.add(skirtGroup);
-  }
-
-  // 6. Hide courier items + Recolor shoes to gold + Darken pants
+  // 2. Tas diganti Buku / Mushaf Al-Qur'an pada bone CourierBag
+  // Sembunyikan tas kurir dan selempang bawaan
   scene.traverse((node) => {
-    if (node.name.startsWith("Delivery_Bag") || node.name.startsWith("Delivery_Shoulder_Strap") ||
-        node.name === "Visor" || node.name.startsWith("Visor_")) {
+    if (node.name.startsWith("Delivery_Bag") || node.name.startsWith("Delivery_Shoulder_Strap") || node.name === "Visor" || node.name.startsWith("Visor_")) {
       node.visible = false;
     }
-    if (!(node instanceof Mesh3)) return;
-    const n = node.name.toLowerCase();
-    // Gold shoes (matching reference)
-    if (n.includes("shoe") || n.includes("boot") || n.includes("foot")) {
-      for (const mat of Array.isArray(node.material) ? node.material : [node.material]) {
-        if (mat instanceof MeshStandardMaterial2) {
-          mat.color.set(0xD4A853);
-          mat.metalness = 0.70;
-          mat.roughness = 0.28;
-        }
-      }
-    }
-    // Dark pants beneath gown
-    if (n.includes("short") || n.includes("pant") || n.includes("trouser") || n.includes("leg")) {
-      for (const mat of Array.isArray(node.material) ? node.material : [node.material]) {
-        if (mat instanceof MeshStandardMaterial2) { mat.color.set(0x1A1A1A); }
-      }
-    }
   });
+
+  const bagBone = scene.getObjectByName("CourierBag");
+  if (bagBone && !bagBone.getObjectByName("SantriBook")) {
+    const bookGroup = new Group3();
+    bookGroup.name = "SantriBook";
+
+    const coverMat = new MeshStandardMaterial2({
+      color: 0x14532D, // Hijau zamrud Islami elegan
+      roughness: 0.55,
+      metalness: 0.15
+    });
+    const pagesMat = new MeshStandardMaterial2({
+      color: 0xFDFBF7, // Kertas putih gading
+      roughness: 0.90,
+      metalness: 0.0
+    });
+    const goldFoilMat = new MeshStandardMaterial2({
+      color: 0xEAB308,
+      roughness: 0.25,
+      metalness: 0.90
+    });
+    const ribbonMat = new MeshStandardMaterial2({
+      color: 0xCA8A04,
+      roughness: 0.40,
+      metalness: 0.50
+    });
+
+    const bookW = 0.16;
+    const bookH = 0.22;
+    const bookD = 0.042;
+
+    // Sampul depan
+    const frontCover = new Mesh3(new BoxGeometry3(bookW, bookH, 0.005), coverMat);
+    frontCover.position.set(0, 0, bookD / 2);
+    bookGroup.add(frontCover);
+
+    // Sampul belakang
+    const backCover = new Mesh3(new BoxGeometry3(bookW, bookH, 0.005), coverMat);
+    backCover.position.set(0, 0, -bookD / 2);
+    bookGroup.add(backCover);
+
+    // Punggung buku (spine)
+    const spine = new Mesh3(new BoxGeometry3(0.006, bookH, bookD + 0.002), coverMat);
+    spine.position.set(-bookW / 2, 0, 0);
+    bookGroup.add(spine);
+
+    // Blok lembaran kertas
+    const pages = new Mesh3(new BoxGeometry3(bookW - 0.010, bookH - 0.012, bookD - 0.004), pagesMat);
+    pages.position.set(0.004, 0, 0);
+    bookGroup.add(pages);
+
+    // Medali kaligrafi ornamen emas di tengah sampul depan
+    const centerMedallion = new Mesh3(new CylinderGeometry3(0.038, 0.038, 0.003, 16), goldFoilMat);
+    centerMedallion.rotation.set(Math.PI / 2, 0, 0);
+    centerMedallion.position.set(0, 0, bookD / 2 + 0.003);
+    bookGroup.add(centerMedallion);
+
+    // 4 Siku ornamen emas di sudut buku
+    const cornerOffsets = [
+      [bookW / 2 - 0.02, bookH / 2 - 0.02],
+      [-bookW / 2 + 0.02, bookH / 2 - 0.02],
+      [bookW / 2 - 0.02, -bookH / 2 + 0.02],
+      [-bookW / 2 + 0.02, -bookH / 2 + 0.02]
+    ];
+    for (const [cx, cy] of cornerOffsets) {
+      const corner = new Mesh3(new BoxGeometry3(0.018, 0.018, 0.008), goldFoilMat);
+      corner.position.set(cx, cy, bookD / 2 + 0.002);
+      bookGroup.add(corner);
+    }
+
+    // Pita pembatas kitab (ribbon bookmark) yang menjuntai di bawah
+    const ribbon = new Mesh3(new BoxGeometry3(0.012, 0.075, 0.002), ribbonMat);
+    ribbon.position.set(0.02, -bookH / 2 - 0.025, 0);
+    ribbon.rotation.set(0, 0, 0.15);
+    bookGroup.add(ribbon);
+
+    // Posisi di samping pinggang mengikuti ayunan langkah
+    bookGroup.position.set(0.097, 0.204, 0);
+    bookGroup.rotation.set(0.12, 0.25, 0.18);
+    bagBone.add(bookGroup);
+  }
+
+  // 3. Sarung Putih + Belat Emas (pinggang) pada bone Hips
+  const hipsBone = scene.getObjectByName("Hips");
+  if (hipsBone && !hipsBone.getObjectByName("SarungWaistband")) {
+    const goldBelatMat = new MeshStandardMaterial2({
+      color: 0xD4AF37,
+      roughness: 0.35,
+      metalness: 0.85
+    });
+    // radiusTop ~0.163, radiusBottom ~0.170, height 0.055, open-ended tube (belat)
+    const waistband = new Mesh3(new CylinderGeometry3(0.163, 0.170, 0.055, 28, 1, true), goldBelatMat);
+    waistband.name = "SarungWaistband";
+    // local y on Hips: target world y=0.97, Hips world y=0.841 → local y = -0.129
+    waistband.position.set(0, -0.129, 0);
+    // oval shape for natural fit
+    waistband.scale.set(1.0, 1.0, 0.95);
+    hipsBone.add(waistband);
+  }
 }
 
 function Courier({ motion, paused, reduced, onReady }) {
@@ -1491,7 +1420,7 @@ function Courier({ motion, paused, reduced, onReady }) {
 
 
       });
-      createGraduationAccessories(gltf.scene);
+      createSantriAccessories(gltf.scene);
 
       const clips = gltf.animations.filter((animation) => animation.duration > 0.3);
 

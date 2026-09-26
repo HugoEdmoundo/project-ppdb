@@ -92,13 +92,15 @@ const PREVIEW_CONTEXT: Record<string, string> = {
   '{deadline_daftar_ulang}': '2026-10-20 23:59',
 }
 
-const CHANNEL_META: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+type MetaIcon = React.ComponentType<{ className?: string }>
+
+const CHANNEL_META: Record<string, { label: string; color: string; icon: MetaIcon }> = {
   whatsapp: { label: 'WhatsApp', color: 'bg-green-100 text-green-700 border-green-200', icon: MessageSquare },
   email:    { label: 'Email', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: Mail },
   both:     { label: 'WA + Email', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Zap },
 }
 
-const LOG_STATUS_META: Record<string, { label: string; variant: 'success' | 'destructive' | 'warning' | 'secondary'; icon: React.ElementType }> = {
+const LOG_STATUS_META: Record<string, { label: string; variant: 'success' | 'destructive' | 'warning' | 'secondary'; icon: MetaIcon }> = {
   sent:           { label: 'Terkirim', variant: 'success', icon: CheckCircle2 },
   queued:         { label: 'Antrian', variant: 'secondary', icon: Clock },
   failed:         { label: 'Gagal', variant: 'destructive', icon: XCircle },

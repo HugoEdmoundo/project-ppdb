@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 import { Menu, X, ChevronDown } from 'lucide-react'
+import { motion, useScroll } from 'framer-motion'
 import AnimatedLogo from '../ui/AnimatedLogo'
 import MagneticButton from '../ui/MagneticButton'
 import { useProgramLinks } from '@/app/hooks/useProgramLinks'
@@ -62,6 +63,8 @@ export default function Navbar() {
   const { hrefFor } = useProgramLinks()
   const pathname = usePathname()
   const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  
+  const { scrollYProgress } = useScroll()
 
   const childHref = (child: NavChild) => (child.programKey ? hrefFor(child.programKey) : child.href)
 
@@ -109,15 +112,28 @@ export default function Navbar() {
   }
 
   const isHome = pathname === '/'
-  const isTransparent = isHome && !scrolled
+  const isTransparent = false // Disabled so the navbar stays a solid white box at the top
 
   return (
     <>
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 bg-white/80 backdrop-blur-2xl border-b border-[var(--color-border)] shadow-sm ${
-        isTransparent ? 'md:-translate-y-full md:bg-transparent md:border-transparent md:shadow-none' : ''
+      className={`fixed z-50 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        scrolled
+          ? 'top-2 left-2 right-2 md:top-4 md:left-8 md:right-8 max-w-7xl mx-auto rounded-2xl md:rounded-full bg-white/95 backdrop-blur-2xl border border-[var(--color-border)] shadow-[0_8px_30px_rgb(0,0,0,0.08)]'
+          : `top-0 left-0 right-0 rounded-none backdrop-blur-2xl border-b shadow-sm ${
+              isTransparent
+                ? 'bg-transparent border-transparent shadow-none'
+                : 'bg-white/80 border-[var(--color-border)]'
+            }`
       }`}
     >
+      {/* Scroll Progress Border Line */}
+      <div className={`absolute inset-0 pointer-events-none overflow-hidden transition-all duration-500 ${scrolled ? 'rounded-2xl md:rounded-full' : 'rounded-none'}`}>
+        <motion.div
+          className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[var(--color-gold)] to-[var(--accent)] origin-left"
+          style={{ scaleX: scrollYProgress }}
+        />
+      </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <nav role="navigation" aria-label="Navigasi utama" className="flex items-center justify-between h-16 md:h-20">
           <Link href="/" className="flex items-center gap-2 md:gap-3 flex-shrink-0 min-w-0">

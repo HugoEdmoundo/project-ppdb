@@ -137,8 +137,8 @@ export default function ProgramDetailClient({ program }: { program: Program }) {
                     <span className="font-semibold">{info.level}</span>
                   </div>
                 </div>
-
-                <Link href="/ppdb" className="btn-primary w-full justify-center">
+                
+                <Link href={process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:5174'} className="btn-primary w-full justify-center">
                   Daftar Sekarang
                   <ArrowRight className="w-4 h-4" />
                 </Link>

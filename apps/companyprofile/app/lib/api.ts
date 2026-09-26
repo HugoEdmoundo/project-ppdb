@@ -68,7 +68,7 @@ async function parseJsonSafe<T>(res: Response, label: string): Promise<T> {
     const text = await res.text().catch(() => '')
     throw new Error(
       `${label} mengembalikan non-JSON (status ${res.status}). ` +
-        `Kemungkinan URL API salah atau backend tidak jalan. Cuplikan: ${text.slice(0, 120)}`
+      `Kemungkinan URL API salah atau backend tidak jalan. Cuplikan: ${text.slice(0, 120)}`
     )
   }
   try {

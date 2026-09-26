@@ -10,6 +10,7 @@ import ForbiddenPage from './pages/errors/ForbiddenPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import PeriodsPage from './pages/admin/ppdb/PeriodsPage'
 import LandingPage from './pages/public/LandingPage'
+import GlobeDemoPage from './pages/public/GlobeDemoPage'
 import RegisterPage from './pages/public/RegisterPage'
 import CheckoutPage from './pages/applicant/CheckoutPage'
 import ApplicantDashboardPage from './pages/applicant/DashboardPage'
@@ -47,6 +48,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/globe" element={<GlobeDemoPage />} />
             <Route path="/auth/login" element={<LoginPage />} />
 
             {/* Alias: /applicant/login → /auth/login — untuk user yang salah ketik URL */}

@@ -76,6 +76,9 @@ export default {
       },
       fontFamily: {
         heading: ['var(--font-heading)', 'sans-serif'],
+        // Playfair Display sudah di-load di index.html tapi belum pernah dipakai.
+        // Dipakai khusus untuk H1 brand di hero — lihat `--font-brand` di index.css.
+        brand: ['var(--font-brand)', 'Georgia', 'serif'],
         display: ['var(--font-display)', 'serif'],
         sans: ['var(--font-display)', 'system-ui', 'sans-serif'],
         body: ['var(--font-display)', 'sans-serif'],

@@ -119,7 +119,9 @@ export async function generateMetadata(): Promise<Metadata> {
     // fallback ke placeholder download.png di public/ — BUKAN file statis branding.
     // File app/favicon.ico dan app/icon.png sengaja TIDAK ada agar Next.js tidak
     // override favicon dinamis dengan file statis.
-    icons: favicon ? { icon: favicon, apple: favicon } : undefined,
+    icons: favicon
+      ? { icon: favicon, apple: favicon }
+      : { icon: '/download.png', apple: '/download.png' },
   }
 }
 

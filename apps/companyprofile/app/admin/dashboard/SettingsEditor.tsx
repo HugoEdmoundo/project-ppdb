@@ -19,12 +19,12 @@ const SETTING_FIELDS: {
   description: string
   image?: boolean
 }[] = [
-  { key: 'site_description', label: 'Deskripsi Situs', type: 'textarea', description: 'Deskripsi singkat untuk SEO dan metadata.' },
-  { key: 'logo', label: 'Logo', type: 'url', description: 'URL gambar logo untuk seluruh sistem.', image: true },
-  { key: 'favicon', label: 'Favicon', type: 'url', description: 'URL gambar favicon (32x32 atau 16x16 px).', image: true },
-  { key: 'to_email', label: 'Email Tujuan', type: 'email', description: 'Alamat email yang menerima pesan dari form kontak.' },
-  { key: 'whatsapp_message', label: 'Pesan WhatsApp', type: 'textarea', description: 'Pesan default untuk tombol chat WhatsApp.' },
-]
+    { key: 'site_description', label: 'Deskripsi Situs', type: 'textarea', description: 'Deskripsi singkat untuk SEO dan metadata.' },
+    { key: 'logo', label: 'Logo', type: 'url', description: 'URL gambar logo untuk seluruh sistem.', image: true },
+    { key: 'favicon', label: 'Favicon', type: 'url', description: 'URL gambar favicon (32x32 atau 16x16 px).', image: true },
+    { key: 'to_email', label: 'Email Tujuan', type: 'email', description: 'Alamat email yang menerima pesan dari form kontak.' },
+    { key: 'whatsapp_message', label: 'Pesan WhatsApp', type: 'textarea', description: 'Pesan default untuk tombol chat WhatsApp.' },
+  ]
 
 const DEFAULT_SETTING_VALUES: Record<string, string> = {
   site_description: 'Pesantren premium yang menggabungkan hafalan Al-Quran dengan pendidikan teknologi digital mutakhir.',

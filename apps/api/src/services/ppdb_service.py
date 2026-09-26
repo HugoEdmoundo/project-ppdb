@@ -173,12 +173,22 @@ class PPDBService:
         if not wave:
             return {"active": False}
 
+        # `academic_year` & `name` periode lived di tabel induk, jadi wave saja
+        # tidak cukup untuk situs publik yang menampilkan "Tahun Ajaran ...".
+        period = self.repository.get_period_by_id(wave.period_id)
+
         return {
             "active": True,
             "id": wave.id,
             "name": wave.name,
+            "period_id": wave.period_id,
+            "period_name": period.name if period else None,
+            "academic_year": period.academic_year if period else None,
+            "quota": wave.quota,
             "registration_start_date": wave.registration_start_date,
             "registration_end_date": wave.registration_end_date,
+            "document_upload_end_date": wave.document_upload_end_date,
+            "selection_date": wave.selection_date,
             "allowed_paths": [
                 p.strip() for p in (wave.allowed_paths or "").split(",") if p.strip()
             ],

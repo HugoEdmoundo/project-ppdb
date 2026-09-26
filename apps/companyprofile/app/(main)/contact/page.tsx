@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import ContactClient from './_components/ContactClient'
 import { getContactInfo, getSocialLinks } from '@/app/lib/api'
+import { fetchActivePpdbWave } from '@/app/lib/ppdb'
 import type { ContactInfo, SocialLink } from '@/app/lib/types'
 
 export const metadata: Metadata = {
@@ -35,9 +36,10 @@ export default async function ContactPage() {
   let socialLinks: SocialLink[] | null = null
   try { contactInfo = await getContactInfo() } catch { contactInfo = null }
   try { socialLinks = await getSocialLinks() } catch { socialLinks = null }
+  const wave = await fetchActivePpdbWave()
   return (
     <Suspense>
-      <ContactClient contactInfo={contactInfo} socialLinks={socialLinks ?? []} />
+      <ContactClient contactInfo={contactInfo} socialLinks={socialLinks ?? []} wave={wave} />
     </Suspense>
   )
 }

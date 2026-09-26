@@ -9,12 +9,14 @@ import { ArrowRight, ChevronDown, Award, Calendar } from 'lucide-react'
 import { useScrollReveal } from '../../hooks/useScrollAnimations'
 import dynamic from 'next/dynamic'
 import MagneticButton from '../ui/MagneticButton'
+import { buildSchedule, type ActivePpdbWave } from '@/app/lib/ppdb'
 
 const Particles = dynamic(() => import('../ui/Particles'), { ssr: false })
 
-export default function HeroSection() {
+export default function HeroSection({ wave = null }: { wave?: ActivePpdbWave | null }) {
   const pathname = usePathname()
   const sectionRef = useRef<HTMLElement>(null)
+  const ppdb = buildSchedule(wave)
 
   useScrollReveal(sectionRef, { start: 'top 60%' })
 
@@ -174,7 +176,7 @@ export default function HeroSection() {
                       {'Pendaftaran'}
                     </div>
                     <div className="font-[var(--font-heading)] text-sm font-bold text-[var(--accent-gold)]">
-                      2027/2028
+                      {ppdb.academicYear ?? 'Segera'}
                     </div>
                   </div>
                 </div>

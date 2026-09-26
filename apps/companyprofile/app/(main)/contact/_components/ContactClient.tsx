@@ -4,12 +4,53 @@ import { useRef, useState, useEffect } from 'react'
 import PageHeader from '@/app/components/layout/PageHeader'
 import { useScrollReveal } from '@/app/hooks/useScrollAnimations'
 import { MapPin, Phone, Mail, Clock, Send, ChevronDown, MessageCircle } from 'lucide-react'
+import {
+  buildSchedule,
+  formatTanggalIndo,
+  type ActivePpdbWave,
+  type PpdbSchedule,
+} from '@/app/lib/ppdb'
 import type { ContactInfo, SocialLink } from '@/app/lib/types'
+
+/**
+ * Susun kalimat jadwal PPDB hanya dari field yang benar-benar ada di backend.
+ * Tanggal yang tidak ada datanya (mis. jadwal wawancara/pengumuman) sengaja
+ * tidak dikarang — lebih baik kalimatnya pendek daripada yang salah.
+ */
+function buildScheduleAnswer(ppdb: PpdbSchedule): string {
+  const parts: string[] = []
+
+  if (ppdb.start && ppdb.end) {
+    parts.push(
+      `Pendaftaran PPDB${ppdb.academicYear ? ` Tahun Ajaran ${ppdb.academicYear}` : ''} dibuka mulai ${formatTanggalIndo(ppdb.start)} hingga ${formatTanggalIndo(ppdb.end)}.`,
+    )
+  } else if (ppdb.start) {
+    parts.push(
+      `Pendaftaran PPDB${ppdb.academicYear ? ` Tahun Ajaran ${ppdb.academicYear}` : ''} dibuka mulai ${formatTanggalIndo(ppdb.start)}.`,
+    )
+  } else {
+    parts.push(
+      `Jadwal pendaftaran PPDB${ppdb.academicYear ? ` Tahun Ajaran ${ppdb.academicYear}` : ''} sedang disiapkan. Silakan hubungi panitia untuk informasi terbaru.`,
+    )
+  }
+
+  if (ppdb.selection) {
+    parts.push(`Ujian masuk dijadwalkan pada ${formatTanggalIndo(ppdb.selection)}.`)
+  }
+  if (ppdb.documentDeadline) {
+    parts.push(`Batas akhir unggah berkas ${formatTanggalIndo(ppdb.documentDeadline)}.`)
+  }
+  if (ppdb.quota) {
+    parts.push(`Kuota ${ppdb.quota} peserta.`)
+  }
+
+  return parts.join(' ')
+}
 
 const faqs = [
   {
-    question: 'Bagaimana jadwal pendaftaran 2027/2028?',
-    answer: 'Pendaftaran PPDB Tahun Ajaran 2027/2028 dibuka mulai 1 April hingga 31 Mei 2027. Ujian masuk 15 Juni, wawancara 20-25 Juni, dan pengumuman 1 Juli. Tahun ajaran dimulai 15 Juli.',
+    question: 'Bagaimana jadwal pendaftaran?',
+    answer: '', // diisi dari data PPDB (lihat FAQ di bawah)
   },
   {
     question: 'Program apa saja yang tersedia?',
@@ -25,8 +66,20 @@ const faqs = [
   },
 ]
 
-export default function ContactClient({ contactInfo, socialLinks = [] }: { contactInfo: ContactInfo | null; socialLinks?: SocialLink[] }) {
+export default function ContactClient({
+  contactInfo,
+  socialLinks = [],
+  wave = null,
+}: {
+  contactInfo: ContactInfo | null
+  socialLinks?: SocialLink[]
+  wave?: ActivePpdbWave | null
+}) {
   const sectionRef = useRef<HTMLElement>(null)
+  const ppdb = buildSchedule(wave)
+  const faqItems = faqs.map((f, i) =>
+    i === 0 ? { ...f, answer: buildScheduleAnswer(ppdb) } : f,
+  )
 
   useEffect(() => {
     document.title = 'Hubungi Kami | PTDARRAHMAN'
@@ -196,7 +249,7 @@ export default function ContactClient({ contactInfo, socialLinks = [] }: { conta
             </h2>
           </div>
           <div className="space-y-3">
-            {faqs.map((faq, i) => (
+            {faqItems.map((faq, i) => (
               <FAQItem key={i} question={faq.question} answer={faq.answer} defaultOpen={i === 0} />
             ))}
           </div>

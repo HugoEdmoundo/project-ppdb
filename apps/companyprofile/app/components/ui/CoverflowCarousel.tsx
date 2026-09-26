@@ -69,6 +69,8 @@ export function CoverflowCarousel({
     v: number
     t: number
   } | null>(null)
+  const hasDraggedRef = React.useRef(false)
+  const dragDistanceRef = React.useRef(0)
 
   const [selected, setSelected] = React.useState(0)
 
@@ -150,12 +152,15 @@ export function CoverflowCarousel({
   )
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 && event.pointerType === "mouse") return
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current)
       rafRef.current = null
     }
     event.currentTarget.setPointerCapture(event.pointerId)
     targetRef.current = posRef.current
+    hasDraggedRef.current = false
+    dragDistanceRef.current = 0
     dragRef.current = {
       id: event.pointerId,
       x: event.clientX,
@@ -172,6 +177,12 @@ export function CoverflowCarousel({
     const pitch = widthRef.current * (1 + gap)
     if (!pitch) return
 
+    const dist = Math.abs(event.clientX - drag.x)
+    dragDistanceRef.current = dist
+    if (dist > 6) {
+      hasDraggedRef.current = true
+    }
+
     const now = performance.now()
     const previous = posRef.current
     posRef.current = clamp(drag.pos - (event.clientX - drag.x) / pitch)
@@ -186,10 +197,72 @@ export function CoverflowCarousel({
   const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current
     if (!drag || drag.id !== event.pointerId) return
+    try {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+    } catch {
+      // ignore
+    }
     dragRef.current = null
     const carried = Math.max(-2, Math.min(2, drag.v * 0.18))
     settle(clamp(Math.round(posRef.current + carried)))
+
+    if (hasDraggedRef.current) {
+      setTimeout(() => {
+        hasDraggedRef.current = false
+        dragDistanceRef.current = 0
+      }, 120)
+    }
   }
+
+  // Support mouse wheel & trackpad gestures to scroll through slides
+  React.useEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return
+
+    let wheelTimer: ReturnType<typeof setTimeout> | null = null
+
+    const handleWheel = (e: WheelEvent) => {
+      const isHorizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY)
+      const rawDelta = isHorizontal ? e.deltaX : e.deltaY
+
+      if (Math.abs(rawDelta) < 2) return
+
+      // Prevent page jump while user is scrolling over the carousel
+      e.preventDefault()
+
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+
+      const pitch = (widthRef.current * (1 + gap)) || 220
+      const multiplier = e.deltaMode === 1 ? 28 : e.deltaMode === 2 ? 280 : 1
+      const delta = rawDelta * multiplier
+
+      const step = delta / (pitch * 1.5)
+      posRef.current = clamp(posRef.current + step)
+      targetRef.current = posRef.current
+      paint()
+
+      const newIndex = indexAt(posRef.current)
+      if (newIndex !== selected) {
+        setSelected(newIndex)
+      }
+
+      if (wheelTimer) clearTimeout(wheelTimer)
+      wheelTimer = setTimeout(() => {
+        settle(clamp(Math.round(posRef.current)))
+      }, 140)
+    }
+
+    frame.addEventListener("wheel", handleWheel, { passive: false })
+    return () => {
+      frame.removeEventListener("wheel", handleWheel)
+      if (wheelTimer) clearTimeout(wheelTimer)
+    }
+  }, [clamp, gap, indexAt, paint, selected, settle])
 
   useIsoLayoutEffect(() => {
     const frame = frameRef.current
@@ -244,7 +317,7 @@ export function CoverflowCarousel({
               nudge(1)
             }
           }}
-          className="cursor-grab overflow-hidden py-10 outline-none ring-ring focus-visible:ring-2 active:cursor-grabbing"
+          className="cursor-grab overflow-hidden py-10 outline-none ring-ring focus-visible:ring-2 active:cursor-grabbing select-none"
           style={{
             perspective: `calc(var(--cf-card) * ${perspective})`,
             touchAction: "pan-y",
@@ -266,13 +339,24 @@ export function CoverflowCarousel({
                 role="group"
                 aria-roledescription="slide"
                 aria-label={`${index + 1} of ${count}`}
-                onClick={onSlideClick ? () => onSlideClick(index) : undefined}
+                onClick={(e) => {
+                  if (hasDraggedRef.current || dragDistanceRef.current > 6) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    return
+                  }
+                  if (index !== selected) {
+                    goTo(index)
+                  }
+                  if (onSlideClick) {
+                    onSlideClick(index)
+                  }
+                }}
                 className={cn(
-                  "absolute left-1/2 top-0 aspect-square overflow-hidden rounded-2xl bg-muted shadow-xl will-change-transform",
-                  onSlideClick && "cursor-pointer",
+                  "absolute left-1/2 top-0 aspect-square overflow-hidden rounded-2xl bg-muted shadow-xl will-change-transform cursor-pointer select-none",
                   cardClassName,
                 )}
-                style={{ width: "var(--cf-card)" }}
+                style={{ width: "var(--cf-card)", touchAction: "pan-y" }}
               >
                 <Image
                   src={slide.src}

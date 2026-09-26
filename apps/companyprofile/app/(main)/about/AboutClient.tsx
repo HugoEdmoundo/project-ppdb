@@ -68,7 +68,7 @@ export default function AboutClient({ staff }: { staff: Staff[] }) {
       />
 
       {/* Story Section */}
-      <section className="py-16 sm:py-20 md:py-28 bg-[var(--bg)]">
+      <section className="pt-8 pb-14 sm:pt-10 sm:pb-16 md:pt-12 md:pb-20 bg-[var(--bg)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid lg:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
             <div>

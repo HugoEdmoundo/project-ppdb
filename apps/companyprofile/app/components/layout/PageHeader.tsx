@@ -7,9 +7,10 @@ interface Props {
   subtitle: string
   badge?: string
   align?: 'left' | 'center'
+  className?: string
 }
 
-export default function PageHeader({ title, subtitle, badge, align = 'left' }: Props) {
+export default function PageHeader({ title, subtitle, badge, align = 'left', className }: Props) {
   const sectionRef = useRef<HTMLElement>(null)
   const orbRef = useRef<HTMLDivElement>(null)
 
@@ -44,7 +45,7 @@ export default function PageHeader({ title, subtitle, badge, align = 'left' }: P
   return (
     <section
       ref={sectionRef}
-      className="relative pt-24 pb-16 md:pt-36 md:pb-28 overflow-hidden"
+      className={`relative pt-20 pb-8 sm:pt-24 sm:pb-10 md:pt-28 md:pb-12 overflow-hidden ${className || ''}`}
       style={{
         background: 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg) 50%, var(--bg-secondary) 100%)',
         backgroundSize: '200% 200%',
@@ -74,14 +75,14 @@ export default function PageHeader({ title, subtitle, badge, align = 'left' }: P
       )}
       <div className={`max-w-4xl mx-auto px-4 sm:px-6 relative z-10 ${align === 'center' ? 'text-center' : ''}`}>
         {badge && (
-          <span className={`section-badge ${align === 'center' ? 'justify-center' : ''}`}>
+          <span className={`section-badge !mb-2 ${align === 'center' ? 'justify-center' : ''}`}>
             {badge}
           </span>
         )}
-        <h1 className={`font-[var(--font-display)] text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-[var(--text)] leading-[1.05] mb-3 sm:mb-4 tracking-[-0.03em] ${align === 'center' ? 'mx-auto' : ''}`}>
+        <h1 className={`font-[var(--font-display)] text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[var(--text)] leading-tight mb-2 tracking-[-0.02em] ${align === 'center' ? 'mx-auto' : ''}`}>
           {title}
         </h1>
-        <p className={`text-sm sm:text-base md:text-lg text-[var(--text-secondary)] max-w-2xl leading-relaxed ${align === 'center' ? 'mx-auto' : ''}`}>
+        <p className={`text-sm sm:text-base text-[var(--text-secondary)] max-w-2xl leading-relaxed ${align === 'center' ? 'mx-auto' : ''}`}>
           {subtitle}
         </p>
       </div>

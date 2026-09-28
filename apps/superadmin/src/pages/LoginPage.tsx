@@ -62,6 +62,7 @@ export default function LoginPage() {
 
       <AuthCard
         title="Selamat Datang"
+        subtitle="sistem ptdarrahman"
         logoUrl={logoUrl || undefined}
         loading={loading}
         success={success}

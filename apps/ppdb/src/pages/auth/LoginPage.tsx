@@ -197,7 +197,8 @@ export default function LoginPage() {
       <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-10 lg:px-12 lg:py-12">
         <div className="w-full max-w-md flex flex-col items-center justify-center">
           <AuthCard
-            title="Masuk ke Akun"
+            title="Selamat Datang"
+            subtitle="sistem ptdarrahman"
             logoUrl={logoUrl || undefined}
             loading={loading}
             success={loginSuccess}

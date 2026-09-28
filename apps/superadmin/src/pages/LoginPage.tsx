@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { API_BASE } from '../api/client'
 import { ShieldCheck } from 'lucide-react'
-import { useBrand, AuthCard } from '@repo/ui'
+import { useBrand, AuthCard, AuthRecovery } from '@repo/ui'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -16,6 +16,7 @@ export default function LoginPage() {
   // + live-update via SSE). Tidak ada aset logo statis — fallback text mark.
   const { logoUrl } = useBrand(API_BASE)
   const [successName, setSuccessName] = useState('')
+  const [showRecovery, setShowRecovery] = useState(false)
 
   const isSuperadmin = !!user && (user.user_type === 'superadmin' || !!user.is_superadmin)
 
@@ -53,12 +54,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-dvh flex items-center justify-center bg-[var(--bg)] px-4 py-8 relative overflow-hidden">
       {/* Gradient base */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-emerald-subtle)] via-transparent to-[var(--color-gold-subtle)] opacity-60" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[var(--color-emerald-subtle)] via-transparent to-[var(--color-gold-subtle)] opacity-60" />
       {/* Dots pattern */}
-      <div className="absolute inset-0 bg-pattern-dots opacity-[0.35]" />
+      <div className="pointer-events-none absolute inset-0 bg-pattern-dots opacity-[0.35]" />
       {/* Decorative orbs */}
-      <div className="absolute top-20 right-20 w-72 h-72 rounded-full bg-[var(--color-emerald-subtle)] opacity-40 blur-3xl" />
-      <div className="absolute bottom-20 left-20 w-96 h-96 rounded-full bg-[var(--color-gold-subtle)] opacity-30 blur-3xl" />
+      <div className="pointer-events-none absolute top-20 right-20 w-72 h-72 rounded-full bg-[var(--color-emerald-subtle)] opacity-40 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-20 left-20 w-96 h-96 rounded-full bg-[var(--color-gold-subtle)] opacity-30 blur-3xl" />
 
       <AuthCard
         title="Selamat Datang"
@@ -70,10 +71,12 @@ export default function LoginPage() {
         successName={successName}
         onSubmit={handleLogin}
         submitText="Masuk"
-        forgotText="Lupa password? Hubungi administrator."
+        forgotText="Lupa username atau password?"
+        onForgotClick={() => setShowRecovery(true)}
         badgeText="Akses Terbatas"
         badgeIcon={<ShieldCheck className="w-3.5 h-3.5 text-[#D4A853]" />}
       />
+      <AuthRecovery open={showRecovery} onClose={() => setShowRecovery(false)} apiBase={API_BASE} />
     </div>
   )
 }

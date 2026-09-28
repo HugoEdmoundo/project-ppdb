@@ -32,4 +32,5 @@ export * from "./components/ui/error-state";
 export * from "./components/ui/success-state";
 export * from "./components/ui/confirm-dialog";
 export * from "./components/ui/auth-card";
+export * from "./components/ui/auth-recovery";
 export * from "./components/ui/page-loader";

@@ -43,7 +43,7 @@ export function AuthCard({
   }
 
   return (
-    <section className="relative w-full overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-xl sm:p-8">
+    <section className="relative z-10 mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-xl sm:p-8">
       <div
         className="absolute inset-x-0 top-0 h-1"
         style={{ background: `linear-gradient(90deg, var(--color-emerald-primary, #146C43), ${GOLD})` }}
@@ -67,13 +67,13 @@ export function AuthCard({
         ) : null}
       </div>
       {success ? (
-        <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center text-sm text-emerald-800">
+        <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center text-sm text-emerald-800">
           <p className="font-semibold">Login berhasil</p>
           {successName ? <p className="mt-1">Selamat datang, {successName}.</p> : null}
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+          {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
           <div className="space-y-2">
             <Label htmlFor="auth-username">Email / Username</Label>
             <div className="relative">
@@ -85,7 +85,7 @@ export function AuthCard({
                 placeholder="Masukkan username"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                className={cn(inputBaseClass, "pl-10 pr-3")}
+                className={cn(inputBaseClass, "rounded-[10px] pl-10 pr-3")}
               />
             </div>
           </div>
@@ -101,7 +101,7 @@ export function AuthCard({
                 placeholder="Masukkan kata sandi"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className={cn(inputBaseClass, "pl-10 pr-10")}
+                className={cn(inputBaseClass, "rounded-[10px] pl-10 pr-10")}
               />
               <button
                 type="button"
@@ -113,7 +113,7 @@ export function AuthCard({
               </button>
             </div>
           </div>
-          <Button type="submit" className="h-11 w-full" disabled={loading}>{loading ? "Memproses..." : submitText}</Button>
+          <Button type="submit" className="h-11 w-full rounded-[10px]" disabled={loading}>{loading ? "Memproses..." : submitText}</Button>
           {forgotText ? (
             onForgotClick
               ? <button type="button" onClick={onForgotClick} className="w-full text-center text-sm text-muted-foreground hover:underline">{forgotText}</button>

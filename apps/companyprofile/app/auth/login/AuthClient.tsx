@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShieldCheck } from 'lucide-react'
-import { login, getSettings } from '@/app/lib/api'
-import { AuthCard } from '@repo/ui'
+import { login } from '@/app/lib/api'
+import { AuthCard, AuthRecovery, useBrand } from '@repo/ui'
+import { API_BASE } from '@/app/lib/api'
 
 export default function AuthClient() {
   const router = useRouter()
@@ -12,17 +13,10 @@ export default function AuthClient() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [successName, setSuccessName] = useState('')
-  const [logoUrl, setLogoUrl] = useState<string>('')
+  const [showRecovery, setShowRecovery] = useState(false)
 
-  // Load logo dynamis (tidak ada aset logo statis) — fallback ke text mark.
-  useEffect(() => {
-    getSettings()
-      .then((settings) => {
-        const logo = settings.find((s) => s.key === 'logo')?.value
-        if (logo) setLogoUrl(logo)
-      })
-      .catch(() => {})
-  }, [])
+  // Logo dinamis via useBrand (GET /companyprofile/settings/logo + live SSE).
+  const { logoUrl } = useBrand(API_BASE)
 
   const handleLogin = async (username: string, password: string) => {
     setError('')
@@ -42,11 +36,11 @@ export default function AuthClient() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] relative overflow-hidden px-4 py-8">
-      <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-subtle)] via-transparent to-[var(--color-gold-subtle)] opacity-60" />
-      <div className="absolute inset-0 bg-pattern-dots opacity-[0.35]" />
-      <div className="absolute top-20 right-20 w-72 h-72 rounded-full bg-[var(--accent-subtle)] opacity-40 blur-3xl" />
-      <div className="absolute bottom-20 left-20 w-96 h-96 rounded-full bg-[var(--color-gold-subtle)] opacity-30 blur-3xl" />
+    <div className="min-h-dvh flex items-center justify-center bg-[var(--bg)] relative overflow-hidden px-4 py-8">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[var(--accent-subtle)] via-transparent to-[var(--color-gold-subtle)] opacity-60" />
+      <div className="pointer-events-none absolute inset-0 bg-pattern-dots opacity-[0.35]" />
+      <div className="pointer-events-none absolute top-20 right-20 w-72 h-72 rounded-full bg-[var(--accent-subtle)] opacity-40 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-20 left-20 w-96 h-96 rounded-full bg-[var(--color-gold-subtle)] opacity-30 blur-3xl" />
 
       <AuthCard
         title="Selamat Datang"
@@ -58,10 +52,12 @@ export default function AuthClient() {
         successName={successName}
         onSubmit={handleLogin}
         submitText="Masuk"
-        forgotText="Lupa password? Hubungi administrator."
+        forgotText="Lupa username atau password?"
+        onForgotClick={() => setShowRecovery(true)}
         badgeText="Akses Terbatas"
         badgeIcon={<ShieldCheck className="w-3.5 h-3.5 text-[#D4A853]" />}
       />
+      <AuthRecovery open={showRecovery} onClose={() => setShowRecovery(false)} apiBase={API_BASE} />
     </div>
   )
 }

@@ -2,23 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { BookOpenCheck, MonitorSmartphone, HeartHandshake } from 'lucide-react'
-import { Button } from "@/components/ui"
-import { Input } from "@/components/ui"
-import { Label } from "@/components/ui"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
-import { apiFetch, API_BASE } from '@/api/client'
-import { useToast } from '@/components/Toast'
-import { useBrand, AuthCard } from '@repo/ui'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-
-const recoverSchema = z.object({
-  nik: z.string().min(1, 'NIK wajib diisi'),
-  dob: z.string().min(1, 'Tanggal lahir wajib diisi'),
-})
-
-type RecoverData = z.infer<typeof recoverSchema>
+import { API_BASE } from '@/api/client'
+import { useBrand, AuthCard, AuthRecovery } from '@repo/ui'
 
 const PATTERN_OVERLAY = {
   backgroundImage:
@@ -66,17 +51,7 @@ function translateLoginError(message: string): string {
 
 export default function LoginPage() {
   const { login, user } = useAuth()
-  const { toast } = useToast()
   const navigate = useNavigate()
-
-  const {
-    register: registerRecover,
-    handleSubmit: handleRecoverSubmit,
-    reset: resetRecover,
-    formState: { errors: recoverErrors, isSubmitting: recoverLoading },
-  } = useForm<RecoverData>({
-    resolver: zodResolver(recoverSchema),
-  })
 
   const [loginSuccess, setLoginSuccess] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -85,7 +60,6 @@ export default function LoginPage() {
   const { logoUrl } = useBrand(API_BASE)
 
   const [showRecover, setShowRecover] = useState(false)
-  const [recoverMessage, setRecoverMessage] = useState<string | null>(null)
 
   // Redirect to dashboard logic
   useEffect(() => {
@@ -103,18 +77,6 @@ export default function LoginPage() {
 
   if (user && !loginSuccess) {
     return null
-  }
-
-  const onRecover = async (data: RecoverData) => {
-    try {
-      const res = await apiFetch<any>('/auth/recover-applicant', {
-        method: 'POST',
-        body: JSON.stringify({ nik: data.nik, birth_date: data.dob })
-      })
-      setRecoverMessage(res.message || 'Password baru sudah dikirim ke email/WhatsApp Anda.')
-    } catch (err: any) {
-      toast('error', err.message || 'Data tidak ditemukan')
-    }
   }
 
   const handleLogin = async (username: string, password: string) => {
@@ -206,56 +168,17 @@ export default function LoginPage() {
             successName={successName}
             onSubmit={handleLogin}
             submitText="Masuk"
-            forgotText="Pulihkan Akun"
+            forgotText="Lupa username atau password?"
             onForgotClick={() => setShowRecover(true)}
           />
 
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            Butuh bantuan? Silakan hubungi admin PPDB Ar-Rahman.
+            Pendaftar dapat memulihkan akun dengan NIK dan tanggal lahir. Admin PPDB yang lupa akses dapat menghubungi Superadmin.
           </p>
         </div>
       </main>
 
-      <Dialog open={showRecover} onOpenChange={(open) => {
-        setShowRecover(open)
-        if (!open) { setRecoverMessage(null); resetRecover() }
-      }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Pulihkan Kredensial</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            {recoverMessage ? (
-              <div className="space-y-4">
-                <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 border border-emerald-200">
-                  {recoverMessage}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Periksa email/WhatsApp Anda. Gunakan password baru tersebut untuk login.
-                </p>
-                <Button className="w-full" onClick={() => setShowRecover(false)}>Tutup</Button>
-              </div>
-            ) : (
-              <form onSubmit={handleRecoverSubmit(onRecover)} className="space-y-4">
-                <p className="text-sm text-muted-foreground">Masukkan NIK dan Tanggal Lahir pendaftar untuk mereset dan memulihkan akses login.</p>
-                <div>
-                  <Label htmlFor="rec_nik">NIK Pendaftar</Label>
-                  <Input id="rec_nik" {...registerRecover('nik')} placeholder="320..." error={recoverErrors.nik?.message} />
-                  {recoverErrors.nik && <p className="mt-1 text-xs text-red-500">{recoverErrors.nik.message}</p>}
-                </div>
-                <div>
-                  <Label htmlFor="rec_dob">Tanggal Lahir</Label>
-                  <Input id="rec_dob" type="date" {...registerRecover('dob')} error={recoverErrors.dob?.message} />
-                  {recoverErrors.dob && <p className="mt-1 text-xs text-red-500">{recoverErrors.dob.message}</p>}
-                </div>
-                <Button type="submit" className="w-full" disabled={recoverLoading}>
-                  {recoverLoading ? 'Mencari Data...' : 'Cari Data & Reset Password'}
-                </Button>
-              </form>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AuthRecovery open={showRecover} onClose={() => setShowRecover(false)} apiBase={API_BASE} applicant />
     </div>
   )
 }

@@ -86,6 +86,7 @@ docker-compose.yml
 | 9 | `.wslconfig` HARUS memuat `[general] instanceIdleTimeout=-1` DAN `[wsl2] vmIdleTimeout=-1` (nilai negatif = never). | Tanpa pasangan ini, VM/distro WSL mati sendiri ~70 detik setelah sesi `wsl.exe` terakhir ditutup → dockerd & semua container ikut mati. `vmIdleTimeout` saja atau nilai `2147483647` TIDAK cukup (terbukti di mesin owner). |
 | 10 | `docker.service`, `containerd.service`, `docker.socket` sengaja di-SET `disabled` (manual-start). Setelah boot / `wsl --shutdown`, WAJIB `sudo systemctl start docker` dulu. | Owner MENOLAK auto-start saat boot WSL (mau kontrol manual penuh, bukan karena proses laptop idle). Kalau dinyalakan otomatis, dockerd ikut menyala setiap WSL boot. |
 | 11 | Update kode = **sync ke copy WSL dulu, LALU `docker compose up -d --build`**. `up -d` TANPA `--build` TIDAK menerapkan perubahan. | Frontend & API di-bake ke image saat build (bukan bind-mount live). Tanpa `--build`, container tetap pakai image lama yang sudah ada. `--build` sekali jalan = build + recreate + start, tidak perlu `up -d` lagi. |
+| 12 | `/etc/docker/daemon.json` **wajib** memuat `{"dns": ["8.8.8.8", "1.1.1.1"]}`. | Saat `docker build` (BuildKit), build container TIDAK memakai konfigurasi `dns` dari `docker-compose.yml`, melainkan mewarisi `/etc/resolv.conf` host WSL (`10.255.255.254`) yang sering drop → `pip install` / `npm ci` / `apt-get` gagal dengan `Temporary failure in name resolution` atau timeout download wheel. |
 
 ## 4. Langkah Setup (verbatim)
 
@@ -113,7 +114,13 @@ cp apps/whatsapp/.env.example apps/whatsapp/.env
 #    export FRONTEND_VITE_API_URL=http://<vm-ip>:8080
 #    export FRONTEND_NEXT_PUBLIC_API_URL=http://<vm-ip>:8080
 
-# ── 5. Docker = MANUAL-START (aturan #10, preferensi owner — jangan enable otomatis):
+# ── 5. Docker daemon DNS (aturan #12) & MANUAL-START (aturan #10):
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json > /dev/null << 'EOF'
+{
+  "dns": ["8.8.8.8", "1.1.1.1"]
+}
+EOF
 sudo systemctl disable docker.service containerd.service docker.socket
 sudo systemctl start docker            # setiap habis boot / wsl --shutdown
 
@@ -246,6 +253,7 @@ docker compose logs -f whatsapp     # WhatsApp session/QR
 | `docker compose up` sempat gagal lalu `wsl: connection failed 0x8007274c` | Koneksi WSL transient | Retry sebentar (bukan masalah repo) |
 | **Semua container berhenti tiba-tiba, `wsl -l -v` → `Stopped`** walau tidak `docker compose stop` | VM WSL auto-shutdown karena idle | Pastikan `.wslconfig` punya `instanceIdleTimeout=-1` + `vmIdleTimeout=-1` (aturan #9). Setelah boot lagi jangan lupa `sudo systemctl start docker`. |
 | **Kode sudah diedit tapi build/output tetap versi lama ("ga update")** | (a) Build dari copy WSL yang belum di-sync dari copy Windows, dan/atau (b) `up -d` tanpa `--build` | Sync file ke `/home/<user>/project-ppdb` dulu (bagian 4a), lalu `docker compose up -d --build` (aturan #11). |
+| `docker build` pip install / npm ci gagal `Temporary failure in name resolution` atau `ReadTimeoutError` | Build container mewarisi resolver host WSL (10.255.255.254) | Buat `/etc/docker/daemon.json` berisi `{"dns": ["8.8.8.8", "1.1.1.1"]}` (aturan #12) lalu `sudo systemctl restart docker`. |
 | `socket.gaierror` / API hang saat dipanggil karena koneksi DB | Panggilan DB blocking di event loop | Endpoint async jangan memanggil DB sinkron langsung; pakai `asyncio.to_thread` atau jadikan endpoint `def` (lihat fix `apps/api/src/modules/companyprofile/router.py`). |
 | API log: `pymysql ... socket.readinto` / event loop blocked, `/health` lambat | `connect_timeout`/`read_timeout` tidak diset | Pastikan engine `connect_args` memuat `connect_timeout=5, read_timeout=30, write_timeout=30` (`apps/api/src/core/database.py`). |
 
@@ -265,8 +273,16 @@ mati sendiri + dua-copy repo), ikuti urutan ini:
 4. **Env files**: `cp apps/api/.env.example apps/api/.env`, `cp apps/whatsapp/.env.example
    apps/whatsapp/.env`, lalu isi dengan nilai yang benar (creds DB, JWT, API key, WEBHOOK secret).
    Set `CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium` di whatsapp/.env.
-5. **Manual-start (aturan #10)**: `sudo systemctl disable docker.service containerd.service
-   docker.socket` — ini memastikan dockerd TIDAK ikut nyala saat WSL boot.
+5. **Docker daemon DNS & Manual-start (aturan #10 & #12)**:
+   ```bash
+   sudo mkdir -p /etc/docker
+   sudo tee /etc/docker/daemon.json > /dev/null << 'EOF'
+   {
+     "dns": ["8.8.8.8", "1.1.1.1"]
+   }
+   EOF
+   sudo systemctl disable docker.service containerd.service docker.socket
+   ```
 6. Build & jalankan: `sudo systemctl start docker` lalu `docker compose up -d --build`.
 7. Verifikasi lengkap (bagian 6) + scan QR WhatsApp dari Superadmin.
 

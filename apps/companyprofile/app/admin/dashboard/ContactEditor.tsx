@@ -96,7 +96,8 @@ export function ContactEditor({ contactInfo, canCrud, onSave }: Props) {
                   />
                 ) : (
                   <Input
-                    type="text"
+                    type={['phone_primary', 'phone_secondary', 'whatsapp'].includes(f.key) ? 'tel' : 'text'}
+                    inputMode={['phone_primary', 'phone_secondary', 'whatsapp'].includes(f.key) ? 'numeric' : undefined}
                     value={form[f.key]}
                     onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
                     disabled={!canCrud}

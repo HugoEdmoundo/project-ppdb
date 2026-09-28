@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@source "../../packages/ui/src";
+@source "../../../packages/ui/src";
 
 @theme inline {
   --font-display: 'Playfair Display', serif;
@@ -18,7 +18,7 @@
   --color-secondary: var(--bg-secondary);
   --color-secondary-foreground: var(--text);
   --color-muted: var(--bg-secondary);
-  --color-muted-foreground: var(--text-muted);
+  --color-muted-foreground: hsl(43 20% 42%);
   --color-accent: var(--accent-subtle);
   --color-accent-foreground: var(--text);
   --color-destructive: #ef4444;

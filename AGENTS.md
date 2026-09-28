@@ -177,6 +177,7 @@ Ringkasan yang TIDAK BOLEH dilanggar:
 - **Docker engine jalan di DALAM WSL2** (Ubuntu), repo kerja di ext4 WSL (`/home/<user>/project-ppdb`), **bukan** di `/mnt/c` (sangat lambat). Tidak perlu Docker Desktop.
 - Akses dari browser Windows via **IP VM WSL** (`wsl hostname -I`), bukan `localhost`. **Dilarang `networkingMode=mirrored`** — sudah diuji bentrok dengan publish port Docker.
 - `docker-compose.yml` berisi ruas `dns: [8.8.8.8, 1.1.1.1]` di `api` & `whatsapp` dan redis `--maxmemory-policy noeviction` — **jangan dihapus** (perbaikan bug nyata).
+- `/etc/docker/daemon.json` **wajib** berisi `{"dns": ["8.8.8.8", "1.1.1.1"]}` — build container (BuildKit) tidak membaca compose DNS, melainkan mewarisi resolver WSL (`10.255.255.254`) yang sering drop sehingga `pip install`/`npm ci` gagal DNS resolution atau timeout saat download wheel.
 - `apps/whatsapp/.env` wajib `CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium`; Dockerfile-nya `useradd --system --create-home`; `SessionManager.ts` memakai `--disable-crash-reporter`.
 - Build args frontend: `{NEXT_PUBLIC,VITE}_API_URL` default `http://localhost:8080`, di-bake saat build — set `FRONTEND_*` ke `http://<vm-ip>:8080` bila integrasi API harus jalan dari browser Windows.
 - Start/stop: `docker compose up -d` (tanpa perubahan kode) / `docker compose stop` / (mati total) `wsl --shutdown` dari PowerShell. **Update kode = `docker compose up -d --build` SEKALI cukup** (build + recreate + start), dari copy WSL setelah sync.

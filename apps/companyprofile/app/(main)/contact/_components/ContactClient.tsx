@@ -138,7 +138,7 @@ export default function ContactClient({ contactInfo, socialLinks = [] }: { conta
                     <label htmlFor="contact-phone" className="text-[10px] font-bold font-[var(--font-heading)] uppercase tracking-wider text-[var(--text-muted)] mb-1.5 block">
                       Nomor Telepon
                     </label>
-                    <input id="contact-phone" type="tel" className="input-field" placeholder="Masukkan nomor telepon" aria-label="Nomor Telepon" value={formData.phone} onChange={updateField('phone')} />
+                    <input id="contact-phone" type="tel" inputMode="numeric" className="input-field" placeholder="Masukkan nomor telepon" aria-label="Nomor Telepon" value={formData.phone} onChange={e => setFormData(p => ({ ...p, phone: e.target.value.replace(/\D/g, '') }))} />
                   </div>
                   <div>
                     <label htmlFor="contact-subject" className="text-[10px] font-bold font-[var(--font-heading)] uppercase tracking-wider text-[var(--text-muted)] mb-1.5 block">

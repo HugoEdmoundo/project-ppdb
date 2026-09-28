@@ -50,17 +50,18 @@ export default function AuthClient() {
 
       <AuthCard
         title="Selamat Datang"
+        subtitle="sistem ptdarrahman"
         logoUrl={logoUrl || undefined}
         loading={loading}
         success={success}
         error={error}
         successName={successName}
         onSubmit={handleLogin}
-        submitText="Masuk ke Dasbor"
-        badgeText="Panel Admin"
+        submitText="Masuk ke Panel"
+        forgotText="Lupa password? Hubungi administrator."
+        badgeText="Akses Terbatas"
         badgeIcon={<ShieldCheck className="w-3.5 h-3.5 text-[#D4A853]" />}
       />
     </div>
   )
 }
-

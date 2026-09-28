@@ -43,7 +43,7 @@ export function AuthCard({
   }
 
   return (
-    <section className="relative z-10 mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-xl sm:p-8">
+    <section className="relative z-10 mx-auto w-full max-w-[22rem] overflow-hidden rounded-2xl border border-border bg-card px-7 py-9 shadow-xl sm:px-8 sm:py-10">
       <div
         className="absolute inset-x-0 top-0 h-1"
         style={{ background: `linear-gradient(90deg, var(--color-emerald-primary, #146C43), ${GOLD})` }}

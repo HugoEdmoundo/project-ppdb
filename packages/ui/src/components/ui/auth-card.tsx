@@ -43,7 +43,7 @@ export function AuthCard({
   }
 
   return (
-    <section className="relative z-10 mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-xl sm:p-8">
+    <section className="relative z-10 mx-auto w-full max-w-sm overflow-hidden rounded-3xl border border-border bg-card px-7 py-9 shadow-lg sm:px-9 sm:py-10">
       <div
         className="absolute inset-x-0 top-0 h-1"
         style={{ background: `linear-gradient(90deg, var(--color-emerald-primary, #146C43), ${GOLD})` }}
@@ -85,7 +85,7 @@ export function AuthCard({
                 placeholder="Masukkan username"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                className={cn(inputBaseClass, "rounded-[10px] pl-10 pr-3")}
+                className={cn(inputBaseClass, "rounded-xl pl-10 pr-3")}
               />
             </div>
           </div>
@@ -101,7 +101,7 @@ export function AuthCard({
                 placeholder="Masukkan kata sandi"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className={cn(inputBaseClass, "rounded-[10px] pl-10 pr-10")}
+                className={cn(inputBaseClass, "rounded-xl pl-10 pr-10")}
               />
               <button
                 type="button"
@@ -113,7 +113,7 @@ export function AuthCard({
               </button>
             </div>
           </div>
-          <Button type="submit" className="h-11 w-full rounded-[10px]" disabled={loading}>{loading ? "Memproses..." : submitText}</Button>
+          <Button type="submit" className="h-11 w-full rounded-xl" disabled={loading}>{loading ? "Memproses..." : submitText}</Button>
           {forgotText ? (
             onForgotClick
               ? <button type="button" onClick={onForgotClick} className="w-full text-center text-sm text-muted-foreground hover:underline">{forgotText}</button>

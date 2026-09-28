@@ -56,3 +56,12 @@ class RecoverApplicantRequest(BaseModel):
 
 class RecoverApplicantResponse(BaseModel):
     message: str
+
+
+class AccountRecoveryRequest(BaseModel):
+    identifier: str = Field(min_length=1, max_length=255)
+
+
+class AccountRecoveryVerify(BaseModel):
+    identifier: str = Field(min_length=1, max_length=255)
+    code: str = Field(min_length=6, max_length=6)

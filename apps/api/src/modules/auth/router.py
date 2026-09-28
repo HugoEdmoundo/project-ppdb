@@ -16,6 +16,8 @@ from src.core.database import get_db
 from src.core.dependencies import get_current_user, require_superadmin
 from src.core.rate_limit import rate_limit_dependency
 from src.modules.auth.schemas import (
+    AccountRecoveryRequest,
+    AccountRecoveryVerify,
     LoginRequest,
     LoginResponse,
     ProfileUpdate,
@@ -35,6 +37,24 @@ router = APIRouter()
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     repo = AuthRepository(db)
     return AuthService(repo)
+
+
+@router.post("/recovery/request")
+def request_account_recovery(
+    body: AccountRecoveryRequest,
+    service: AuthService = Depends(get_auth_service),
+    _: None = Depends(rate_limit_dependency("account_recovery")),
+):
+    return service.request_account_recovery(body.identifier)
+
+
+@router.post("/recovery/verify")
+def verify_account_recovery(
+    body: AccountRecoveryVerify,
+    service: AuthService = Depends(get_auth_service),
+    _: None = Depends(rate_limit_dependency("account_recovery")),
+):
+    return service.verify_account_recovery(body.identifier, body.code)
 
 
 def _cookie_secure(request: Request) -> bool:

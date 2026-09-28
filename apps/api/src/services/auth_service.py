@@ -1,5 +1,7 @@
+import hashlib
 import json
 import logging
+import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -9,7 +11,6 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
 from src.core.cache import invalidate_user_cache
-from src.core.notif_service import send_notifications
 from src.core.security import (
     create_access_token,
     generate_refresh_token,
@@ -31,6 +32,98 @@ WIB = ZoneInfo("Asia/Jakarta")
 class AuthService:
     def __init__(self, repository: AuthRepository):
         self.repository = repository
+
+    def request_account_recovery(self, identifier: str) -> dict[str, str]:
+        """Send a short lived WhatsApp OTP without disclosing account existence."""
+        from src.core.cache import get_redis
+        from src.core.notif_service import send_custom_notifications
+
+        neutral = {
+            "message": (
+                "Jika akun cocok, kode verifikasi akan dikirim ke WhatsApp terdaftar."
+            )
+        }
+        user = self.repository.get_user_by_username_or_email(identifier.strip())
+        if (
+            not user
+            or user.user_type == "applicant"
+            or not user.is_active
+            or not user.phone
+        ):
+            return neutral
+        redis = get_redis()
+        if redis is None:
+            return neutral
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        key = (
+            "account_recovery:"
+            + hashlib.sha256(identifier.strip().lower().encode()).hexdigest()
+        )
+        try:
+            redis.setex(
+                key, 600, f"{user.id}:{hashlib.sha256(code.encode()).hexdigest()}"
+            )
+            send_custom_notifications(
+                [user.id],
+                "whatsapp",
+                "Kode pemulihan akun",
+                f"Kode verifikasi pemulihan akun Anda: {code}. "
+                "Kode berlaku 10 menit. Jangan bagikan kode ini kepada siapa pun.",
+                "account_recovery_otp",
+            )
+        except Exception:
+            logger.exception("Could not queue account recovery OTP")
+        return neutral
+
+    def verify_account_recovery(self, identifier: str, code: str) -> dict[str, str]:
+        from src.core.cache import get_redis
+        from src.core.notif_service import send_custom_notifications
+
+        redis = get_redis()
+        key = (
+            "account_recovery:"
+            + hashlib.sha256(identifier.strip().lower().encode()).hexdigest()
+        )
+        if redis is None:
+            raise HTTPException(503, "Layanan pemulihan sementara tidak tersedia")
+        try:
+            saved = redis.get(key)
+            if not saved:
+                raise ValueError("expired")
+            user_id, code_hash = saved.split(":", 1)
+            if not secrets.compare_digest(
+                code_hash, hashlib.sha256(code.encode()).hexdigest()
+            ):
+                raise ValueError("invalid")
+            user = self.repository.get_user_by_id(user_id)
+            if not user or user.user_type == "applicant" or not user.phone:
+                raise ValueError("invalid")
+            password = secrets.token_urlsafe(9)
+            user.password_hash = hash_password(password)
+            user.updated_at = datetime.now(WIB)
+            self.repository.db.query(RefreshToken).filter(
+                RefreshToken.user_id == user.id, RefreshToken.revoked.is_(False)
+            ).update({RefreshToken.revoked: True}, synchronize_session=False)
+            self.repository.update_user(user)
+            invalidate_user_cache(user.id)
+            redis.delete(key)
+            send_custom_notifications(
+                [user.id],
+                "whatsapp",
+                "Kredensial akun",
+                f"Pemulihan akun berhasil. Username: {user.username}\n"
+                f"Password sementara: {password}\n"
+                "Segera masuk dan ganti password Anda.",
+                "account_recovery_credentials",
+            )
+            return {
+                "message": (
+                    "Verifikasi berhasil. Kredensial telah dikirim ke WhatsApp "
+                    "terdaftar."
+                )
+            }
+        except ValueError as exc:
+            raise HTTPException(400, "Kode verifikasi salah atau kedaluwarsa") from exc
 
     def _coerce_dt(self, value):
         if not value:
@@ -399,11 +492,10 @@ class AuthService:
         }
 
     def recover_applicant(self, nik: str, birth_date: str) -> dict:
-        import random
         import string
         from datetime import date as date_type
 
-        from src.core.config import settings
+        from src.core.notif_service import send_custom_notifications
         from src.models.ppdb import PPDBApplicant
 
         try:
@@ -428,49 +520,39 @@ class AuthService:
         user = self.repository.get_user_by_id(applicant.user_id)
         if not user:
             raise HTTPException(404, "Akun pengguna tidak ditemukan")
+        phone = applicant.phone or user.phone
+        if not phone:
+            raise HTTPException(
+                400,
+                "Akun belum memiliki nomor WhatsApp terdaftar. Hubungi admin.",
+            )
 
         # Generate new password
         chars = string.ascii_letters + string.digits
-        new_password = "".join(random.choice(chars) for _ in range(8))
+        new_password = "".join(secrets.choice(chars) for _ in range(12))
 
         user.password_hash = hash_password(new_password)
         user.updated_at = datetime.now(WIB)
+        self.repository.db.query(RefreshToken).filter(
+            RefreshToken.user_id == user.id, RefreshToken.revoked.is_(False)
+        ).update({RefreshToken.revoked: True}, synchronize_session=False)
         self.repository.db.commit()
 
-        # Password baru dikirim lewat channel notifikasi (email/WA), bukan
-        # dikembalikan lewat response API. Ini mencegah siapa pun yang hanya
-        # mengetahui NIK + tanggal lahir mengambil alih akun.
         try:
-            send_notifications(
-                [
-                    (
-                        "password_reset",
-                        {
-                            "password": new_password,
-                            "link_login": f"{settings.ppdb_frontend_url}/auth/login",
-                        },
-                    )
-                ],
-                user.id,
-                user_row={
-                    "id": user.id,
-                    "email": user.email,
-                    "username": user.username,
-                    "full_name": user.full_name,
-                    "phone": user.phone or "",
-                },
-                applicant_row={
-                    "id": applicant.id,
-                    "full_name": applicant.full_name,
-                    "phone": applicant.phone,
-                },
+            send_custom_notifications(
+                [user.id],
+                "whatsapp",
+                "Kredensial akun PPDB",
+                f"Pemulihan akun PPDB berhasil. Username: {user.username}\n"
+                f"Password sementara: {new_password}\n"
+                "Segera masuk dan ganti password Anda.",
+                "account_recovery_credentials",
             )
         except Exception:
-            logger.exception("send password_reset notification failed; continuing")
+            logger.exception("Could not queue applicant recovery credentials")
 
         return {
             "message": (
-                "Reset password berhasil. Password baru telah dikirim ke "
-                "email/WhatsApp yang terdaftar."
+                "Jika data cocok, kredensial akan dikirim ke WhatsApp terdaftar."
             )
         }

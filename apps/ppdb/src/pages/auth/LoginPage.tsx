@@ -198,7 +198,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md flex flex-col items-center justify-center">
           <AuthCard
             title="Selamat Datang"
-            subtitle="sistem ptdarrahman"
+            subtitle="Sistem PTDARRAHMAN"
             logoUrl={logoUrl || undefined}
             loading={loading}
             success={loginSuccess}

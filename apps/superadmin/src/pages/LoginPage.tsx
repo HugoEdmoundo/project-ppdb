@@ -62,14 +62,14 @@ export default function LoginPage() {
 
       <AuthCard
         title="Selamat Datang"
-        subtitle="sistem ptdarrahman"
+        subtitle="Sistem PTDARRAHMAN"
         logoUrl={logoUrl || undefined}
         loading={loading}
         success={success}
         error={error}
         successName={successName}
         onSubmit={handleLogin}
-        submitText="Masuk ke Panel"
+        submitText="Masuk"
         forgotText="Lupa password? Hubungi administrator."
         badgeText="Akses Terbatas"
         badgeIcon={<ShieldCheck className="w-3.5 h-3.5 text-[#D4A853]" />}

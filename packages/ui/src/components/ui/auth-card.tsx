@@ -6,6 +6,10 @@ import { cn } from "../../lib/utils"
 
 const GOLD = "#D4A853"
 
+// Font judul dipaksa lewat inline style agar identik di ketiga app — beberapa app
+// men-override h1 dengan font display (serif) di stylesheet globalnya.
+const HEADING_FONT = "var(--font-heading, 'DM Sans'), system-ui, sans-serif"
+
 const inputBaseClass =
   "flex h-11 w-full rounded-lg border border-input bg-background py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 
@@ -46,8 +50,8 @@ export function AuthCard({
       />
       <div className="mb-6 flex flex-col items-center text-center">
         {logoUrl ? <img src={logoUrl} alt="Logo" className="mb-4 h-16 max-w-48 object-contain" /> : null}
-        <h1 className="font-heading text-2xl font-bold tracking-tight">{title}</h1>
-        {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
+        <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: HEADING_FONT }}>{title}</h1>
+        {subtitle ? <p className="mt-1 text-sm text-muted-foreground" style={{ fontFamily: HEADING_FONT }}>{subtitle}</p> : null}
         {badgeText ? (
           <div className="mt-4 flex w-full items-center gap-3">
             <span className="h-px flex-1" style={{ backgroundColor: `${GOLD}55` }} />

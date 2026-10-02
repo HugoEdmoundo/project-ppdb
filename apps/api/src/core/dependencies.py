@@ -8,6 +8,7 @@ Cache is invalidated automatically on profile/permission updates via
 cache.invalidate_user_cache(user_id).
 """
 
+import hmac
 import json
 from collections.abc import Callable
 from typing import Any
@@ -219,3 +220,34 @@ async def require_notification_read(
             detail="Forbidden: Requires notification read access",
         )
     return user
+
+
+def require_cron_auth(request: Request) -> None:
+    """
+    Proteksi endpoint cron dengan CRON_SECRET dari .env.
+
+    Pemanggil (scheduler eksternal) harus mengirim header:
+      Authorization: Bearer <CRON_SECRET>
+
+    Jika CRON_SECRET tidak dikonfigurasi, cron endpoint ditolak semua
+    (fail-closed) untuk mencegah pemanggilan tidak sah.
+    """
+    from src.core.config import settings  # local import to avoid circular
+
+    expected = settings.cron_secret
+    if not expected:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "CRON_SECRET tidak dikonfigurasi di .env. "
+                "Tambahkan CRON_SECRET=<secret> untuk mengaktifkan endpoint cron."
+            ),
+        )
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Cron auth required")
+
+    provided = auth_header.removeprefix("Bearer ").strip()
+    if not hmac.compare_digest(expected.strip(), provided):
+        raise HTTPException(status_code=401, detail="Invalid cron secret")

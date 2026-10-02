@@ -20,10 +20,14 @@ class SelectionSession(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     wave_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    session_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
     session_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     start_time: Mapped[str | None] = mapped_column(String(10), nullable=True)  # "08:00"
     end_time: Mapped[str | None] = mapped_column(String(10), nullable=True)  # "12:00"
+    mode: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    officer_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
     location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     quota: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -65,6 +69,7 @@ class SelectionCriteria(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     category_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    weight: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 

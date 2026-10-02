@@ -1,0 +1,20 @@
+[ADMIN LOGIN BACKOFFICE]
+       │
+       ▼
+[DASHBOARD UTAMA ADMIN]
+       │
+       ├─────────────────────────┬─────────────────────────┬─────────────────────────┐
+       ▼                         ▼                         ▼                         ▼
+[1. KELOLA GELOMBANG]    [2. KELOLA TEMPLATE]      [3. KELOLA RUBRIK]        [4. KELOLA "TAKE SESSION"]
+- Set Tanggal Buka/Tutup - Input Link Template MOU - Set Kriteria Nilai      - Slot Jadwal Tahfidz &
+- Set Harga Formulir       (Google Docs)             Custom per Jalur          Wawancara
+- Set Diskon Gelombang   - Upload Image Kop Surat  - Set Bobot Nilai (%)     - Set Tanggal, Jam, & Kuota
+  (DP3, Gedung, SPP)     - Draf SKD / Sertifikat   - Dynamic Form Evaluator  - Set Mode: ONLINE / OFFLINE
+- Set Minimal DP/Cicilan   Kelulusan                 (Ujian Tahfidz,         - Link Zoom (Jika Online)
+  Tahap 2                - Preview Hasil Dokumen     Wawancara, TIU, dll)    - Nama Ruangan (Jika Offline)
+                                                                             (Sifatnya Flexible/Menyusul)
+       │                         │                         │                         │
+       └─────────────────────────┴───────────┬─────────────┴─────────────────────────┘
+                                             │
+                                             ▼
+                        [SISTEM PENDAFTARAN READY DIBUKA UNTUK PUBLIK]

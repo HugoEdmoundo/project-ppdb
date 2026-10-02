@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth, useFilteredNav } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, ChevronDown, ChevronLeft, Menu, CalendarDays, CreditCard, Bell, Users, FileCheck2
+  LayoutDashboard, ChevronDown, ChevronLeft, Menu, CalendarDays, CreditCard, Bell, Users, FileCheck2, FileText, Timer
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -18,7 +18,6 @@ const navItems = [
     module: 'ppdb',
     minLevel: 'read',
     children: [
-      { label: 'Dokumen Pendaftar', href: '/admin/applicants' },
       { label: 'Seleksi', href: '/admin/selection' },
       { label: 'Review MOU', href: '/admin/mou' },
     ]
@@ -29,12 +28,12 @@ const navItems = [
     module: 'ppdb',
     minLevel: 'read',
     children: [
-      { label: 'Pembayaran Formulir', href: '/admin/payments' },
       { label: 'Diskonasi', href: '/admin/diskonasi' },
-      { label: 'Pembayaran Tahap 2', href: '/admin/stage2-pembayaran' },
     ]
   },
   { label: 'Periode PPDB', icon: CalendarDays, href: '/admin/periods', module: 'ppdb', minLevel: 'read' },
+  { label: 'Template & Dokumen', icon: FileText, href: '/admin/document-settings', module: 'ppdb', minLevel: 'read' },
+  { label: 'Pengaturan TIU', icon: Timer, href: '/admin/tiu-settings', module: 'ppdb', minLevel: 'read' },
   { label: 'Notifikasi', icon: Bell, href: '/admin/notifications', module: 'ppdb', minLevel: 'read' },
 ]
 

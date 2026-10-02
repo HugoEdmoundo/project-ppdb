@@ -1,410 +1,73 @@
-# PTDARRAHMAN Monorepo Documentation
-
-Pesantren Tahfidz Qur'an dan Digital Ar-Rahman — A monorepo containing the company profile website, PPDB application, superadmin panel, and a unified API backend.
-
-## Project Structure & Tech Stack
-
-Managed as a **pnpm workspace + Turborepo** monorepo. Run cross-package scripts from the repo root (e.g. `pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm test`) which delegate to `turbo`.
-
-| Service | Path | Tech Stack | Key Responsibilities |
-| --- | --- | --- | --- |
-| **Company Profile** | `apps/companyprofile/` | Next.js 16 (App Router), React 19, Tailwind v4 | Public-facing website, news, programs, admin CMS dashboard. |
-| **PPDB App** | `apps/ppdb/` | Vite 8, React 19, Tailwind CSS v3 | Student registration, payment gateway wall, applicant dashboard, PPDB admin. |
-| **Superadmin Panel**| `apps/superadmin/` | Vite 8, React 19, Tailwind CSS v3 | System-wide users and roles management, modules access control. |
-| **Backend API** | `apps/api/` | FastAPI 0.141, Python 3.12, SQLAlchemy 2, MySQL | Monolithic backend serving all three frontends. Handles DB, auth, SSE, and uploads. |
-| **WhatsApp Service** | `apps/whatsapp/` | Node.js 20, Express, whatsapp-web.js, BullMQ, Redis | WhatsApp notification microservice. Sends messages, manages session, queues delivery. |
-
-### Workspace Layout
-- `apps/*`: Deployable applications. **Frontend apps** (`companyprofile`, `ppdb`, `superadmin`) adalah pnpm workspace member. **`apps/whatsapp` DI-EXCLUDE dari pnpm workspace** — ia project Node/npm standalone (`package-lock.json`) yang berjalan di container sendiri (`whatsapp`), jadi `pnpm dev`/`pnpm build` TIDAK ikut menjalankannya.
-- `packages/*`: Shared internal libraries — `ui` (shared React/Tailwind UI components) dan `typescript-config` (shared TypeScript/tsconfig presets).
-- `pnpm-workspace.yaml`: Workspace globs — EKSPLISIT mencantumkan 3 frontend + 2 packages (tanpa `apps/whatsapp`).
-- `turbo.json`: Task orchestration untuk `build`/`dev`/`lint`/`test`.
-- `.pre-commit-config.yaml`: Pre-commit hooks (ruff, mypy, trailing-whitespace, etc.) installed on commit.
-- `docker-compose.yml`: 3 container + Redis — `frontend` (Node/pnpm, UI only), `api` (FastAPI), `whatsapp` (Node/npm), `redis` (internal). Semua berjalan di Docker, **tidak ada Redis/servis lokal**.
-- `docker/Dockerfile.frontend`: Multi-stage Dockerfile untuk container ui-container… → `frontend` (serves all three UIs).
-
-## Backend (`apps/api/`)
-
-A single FastAPI service handling all business logic, database operations, and authentication.
-
-### Core Structure
-- `src/core/`: Configuration, database connection, JWT security, dependencies (permissions), SSE events.
-- `src/models/`: SQLAlchemy ORM models (e.g., `auth.py`, `ppdb.py`, `content.py`, `selection.py`).
-- `src/modules/`: Feature-based routers and schemas (`auth`, `companyprofile`, `modules`, `notifications`, `payment`, `ppdb`, `roles`, `selection`, `superadmin`, `uploads`, `users`).
-- `alembic/`: Database migrations. Use `alembic upgrade head` to apply.
-
-### Key Conventions
-- **Permissions**: Enforced via `src/core/dependencies.py`. Routers use dependencies like `Depends(require_ppdb_admin)`. Access levels include `none`, `dashboard`, `read`, and `crud`.
-- **Soft Delete**: Applied to records like `ppdb_applicants` (`deleted_at`).
-- **Real-time**: Handled via Server-Sent Events (SSE) in `src/core/events.py`.
-- **File Uploads**: Local storage handled under the `uploads` module.
-
-## Frontend Access Control
-
-Permissions are defined per-module (e.g., `companyprofile`, `ppdb`, `dashboard`) with levels (`none` < `dashboard` < `read` < `crud`).
-- Buttons and forms must check permissions before rendering. Form inputs are disabled (read-only) if the user lacks `crud` access.
-- System roles (`is_system=True`) like "Superadmin" and "Pendaftar" are protected from accidental deletion or modification.
-
-### User Types & Auth Rules
-
-Ada tiga jenis user dalam sistem:
-
-| User Type | Login Di | Dashboard | Aturan Khusus |
-| --- | --- | --- | --- |
-| `superadmin` | Superadmin Panel (`apps/superadmin`) | Superadmin panel saja | Bypass SEMUA pengecekan permission — selalu punya akses ke semua modul dan semua halaman |
-| `admin` | PPDB (`apps/ppdb`) | `/admin/dashboard` | Diblokir login jika SEMUA module di role-nya = `none` |
-| `applicant` | PPDB (`apps/ppdb`) | `/applicant` (bukan `/admin`) | Role "Pendaftar" bawaan system — tidak bisa akses admin dashboard PPDB |
-
-### Superadmin
-- `user_type === 'superadmin'` atau role dengan `is_superadmin = true` → **bypass semua pengecekan permission**.
-- Role "Superadmin" bersifat sistem (`is_system=True`) — tidak bisa diedit atau dihapus.
-- Role Superadmin tidak punya kolom permissions yang perlu diisi — mereka punya akses ke segalanya secara implisit.
-- Superadmin hanya bisa login di Superadmin Panel, BUKAN di PPDB App.
-
-### Admin (Dibuat oleh Superadmin)
-- Login di PPDB App (`/auth/login`).
-- Jika **semua module di role-nya = `none`** → **diblokir login** di backend dengan HTTP 403, pesan dimulai dengan prefix `module_disabled:`.
-  - Frontend PPDB menampilkan alert: "Akses ditolak: semua modul dinonaktifkan oleh superadmin."
-- Jika punya minimal 1 module bukan `none` → boleh login dan masuk ke `/admin/dashboard`.
-- Permission page (halaman mana yang bisa diakses di sidebar) mengikuti `user_page_permissions` table — hanya page dari module yang punya akses yang muncul.
-
-### Applicant (Pendaftar)
-- Login di PPDB App (`/auth/login`).
-- Role "Pendaftar" adalah role sistem (`is_system=True`) — tidak bisa diedit.
-- Setelah login, hanya bisa mengakses `/applicant` (dashboard peserta) atau `/checkout` (paywall).
-- **Tidak bisa** masuk ke `/admin/dashboard` atau halaman admin manapun.
-- Tidak ada pengecekan module permission untuk applicant — mereka selalu diizinkan login (selama akun aktif).
-
-### Routing Logic (PPDB ProtectedRoute & LoginPage)
-Tidak ada "validasi mau masuk dashboard mana" — routing adalah **konsekuensi otomatis dari user_type**:
-
-- **Post-login redirect** di LoginPage (`apps/ppdb`):
-  - `user_type === 'superadmin'` atau `is_superadmin` → redirect ke `/admin/dashboard`
-  - `user_type === 'admin'` dengan minimal 1 module bukan `none` → redirect ke `/admin/dashboard`
-  - `user_type === 'applicant'` → redirect ke `/applicant`
-  - Semua module `none` → **diblokir di backend sebelum sampai sini**
-
-- **ProtectedRoute** (`apps/ppdb/src/components/ProtectedRoute.tsx`):
-  - `role="admin"` → cek `isAdmin()` → true untuk superadmin atau admin dengan modul aktif
-  - `role="applicant"` → cek `hasApplicantAccess()` → **hanya** true untuk `user_type === 'applicant'`
-  - Tidak ada routing ke dashboard lain — setiap user langsung masuk ke tempat yang sesuai berdasarkan `user_type`-nya
-
-- **isAdmin()** (`AuthContext.tsx`):
-  - `user_type === 'superadmin'` atau `is_superadmin === true` → `true`
-  - `user_type === 'applicant'` → `false`
-  - Lainnya: `true` jika ada minimal 1 permission value bukan `none`
-
-- **hasApplicantAccess()** (`AuthContext.tsx`):
-  - Hanya `true` jika `user_type === 'applicant'`
-  - Superadmin → `false` (tidak masuk ke /applicant, tapi ke /admin/dashboard)
-
-### Permission Halaman (Page Permissions)
-- Setiap halaman admin memiliki key unik (e.g. `dashboard`, `applicants`, `payments`).
-- User hanya bisa melihat halaman yang ada di `user_page_permissions` mereka.
-- Jika module dari sebuah halaman = `none`, halaman tersebut tidak akan muncul di permission list user tersebut.
-- Superadmin tidak dicek via page permissions — mereka melihat semua halaman.
-
-## PPDB Flow
-1. **Registration**: User registers -> receives `payment_status = 'pending'` and a 7-day `payment_deadline`. Nominal biaya pendaftaran (Tahap 1) ditarik otomatis dari konfigurasi `registration_fee` pada tabel `ppdb_waves` yang sedang aktif.
-2. **Paywall**: Users with pending payments are restricted to `/checkout`. No dashboard access.
-3. **Expiration**: If unpaid after 7 days, `payment_status` becomes `expired` and account is soft-deleted (`deleted_at` is set). Expired applicants **tetap tampil** di list admin dengan badge merah "EXPIRED" — tidak dihapus dari tampilan.
-4. **Paid (Tahap 1)**: On success (manual or webhook), status becomes `paid` -> Dashboard is unlocked for document uploads. Khusus untuk pembayaran manual (offline), admin dapat **membatalkan konfirmasi** yang mengembalikan status user menjadi `pending` dan mengunci kembali dashboard. (Pembayaran online via gateway tidak bisa dibatalkan).
-5. **Selection & MOU**: Setelah lulus, admin memunculkan MOU dan biaya Tahap 2 (Daftar Ulang) beserta diskon/cicilan (Tabel `ppdb_applicant_discounts` & `ppdb_stage2_bills`).
-
-## Wave System (Gelombang)
-
-### Hierarki
-`Periode` → `Gelombang` → `Pendaftar/Transaksi/Dokumen/Seleksi/Biaya Tahap 2`
-
-Pendaftaran hanya bisa dilakukan jika **tepat 1 Periode DAN 1 Gelombang** berstatus `active` secara bersamaan.
-
-### Gelombang sebagai Induk Data
-**Gelombang adalah induk dari semua data operasional PPDB.** Data yang ditampilkan di halaman admin (pendaftar, dokumen, pembayaran, seleksi) selalu mengacu pada **gelombang yang sedang aktif**:
-- Gelombang **aktif** → tampilkan data milik gelombang tersebut saja.
-- Gelombang **tidak aktif / tidak ada yang aktif** → data tidak ditampilkan (tampil empty state + banner peringatan kuning).
-- **Ganti gelombang aktif** → data berganti ke data milik gelombang baru.
-
-### Aturan Aktivasi (Business Logic)
-- Hanya **1 wave aktif secara global** (system-wide, bukan per-periode).
-- Wave hanya bisa diaktifkan jika **periode induknya `active`** → HTTP 400 jika belum.
-- **Aktivasi wave** → nonaktifkan SEMUA wave lain dulu, baru aktifkan ini.
-- **Aktivasi periode** → nonaktifkan SEMUA wave dari SEMUA periode.
-- **Deaktivasi periode** → nonaktifkan wave dari periode itu saja.
-- **Membuat wave** → selalu `inactive`, tidak bisa langsung aktif.
-- **Hapus periode** → cascade hapus semua waves-nya.
-- **Hapus wave yang ada pendaftarnya** → **diblok** (FK RESTRICT).
-
-### API Wave-Scoping (Backend Convention)
-- **`GET /ppdb/applicants`** — jika tidak ada `wave_id` param, backend **otomatis resolve ke wave aktif**. Jika tidak ada wave aktif → return `{data: [], total: 0, active_wave: null}`.
-- **`GET /payment/transactions`** — backend scope ke wave aktif via JOIN ke `ppdb_applicants.wave_id`. Jika tidak ada wave aktif → return kosong.
-- **`GET /selection/sessions|categories|results`** — backend scope ke wave aktif via helper `_get_active_wave_id()`.
-- **`GET /ppdb/waves/active-public`** — endpoint publik (no auth), return info wave aktif (`id`, `name`, `allowed_paths[]`, `allowed_levels[]`) atau `{active: false}`. Dipakai halaman registrasi publik.
-
-### Frontend Wave-Scoping (Frontend Convention)
-- Semua halaman admin data (`DataPendaftarPage`, `ApplicantsPage`, `PaymentsPage`, `SelectionPage`) hanya menampilkan data dari **gelombang aktif**.
-- Jika API mengembalikan `active_wave: null` → tampilkan **banner kuning** dan **empty state** dengan pesan "Aktifkan gelombang terlebih dahulu".
-- Halaman registrasi publik memanggil `/ppdb/waves/active-public` di awal load untuk menentukan opsi jalur & jenjang yang tersedia.
-
-### Scope Gelombang (allowed_paths / allowed_levels)
-- `allowed_paths`: CSV dari `reguler`, `pindahan` — menentukan jalur pendaftaran yang dibuka.
-- `allowed_levels`: CSV dari `SMP`, `SMK` — menentukan jenjang yang dibuka.
-- Form registrasi publik **otomatis menyembunyikan** opsi yang tidak diizinkan wave aktif.
-- Backend juga **memvalidasi ulang** saat POST register (double validation).
-
-### Expired Applicants (Soft Delete)
-- Cron job harian (`POST /ppdb/cron/soft-delete-expired`) men-set `deleted_at`, `payment_status = 'expired'`, `status = 'expired'` pada pendaftar yang melewati `payment_deadline`.
-- Pendaftar expired **tetap muncul** di list admin selama gelombangnya aktif — tidak disembunyikan.
-- Badge `EXPIRED` selalu ditampilkan dengan warna **merah** (`destructive`) — baik di tabel maupun di modal detail — bukan kuning.
-
-## Environment & Secrets
-- Uses `.env` files for local development. Never commit secrets.
-- Every app reads its own `.env` from its directory (`apps/api/.env`, `apps/ppdb/.env`, etc.). No secrets are shared across the repo.
-
-## Tooling & Workflows
-- **Package manager**: `pnpm` (workspace root). Frontend deps are hoisted via `pnpm-lock.yaml`.
-- **Orchestration**: `turbo` — run `pnpm build`, `pnpm dev`, `pnpm lint`, `pnpm test` from the repo root to execute across all workspace packages.
-- **Shared UI**: `packages/ui` exports reusable React/Tailwind components; apps import from `@repo/ui` rather than maintaining duplicates.
-- **Python/API**: `apps/api` uses ruff + mypy (see `.pre-commit-config.yaml`) and runs on Python 3.12 with its own dependency files.
-
-## Local Docker Runtime (WSL2)
-
-Runbook lengkap & verbatim untuk AGENT AI: **`docs/DOCKER_SETUP.md`**. Jangan skip dokumen itu saat diminta "setup docker".
-
-Ringkasan yang TIDAK BOLEH dilanggar:
-- **DUA COPY REPO (sumber "ga update"):** Ada dua copy repo di mesin owner. Copy **Windows** (`C:\ptdarrahman.sch.id\project-ppdb`) adalah repo git asli tempat AGENT bekerja (edit/commit). Copy **WSL** (`/home/<user>/project-ppdb`, ext4, tanpa .git) adalah SATU-SATUNYA yang dipakai Docker build & run. **Alur update kode: edit di copy Windows → sync file ke copy WSL → `docker compose up -d --build` di copy WSL.** Jangan pernah build dari `/mnt/c` (sangat lambat) dan jangan heran kalau build dari copy WSL yang belum di-sync menghasilkan versi lama.
-- **Docker engine MANUAL-START:** `docker.service`, `containerd.service`, `docker.socket` sengaja di-`disable` (owner menolak auto-start saat boot WSL). Setelah WSL boot / `wsl --shutdown`, wajib mulai manual: `wsl -e sudo systemctl start docker` lalu `docker compose up -d`.
-- **WSL TIDAK boleh mati sendiri (idle):** `.wslconfig` owner wajib berisi `[general] instanceIdleTimeout=-1` DAN `[wsl2] vmIdleTimeout=-1` (nilai negatif = never). Tanpa pasangan ini, VM/distro mati sendiri ~70 detik setelah sesi `wsl.exe` terakhir ditutup → dockerd & semua container ikut mati. `vmIdleTimeout` saja atau nilai `2147483647` TIDAK cukup.
-- **Docker engine jalan di DALAM WSL2** (Ubuntu), repo kerja di ext4 WSL (`/home/<user>/project-ppdb`), **bukan** di `/mnt/c` (sangat lambat). Tidak perlu Docker Desktop.
-- Akses dari browser Windows via **IP VM WSL** (`wsl hostname -I`), bukan `localhost`. **Dilarang `networkingMode=mirrored`** — sudah diuji bentrok dengan publish port Docker.
-- `docker-compose.yml` berisi ruas `dns: [8.8.8.8, 1.1.1.1]` di `api` & `whatsapp` dan redis `--maxmemory-policy noeviction` — **jangan dihapus** (perbaikan bug nyata).
-- `/etc/docker/daemon.json` **wajib** berisi `{"dns": ["8.8.8.8", "1.1.1.1"]}` — build container (BuildKit) tidak membaca compose DNS, melainkan mewarisi resolver WSL (`10.255.255.254`) yang sering drop sehingga `pip install`/`npm ci` gagal DNS resolution atau timeout saat download wheel.
-- `apps/whatsapp/.env` wajib `CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium`; Dockerfile-nya `useradd --system --create-home`; `SessionManager.ts` memakai `--disable-crash-reporter`.
-- Build args frontend: `{NEXT_PUBLIC,VITE}_API_URL` default `http://localhost:8080`, di-bake saat build — set `FRONTEND_*` ke `http://<vm-ip>:8080` bila integrasi API harus jalan dari browser Windows.
-- Start/stop: `docker compose up -d` (tanpa perubahan kode) / `docker compose stop` / (mati total) `wsl --shutdown` dari PowerShell. **Update kode = `docker compose up -d --build` SEKALI cukup** (build + recreate + start), dari copy WSL setelah sync.
-- WhatsApp QR discan dari panel Superadmin (render via QR JS); session persist di volume `wa_session`.
-
-## Dynamic Branding (Frontend Rule)
-- **Logo & Favicon** di semua frontend (PPDB, Superadmin) WAJIB diambil secara **dinamis** dari API via endpoint `/companyprofile/settings/{key}` (key: `logo`, `favicon`, `site_name`, dll).
-- **⚠️ No Static Brand Assets:** Tidak ada file logo/favicon statis di project ini. Jangan pernah gunakan `<img src="/logo.png">` atau path statis lainnya.
-- `settingsService.getLogo()` → GET `/companyprofile/settings/logo`
-- `settingsService.getFavicon()` → GET `/companyprofile/settings/favicon`
-- Perubahan brand tampil live via SSE (`/companyprofile/events`).
-
-## WhatsApp Notification Microservice (`apps/whatsapp/`)
-
-Node.js 20 + Express + whatsapp-web.js service untuk pengiriman notifikasi WhatsApp ke pendaftar PPDB.
-
-### Architecture Overview
-
-```
-FastAPI (apps/api/)
-    │
-    ├── POST /api/messages/send  ──►  WhatsApp Microservice (apps/whatsapp/)
-    │                                       │
-    │                                       ├── BullMQ Queue (Redis)
-    │                                       │       │
-    │                                       │       └── Worker → whatsapp-web.js → WA
-    │                                       │
-    │                                       └── Webhook callback
-    │
-    └── POST /notifications/webhook/whatsapp  ◄── delivery status update
-```
-
-### Notification Events (PPDB Flow)
-
-| Event Key | Trigger | Channel |
-| --- | --- | --- |
-| `registration_welcome` | Pendaftar baru register | WA + Email |
-| `payment_reminder_day7` | H-7 deadline pembayaran | WA + Email |
-| `payment_success` | Pembayaran dikonfirmasi | WA + Email |
-| `payment_failed` | Pembayaran gagal | WA + Email |
-| `payment_expired` | Akun expired (H-8 belum bayar) | WA + Email |
-| `document_reminder_3days` | H-3 batas upload dokumen | WA + Email |
-| `document_reminder_1day` | H-1 batas upload dokumen | WA + Email |
-| `document_approved` | Dokumen disetujui admin | WA + Email |
-| `document_rejected` | Dokumen ditolak admin | WA + Email |
-| `selection_reminder_5days` | H-5 seleksi | WA + Email |
-| `selection_reminder_1day` | H-1 seleksi | WA + Email |
-| `selection_result` | Pengumuman hasil seleksi | WA + Email |
-
-### Source Structure
-
-```
-apps/whatsapp/src/
-├── config/
-│   └── env.ts               # Zod env validation
-├── lib/
-│   ├── logger.ts            # Winston logger
-│   ├── redis.ts             # Redis singleton + BullMQ connections
-│   ├── database.ts          # MySQL2 pool
-│   ├── phoneUtils.ts        # Indonesian phone normalization
-│   └── retry.ts             # Exponential backoff + jitter
-├── services/
-│   ├── SessionManager.ts    # whatsapp-web.js session lifecycle
-│   ├── TemplateService.ts   # Template loading + rendering (5min cache)
-│   ├── AuditLogService.ts   # notification_logs CRUD
-│   └── WebhookService.ts    # HMAC-signed callback ke FastAPI
-├── queues/
-│   └── messageQueue.ts      # BullMQ queue + priority + enqueue helpers
-├── workers/
-│   └── messageWorker.ts     # BullMQ worker (concurrency: 1, anti-ban)
-├── middlewares/
-│   ├── apiKeyAuth.ts        # Bearer/X-API-Key authentication
-│   ├── rateLimiter.ts       # IP rate limiting (express-rate-limit)
-│   ├── requestLogger.ts     # Morgan → Winston
-│   └── errorHandler.ts      # Global error + Zod validation handler
-├── routes/
-│   ├── session.routes.ts    # Session mgmt + QR SSE
-│   ├── message.routes.ts    # Send single/template/bulk + logs
-│   ├── template.routes.ts   # Template CRUD
-│   └── health.routes.ts     # Liveness + readiness probe
-├── types/
-│   └── index.ts             # Shared TypeScript types
-├── app.ts                   # Express factory
-└── server.ts                # Bootstrap + graceful shutdown
-```
-
-### API Endpoints
-
-**Public (no auth):**
-- `GET /health` — Liveness probe
-- `GET /health/detailed` — Full readiness check (Redis, MySQL, WA session, queue)
-
-**Protected (API Key required):**
-- `GET /api/session` — Session status
-- `POST /api/session/init` — Start/reconnect session
-- `POST /api/session/logout` — Logout
-- `DELETE /api/session` — Destroy session
-- `GET /api/session/qr` — QR code via SSE (text/event-stream)
-- `GET /api/session/qr/raw` — Raw QR string (one-shot; dirender frontend via library QR JS seperti qrcode.react, BUKAN gambar PNG)
-- `POST /api/messages/send` — Send direct message
-- `POST /api/messages/send-template` — Send via event template
-- `POST /api/messages/bulk` — Bulk send (max 100)
-- `GET /api/messages/queue` — Queue stats
-- `GET /api/messages/logs` — Delivery logs (paginated)
-- `GET /api/templates` — List templates
-- `PUT /api/templates/:id` — Update template
-- `POST /api/templates/cache/clear` — Invalidate template cache
-
-### Retry Strategy
-
-| Attempt | Delay | Jitter |
-| --- | --- | --- |
-| 1 | 5s | ±20% |
-| 2 | 30s | ±20% |
-| 3 | 2m | ±20% |
-| 4 | 15m | ±20% |
-| 5 (final) | 1h | ±20% |
-
-Invalid phone numbers are NOT retried — immediately marked as `invalid_number`.
-
-### Environment Variables (apps/whatsapp/.env)
-
-Key variables (see `.env.example` for full list):
-- `API_KEY` — Shared secret, min 32 chars
-- `DB_*` — MySQL connection (shared database with FastAPI)
-- `REDIS_*` — Redis connection (DB index 1)
-- `WA_SESSION_PATH` — Path untuk simpan session WA (di-mount sebagai Docker volume)
-- `WEBHOOK_URL` — FastAPI webhook endpoint URL
-- `WEBHOOK_SECRET` — HMAC secret untuk verifikasi callback
-- `WA_THROTTLE_PER_MINUTE` — Max pesan/menit yang dikirim ke WA (default: 20)
-
-### FastAPI Integration
-
-Di `apps/api/src/core/config.py`:
-- `wa_service_url` — URL WA microservice
-- `wa_service_api_key` — Harus sama dengan `API_KEY` di WA microservice
-- `wa_webhook_secret` — Harus sama dengan `WEBHOOK_SECRET` di WA microservice
-
-Di `apps/api/src/core/notif_service.py`:
-- `send_notification(event_key, user_id, context)` — Kirim single notif
-- `send_notifications(events, user_id)` — Kirim batch notif
-- `send_custom_notifications(user_ids, channel, subject, body)` — Custom blast
-
-### First Run Checklist
-
-1. Copy `.env.example` → `.env` di `apps/whatsapp/`
-2. Set `API_KEY`, `DB_*`, `REDIS_*`, `WEBHOOK_SECRET`
-3. Set `WA_SERVICE_API_KEY` dan `WA_WEBHOOK_SECRET` di `apps/api/.env` (nilai sama)
-4. Run `alembic upgrade head` untuk migration `0021_wa_notification_fields`
-5. Start Redis: `docker compose up redis -d`
-6. Start service: `cd apps/whatsapp && npm run dev`
-7. Scan QR di `GET /api/session/qr` (SSE) atau `GET /api/session/qr/raw`
-8. Tes kirim: `POST /api/messages/send` dengan API key
-
-### Docker
-
-```bash
-# Start semua services
-docker compose up -d
-
-# Lihat QR code (scan sekali, session tersimpan di volume)
-docker compose logs -f whatsapp
-# atau dari panel Superadmin → WhatsApp (QR dirender via QR JS, bukan gambar PNG)
-
-# Re-scan QR (setelah session expired)
-docker compose exec whatsapp curl -X DELETE http://localhost:3100/api/session \
-  -H "X-API-Key: <your-api-key>"
-```
-
-
-### Retry Strategy
-
-| Attempt | Delay | Jitter |
-| --- | --- | --- |
-| 1 | 5s | ±20% |
-| 2 | 30s | ±20% |
-| 3 | 2m | ±20% |
-| 4 | 15m | ±20% |
-| 5 (final) | 1h | ±20% |
-
-Invalid phone numbers are NOT retried — immediately marked as `invalid_number`.
-
-### Environment Variables (apps/whatsapp/.env)
-
-Key variables (see `.env.example` for full list):
-- `API_KEY` — Shared secret, min 32 chars
-- `DB_*` — MySQL connection (shared database with FastAPI)
-- `REDIS_*` — Redis connection (DB index 1)
-- `WA_SESSION_PATH` — Path untuk simpan session WA (di-mount sebagai Docker volume)
-- `WEBHOOK_URL` — FastAPI webhook endpoint URL
-- `WEBHOOK_SECRET` — HMAC secret untuk verifikasi callback
-- `WA_THROTTLE_PER_MINUTE` — Max pesan/menit yang dikirim ke WA (default: 20)
-
-### FastAPI Integration
-
-Di `apps/api/src/core/config.py`:
-- `wa_service_url` — URL WA microservice
-- `wa_service_api_key` — Harus sama dengan `API_KEY` di WA microservice
-- `wa_webhook_secret` — Harus sama dengan `WEBHOOK_SECRET` di WA microservice
-
-Di `apps/api/src/core/notif_service.py`:
-- `send_notification(event_key, user_id, context)` — Kirim single notif
-- `send_notifications(events, user_id)` — Kirim batch notif
-- `send_custom_notifications(user_ids, channel, subject, body)` — Custom blast
-
-### First Run Checklist
-
-1. Copy `.env.example` → `.env` di `apps/whatsapp/`
-2. Set `API_KEY`, `DB_*`, `REDIS_*`, `WEBHOOK_SECRET`
-3. Set `WA_SERVICE_API_KEY` dan `WA_WEBHOOK_SECRET` di `apps/api/.env` (nilai sama)
-4. Run `alembic upgrade head` untuk migration `0021_wa_notification_fields`
-5. Start Redis: `docker compose up redis -d`
-6. Start service: `cd apps/whatsapp && npm run dev`
-7. Scan QR di `GET /api/session/qr` (SSE) atau `GET /api/session/qr/raw`
-8. Tes kirim: `POST /api/messages/send` dengan API key
-
-### Docker
-
-```bash
-# Start semua services
-docker compose up -d
-
-# Lihat QR code (scan sekali, session tersimpan di volume)
-docker compose logs -f whatsapp
-# atau dari panel Superadmin → WhatsApp (QR dirender via QR JS, bukan gambar PNG)
-
-# Re-scan QR (setelah session expired)
-docker compose exec whatsapp curl -X DELETE http://localhost:3100/api/session \
-  -H "X-API-Key: <your-api-key>"
-```
+# Panduan Agent — PPDB Ar-Rahman
+
+## Status Kebutuhan Produk
+
+Sistem PPDB lama sudah tidak menjadi acuan kebutuhan. Untuk pekerjaan produk, gunakan dokumen terbaru dalam `docs/`. Fokus pengerjaan yang disepakati saat ini adalah **konfigurasi/backoffice**. Jangan menerapkan flow lama dari kode, README lama, atau dokumen arsip sebagai aturan bisnis baru tanpa konfirmasi.
+
+## Ruang Lingkup Backoffice Saat Ini
+
+Admin menyiapkan konfigurasi dari dashboard sebelum pendaftaran dibuka:
+
+1. **Gelombang**: tanggal buka/tutup, harga formulir, kuota pendaftar, diskon komponen DP3/gedung/SPP, diskon untuk X pendaftar pertama, serta minimal DP.
+2. **Template dan LoA**: generate dan preview LoA sebelum publish, latar SKD, dan klausul dana tidak dapat dikembalikan. Dokumen baru menyebut klausul ini hardcoded.
+3. **Rubrik penilaian**: kriteria, bobot, dan formulir evaluator Tahfidz serta wawancara. Nilai TIU berasal otomatis dari paket pilihan ganda dan webhook; admin tidak menginput nilai TIU.
+4. **Sesi Tahfidz**: jadwal, penguji, mode online/offline, tautan Zoom atau lokasi.
+5. **Sesi wawancara**: jadwal, pewawancara, mode online/offline, tautan Zoom atau lokasi.
+6. **Pengaturan TIU global**: URL Google Form sumber soal, webhook secret, durasi tes, dan integrasi Apps Script untuk sinkronisasi soal ke aplikasi. Integrasi tidak disetel per gelombang.
+
+Pendaftaran publik dibuka ketika ada gelombang aktif di periode aktif, jadwal pendaftaran gelombang sudah masuk, dan kuota pembayaran formulir belum penuh. Template LoA bukan prasyarat pendaftaran. Dokumen alur pendaftar dan admin memuat tahap lanjutan, tetapi jangan memperluas pekerjaan backoffice ke tahap tersebut tanpa arahan.
+
+### Aturan Periode, Gelombang, dan Arsip
+
+- Hanya satu periode yang aktif secara global. Mengaktifkan periode menonaktifkan periode lain dan gelombang di luar periode tersebut; menonaktifkan periode menonaktifkan gelombang di dalamnya.
+- Gelombang hanya boleh aktif jika periode induknya aktif.
+- Tidak ada satu gelombang aktif global yang dipakai untuk membatasi data yang bisa dicari.
+- Dalam satu periode hanya boleh ada satu gelombang aktif. Mengaktifkan gelombang lain dalam periode yang sama menggantikan gelombang aktif sebelumnya. Gelombang hanya aktif jika periode induknya aktif.
+- Karena hanya ada satu periode aktif dan satu gelombang aktif pada periode itu, pendaftar otomatis ditautkan ke gelombang aktif periode tersebut; pendaftar tidak memilih gelombang sendiri.
+- Kuota dan diskon untuk X pendaftar awal dihitung dari pembayaran formulir yang berhasil. Saat kuota tercapai, tutup pendaftaran dan gelombang secara otomatis.
+- Saat kuota tercapai, batalkan tagihan formulir yang belum dibayar dan beri tahu pendaftar bahwa mereka boleh mendaftar lagi di gelombang berikutnya. Sebelum kuota tercapai, kirim pengingat pembayaran setiap hari Senin kepada pendaftar yang belum membayar; hentikan saat gelombang ditutup.
+- Filter periode/gelombang untuk pencarian lintas periode hanya ada di **halaman khusus Arsip/Cari Pendaftar**, bukan ditambahkan ke semua halaman atau filter.
+- Halaman Arsip/Cari Pendaftar harus menampilkan dossier lengkap pendaftar dalam satu tindakan: biodata, dokumen yang pernah diunggah, riwayat verifikasi, hasil TIU, sesi dan nilai Tahfidz/wawancara, keputusan, LoA, pembayaran dan cicilan, serta berkas keluaran seperti SKD jika sudah ada. Sediakan unduhan yang rapi dan terstruktur.
+- Dossier harus tetap bisa dicari lintas periode dan gelombang tanpa mengubah periode/gelombang aktif operasional; mendukung unduhan per berkas dan ZIP dossier.
+- Data pendaftar dan seluruh data turunannya wajib dapat ditelusuri ke periode dan gelombang yang menaungi pendaftar: pendaftaran, dokumen/verifikasi, pembayaran/tagihan/cicilan, sesi dan nilai TIU/Tahfidz/wawancara, keputusan, LoA, serta SKD/nomor registrasi. Gunakan relasi ke pendaftar sebagai sumber periode/gelombang; jangan menduplikasi ID tanpa kebutuhan query yang jelas.
+- Halaman arsip adalah tempat khusus untuk pencarian lintas periode/gelombang, dossier lengkap, dan ekspor. Halaman operasional lain tidak mendapat filter arsip global.
+- Halaman arsip mendukung unduhan per berkas dan unduhan dossier lengkap dalam satu ZIP berisi ringkasan PDF serta dokumen asli yang dikelompokkan rapi. Terapkan izin akses khusus karena dossier mencakup dokumen pribadi dan data pembayaran.
+- Rekomendasi histori: konfigurasi gelombang (waktu, biaya, kuota, diskon, minimal DP) tersimpan per gelombang; jadwal dan rubrik yang dipakai suatu pendaftar harus dapat direkonstruksi, melalui scope gelombang atau snapshot/versi. Template dasar institusi dapat dipakai ulang, tetapi hasil LoA/SKD yang sudah dibuat harus disimpan sebagai artefak tetap.
+- Jumlah gelombang per periode fleksibel/tidak memiliki batas tetap; satu periode hanya boleh memiliki satu gelombang aktif.
+- TIU dikerjakan di aplikasi PPDB, bukan di Google Form. Pengaturan URL Form, webhook secret, dan durasi bersifat global, bukan per gelombang. Google Form adalah sumber soal dan seluruh soal TIU berupa pilihan ganda dengan satu jawaban benar. Setiap Apps Script sync memasukkan soal, urutan, opsi, dan kunci langsung tanpa review/publish manual. Tampilkan status/waktu sinkronisasi. Jika sync gagal/soal tidak valid, pertahankan paket valid terakhir dan jelaskan kesalahannya.
+- Setiap pendaftar hanya mendapat satu attempt TIU, tanpa retake. Tombol Mulai menyiapkan attempt pending; timer server baru berjalan setelah tiket peluncuran sekali pakai ditukar dan SEB tervalidasi. Simpan otomatis jawaban ke server selama attempt agar dapat dipulihkan bila koneksi putus. Saat waktu habis, jawaban tersimpan dikumpulkan dan nilai masuk real-time lewat webhook Apps Script tanpa input manual admin. Backend validasi applicant/attempt ID, simpan hasil idempoten, dan kaitkan nilai ke pendaftar.
+- Nilai TIU tersedia otomatis tanpa input manual admin. Apps Script mengirim nilai ke backend lewat webhook secara real-time; event membawa applicant ID/attempt ID dan backend mengambil relasi periode/gelombang dari pendaftar. Setelah berhasil disimpan, picu notifikasi WhatsApp hasil TIU.
+- Setelah nilai TIU tersedia, Apps Script mengirim hasil ke backend melalui webhook secara real-time. Backend memvalidasi applicant/attempt ID, menyimpan hasil secara idempoten, dan memicu notifikasi WhatsApp; webhook tidak valid/gagal tidak boleh memicu pesan sukses.
+- Semua notifikasi peserta menggunakan WhatsApp; email tidak digunakan. Acuan event dan template pesan: `docs/notifikasi-code-1790904241894.md`. Pengingat bayar formulir dikirim setiap Senin selama status belum bayar dan gelombang masih terbuka; berhenti saat pembayaran berhasil/gelombang ditutup. Kuota penuh memicu penutupan, pembatalan invoice pending, dan pesan bahwa daftar ulang gelombang berikutnya opsional.
+- TIU wajib memakai SEB pada komputer desktop/laptop Windows atau macOS; perangkat seluler tidak didukung. Buat panduan instalasi/langkah peserta di `docs/PANDUAN_UJIAN_TIU_SEB.md`. Backend menukarkan tiket peluncuran sekali pakai, memeriksa pemilik attempt dan validasi SEB, baru mengikat attempt/memulai timer. Jangan menaruh secret/kunci jawaban di URL. Autosave jawaban ke server selama ujian. Jika koneksi pulih, peserta melanjutkan attempt yang sama dengan tiket resume baru; pulihkan jawaban dari server, timer tetap berjalan. Resume bukan retake atau attempt kedua.
+- Halaman web biasa tidak dapat mengunci sistem operasi. Validasi server harus memeriksa Browser Exam Key/Config Key SEB, bukan hanya user-agent. SEB membatasi komputer yang menjalankannya, bukan perangkat kedua peserta.
+- Validasi/pengecualian wajib: cegah pendaftaran tanpa periode aktif, gelombang aktif, dalam tanggal, dan kuota tersedia; template LoA bukan prasyarat pendaftaran. Validasi ulang di server saat pendaftaran/pembayaran; proses webhook idempoten dan hitungan kuota atomik; setelah kuota penuh tutup gelombang, batalkan invoice pending, hentikan pengingat Senin, dan tandai pembayaran terlambat sebagai pengecualian admin (jangan pindahkan pendaftar otomatis).
+- Validasi TIU wajib mencakup tiket sekali pakai/kedaluwarsa, identitas pemilik attempt, status paket soal/durasi, kunci SEB server-side, penyimpanan jawaban, auto-submit, serta rekam timeout/koneksi putus. Resume memakai attempt yang sama, tidak membuat attempt baru; timer tidak di-reset. Sinkronisasi langsung dari Google Form tidak boleh merusak paket valid terakhir bila gagal atau tipe soal tak didukung. Otorisasi dossier/unduh dan audit akses dilakukan di server.
+- Kebijakan TIU yang sudah diputuskan: Windows dan macOS desktop/laptop; satu attempt per pendaftar tanpa retake; jawaban otomatis tersimpan; setelah koneksi pulih resume attempt yang sama dan pulihkan jawabannya, sementara timer tetap berjalan. Jangan mengubah keputusan ini tanpa arahan.
+- Pertanyaan terbuka: penanganan pembayaran ganda/terlambat dan izin melihat/mengunduh dossier lengkap.
+
+## Acuan Dokumen
+
+- `docs/backoffice-code-1790813618837.txt` — daftar konfigurasi backoffice.
+- `docs/admin-code-1790812960259.txt` — alur operasional admin lanjutan.
+- `docs/pendaftar-code-1790812852070.txt` — alur pendaftar.
+- `docs/gemini-code-1790824113350.txt` — contoh formulir penilaian wawancara.
+- `README.md` — ringkasan fokus dan keputusan terbuka.
+
+## Konteks Repository
+
+Monorepo menggunakan pnpm workspace dan Turborepo. Aplikasi utama berada di `apps/companyprofile/` (Next.js), `apps/ppdb/` dan `apps/superadmin/` (Vite/React), `apps/api/` (FastAPI), serta `apps/whatsapp/` (Node.js standalone, di luar pnpm workspace). Pahami implementasi yang ada sebelum mengubahnya; implementasi saat ini bisa mencerminkan kebutuhan lama.
+
+## Environment dan Operasi
+
+- Simpan konfigurasi lokal di file `.env` aplikasi terkait dan jangan pernah memasukkan secret ke Git.
+- Untuk setup Docker lokal, ikuti runbook `docs/DOCKER_SETUP.md` secara verbatim. Runtime Docker owner berada di WSL2; repo Windows adalah sumber edit dan repo ext4 WSL adalah sumber build/run. Setelah perubahan, sinkronkan file ke repo WSL sebelum build.
+- Pertahankan pengaturan DNS Docker, kebijakan Redis, konfigurasi Chromium WhatsApp, dan session WhatsApp yang dijelaskan runbook kecuali tugas secara khusus meminta perubahan terkait.
+- Logo dan favicon frontend PPDB/Superadmin harus diambil dinamis melalui API settings, bukan dari aset brand statis.
+
+## Cara Kerja
+
+- Periksa panduan `AGENTS.md` yang lebih dalam sebelum menyentuh subdirektori terkait.
+- Ikuti pola dan struktur kode terdekat; buat perubahan sekecil mungkin untuk memenuhi kebutuhan yang telah dikonfirmasi.
+- Jangan mengubah flow produk berdasarkan asumsi. Jika dokumen kebutuhan tidak menentukan perilaku yang dibutuhkan, catat pertanyaan dan minta keputusan sebelum mengimplementasikannya.
+- Jangan commit atau membuat branch kecuali diminta.

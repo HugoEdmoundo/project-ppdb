@@ -12,10 +12,13 @@ import { Label } from "@/components/ui"
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Percent, Waves, Settings2, ArrowRight, Activity, Users } from 'lucide-react'
+import { Percent, Waves, Settings2, ArrowRight, Activity, Users, CreditCard } from 'lucide-react'
 import { apiFetch } from '@/api/client'
 import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
 import PageHeaderCard from '@/components/shared/PageHeaderCard'
+import { TabsTrigger } from "@/components/ui"
+import TabsBarCard from '@/components/shared/TabsBarCard'
+import Stage2BillsMonitoring from './components/Stage2BillsMonitoring'
 
 const formatRp = (n: number) => 'Rp ' + n.toLocaleString('id-ID')
 
@@ -32,11 +35,13 @@ export default function DiskonasiPage() {
   const { toast } = useToast()
   const { canCrud } = useCan('ppdb', 'crud')
   const queryClient = useQueryClient()
+  const [activeTab, setActiveTab] = useState<'diskon' | 'monitoring'>('diskon')
 
   const [selectedApplicant, setSelectedApplicant] = useState<any>(null)
   const [discountItems, setDiscountItems] = useState<DiscountItem[]>([])
   const [sheetLoading, setSheetLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [paymentRankInfo, setPaymentRankInfo] = useState<{ rank: number | null; eligible: boolean; quota: number }>({ rank: null, eligible: false, quota: 0 })
 
   const { data, isLoading: loading } = useQuery({
     queryKey: ['stage2-applicants'],
@@ -55,6 +60,11 @@ export default function DiskonasiPage() {
     setSheetLoading(true)
     try {
       const res = await apiFetch<any>(`/payment/stage2/${applicant.id}/discounts`)
+      setPaymentRankInfo({
+        rank: res.applicant?.form_payment_rank ?? null,
+        eligible: !!res.applicant?.early_discount_eligible,
+        quota: Number(res.applicant?.early_discount_quota || 0),
+      })
       // Initialize with default values if they don't exist yet
       const items = (res.fee_items || []).map((item: any) => ({
         fee_item_id: item.id,
@@ -141,6 +151,16 @@ export default function DiskonasiPage() {
         <NoActiveWaveBanner message="Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu." />
       )}
 
+      <TabsBarCard value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+        <TabsTrigger value="diskon" className="flex-1 rounded-full text-xs sm:text-sm">
+          <Percent className="h-4 w-4 mr-1.5" /> Atur Diskon & Cicilan
+        </TabsTrigger>
+        <TabsTrigger value="monitoring" className="flex-1 rounded-full text-xs sm:text-sm">
+          <CreditCard className="h-4 w-4 mr-1.5" /> Monitoring Tagihan Tahap 2
+        </TabsTrigger>
+      </TabsBarCard>
+
+      {activeTab === 'diskon' && (
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -210,6 +230,9 @@ export default function DiskonasiPage() {
           </Table>
         </CardContent>
       </Card>
+      )}
+
+      {activeTab === 'monitoring' && <Stage2BillsMonitoring />}
 
       <Sheet open={!!selectedApplicant} onOpenChange={(v) => !v && setSelectedApplicant(null)}>
         <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
@@ -223,6 +246,11 @@ export default function DiskonasiPage() {
             </div>
           ) : (
             <div className="space-y-6 pb-20">
+              {paymentRankInfo.quota > 0 && <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                {paymentRankInfo.rank === null
+                  ? 'Pendaftar belum memiliki pembayaran formulir sukses, sehingga belum bisa ditentukan dalam urutan diskon pendaftar awal.'
+                  : `Urutan pembayaran formulir sukses: #${paymentRankInfo.rank}. ${paymentRankInfo.eligible ? `Memenuhi diskon untuk ${paymentRankInfo.quota} pendaftar awal.` : `Kuota diskon hanya untuk ${paymentRankInfo.quota} pendaftar pertama.`}`}
+              </div>}
               {discountItems.map((item, i) => {
                 const discAmt = item.discount_type === 'percent'
                   ? Math.floor(item.nominal * (item.discount_value / 100))

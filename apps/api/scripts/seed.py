@@ -57,6 +57,8 @@ PAGES = {
         ("stage2-pembayaran", "Pembayaran Tahap 2", "CreditCard", 50),
         ("periods", "Periode PPDB", "CalendarDays", 55),
         ("notifications", "Notifikasi", "Bell", 60),
+        ("document-settings", "Template & Dokumen", "FileText", 65),
+        ("tiu-settings", "Pengaturan TIU", "Timer", 70),
     ],
     "companyprofile": [
         ("news", "Berita", "Newspaper", 10),
@@ -115,7 +117,7 @@ DEFAULT_ROLES = [
 # Akun superadmin default (hanya dibuat jika belum ada satupun user
 # superadmin). Ganti password via env `SEED_SUPERADMIN_PASSWORD`.
 DEFAULT_SUPERADMIN_USERNAME = "superadmin"
-DEFAULT_SUPERADMIN_PASSWORD = os.getenv("SEED_SUPERADMIN_PASSWORD", "Admin123!")
+DEFAULT_SUPERADMIN_PASSWORD = os.getenv("SEED_SUPERADMIN_PASSWORD", "SuperAdmin123!.")
 
 SITE_SETTINGS = [
     (
@@ -535,10 +537,7 @@ def ensure_default_superadmin() -> None:
             "updated_at": now,
         },
     )
-    print(
-        f"  superadmin created: '{DEFAULT_SUPERADMIN_USERNAME}' / "
-        f"'{DEFAULT_SUPERADMIN_PASSWORD}' — ganti password setelah login pertama."
-    )
+    print(f"  superadmin created: '{DEFAULT_SUPERADMIN_USERNAME}'")
 
 
 def main() -> None:

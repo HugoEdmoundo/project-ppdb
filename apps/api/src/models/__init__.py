@@ -33,6 +33,7 @@ from src.models.ppdb import (
     PPDBWave,
     PPDBWaveFeeItem,
     RateLimit,
+    TIUResult,
 )
 from src.models.selection import (
     SelectionCategory,
@@ -66,6 +67,7 @@ __all__ = [
     "PPDBPeriod",
     "PPDBWave",
     "RateLimit",
+    "TIUResult",
     "PPDBWaveFeeItem",
     "PPDBApplicantDiscount",
     "PPDBStage2Bill",

@@ -1,0 +1,23 @@
+┌────────────────────────────────────────────────────────┐
+│ FORM PENILAIAN WAWANCARA                               │
+│ Nama Pendaftar : Budi Santoso                          │
+│ Sesi           : 10:00 - 10:30 WIB                     │
+├────────────────────────────────────────────────────────┤
+│ 1. Motivasi Belajar (Bobot: 50%)                       │
+│    Nilai (0-100) : [ 85 ]                              │
+│                                                        │
+│ 2. Etika & Adab (Bobot: 30%)                           │
+│    Nilai (0-100) : [ 90 ]                              │
+│                                                        │
+│ 3. Dukungan Orang Tua (Bobot: 20%)                     │
+│    Nilai (0-100) : [ 80 ]                              │
+├────────────────────────────────────────────────────────┤
+│ HASIL AKHIR                                            │
+│ Kalkulasi Sistem : 85.5  (Otomatis Dihitung)           │
+│                                                        │
+│ Catatan Khusus Penguji (Opsional):                     │
+│ [ Anaknya sangat sopan dan termotivasi, direkomend-  ] │
+│ [ asikan untuk lulus.                                ] │
+│                                                        │
+│                  [ SIMPAN PENILAIAN ]                  │
+└────────────────────────────────────────────────────────┘

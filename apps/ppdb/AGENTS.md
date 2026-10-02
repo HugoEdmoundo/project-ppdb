@@ -45,29 +45,24 @@ Wrapped in `AdminLayout` (`src/layouts/AdminLayout.tsx`):
 - `/403` (`ForbiddenPage`): Insufficient permissions.
 - `*` (`NotFoundPage`): 404 Not Found.
 
-## PPDB Flow
-1. **Registration**: User registers -> receives `payment_status = 'pending'` and a 7-day `payment_deadline`. Nominal biaya ditarik otomatis dari `registration_fee` di konfigurasi gelombang yang aktif.
-2. **Paywall**: Users with pending payments are restricted to `/checkout`.
-3. **Expiration**: If unpaid after 7 days, `payment_status` becomes `expired` and account is soft-deleted (`deleted_at` is set). Expired applicants **tetap tampil** di list admin dengan badge merah "EXPIRED" — tidak dihapus dari tampilan.
-4. **Paid (Tahap 1)**: On success (manual or webhook), status becomes `paid` -> Dashboard is unlocked. Khusus pembayaran manual, admin dapat **membatalkan konfirmasi** (mengunci dashboard kembali).
-5. **Selection & MOU**: Setelah lulus, admin memunculkan MOU dan biaya Tahap 2 (Daftar Ulang) beserta diskon/cicilan (Tabel `ppdb_applicant_discounts` & `ppdb_stage2_bills`).
+## Product Requirements: Backoffice Configuration
 
-## Access Control & Permissions (ATURAN WAJIB)
-- Permissions are strictly enforced on the frontend through `usePermission()` hook in `AuthContext` dan komponen `ProtectedRoute`.
-- **Module Keys:** `ppdb`, `payment`, `selection`, `notification`, `dashboard`, `applicant_dashboard`, `companyprofile`, dll.
-- **Permission Levels:** `none` < `dashboard` < `read` < `crud`.
-- **Navigation (`useFilteredNav`):** Sidebar items (`AdminLayout.tsx`) otomatis disembunyikan jika user tidak memiliki minimum level akses (`minLevel`) atau tidak ada di `page_permissions`.
-- **Superadmin Bypass:** User dengan `is_superadmin=true` atau `user_type === 'superadmin'` bypass semua checking permission.
-- **Tombol CRUD & Form:** Semua aksi/tombol (Tambah, Edit, Hapus) dan input form HANYA aktif dirender jika user punya `crud` pada modul terkait. Gunakan helper seperti `hasModuleAccess('modul', 'crud')` (atau JSX Wrapper `<Can module="..." level="crud">` / hook `useCan`). Jika permission hanya `read`, halaman bersifat read-only.
-- **Backend Enforced:** Keamanan absolut selalu divalidasi juga oleh Backend API.
+Ikuti ringkasan kebutuhan di root [`AGENTS.md`](../../AGENTS.md) dan dokumen sumber di `../../docs/`. Arah sistem PPDB lama bukan spesifikasi untuk perubahan produk baru. Struktur route dan implementasi yang dijelaskan di atas hanya membantu menemukan kode saat ini.
 
-## Wave System (Gelombang) - Frontend Convention
-**Gelombang adalah induk dari semua data operasional PPDB.** Data yang ditampilkan di halaman admin (pendaftar, dokumen, pembayaran, seleksi) selalu mengacu pada **gelombang yang sedang aktif**:
-- Gelombang **aktif** → tampilkan data milik gelombang tersebut saja.
-- Gelombang **tidak aktif / tidak ada yang aktif** → data tidak ditampilkan (tampil empty state + banner peringatan kuning "Aktifkan gelombang terlebih dahulu").
-- **Ganti gelombang aktif** → data berganti ke data milik gelombang baru.
-- Halaman registrasi publik memanggil `/ppdb/waves/active-public` di awal load untuk menentukan opsi jalur & jenjang yang tersedia, serta menyembunyikan yang dilarang.
-- Badge `EXPIRED` untuk pendaftar lewat tenggat bayar tetap ditampilkan dengan warna **merah** (`destructive`) di tabel.
+Fokus produk yang disepakati adalah konfigurasi backoffice sebelum pendaftaran dibuka:
+- Gelombang: waktu buka/tutup, biaya formulir, kuota pendaftar, diskon DP3/gedung/SPP, diskon untuk X pendaftar pertama, dan minimal DP.
+- Template/LoA: generate dan preview LoA sebelum publish, klausul non-refundable yang pada diagram ditandai hardcoded, dan latar SKD.
+- Rubrik: kriteria, bobot, dan formulir evaluator Tahfidz serta wawancara. Nilai TIU masuk otomatis; admin tidak menginput nilainya.
+- Sesi Tahfidz dan wawancara: jadwal, petugas, mode online/offline, dan tautan/lokasi.
+- Pengaturan TIU global: URL Google Form sumber soal, webhook secret, durasi tes, dan Apps Script untuk menyinkronkan soal ke aplikasi; tidak ada konfigurasi TIU per gelombang.
+
+Hanya satu periode aktif secara global. Mengaktifkan periode menonaktifkan periode lain dan gelombang di luarnya; menonaktifkan periode menonaktifkan gelombang di dalamnya. Gelombang hanya bisa aktif jika periode induknya aktif, dan hanya satu gelombang boleh aktif dalam satu periode. Pendaftar otomatis terkait ke satu-satunya gelombang aktif pada periode aktif. Kuota dan diskon X pendaftar awal dihitung dari pembayaran formulir sukses; saat kuota tercapai, pendaftaran dan gelombang ditutup otomatis serta tagihan yang belum dibayar dibatalkan. Kirim pengingat pembayaran setiap Senin bagi pendaftar yang belum bayar sampai gelombang ditutup. Data lintas periode/gelombang dicari dari halaman Arsip/Cari Pendaftar khusus; jangan menambahkan filter periode/gelombang ke semua halaman.
+
+Pendaftaran publik dibuka ketika ada gelombang aktif di periode aktif, jadwal pendaftaran sudah masuk, dan kuota pembayaran formulir belum penuh. Template LoA bukan prasyarat pendaftaran. Halaman Arsip/Cari Pendaftar menampilkan dossier lengkap satu pendaftar, termasuk biodata, dokumen beserta riwayat verifikasi, TIU, sesi/nilai Tahfidz dan wawancara, keputusan, LoA, pembayaran/cicilan, dan SKD/nomor registrasi. Sediakan unduhan per berkas dan ZIP lengkap berisi ringkasan PDF serta berkas asli terstruktur.
+
+TIU dijalankan dalam aplikasi PPDB, bukan Google Form. URL Form, webhook secret, dan durasi disetel global. Semua soal TIU berupa pilihan ganda dengan satu jawaban benar. Apps Script menyinkronkan langsung soal, urutan, opsi, dan kunci tanpa review/publish manual; jika sync gagal atau paket tidak valid, jangan mengganti paket valid terakhir. Tombol Mulai membuat satu attempt pending; timer server mulai setelah tiket sekali pakai ditukar dan SEB tervalidasi. Setiap pendaftar hanya mendapat satu attempt tanpa retake. Jawaban disimpan otomatis dan nilai dihitung otomatis saat submit/waktu habis; nilai dikirim real-time ke backend melalui webhook tanpa input manual admin. Setelah koneksi pulih, lanjutkan attempt yang sama lewat tiket resume, pulihkan jawaban tersimpan, dan pertahankan timer tanpa reset. Event/webhook memakai applicant/attempt ID; backend mengambil periode/gelombang dari relasi pendaftar. TIU wajib memakai SEB di komputer desktop/laptop Windows atau macOS; ponsel/tablet tidak didukung. Ikuti `docs/PANDUAN_UJIAN_TIU_SEB.md`. Validasi Browser Exam Key/Config Key di server wajib; user-agent saja tidak cukup.
+
+Koreksi penting: kebijakan attempt TIU di paragraf tepat di atas sudah usang—jangan ikuti bagian yang menyebut retake atau beberapa attempt. Aturan terbaru: setiap pendaftar hanya memiliki satu attempt dan tidak bisa retake setelah selesai/waktu habis. Jawaban disimpan otomatis di server; bila koneksi putus, peserta membuka kembali lewat SEB untuk melanjutkan attempt yang sama dengan jawaban tersimpan dipulihkan. Timer tetap berjalan dan tidak di-reset.
 
 ## Dynamic Branding & Events
 - **Favicon & Logo:** Di-fetch dinamis via `settingsService.getFavicon()` dan `settingsService.getLogo()` dari endpoint `/companyprofile/settings/{key}`.

@@ -17,6 +17,7 @@ from src.modules.selection.schemas import (
     ApplicantStatusUpdate,
     CategoryCreate,
     CriteriaCreate,
+    CriteriaUpdate,
     SessionCreate,
     SessionUpdate,
 )
@@ -38,6 +39,11 @@ def _parse_session_date(raw: str | None) -> date | None:
         raise HTTPException(
             status_code=400, detail="Format tanggal sesi tidak valid (YYYY-MM-DD)"
         ) from exc
+
+
+def _is_tiu_category_name(name: str) -> bool:
+    normalized = " ".join(name.casefold().replace("-", " ").split())
+    return "tiu" in normalized.split() or "intelegensi umum" in normalized
 
 
 class SelectionService:
@@ -80,10 +86,14 @@ class SelectionService:
             id=sid,
             wave_id=wave_id,
             name=body.name,
+            session_type=body.session_type,
             session_date=_parse_session_date(body.session_date),
             start_time=body.start_time,
             end_time=body.end_time,
+            mode=body.mode,
+            officer_name=body.officer_name,
             location=body.location,
+            meeting_url=str(body.meeting_url) if body.meeting_url else None,
             description=body.description,
             quota=body.quota,
             created_at=now,
@@ -98,10 +108,14 @@ class SelectionService:
         session = self._require_active_wave_session(session_id)
 
         session.name = body.name
+        session.session_type = body.session_type
         session.session_date = _parse_session_date(body.session_date)
         session.start_time = body.start_time
         session.end_time = body.end_time
+        session.mode = body.mode
+        session.officer_name = body.officer_name
         session.location = body.location
+        session.meeting_url = str(body.meeting_url) if body.meeting_url else None
         session.description = body.description
         session.quota = body.quota
         session.updated_at = now
@@ -149,6 +163,11 @@ class SelectionService:
     def create_category(self, body: CategoryCreate) -> dict[str, Any]:
         now = _now_wib()
         wave_id = self._get_active_wave_id_or_400()
+        if _is_tiu_category_name(body.name):
+            raise HTTPException(
+                status_code=400,
+                detail="Nilai TIU masuk otomatis dan tidak menggunakan kategori input manual.",
+            )
         cid = str(uuid4())
         cat = SelectionCategory(
             id=cid, wave_id=wave_id, name=body.name, created_at=now, updated_at=now
@@ -163,17 +182,50 @@ class SelectionService:
         category = self.repo.get_category_by_id(category_id)
         if not category or category.wave_id != wave_id:
             raise HTTPException(status_code=404, detail="Kategori tidak ditemukan")
+        current_weight = sum(
+            float(item.weight or 0)
+            for item in self.repo.get_criteria_by_category(category_id)
+        )
+        if current_weight + body.weight > 100.000001:
+            raise HTTPException(
+                status_code=400, detail="Total bobot kriteria tidak boleh melebihi 100%"
+            )
         crid = str(uuid4())
         crit = SelectionCriteria(
             id=crid,
             category_id=category_id,
             name=body.name,
+            weight=body.weight,
             created_at=now,
             updated_at=now,
         )
         self.repo.create_criteria(crit)
         self.repo.db.commit()
         return {"id": crid, "message": "Kriteria berhasil ditambahkan"}
+
+    def update_criteria(self, criteria_id: str, body: CriteriaUpdate) -> dict[str, Any]:
+        now = _now_wib()
+        wave_id = self._get_active_wave_id_or_400()
+        criteria = self.repo.get_criteria_by_id(criteria_id)
+        if not criteria:
+            raise HTTPException(status_code=404, detail="Kriteria tidak ditemukan")
+        category = self.repo.get_category_by_id(criteria.category_id)
+        if not category or category.wave_id != wave_id:
+            raise HTTPException(status_code=404, detail="Kriteria tidak ditemukan")
+        other_weight = sum(
+            float(item.weight or 0)
+            for item in self.repo.get_criteria_by_category(category.id)
+            if item.id != criteria_id
+        )
+        if other_weight + body.weight > 100.000001:
+            raise HTTPException(
+                status_code=400, detail="Total bobot kriteria tidak boleh melebihi 100%"
+            )
+        criteria.name = body.name
+        criteria.weight = body.weight
+        criteria.updated_at = now
+        self.repo.db.commit()
+        return {"message": "Kriteria berhasil diperbarui"}
 
     def delete_category(self, id: str) -> dict[str, Any]:
         wave_id = self._get_active_wave_id_or_400()
@@ -224,6 +276,27 @@ class SelectionService:
             results.append(rd)
         return results
 
+    def get_result_by_applicant(self, applicant_id: str) -> dict[str, Any]:
+        app = self.repo.get_applicant_by_id(applicant_id)
+        if not app:
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+        s_res = self.repo.get_selection_result_by_applicant(applicant_id)
+        scores = self.repo.get_applicant_scores(applicant_id)
+        tiu = self.repo.get_tiu_result_by_applicant(applicant_id)
+        return {
+            "result_id": s_res.id if s_res else None,
+            "applicant_id": applicant_id,
+            "session_id": s_res.session_id if s_res else None,
+            "notes": s_res.notes if s_res else None,
+            "scores": [
+                {"criteria_id": sc.criteria_id, "score": sc.score} for sc in scores
+            ],
+            "tiu_score": tiu.score if tiu else None,
+            "tiu_completed_at": tiu.completed_at.isoformat()
+            if tiu and tiu.completed_at
+            else None,
+        }
+
     def save_result(self, body: ApplicantScoreSave) -> dict[str, Any]:
         import math
 
@@ -238,9 +311,9 @@ class SelectionService:
         self.repo.update_selection_result_notes(body.applicant_id, body.notes, now)
 
         for sc in body.scores:
-            if not math.isfinite(sc.score) or sc.score < 0:
+            if not math.isfinite(sc.score) or sc.score < 0 or sc.score > 100:
                 raise HTTPException(
-                    status_code=400, detail="Nilai harus berupa angka >= 0"
+                    status_code=400, detail="Nilai harus berada di antara 0 dan 100"
                 )
             criteria = self.repo.get_criteria_by_id(sc.criteria_id)
             if not criteria:
@@ -249,6 +322,11 @@ class SelectionService:
             if not category or category.wave_id != wave_id:
                 raise HTTPException(
                     status_code=400, detail="Kriteria tidak termasuk gelombang aktif"
+                )
+            if _is_tiu_category_name(category.name):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Nilai TIU masuk otomatis dan tidak dapat diinput manual.",
                 )
             existing = self.repo.get_selection_score(body.applicant_id, sc.criteria_id)
             if existing:
@@ -267,6 +345,43 @@ class SelectionService:
                 self.repo.add_selection_score(new_score)
 
         self.repo.db.commit()
+
+        # Notifikasi berdasarkan tipe sesi yang diassign ke pendaftar (Fase 3 spec).
+        # Ambil sesi yang sedang aktif untuk applicant ini — jika ada.
+        try:
+            from src.core.config import settings
+
+            s_res = self.repo.get_selection_result_by_applicant(body.applicant_id)
+            if s_res and s_res.session_id:
+                booked_session = self.repo.get_session_by_id(s_res.session_id)
+                if booked_session:
+                    stype = (booked_session.session_type or "").lower()
+                    if "tahfidz" in stype:
+                        send_notifications(
+                            [
+                                (
+                                    "tahfidz_score_recorded",
+                                    {
+                                        "link_aplikasi": (
+                                            f"{settings.ppdb_frontend_url}/dashboard"
+                                        ),
+                                    },
+                                )
+                            ],
+                            app.user_id,
+                        )
+                    elif "wawancara" in stype or "interview" in stype:
+                        send_notifications(
+                            [("interview_completed", {})],
+                            app.user_id,
+                        )
+        except Exception:
+            import logging
+
+            logging.getLogger("ptdarrahman.selection").exception(
+                "score-recorded notification failed; continuing"
+            )
+
         return {"message": "Nilai berhasil disimpan"}
 
     def update_applicant_status(
@@ -300,25 +415,32 @@ class SelectionService:
 
         # Send notification if passed or failed
         if body.status == "passed":
-            # The deadline is shown in the applicant dashboard rather than
-            # stored directly on the applicant record.
-            # Actually, `deadline_daftar_ulang` is just for template
             from src.core.config import settings
 
             send_notifications(
                 [
                     (
-                        "selection_passed",
+                        "selection_result_passed",
                         {
-                            "link_login": f"{settings.ppdb_frontend_url}/auth/login",
-                            "deadline_daftar_ulang": "Lihat di dashboard akun Anda",
+                            "nama_sekolah": "Pesantren Tahfidz Ar-Rahman",
+                            "link_aplikasi": f"{settings.ppdb_frontend_url}/dashboard",
                         },
-                    )
+                    ),
                 ],
                 app.user_id,
             )
         elif body.status == "failed":
-            send_notifications([("selection_failed", {})], app.user_id)
+            send_notifications(
+                [
+                    (
+                        "selection_result_failed",
+                        {
+                            "nama_sekolah": "Pesantren Tahfidz Ar-Rahman",
+                        },
+                    ),
+                ],
+                app.user_id,
+            )
 
         return {"message": f"Status pendaftar diubah menjadi {body.status}"}
 
@@ -366,6 +488,37 @@ class SelectionService:
 
         self.repo.update_selection_result_session(app.id, session_id, now)
         self.repo.db.commit()
+
+        # Notifikasi jadwal terkonfirmasi (Fase 3 spec)
+        try:
+            from src.core.config import settings
+
+            location_or_link = session.meeting_url or session.location or "-"
+            send_notifications(
+                [
+                    (
+                        "session_confirmed",
+                        {
+                            "nama_ujian": session.name,
+                            "tanggal": str(session.session_date)
+                            if session.session_date
+                            else "-",
+                            "jam_mulai": session.start_time or "-",
+                            "jam_selesai": session.end_time or "-",
+                            "lokasi_atau_link": location_or_link,
+                            "link_aplikasi": f"{settings.ppdb_frontend_url}/dashboard",
+                        },
+                    )
+                ],
+                app.user_id,
+            )
+        except Exception:
+            import logging
+
+            logging.getLogger("ptdarrahman.selection").exception(
+                "session_confirmed notification failed; continuing"
+            )
+
         return {"message": f"Berhasil memilih {session.name}"}
 
     def applicant_get_my_results(self, user_id: str) -> dict[str, Any]:

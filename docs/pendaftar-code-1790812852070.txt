@@ -1,0 +1,84 @@
+[1. AKSES WEBSITE & KLIK DAFTAR]
+       │
+       ▼
+[2. ISI FORMULIR PENDAFTARAN AWAL]
+- Pilih Jalur Pendaftaran langsung di dalam Form.
+- Isi Form Identifikasi Penyakit (Riwayat sakit menular/tidak, dll - Pengganti Medcheck).
+- Sistem otomatis menautkan pendaftar ke satu-satunya gelombang aktif di periode aktif.
+       │
+       ▼
+[3. SISTEM GENERATE KREDENSIAL] ──► (Kirim Notif WA: Username, Password, Link Login)
+       │
+       ▼
+[4. USER LOGIN KE APLIKASI/WEB]
+       │
+       ▼
+[5. PEMBAYARAN BIAYA FORMULIR (PAK KASIR)]
+       │ (Webhook mencatat pembayaran ke pendaftar; periode/gelombang diambil dari relasi pendaftar)
+       ▼
+[6. DASHBOARD USER: PILIHAN GANTI JALUR & UPLOAD DOKUMEN]
+*(Fitur Ganti Jalur hanya terbuka SEBELUM pendaftar melakukan Upload Dokumen)*
+       │
+       ▼
+[7. UPLOAD DOKUMEN (1 MODUL SEKALIGUS)]
+(Dokumen Wajib: NISN, KK, Akte Kelahiran, Pas Foto 3x4 / 4x6)
+       │
+       ├─────────────────────────────────────────────────┐
+       ▼                                                 ▼
+(JALUR TIU)                                        (JALUR SELAIN TIU)
+Hanya Upload Dokumen Wajib                         Upload Dokumen Wajib + Dokumen Tambahan
+                                                   Sesuai Jalurnya (Sertifikat/Raport/Bukti Hafalan)
+       │                                                 │
+       └────────────────────────┬────────────────────────┘
+                                ▼
+[8. ADMIN VERIFIKASI DOKUMEN (MANUAL)] ──► (REVISI) ──► [NOTIF WA: UPLOAD ULANG]
+                                │
+                                ▼ (DOKUMEN VALID & APPROVED)
+[9. SISTEM BACA JALUR PENDAFTARAN (VALIDASI TAKE SESI TAHFIDZ)]
+                                │
+       ┌────────────────────────┴────────────────────────┐
+       ▼ (Jalur Tes/TIU)                                 ▼ (Jalur Non-TIU)
+[10a. UJIAN TIU DI APLIKASI PPDB]                 [10b. LANGSUNG BISA TAKE SESSION]
+(Pendaftar klik Mulai; tes berjalan                (Bisa Take Session Tahfidz
+di Safe Exam Browser dengan timer server.          setelah Dokumen Valid)
+Waktu habis → auto-submit & auto-nilai;
+hasil langsung tampil, tanpa input admin.)
+TIU wajib dari komputer desktop/laptop Windows atau macOS dengan Safe Exam Browser; ponsel/tablet tidak didukung. Panduan instalasi dan penggunaan disediakan sebelum hari ujian. Setiap pendaftar hanya mendapat satu attempt; tidak ada retake setelah selesai atau waktu habis. Jawaban disimpan otomatis selama ujian.
+Jika koneksi terputus, login kembali dan buka TIU untuk melanjutkan attempt yang sama melalui SEB. Jawaban yang tersimpan di server dipulihkan agar peserta melanjutkan dari jawaban terakhir; ini bukan attempt baru. Timer tetap berjalan selama koneksi terputus dan tidak di-reset. Jika waktu habis sebelum peserta tersambung kembali, jawaban tersimpan dikumpulkan dan dinilai otomatis. Kendala listrik/perangkat harus segera dilaporkan ke panitia untuk ditinjau.
+Setelah webhook Apps Script berhasil memasukkan nilai TIU ke sistem, peserta menerima notifikasi WhatsApp dan dapat melihat nilai serta tahapan berikutnya di dashboard.
+       │                                                 │
+       └────────────────────────┬────────────────────────┘
+                                ▼
+[11. TAKE SESSION & UJIAN TAHFIDZ (SEMUA JALUR WAJIB)]
+(1 Slot = 1 Pendaftar. Hasil nilai Tahfidz wajib diinput oleh penguji)
+                                │
+                                ▼
+[12. TAKE SESSION WAWANCARA] ◄── (SISTEM KUNCI: HANYA BISA JIKA HASIL TAHFIDZ SUDAH ADA)
+                                │
+                                ▼
+[13. WAWANCARA (ONLINE / OFFLINE SESUAI JADWAL)]
+                                │
+                                ▼
+[14. PENGUMUMAN KELULUSAN (OLEH ADMIN)]
+                                │
+       ┌────────────────────────┴────────────────────────┐
+       ▼ (TIDAK LULUS)                                   ▼ (LULUS)
+[NOTIF: MOHON MAAF GAGAL]                      [15. MENDAPATKAN LoA (Letter of Acceptance)]
+       │                                       *(MoU Dihold)*
+   (SELESAI)                                   *Info Wajib di LoA: "Seluruh dana yang 
+                                                dibayarkan tidak dapat dikembalikan"*
+                                                         │
+                                                         ▼
+                                               [16. PEMBAYARAN TAHAP 2 DI APLIKASI (PAK KASIR)]
+                                               - Bayar DP (Syarat utama diterima). DP di luar tagihan.
+                                               - Pendaftar mengatur skema cicilan untuk sisa tagihan 
+                                                 (Pilih dibagi berapa kali cicilan/tagihan).
+                                               - *Tersedia fitur bayar rapel cicilan sekaligus (misal ngaret)*.
+                                                         │
+                                                         ▼ (DP MASUK & SETTING CICILAN SELESAI)
+                                               [17. INFO LINK GROUP WHATSAPP & SKD]
+                                               (Link WA Group HANYA muncul di dashboard setelah Tahap 2 selesai)
+                                               (Sistem Generate SKD / No Registrasi)
+                                                         │
+                                                         ▼
+                                                     (SELESAI)

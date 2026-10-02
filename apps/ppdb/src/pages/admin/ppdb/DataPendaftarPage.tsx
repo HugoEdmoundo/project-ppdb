@@ -31,6 +31,8 @@ export default function DataPendaftarPage() {
       if (statusFilter) qs.append('status', statusFilter)
       qs.append('page', page.toString())
       qs.append('perPage', limit.toString())
+      // Halaman admin PPDB hanya menampilkan pendaftar gelombang aktif.
+      qs.append('wave_id', 'active')
 
       const res = await api.apiFetch<{ data: Applicant[], total: number, active_wave: any }>(`/ppdb/applicants?${qs.toString()}`)
       return res

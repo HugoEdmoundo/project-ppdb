@@ -35,8 +35,10 @@ const waveSchema = z.object({
   document_upload_end_date: z.string().min(1, 'Batas upload dokumen wajib diisi'),
   selection_date: z.string().min(1, 'Jadwal seleksi wajib diisi'),
   quota: z.number().min(1, 'Kuota harus diisi minimal 1'),
+  early_discount_quota: z.number().min(0, 'Jumlah harus nol atau lebih'),
   registration_fee: z.number().min(0, 'Biaya tidak boleh negatif'),
   second_stage_fee: z.number().min(0, 'Biaya tidak boleh negatif'),
+  minimum_dp: z.number().min(0, 'Minimal DP tidak boleh negatif'),
 }).refine(data => data.registration_end_date >= data.registration_start_date, {
   message: "Tanggal akhir pendaftaran tidak boleh sebelum tanggal mulai pendaftaran",
   path: ["registration_end_date"],
@@ -46,6 +48,9 @@ const waveSchema = z.object({
 }).refine(data => data.selection_date >= data.document_upload_end_date, {
   message: "Jadwal seleksi tidak boleh sebelum batas upload dokumen",
   path: ["selection_date"],
+}).refine(data => data.early_discount_quota <= data.quota, {
+  message: 'Jumlah diskon pendaftar awal tidak boleh melebihi kuota',
+  path: ['early_discount_quota'],
 });
 
 type WaveFormData = z.infer<typeof waveSchema>;
@@ -59,8 +64,10 @@ const emptyWaveForm = (): WaveFormData => ({
   document_upload_end_date: '',
   selection_date: '',
   quota: 0,
+  early_discount_quota: 0,
   registration_fee: 0,
   second_stage_fee: 0,
+  minimum_dp: 0,
 })
 
 const fmtDateShort = (d: string): string =>
@@ -110,15 +117,21 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
   const allowedPaths = useWatch({ control, name: 'allowed_paths' }) ?? []
   const allowedLevels = useWatch({ control, name: 'allowed_levels' }) ?? []
   const registrationFee = useWatch({ control, name: 'registration_fee' })
-const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
+  const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
+  const minimumDp = useWatch({ control, name: 'minimum_dp' })
 
   const [feeDialogWave, setFeeDialogWave] = useState<any>(null)
   const [feeItems, setFeeItems] = useState<any[]>([])
   const [newFeeName, setNewFeeName] = useState('')
   const [newFeeNominal, setNewFeeNominal] = useState(0)
+  const [feeDiscountType, setFeeDiscountType] = useState<'' | 'percent' | 'nominal'>('')
+  const [feeDiscountValue, setFeeDiscountValue] = useState(0)
+  const [feeDiscountScope, setFeeDiscountScope] = useState<'all' | 'first_x'>('all')
+  const [editingFeeItem, setEditingFeeItem] = useState<any>(null)
 
   const openFeeDialog = async (w: any) => {
     setFeeDialogWave(w)
+    resetFeeItemForm()
     fetchFeeItems(w.id)
   }
 
@@ -133,17 +146,81 @@ const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
 
   const handleAddFeeItem = async () => {
     if (!newFeeName || newFeeNominal <= 0) return
+    if (feeDiscountType && (feeDiscountValue <= 0 || (feeDiscountType === 'percent' && feeDiscountValue > 100))) {
+      toast('error', 'Nilai diskon harus lebih dari 0 dan persentase maksimal 100%')
+      return
+    }
+    if (feeDiscountType && feeDiscountScope === 'first_x' && !(feeDialogWave?.early_discount_quota > 0)) {
+      toast('error', 'Atur jumlah pendaftar awal pada form gelombang terlebih dahulu')
+      return
+    }
     try {
       await apiFetch(`/ppdb/waves/${feeDialogWave.id}/fee-items`, {
         method: 'POST',
-        body: JSON.stringify({ name: newFeeName, nominal: newFeeNominal })
+        body: JSON.stringify({ name: newFeeName, nominal: newFeeNominal,
+          order_index: 0,
+          discount_type: feeDiscountType || null,
+          discount_value: feeDiscountType ? feeDiscountValue : null,
+          discount_scope: feeDiscountType ? feeDiscountScope : 'all' })
       })
       setNewFeeName('')
       setNewFeeNominal(0)
+      setFeeDiscountType('')
+      setFeeDiscountValue(0)
+      setFeeDiscountScope('all')
       fetchFeeItems(feeDialogWave.id)
     } catch (e: any) {
       toast('error', e.message || 'Gagal menambah item biaya')
     }
+  }
+
+  const handleEditFeeItem = async (item: any) => {
+    if (!newFeeName || newFeeNominal <= 0) return
+    if (feeDiscountType && (feeDiscountValue <= 0 || (feeDiscountType === 'percent' && feeDiscountValue > 100))) {
+      toast('error', 'Nilai diskon harus lebih dari 0 dan persentase maksimal 100%')
+      return
+    }
+    if (feeDiscountType && feeDiscountScope === 'first_x' && !(feeDialogWave?.early_discount_quota > 0)) {
+      toast('error', 'Atur jumlah pendaftar awal pada form gelombang terlebih dahulu')
+      return
+    }
+    try {
+      await apiFetch(`/ppdb/waves/${feeDialogWave.id}/fee-items/${item.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name: newFeeName, nominal: newFeeNominal,
+          order_index: item.order_index || 0,
+          discount_type: feeDiscountType || null,
+          discount_value: feeDiscountType ? feeDiscountValue : null,
+          discount_scope: feeDiscountType ? feeDiscountScope : 'all' })
+      })
+      setEditingFeeItem(null)
+      setNewFeeName('')
+      setNewFeeNominal(0)
+      setFeeDiscountType('')
+      setFeeDiscountValue(0)
+      setFeeDiscountScope('all')
+      fetchFeeItems(feeDialogWave.id)
+    } catch (e: any) {
+      toast('error', e.message || 'Gagal memperbarui item biaya')
+    }
+  }
+
+  const startEditFeeItem = (item: any) => {
+    setEditingFeeItem(item)
+    setNewFeeName(item.name)
+    setNewFeeNominal(Number(item.nominal))
+    setFeeDiscountType(item.discount_type || '')
+    setFeeDiscountValue(Number(item.discount_value || 0))
+    setFeeDiscountScope(item.discount_scope || 'all')
+  }
+
+  const resetFeeItemForm = () => {
+    setEditingFeeItem(null)
+    setNewFeeName('')
+    setNewFeeNominal(0)
+    setFeeDiscountType('')
+    setFeeDiscountValue(0)
+    setFeeDiscountScope('all')
   }
 
   const handleDeleteFeeItem = async (id: string) => {
@@ -173,8 +250,10 @@ const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
       document_upload_end_date: (w.document_upload_end_date || '').split('T')[0],
       selection_date: (w.selection_date || '').split('T')[0],
       quota: w.quota ?? 0,
+      early_discount_quota: w.early_discount_quota ?? 0,
       registration_fee: w.registration_fee ?? 0,
       second_stage_fee: w.second_stage_fee ?? 0,
+      minimum_dp: w.minimum_dp ?? 0,
     })
     setFormError(null)
     setShowForm(true)
@@ -383,7 +462,7 @@ const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
                     {/* Metrics grid */}
                     <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                       <div className="rounded-xl bg-slate-50 p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Users className="h-3.5 w-3.5" /> Kuota</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Users className="h-3.5 w-3.5" /> Kuota Pembayaran Formulir</p>
                         <p className="mt-1 text-lg font-bold text-slate-900 leading-tight">
                           {filled} <span className="text-sm font-medium text-slate-400">/ {w.quota}</span>
                         </p>
@@ -397,7 +476,7 @@ const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
                           />
                         </div>
                         <p className="mt-1.5 text-[11px] text-slate-500">
-                          {remaining > 0 ? `${remaining} slot tersisa` : 'Penuh'}
+                          {remaining > 0 ? `${remaining} pembayaran tersisa` : 'Penuh'}
                         </p>
                       </div>
 
@@ -556,7 +635,7 @@ const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
 
             <div className="space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kuota &amp; Biaya</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="wave-quota">Kuota *</Label>
                   <Input id="wave-quota" type="number" min={1} {...register('quota', { valueAsNumber: true })} placeholder="Contoh: 100" disabled={!canCrud} />
@@ -573,6 +652,18 @@ const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
                   <CurrencyInput id="wave-fee2" value={secondStageFee}
                     onValueChange={(v: number) => setValue('second_stage_fee', v)}
                     placeholder="Contoh: 2.500.000" disabled={!canCrud} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wave-early-discount-quota">Kuota diskon pendaftar awal</Label>
+                  <Input id="wave-early-discount-quota" type="number" min={0} {...register('early_discount_quota', { valueAsNumber: true })} placeholder="0 = tidak ada" disabled={!canCrud} />
+                  {errors.early_discount_quota && <p className="text-xs text-red-500">{errors.early_discount_quota.message}</p>}
+                  <p className="text-xs text-muted-foreground">Dihitung dari pembayaran formulir yang berhasil.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wave-minimum-dp">Minimal DP</Label>
+                  <CurrencyInput id="wave-minimum-dp" value={minimumDp}
+                    onValueChange={(v: number) => setValue('minimum_dp', v)}
+                    placeholder="Contoh: 1.000.000" disabled={!canCrud} />
                 </div>
               </div>
             </div>
@@ -620,10 +711,13 @@ const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-6 pt-4">
+            <p className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
+              Diskon mengikuti komponen biaya. Diskon dengan cakupan pendaftar awal hanya berlaku untuk X pembayaran formulir sukses pertama sesuai kuota pada gelombang.
+            </p>
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-foreground border-b pb-2">Item Biaya Tahap 2</h3>
 
-              <div className="flex gap-2 items-end">
+              <div className="grid gap-3 rounded-lg border bg-muted/20 p-3 sm:grid-cols-2">
                 <div className="space-y-1.5 flex-1">
                   <Label>Nama Item</Label>
                   <Input value={newFeeName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFeeName(e.target.value)} placeholder="Misal: SPP Bulan Juli" />
@@ -632,7 +726,28 @@ const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
                   <Label>Nominal (Rp)</Label>
                   <CurrencyInput value={newFeeNominal} onValueChange={setNewFeeNominal} placeholder="Misal: 500000" />
                 </div>
-                <Button onClick={handleAddFeeItem} disabled={!newFeeName || newFeeNominal <= 0} className="mb-0.5">Tambah</Button>
+                <div className="space-y-1.5">
+                  <Label>Diskon Komponen</Label>
+                  <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={feeDiscountType} onChange={e => setFeeDiscountType(e.target.value as '' | 'percent' | 'nominal')}>
+                    <option value="">Tanpa diskon</option><option value="percent">Persentase</option><option value="nominal">Nominal rupiah</option>
+                  </select>
+                </div>
+                {feeDiscountType && <div className="space-y-1.5">
+                  <Label>{feeDiscountType === 'percent' ? 'Diskon (%)' : 'Diskon (Rp)'}</Label>
+                  {feeDiscountType === 'percent'
+                    ? <Input type="number" min={0.01} max={100} step="0.01" value={feeDiscountValue || ''} onChange={e => setFeeDiscountValue(Number(e.target.value))} />
+                    : <CurrencyInput value={feeDiscountValue} onValueChange={setFeeDiscountValue} placeholder="Nominal diskon" />}
+                </div>}
+                {feeDiscountType && <div className="space-y-1.5">
+                  <Label>Berlaku untuk</Label>
+                  <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={feeDiscountScope} onChange={e => setFeeDiscountScope(e.target.value as 'all' | 'first_x')}>
+                    <option value="all">Semua pendaftar</option><option value="first_x">Pendaftar awal sesuai kuota diskon</option>
+                  </select>
+                </div>}
+                <div className="flex gap-2 sm:col-span-2">
+                  {editingFeeItem ? <Button onClick={() => handleEditFeeItem(editingFeeItem)} disabled={!newFeeName || newFeeNominal <= 0}>Simpan Perubahan</Button> : <Button onClick={handleAddFeeItem} disabled={!newFeeName || newFeeNominal <= 0}>Tambah Item</Button>}
+                  {editingFeeItem && <Button variant="outline" onClick={resetFeeItemForm}>Batal</Button>}
+                </div>
               </div>
 
               <div className="rounded-md border mt-3">
@@ -641,20 +756,27 @@ const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
                     <TableRow>
                       <TableHead>Nama Item</TableHead>
                       <TableHead>Nominal</TableHead>
-                      <TableHead className="w-16"></TableHead>
+                      <TableHead>Diskon Gelombang</TableHead>
+                      <TableHead className="w-24"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {feeItems.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center py-4 text-muted-foreground text-sm">Belum ada item biaya.</TableCell>
+                        <TableCell colSpan={4} className="text-center py-4 text-muted-foreground text-sm">Belum ada item biaya.</TableCell>
                       </TableRow>
                     ) : (
                       feeItems.map(item => (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.name}</TableCell>
                           <TableCell>Rp {item.nominal.toLocaleString('id-ID')}</TableCell>
+                          <TableCell className="text-xs">
+                            {item.discount_type ? `${item.discount_type === 'percent' ? `${item.discount_value}%` : `Rp ${Number(item.discount_value).toLocaleString('id-ID')}`} · ${item.discount_scope === 'first_x' ? 'Pendaftar awal' : 'Semua pendaftar'}` : '—'}
+                          </TableCell>
                           <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEditFeeItem(item)} disabled={item.has_bills} title={item.has_bills ? 'Item dengan tagihan tidak bisa diedit' : 'Edit item'}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={() => handleDeleteFeeItem(item.id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>

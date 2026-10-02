@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import cast
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     mysql_password: str = ""
     mysql_database: str = "ptdarrahman"
     mysql_ssl: bool = False
+    database_url_override: str | None = Field(
+        default=None, validation_alias="DATABASE_URL"
+    )
 
     # ── Redis ────────────────────────────────────────────────────────────────
     # Dipakai oleh rate limiter dan user-session cache.
@@ -57,6 +60,18 @@ class Settings(BaseSettings):
     wa_service_api_key: str = ""
     wa_webhook_secret: str = ""
 
+    # ── TIU / Apps Script ────────────────────────────────────────────────────
+    # Secret untuk validasi webhook dari Google Apps Script.
+    # Apps Script mengirim header X-TIU-Secret: <TIU_WEBHOOK_SECRET>.
+    # Fallback bila secret belum disimpan melalui pengaturan backoffice.
+    tiu_webhook_secret: str = ""
+
+    # ── Notifikasi ───────────────────────────────────────────────────────────
+    # Email belum dipakai: seluruh notifikasi dikirim via WhatsApp.
+    # Template dengan channel "email"/"both" otomatis diperlakukan sebagai
+    # WhatsApp selama flag ini False (lihat src/core/notif_service.py).
+    notif_email_enabled: bool = False
+
     # ── Uploads ──────────────────────────────────────────────────────────────
     upload_provider: str = "local"  # local | cloudinary | db
     upload_dir: str = "uploads"
@@ -80,6 +95,8 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         """MySQL connection URL (single source of truth for alembic/seed)."""
+        if self.database_url_override:
+            return self.database_url_override
         return cast(
             str,
             URL.create(

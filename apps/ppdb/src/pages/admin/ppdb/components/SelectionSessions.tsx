@@ -11,6 +11,7 @@ import { Input } from "@/components/ui"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
 import { EmptyState } from "@/components/ui"
 import { Textarea } from "@/components/ui"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui"
 import { ConfirmDialog } from "@/components/ui"
 import { TableSkeletonRows } from "@/components/ui"
 import { CalendarDays, Plus, Pencil, Trash2, MessageSquare } from 'lucide-react'
@@ -25,7 +26,8 @@ export default function SelectionSessions() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [editSession, setEditSession] = useState<Session | null>(null)
   const [sessionForm, setSessionForm] = useState({
-    name: '', session_date: '', start_time: '', end_time: '', location: '', description: '', quota: 0
+    name: '', session_type: '' as '' | 'tahfidz' | 'interview', session_date: '', start_time: '', end_time: '',
+    mode: '' as '' | 'online' | 'offline', officer_name: '', location: '', meeting_url: '', description: '', quota: 0
   })
 
   const [broadcastModal, setBroadcastModal] = useState<Session | null>(null)
@@ -78,21 +80,29 @@ export default function SelectionSessions() {
 
   const openCreateSession = () => {
     setEditSession(null)
-    setSessionForm({ name: '', session_date: '', start_time: '', end_time: '', location: '', description: '', quota: 0 })
+    setSessionForm({ name: '', session_type: '', session_date: '', start_time: '', end_time: '', mode: '', officer_name: '', location: '', meeting_url: '', description: '', quota: 0 })
     setSessionModal('create')
   }
 
   const openEditSession = (s: Session) => {
     setEditSession(s)
     setSessionForm({
-      name: s.name, session_date: s.session_date || '', start_time: s.start_time || '',
-      end_time: s.end_time || '', location: s.location || '', description: s.description || '', quota: s.quota || 0
+      name: s.name, session_type: s.session_type || '', session_date: s.session_date || '', start_time: s.start_time || '',
+      end_time: s.end_time || '', mode: s.mode || '', officer_name: s.officer_name || '',
+      location: s.location || '', meeting_url: s.meeting_url || '', description: s.description || '', quota: s.quota || 0
     })
     setSessionModal('edit')
   }
 
   const saveSession = () => {
     if (!sessionForm.name.trim()) { toast('error', 'Nama sesi wajib diisi'); return }
+    if (!sessionForm.session_date || !sessionForm.start_time || !sessionForm.end_time) { toast('error', 'Tanggal, jam mulai, dan jam selesai wajib diisi'); return }
+    if (sessionForm.end_time <= sessionForm.start_time) { toast('error', 'Jam selesai harus setelah jam mulai'); return }
+    if (!sessionForm.session_type) { toast('error', 'Jenis sesi wajib dipilih'); return }
+    if (!sessionForm.mode) { toast('error', 'Mode sesi wajib dipilih'); return }
+    if (!sessionForm.officer_name.trim()) { toast('error', sessionForm.session_type === 'interview' ? 'Nama pewawancara wajib diisi' : 'Nama penguji wajib diisi'); return }
+    if (sessionForm.mode === 'online' && !sessionForm.meeting_url.trim()) { toast('error', 'Tautan Zoom wajib diisi'); return }
+    if (sessionForm.mode === 'offline' && !sessionForm.location.trim()) { toast('error', 'Lokasi wajib diisi'); return }
     saveMutation.mutate({ type: sessionModal as 'create' | 'edit', data: sessionForm, id: editSession?.id })
   }
 
@@ -113,7 +123,7 @@ export default function SelectionSessions() {
         <CardHeader className="flex flex-row items-center justify-between pb-4">
           <div>
             <h2 className="font-semibold text-foreground">Sesi Ujian Seleksi</h2>
-            <p className="text-sm text-muted-foreground">Buat kuota sesi. Peserta akan booking mandiri di dashboard mereka.</p>
+            <p className="text-sm text-muted-foreground">Atur sesi Tahfidz dan wawancara, termasuk jadwal, petugas, mode, serta tautan atau lokasi.</p>
           </div>
           {canCrud && (
             <Button size="sm" onClick={openCreateSession}>
@@ -147,6 +157,10 @@ export default function SelectionSessions() {
                     <TableRow key={s.id}>
                       <TableCell className="font-medium">
                         {s.name}
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          <Badge variant="outline">{s.session_type === 'tahfidz' ? 'Tahfidz' : s.session_type === 'interview' ? 'Wawancara' : 'Jenis belum diatur'}</Badge>
+                          <Badge variant="secondary">{s.mode === 'online' ? 'Online' : s.mode === 'offline' ? 'Offline' : 'Mode belum diatur'}</Badge>
+                        </div>
                         {s.description && <p className="text-xs text-muted-foreground line-clamp-1">{s.description}</p>}
                       </TableCell>
                       <TableCell>
@@ -155,7 +169,9 @@ export default function SelectionSessions() {
                           <span className="text-muted-foreground mx-1">|</span>
                           {s.start_time && s.end_time ? `${s.start_time} - ${s.end_time}` : s.start_time || '-'}
                         </div>
-                        <div className="text-xs text-muted-foreground">{s.location}</div>
+                        <div className="text-xs text-muted-foreground">{s.officer_name ? `${s.session_type === 'interview' ? 'Pewawancara' : 'Penguji'}: ${s.officer_name}` : 'Petugas belum diatur'}</div>
+                        {s.mode === 'online' && s.meeting_url && <a className="text-xs text-primary underline" href={s.meeting_url} target="_blank" rel="noreferrer">Buka tautan Zoom</a>}
+                        {s.mode === 'offline' && <div className="text-xs text-muted-foreground">{s.location || 'Lokasi belum diatur'}</div>}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">
@@ -205,21 +221,55 @@ export default function SelectionSessions() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium">Tanggal</label>
-                <Input type="date" className="mt-1" value={sessionForm.session_date} onChange={e => setSessionForm(p => ({ ...p, session_date: e.target.value }))} />
+                <label className="text-sm font-medium">Jenis Sesi <span className="text-destructive">*</span></label>
+                <Select value={sessionForm.session_type} onValueChange={(value: 'tahfidz' | 'interview') => setSessionForm(p => ({ ...p, session_type: value }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih jenis sesi" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tahfidz">Tahfidz</SelectItem>
+                    <SelectItem value="interview">Wawancara</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <label className="text-sm font-medium">Lokasi</label>
+                <label className="text-sm font-medium">Mode <span className="text-destructive">*</span></label>
+                <Select value={sessionForm.mode} onValueChange={(value: 'online' | 'offline') => setSessionForm(p => ({ ...p, mode: value }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih mode" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="offline">Offline</SelectItem>
+                    <SelectItem value="online">Online</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">{sessionForm.session_type === 'interview' ? 'Nama Pewawancara' : 'Nama Penguji'} <span className="text-destructive">*</span></label>
+              <Input className="mt-1" placeholder={sessionForm.session_type === 'interview' ? 'Nama pewawancara' : 'Nama penguji Tahfidz'} value={sessionForm.officer_name} onChange={e => setSessionForm(p => ({ ...p, officer_name: e.target.value }))} />
+            </div>
+            {sessionForm.mode === 'online' ? (
+              <div>
+                <label className="text-sm font-medium">Tautan Zoom <span className="text-destructive">*</span></label>
+                <Input type="url" className="mt-1" placeholder="https://zoom.us/j/..." value={sessionForm.meeting_url} onChange={e => setSessionForm(p => ({ ...p, meeting_url: e.target.value }))} />
+              </div>
+            ) : sessionForm.mode === 'offline' ? (
+              <div>
+                <label className="text-sm font-medium">Lokasi <span className="text-destructive">*</span></label>
                 <Input className="mt-1" placeholder="Ruang / Gedung" value={sessionForm.location} onChange={e => setSessionForm(p => ({ ...p, location: e.target.value }))} />
               </div>
+            ) : null}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">Tanggal <span className="text-destructive">*</span></label>
+                <Input type="date" className="mt-1" value={sessionForm.session_date} onChange={e => setSessionForm(p => ({ ...p, session_date: e.target.value }))} />
+              </div>
+              <div />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium">Jam Mulai</label>
+                <label className="text-sm font-medium">Jam Mulai <span className="text-destructive">*</span></label>
                 <Input type="time" className="mt-1" value={sessionForm.start_time} onChange={e => setSessionForm(p => ({ ...p, start_time: e.target.value }))} />
               </div>
               <div>
-                <label className="text-sm font-medium">Jam Selesai</label>
+                <label className="text-sm font-medium">Jam Selesai <span className="text-destructive">*</span></label>
                 <Input type="time" className="mt-1" value={sessionForm.end_time} onChange={e => setSessionForm(p => ({ ...p, end_time: e.target.value }))} />
               </div>
             </div>

@@ -99,18 +99,29 @@ class PaymentService:
             applicant.status = "document_uploaded_pending"
             self.repo.update_applicant(applicant)
 
-            # notification
+            # Notifikasi pembayaran berhasil — sistem baru: 1 pintu via QRIS/pak kasir
             try:
-                from src.core.notif_service import send_notification
+                from src.core.config import settings
+                from src.core.notif_service import send_notifications
 
-                send_notification(
-                    "payment_success", applicant.user_id, {"nominal_bayar": tx.amount}
+                nominal_fmt = f"Rp {tx.amount:,}".replace(",", ".")
+                send_notifications(
+                    [
+                        (
+                            "payment_success_formulir",
+                            {
+                                "nominal_bayar": nominal_fmt,
+                                "link_aplikasi": f"{settings.ppdb_frontend_url}/dashboard",
+                            },
+                        ),
+                    ],
+                    applicant.user_id,
                 )
             except Exception:
                 import logging
 
                 logging.getLogger("ptdarrahman.payment").exception(
-                    "Failed to send payment_success notification for tx %s",
+                    "Failed to send payment_success_formulir notification for tx %s",
                     transaction_id,
                 )
 
@@ -149,75 +160,22 @@ class PaymentService:
         }
 
     def process_webhook(self, payload: dict) -> dict:
-        order_id = payload.get("order_id")
-        if not isinstance(order_id, str) or not order_id:
-            return {"status": "ignored", "message": "Missing order_id"}
-        transaction_status = payload.get("transaction_status")
-        fraud_status = payload.get("fraud_status")
+        """
+        DEPRECATED — Midtrans tidak lagi digunakan.
+        Sistem pembayaran sekarang 1 pintu: QRIS via pak kasir (konfirmasi manual admin).
+        Webhook ini dipertahankan agar endpoint tidak 404 jika masih ada pemanggil lama,
+        tapi semua payload di-ignore dan tidak memproses transaksi apapun.
+        """
+        import logging
 
-        tx = self.repo.get_transaction_by_id(order_id)
-        if not tx:
-            return {"status": "ignored", "message": "Transaction not found"}
-
-        if tx.status == "success":
-            return {"status": "ignored", "message": "Already success"}
-
-        new_status = tx.status
-        if transaction_status == "capture":
-            if fraud_status == "challenge":
-                new_status = "pending"
-            elif fraud_status == "accept":
-                new_status = "success"
-        elif transaction_status == "settlement":
-            new_status = "success"
-        elif transaction_status in ["cancel", "deny", "expire"]:
-            new_status = "expired" if transaction_status == "expire" else "failed"
-        elif transaction_status == "pending":
-            new_status = "pending"
-
-        if new_status == tx.status:
-            return {"status": "ignored"}
-
-        tx.status = new_status
-        self.repo.update_transaction(tx)
-
-        applicant = self.repo.get_applicant_by_id(tx.applicant_id)
-        if applicant:
-            if new_status == "success":
-                applicant.payment_status = "paid"
-                applicant.status = "document_uploaded_pending"
-            elif new_status in ["failed", "expired"]:
-                applicant.payment_status = new_status
-            self.repo.update_applicant(applicant)
-
-            try:
-                from src.core.notif_service import send_notification
-
-                if new_status == "success":
-                    send_notification(
-                        "payment_success",
-                        applicant.user_id,
-                        {"nominal_bayar": tx.amount},
-                    )
-                elif new_status == "failed":
-                    send_notification(
-                        "payment_failed",
-                        applicant.user_id,
-                        {
-                            "alasan_kegagalan": "Pembayaran ditolak atau dibatalkan"
-                            " dari sistem."
-                        },
-                    )
-                elif new_status == "expired":
-                    send_notification("payment_expired", applicant.user_id, {})
-            except Exception:
-                import logging
-
-                logging.getLogger("ptdarrahman.payment").exception(
-                    "Failed to send notification for webhook tx %s", order_id
-                )
-
-        return {"status": "ok"}
+        logging.getLogger("ptdarrahman.payment").warning(
+            "process_webhook dipanggil tapi Midtrans tidak lagi digunakan. "
+            "Sistem pembayaran sekarang via QRIS/pak kasir. Payload di-ignore."
+        )
+        return {
+            "status": "ignored",
+            "message": "Midtrans webhook deprecated — sistem pembayaran sekarang via QRIS/pak kasir",
+        }
 
     def get_stage2_applicants(self) -> dict:
         active_wave = self.repo.get_active_wave_info()
@@ -232,8 +190,18 @@ class PaymentService:
         if not applicant:
             raise HTTPException(status_code=404, detail="Applicant not found")
 
-        fee_items = self.repo.get_wave_fee_items_with_discounts(
+        wave = self.repo.get_wave_by_id(applicant.wave_id)
+        paid_rank = self.repo.get_paid_form_payment_rank(
             applicant.id, applicant.wave_id
+        )
+        early_discount_eligible = bool(
+            wave
+            and wave.early_discount_quota > 0
+            and paid_rank is not None
+            and paid_rank <= wave.early_discount_quota
+        )
+        fee_items = self.repo.get_wave_fee_items_with_discounts(
+            applicant.id, applicant.wave_id, early_discount_eligible
         )
         mou = self.repo.get_mou_by_applicant_id(applicant.id)
 
@@ -242,6 +210,9 @@ class PaymentService:
                 "id": applicant.id,
                 "full_name": applicant.full_name,
                 "wave_id": applicant.wave_id,
+                "form_payment_rank": paid_rank,
+                "early_discount_eligible": early_discount_eligible,
+                "early_discount_quota": wave.early_discount_quota if wave else 0,
             },
             "fee_items": fee_items,
             "mou": {"status": mou.status, "signed_at": mou.signed_at} if mou else None,
@@ -465,6 +436,31 @@ class PaymentService:
         bill.confirmed_by = admin_user_id
         bill.confirmed_at = now_wib
         self.repo.update_stage2_bill(bill)
+
+        # Notifikasi dp_payment_success (Fase 4 spec)
+        try:
+            from src.core.config import settings
+            from src.core.notif_service import send_notification
+
+            applicant = self.repo.get_applicant_by_id(bill.applicant_id)
+            if applicant:
+                send_notification(
+                    "dp_payment_success",
+                    applicant.user_id,
+                    {
+                        "nama_sekolah": "Pesantren Tahfidz Ar-Rahman",
+                        "link_aplikasi": f"{settings.ppdb_frontend_url}/dashboard",
+                        # Link grup WA dikonfigurasi oleh admin — fallback ke dashboard
+                        "link_grup_whatsapp": f"{settings.ppdb_frontend_url}/dashboard",
+                    },
+                )
+        except Exception:
+            import logging
+
+            logging.getLogger("ptdarrahman.payment").exception(
+                "dp_payment_success notification failed for bill %s; continuing",
+                bill_id,
+            )
 
         return {"success": True}
 

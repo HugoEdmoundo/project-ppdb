@@ -1,0 +1,46 @@
+[ADMIN LOGIN BACKOFFICE]
+       │
+       ▼
+[DASHBOARD UTAMA ADMIN]
+       │
+       ├─────────────────────┬─────────────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────────────────────────┐
+       ▼                     ▼                     ▼                     ▼                     ▼                     ▼                          
+[1. KELOLA GELOMBANG] [2. KELOLA TEMPLATE & LoA] [3. KELOLA RUBRIK]  [4. KELOLA SESI TAHFIDZ] [5. KELOLA SESI WAWANCARA] [6. PENGATURAN TIU] ◄── (BARU)
+- Set Buka/Tutup      - Generate Teks LoA        - Kriteria Nilai    - Set Jadwal (Tgl/Jam)   - Set Jadwal (Tgl/Jam)     - Google Form URL      
+- Harga Formulir      - Upload Background SKD    - Bobot Nilai (%)   - Set Penguji            - Set Interviewer          - Webhook Secret       
+- Diskon Gelombang    - *Preview Template LoA*   - Form Evaluator    - Mode Online/Offline    - Mode Online/Offline      - Petunjuk Apps Script 
+- Set Batas Slot /      *(Cek Sblm Publish)*       (Tahfidz, TIU,    - Link Zoom / Ruangan    - Link Zoom / Ruangan        (Dokumentasi)        
+  Kuota Pendaftar     - Set Teks Non-Refundable     Wawancara)                                                            
+- Set Diskon untuk      (Hardcoded)                                                                                      
+  {X} Pendaftar Awal                                                                                                     
+- Set Minimal DP                                                                                                          
+       │                     │                     │                     │                     │                     │
+       └─────────────────────┴──────────────┬──────┴─────────────────────┴─────────────────────┴─────────────────────┘
+                                            │
+                                            ▼
+                       [PENDAFTARAN DIBUKA JIKA ADA GELOMBANG AKTIF YANG SIAP]
+Gelombang siap jika periode induk aktif, tanggal pendaftaran berlaku, dan kuota pembayaran formulir belum penuh. Template LoA bukan syarat pendaftaran dibuka.
+
+ATURAN GELOMBANG & KUOTA
+- Jumlah gelombang per periode fleksibel; maksimal satu gelombang aktif per periode.
+- Pendaftar otomatis masuk ke gelombang aktif di periode aktif, bukan memilih gelombang sendiri.
+- Kuota dan diskon untuk X pendaftar pertama dihitung berdasarkan pembayaran formulir yang berhasil.
+- Saat kuota tercapai, tutup pendaftaran dan gelombang otomatis.
+- Batalkan tagihan formulir yang belum dibayar dan beri tahu pendaftar bahwa mereka boleh mendaftar lagi di gelombang selanjutnya.
+- Sebelum gelombang ditutup, kirim pengingat pembayaran setiap hari Senin ke pendaftar yang belum membayar.
+
+PENGATURAN TIU
+- Pengaturan TIU berlaku global, tidak dibuat per gelombang; durasi attempt diatur di sini.
+- Webhook secret Apps Script dipakai untuk mengirim nilai TIU ke backend secara real-time; backend menautkan hasil dengan applicant/attempt ID dan memicu notifikasi WhatsApp setelah nilai berhasil disimpan.
+- Admin membuat semua soal pilihan ganda dan menandai satu kunci jawaban per soal di Google Form Quiz.
+- Apps Script menyinkronkan langsung soal, urutan, opsi, dan kunci ke bank soal aplikasi; tidak ada review/publish manual. Kunci jawaban hanya disimpan/dipakai di server. Pendaftar mengerjakan di halaman ujian PPDB, bukan di Google Form.
+- Setiap kali Apps Script menjalankan sinkronisasi setelah admin mengubah Form, aplikasi menampilkan status dan waktu sinkronisasi terakhir. Soal/payload tidak valid harus menghasilkan pesan tindakan yang jelas; jangan merusak paket valid terakhir.
+- Setelah submit atau timer habis, hasil nilai TIU dikirim Apps Script melalui webhook secara real-time, divalidasi dan disimpan backend ke dossier pendaftar tanpa input manual admin.
+- Integrasikan Safe Exam Browser (SEB) untuk mode lockdown. Peserta harus memasang dan memakai aplikasi SEB di komputer desktop/laptop Windows atau macOS; ponsel/tablet tidak didukung. Tombol Mulai membuka halaman ujian melalui SEB. Halaman web biasa tidak dapat mengunci aplikasi lain.
+- Peluncuran: aplikasi membuat attempt pending + tiket singkat sekali pakai; konfigurasi SEB membuka route ujian aplikasi. Backend memvalidasi tiket, pemilik attempt, dan kunci SEB sebelum mengikat attempt/memulai timer. Jangan masukkan secret atau kunci jawaban ke URL.
+- Bila sinkronisasi soal gagal atau memuat tipe tak didukung, jangan mengganti paket valid terakhir; tampilkan detail kesalahan yang dapat ditindaklanjuti admin.
+- Pengecualian kuota: webhook bayar sukses yang datang setelah invoice pending dibatalkan masuk antrean pemeriksaan admin; jangan pindahkan pendaftar otomatis.
+- Satu pendaftar hanya memiliki satu attempt TIU; tidak ada retake setelah selesai atau waktu habis.
+- Simpan jawaban otomatis ke server selama ujian. Jika koneksi putus, peserta kembali melalui SEB untuk melanjutkan attempt yang sama lewat tiket resume; pulihkan jawaban tersimpan dan teruskan timer server tanpa reset. Jika waktu habis saat terputus, auto-submit jawaban terakhir yang berhasil tersimpan.
+
+Koreksi rubrik: formulir evaluator manual hanya untuk Tahfidz dan wawancara. Nilai TIU pilihan ganda masuk otomatis ke sistem; admin tidak menginput nilai TIU.

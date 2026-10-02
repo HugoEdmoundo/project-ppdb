@@ -3,13 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as api from '@/api/client'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
-import { Card, CardContent } from "@/components/ui"
+import { Badge, Card, CardContent } from "@/components/ui"
 import { Button } from "@/components/ui"
 import { Input } from "@/components/ui"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
 import { EmptyState } from "@/components/ui"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui"
-import { Plus, Trash2, Download, ListTree, XCircle } from 'lucide-react'
+import { Plus, Trash2, Download, ListTree, XCircle, Pencil } from 'lucide-react'
 import { ConfirmDialog } from "@/components/ui"
 import type { SelectionCategory, Session, SelectionResult } from './types'
 import { downloadCSV } from './utils'
@@ -23,8 +23,8 @@ export default function SelectionCategories() {
 
   const [categoryModal, setCategoryModal] = useState(false)
   const [catForm, setCatForm] = useState({ name: '' })
-  const [criteriaModal, setCriteriaModal] = useState<string | null>(null) // category_id
-  const [critForm, setCritForm] = useState({ name: '' })
+  const [criteriaModal, setCriteriaModal] = useState<{ categoryId: string; editing?: { id: string; name: string; weight: number } } | null>(null)
+  const [critForm, setCritForm] = useState({ name: '', weight: '' })
 
   const [downloadModalCat, setDownloadModalCat] = useState<SelectionCategory | null>(null)
   const [downloadSessionFilter, setDownloadSessionFilter] = useState<string>('all')
@@ -75,10 +75,12 @@ export default function SelectionCategories() {
   })
 
   const saveCriteriaMutation = useMutation({
-    mutationFn: (payload: { categoryId: string, data: typeof critForm }) =>
-      api.apiFetch(`/selection/categories/${payload.categoryId}/criteria`, { method: 'POST', body: JSON.stringify(payload.data) }),
+    mutationFn: (payload: { categoryId: string, criteriaId?: string, data: { name: string; weight: number } }) =>
+      payload.criteriaId
+        ? api.apiFetch(`/selection/criteria/${payload.criteriaId}`, { method: 'PUT', body: JSON.stringify(payload.data) })
+        : api.apiFetch(`/selection/categories/${payload.categoryId}/criteria`, { method: 'POST', body: JSON.stringify(payload.data) }),
     onSuccess: () => {
-      toast('success', 'Kriteria ditambah')
+      toast('success', criteriaModal?.editing ? 'Kriteria diperbarui' : 'Kriteria ditambah')
       setCriteriaModal(null)
       queryClient.invalidateQueries({ queryKey: ['selection-categories'] })
     },
@@ -106,8 +108,14 @@ export default function SelectionCategories() {
   }
 
   const saveCriteria = () => {
-    if(!critForm.name || !criteriaModal) { toast('error', 'Nama wajib diisi'); return }
-    saveCriteriaMutation.mutate({ categoryId: criteriaModal, data: critForm })
+    if (!critForm.name.trim() || !criteriaModal) { toast('error', 'Nama wajib diisi'); return }
+    const weight = Number(critForm.weight)
+    if (!Number.isFinite(weight) || weight <= 0 || weight > 100) { toast('error', 'Bobot harus lebih dari 0% sampai 100%'); return }
+    saveCriteriaMutation.mutate({
+      categoryId: criteriaModal.categoryId,
+      criteriaId: criteriaModal.editing?.id,
+      data: { name: critForm.name.trim(), weight },
+    })
   }
 
   const deleteCriteria = (id: string) => {
@@ -144,7 +152,7 @@ export default function SelectionCategories() {
       <div className="flex justify-between items-center bg-muted/30 p-4 rounded-xl border border-border">
         <div>
           <h2 className="font-semibold text-lg">Desain Struktur Penilaian</h2>
-          <p className="text-sm text-muted-foreground">Buat kategori dan kriteria penilaian. Anda dapat mengunduh format Excel (CSV) per kategori di sini.</p>
+          <p className="text-sm text-muted-foreground">Atur rubrik untuk evaluator Tahfidz dan wawancara. Nilai TIU masuk otomatis dan tidak diinput di sini. Bobot tiap kategori maksimal 100%; skor penguji diisi pada formulir evaluator.</p>
         </div>
         {canCrud && (
           <Button onClick={() => { setCatForm({ name: '' }); setCategoryModal(true); }}>
@@ -162,7 +170,7 @@ export default function SelectionCategories() {
           {categories.map(cat => (
             <Card key={cat.id} className="overflow-hidden border shadow-sm">
               <div className="bg-muted/50 px-4 py-3 border-b flex justify-between items-center">
-                <h3 className="font-bold text-foreground text-lg">{cat.name}</h3>
+                <div><h3 className="font-bold text-foreground text-lg">{cat.name}</h3><p className="text-xs text-muted-foreground">Total bobot {cat.criteria.reduce((sum, item) => sum + Number(item.weight || 0), 0)}%</p></div>
                 {canCrud && (
                   <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => deleteCategory(cat.id)}>
                     <Trash2 className="h-4 w-4" />
@@ -178,10 +186,16 @@ export default function SelectionCategories() {
                       <div key={crit.id} className="flex justify-between items-center p-2 rounded-lg bg-background border">
                         <span className="font-medium text-sm">{crit.name}</span>
                         <div className="flex items-center gap-3">
+                          <Badge variant="secondary" className="text-xs">{Number(crit.weight || 0)}%</Badge>
                           {canCrud && (
-                            <button className="text-muted-foreground hover:text-destructive" onClick={() => deleteCriteria(crit.id)}>
-                              <XCircle className="h-4 w-4" />
-                            </button>
+                            <>
+                              <button aria-label={`Edit ${crit.name}`} className="text-muted-foreground hover:text-primary" onClick={() => { setCritForm({ name: crit.name, weight: String(crit.weight || '') }); setCriteriaModal({ categoryId: cat.id, editing: crit }); }}>
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button aria-label={`Hapus ${crit.name}`} className="text-muted-foreground hover:text-destructive" onClick={() => deleteCriteria(crit.id)}>
+                                <XCircle className="h-4 w-4" />
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -191,7 +205,7 @@ export default function SelectionCategories() {
 
                 {canCrud && (
                   <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                    <Button size="sm" variant="outline" className="flex-1 border-dashed" onClick={() => { setCritForm({ name: '' }); setCriteriaModal(cat.id); }}>
+                    <Button size="sm" variant="outline" className="flex-1 border-dashed" onClick={() => { setCritForm({ name: '', weight: '' }); setCriteriaModal({ categoryId: cat.id }); }}>
                       <Plus className="h-3.5 w-3.5 mr-1" /> Tambah Kriteria
                     </Button>
                     <Button size="sm" variant="secondary" className="flex-1" onClick={() => { setDownloadModalCat(cat); setDownloadSessionFilter('all'); }} disabled={cat.criteria.length === 0}>
@@ -235,13 +249,17 @@ export default function SelectionCategories() {
 
       <Dialog open={!!criteriaModal} onOpenChange={() => setCriteriaModal(null)}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Tambah Kriteria Penilaian</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{criteriaModal?.editing ? 'Edit Kriteria Penilaian' : 'Tambah Kriteria Penilaian'}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
             <div>
               <label className="text-sm font-medium">Nama Kriteria</label>
               <Input className="mt-1" placeholder="cth: Tajwid / Matematika" value={critForm.name} onChange={e => setCritForm(p => ({ ...p, name: e.target.value }))} />
             </div>
-            <div className="flex justify-end"><Button onClick={saveCriteria} disabled={saveCriteriaMutation.isPending}>Simpan</Button></div>
+            <div>
+              <label className="text-sm font-medium">Bobot (%)</label>
+              <Input className="mt-1" type="number" min={0.01} max={100} step="0.01" placeholder="cth: 25" value={critForm.weight} onChange={e => setCritForm(p => ({ ...p, weight: e.target.value }))} />
+            </div>
+            <div className="flex justify-end"><Button onClick={saveCriteria} disabled={saveCriteriaMutation.isPending}>{saveCriteriaMutation.isPending ? 'Menyimpan...' : 'Simpan'}</Button></div>
           </div>
         </DialogContent>
       </Dialog>

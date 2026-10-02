@@ -3,7 +3,7 @@ import random
 import string
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, cast
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, UploadFile
@@ -21,12 +21,15 @@ from src.models.ppdb import (
     PPDBWaveFeeItem,
 )
 from src.modules.ppdb.schemas import (
+    ApplicantAdminCreate,
+    ApplicantAdminUpdate,
     ApplicantRegister,
     MouSignRequest,
     PeriodCreate,
     PeriodUpdate,
     WaveCreate,
     WaveFeeItemCreate,
+    WaveFeeItemUpdate,
     WaveMouTemplateUpdate,
     WaveUpdate,
 )
@@ -128,7 +131,6 @@ class PPDBService:
         period = self.repository.get_period_by_id(period_id)
         if not period:
             raise HTTPException(status_code=404, detail="Periode tidak ditemukan")
-        self.repository.set_all_periods_inactive()
         self.repository.activate_period(period_id)
         return {"success": True}
 
@@ -158,7 +160,7 @@ class PPDBService:
         result = []
         for w in waves:
             item = {c.name: getattr(w, c.name) for c in w.__table__.columns}
-            item["filled"] = self.repository.count_applicants_in_wave(w.id)
+            item["filled"] = self.repository.count_paid_form_payments_in_wave(w.id)
             result.append(item)
         return result
 
@@ -176,15 +178,43 @@ class PPDBService:
         # `academic_year` & `name` periode lived di tabel induk, jadi wave saja
         # tidak cukup untuk situs publik yang menampilkan "Tahun Ajaran ...".
         period = self.repository.get_period_by_id(wave.period_id)
+        today = datetime.now(WIB).date()
+        paid_count = self.repository.count_paid_form_payments_in_wave(wave.id)
+        has_schedule = bool(wave.registration_start_date and wave.registration_end_date)
+        before_open = has_schedule and today < wave.registration_start_date
+        after_close = has_schedule and today > wave.registration_end_date
+        quota_reached = wave.quota <= 0 or paid_count >= wave.quota
+        registration_open = (
+            period is not None
+            and period.status == "active"
+            and has_schedule
+            and not before_open
+            and not after_close
+            and not quota_reached
+        )
 
         return {
-            "active": True,
+            # Public `active` means ready and currently accepting registrations.
+            "active": registration_open,
+            "registration_open": registration_open,
+            "registration_status": (
+                "schedule_incomplete"
+                if not has_schedule
+                else "not_started"
+                if before_open
+                else "closed"
+                if after_close
+                else "quota_reached"
+                if quota_reached
+                else "open"
+            ),
             "id": wave.id,
             "name": wave.name,
             "period_id": wave.period_id,
             "period_name": period.name if period else None,
             "academic_year": period.academic_year if period else None,
             "quota": wave.quota,
+            "paid_count": paid_count,
             "registration_start_date": wave.registration_start_date,
             "registration_end_date": wave.registration_end_date,
             "document_upload_end_date": wave.document_upload_end_date,
@@ -225,7 +255,9 @@ class PPDBService:
             document_upload_end_date=body.document_upload_end_date,
             selection_date=body.selection_date,
             quota=body.quota,
+            early_discount_quota=body.early_discount_quota,
             registration_fee=body.registration_fee,
+            minimum_dp=body.minimum_dp,
             second_stage_fee=body.second_stage_fee
             if body.second_stage_fee is not None
             else 0,
@@ -304,6 +336,16 @@ class PPDBService:
                 detail="Jadwal seleksi tidak boleh sebelum batas upload dokumen",
             )
 
+        effective_quota = provided.get("quota", wave.quota)
+        effective_early_discount_quota = provided.get(
+            "early_discount_quota", wave.early_discount_quota or 0
+        )
+        if effective_early_discount_quota > effective_quota:
+            raise HTTPException(
+                status_code=400,
+                detail="Jumlah diskon pendaftar awal tidak boleh melebihi kuota",
+            )
+
         for field in (
             "name",
             "allowed_paths",
@@ -313,8 +355,10 @@ class PPDBService:
             "document_upload_end_date",
             "selection_date",
             "quota",
+            "early_discount_quota",
             "registration_fee",
             "second_stage_fee",
+            "minimum_dp",
         ):
             if field in provided and provided[field] is not None:
                 setattr(wave, field, provided[field])
@@ -332,8 +376,7 @@ class PPDBService:
         if not period or period.status != "active":
             raise HTTPException(status_code=400, detail="Periode belum aktif")
 
-        self.repository.set_all_waves_inactive()
-        self.repository.activate_wave(wave_id)
+        self.repository.activate_wave(wave_id, wave.period_id)
         return {"success": True}
 
     def deactivate_wave(self, wave_id: str):
@@ -362,26 +405,66 @@ class PPDBService:
         if not wave:
             raise HTTPException(status_code=404, detail="Gelombang tidak ditemukan")
         items = self.repository.get_fee_items_by_wave(wave_id)
+        item_data = []
+        for item in items:
+            serialized = {c.name: getattr(item, c.name) for c in item.__table__.columns}
+            serialized["has_bills"] = (
+                self.repository.count_bills_for_fee_item(item.id) > 0
+            )
+            item_data.append(serialized)
         return {
-            "items": [
-                {c.name: getattr(i, c.name) for c in i.__table__.columns} for i in items
-            ]
+            "items": item_data,
         }
 
     def create_wave_fee_item(self, wave_id: str, body: WaveFeeItemCreate):
         wave = self.repository.get_wave_by_id(wave_id)
         if not wave:
             raise HTTPException(status_code=404, detail="Gelombang tidak ditemukan")
+        if body.discount_scope == "first_x" and not wave.early_discount_quota:
+            raise HTTPException(
+                status_code=400,
+                detail="Kuota diskon pendaftar awal belum diatur pada gelombang ini",
+            )
         item = PPDBWaveFeeItem(
             id=str(uuid.uuid4()),
             wave_id=wave_id,
             name=body.name,
             nominal=body.nominal,
             order_index=body.order_index,
+            discount_type=body.discount_type,
+            discount_value=body.discount_value,
+            discount_scope=body.discount_scope,
             created_at=datetime.now(WIB),
             updated_at=datetime.now(WIB),
         )
         self.repository.create_fee_item(item)
+        return {c.name: getattr(item, c.name) for c in item.__table__.columns}
+
+    def update_wave_fee_item(self, wave_id: str, item_id: str, body: WaveFeeItemUpdate):
+        wave = self.repository.get_wave_by_id(wave_id)
+        if not wave:
+            raise HTTPException(status_code=404, detail="Gelombang tidak ditemukan")
+        if body.discount_scope == "first_x" and not wave.early_discount_quota:
+            raise HTTPException(
+                status_code=400,
+                detail="Kuota diskon pendaftar awal belum diatur pada gelombang ini",
+            )
+        item = self.repository.get_fee_item(item_id)
+        if not item or item.wave_id != wave_id:
+            raise HTTPException(status_code=404, detail="Item biaya tidak ditemukan")
+        if self.repository.count_bills_for_fee_item(item_id) > 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Item biaya sudah memiliki tagihan dan tidak bisa diubah",
+            )
+        item.name = body.name
+        item.nominal = body.nominal
+        item.order_index = body.order_index
+        item.discount_type = body.discount_type
+        item.discount_value = body.discount_value
+        item.discount_scope = body.discount_scope
+        item.updated_at = datetime.now(WIB)
+        self.repository.update_fee_item(item)
         return {c.name: getattr(item, c.name) for c in item.__table__.columns}
 
     def delete_wave_fee_item(self, wave_id: str, item_id: str):
@@ -439,6 +522,36 @@ class PPDBService:
             raise HTTPException(
                 status_code=400,
                 detail="Pendaftaran saat ini sedang ditutup atau belum dibuka.",
+            )
+
+        period = self.repository.get_period_by_id(wave.period_id)
+        if not period or period.status != "active":
+            raise HTTPException(
+                status_code=400,
+                detail="Periode pendaftaran belum aktif.",
+            )
+
+        today = datetime.now(WIB).date()
+        if not wave.registration_start_date or not wave.registration_end_date:
+            raise HTTPException(
+                status_code=400,
+                detail="Jadwal pendaftaran gelombang belum lengkap.",
+            )
+        if today < wave.registration_start_date:
+            raise HTTPException(
+                status_code=400,
+                detail="Pendaftaran gelombang ini belum dibuka.",
+            )
+        if today > wave.registration_end_date:
+            raise HTTPException(
+                status_code=400,
+                detail="Pendaftaran gelombang ini sudah ditutup.",
+            )
+        paid_count = self.repository.count_paid_form_payments_in_wave(wave.id)
+        if wave.quota <= 0 or paid_count >= wave.quota:
+            raise HTTPException(
+                status_code=400,
+                detail="Kuota pendaftaran gelombang ini sudah penuh.",
             )
 
         allowed_paths = [
@@ -553,25 +666,23 @@ class PPDBService:
         from src.core.config import settings
 
         try:
+            # Kirim dua event: spec baru (registration_account_created) dan
+            # legacy (registration_welcome) — keduanya aktif selama transisi.
+            wave_end = wave.end_date
+            tanggal_tutup = (
+                wave_end.strftime("%d %B %Y") if wave_end else "sesuai jadwal"
+            )
             send_notifications(
                 [
                     (
-                        "registration_welcome",
+                        "registration_account_created",
                         {
                             "username": user.username,
                             "nama_peserta": user.full_name,
                             "password": raw_password,
+                            "nama_sekolah": "Pesantren Ar-Rahman",
                             "link_login": f"{settings.ppdb_frontend_url}/auth/login",
-                            "batas_waktu_bayar": applicant.payment_deadline,
-                        },
-                    ),
-                    (
-                        "payment_reminder_day7",
-                        {
-                            "username": user.username,
-                            "nama_peserta": user.full_name,
-                            "link_pembayaran": f"{settings.ppdb_frontend_url}/checkout",
-                            "batas_waktu_bayar": applicant.payment_deadline,
+                            "tanggal_tutup_gelombang": tanggal_tutup,
                         },
                     ),
                 ],
@@ -604,19 +715,303 @@ class PPDBService:
         search: str,
         wave_id: str | None,
         status: str | None,
+        period_id: str | None = None,
+        payment_status: str | None = None,
     ):
-        active_wave = self.repository.get_active_wave()
-        resolved_wave_id = wave_id or (active_wave.id if active_wave else None)
-        if not resolved_wave_id:
-            return {"data": [], "total": 0, "active_wave": None}
+        """Daftar pendaftar.
+
+        Default: SEMUA pendaftar dari seluruh periode & gelombang (dipakai
+        Superadmin). Setiap baris membawa ``period_name`` + ``wave_name`` sebagai
+        label asal. Filter ``period_id``/``wave_id`` bersifat opsional untuk
+        mempersempit tampilan.
+
+        ``wave_id = "active"`` mempertahankan perilaku lama (hanya gelombang
+        aktif) untuk halaman admin PPDB yang memang operasional per gelombang.
+        """
+        resolved_wave_id = wave_id
+        if wave_id == "active":
+            active_wave = self.repository.get_active_wave()
+            resolved_wave_id = active_wave.id if active_wave else "__none__"
 
         data, total = self.repository.get_applicants_paginated(
-            cast(str, resolved_wave_id), search, status, page, per_page
+            resolved_wave_id,
+            search,
+            status,
+            page,
+            per_page,
+            period_id=period_id,
+            payment_status=payment_status,
         )
+
+        active_wave = self.repository.get_active_wave()
         active_wave_info = (
             {"id": active_wave.id, "name": active_wave.name} if active_wave else None
         )
-        return {"data": data, "total": total, "active_wave": active_wave_info}
+        return {
+            "data": data,
+            "total": total,
+            "active_wave": active_wave_info,
+            "scope": {
+                "wave_id": resolved_wave_id if resolved_wave_id != "__none__" else None,
+                "period_id": period_id,
+            },
+        }
+
+    def get_applicant(self, applicant_id: str) -> dict[str, Any]:
+        detail = self.repository.get_applicant_detail(applicant_id)
+        if not detail:
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+        return detail
+
+    def create_applicant(self, body: ApplicantAdminCreate) -> dict[str, Any]:
+        """Buat pendaftar dari Superadmin (CRUD).
+
+        Konsep password tetap sama seperti pendaftaran publik: username & password
+        dibuat otomatis oleh sistem, tidak bisa ditentukan admin dan tidak pernah
+        bisa dibaca ulang. Password hanya dikembalikan SEKALI di respons ini lalu
+        dikirim via WhatsApp. Untuk mengganti password, pakai
+        ``reset_applicant_password``.
+        """
+        wave = self.repository.get_wave_by_id(body.wave_id)
+        if not wave:
+            raise HTTPException(status_code=404, detail="Gelombang tidak ditemukan")
+
+        if self.repository.get_applicant_by_email_active(body.email):
+            raise HTTPException(
+                status_code=400, detail="Email sudah terdaftar pada pendaftar lain."
+            )
+        if self.repository.get_user_by_email(body.email):
+            raise HTTPException(
+                status_code=400, detail="Email sudah dipakai akun lain."
+            )
+
+        raw_password = self.generate_random_password()
+        from src.core.security import validate_password
+
+        validate_password(raw_password)
+
+        username = self.generate_unique_username(body.full_name)
+        role_id = self.repository.get_role_id_by_name("Pendaftar")
+
+        now = datetime.now(WIB)
+        payment_deadline = datetime.now(ZoneInfo("Asia/Jakarta")).replace(
+            tzinfo=None
+        ) + timedelta(days=7)
+
+        user = User(
+            id=str(uuid.uuid4()),
+            username=username,
+            password_hash=hash_password(raw_password),
+            email=body.email,
+            full_name=body.full_name,
+            user_type="applicant",
+            role_id=role_id,
+            created_at=now,
+            updated_at=now,
+        )
+
+        applicant = PPDBApplicant(
+            id=f"applicant-{uuid.uuid4()}",
+            wave_id=wave.id,
+            user_id=user.id,
+            full_name=body.full_name,
+            email=body.email,
+            phone=body.phone,
+            registration_path=body.registration_path,
+            registration_level=body.registration_level,
+            address=body.address,
+            province=body.province,
+            city=body.city,
+            district=body.district,
+            village=body.village,
+            postal_code=body.postal_code,
+            gender=body.gender,
+            birth_place=body.birth_place,
+            birth_date=body.birth_date,
+            nisn=body.nisn,
+            nik=body.nik,
+            parent_name=body.parent_name,
+            previous_school=body.previous_school,
+            major_choice=body.major_choice,
+            status="pending_payment",
+            payment_status="pending",
+            payment_deadline=payment_deadline,
+            created_at=now,
+            updated_at=now,
+        )
+
+        transaction = PPDBPaymentTransaction(
+            id=f"pay-{uuid.uuid4()}",
+            applicant_id=applicant.id,
+            method="offline",
+            amount=wave.registration_fee or 0,
+            status="pending",
+            created_at=now,
+            updated_at=now,
+        )
+
+        try:
+            self.repository.create_user_and_applicant(user, applicant, transaction)
+        except IntegrityError:
+            logger.exception(
+                "Duplicate on admin create: email=%s username=%s", body.email, username
+            )
+            raise HTTPException(
+                status_code=400, detail="Email sudah terdaftar. Gunakan email lain."
+            )
+
+        self._notify_credentials(user, applicant, raw_password)
+
+        return {
+            "success": True,
+            "message": "Pendaftar berhasil dibuat",
+            "applicant_id": applicant.id,
+            "credentials": {"username": username, "password": raw_password},
+        }
+
+    def update_applicant(
+        self, applicant_id: str, body: ApplicantAdminUpdate
+    ) -> dict[str, Any]:
+        """Update data pendaftar dari Superadmin.
+
+        Password TIDAK bisa diubah lewat sini — tetap memakai
+        ``reset_applicant_password`` supaya konsep kredensial tidak berubah.
+        """
+        applicant = self.repository.get_applicant_by_id(applicant_id)
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+
+        data = body.model_dump(exclude_unset=True)
+        if not data:
+            return {
+                "success": True,
+                "message": "Tidak ada perubahan",
+                "applicant": self.get_applicant(applicant_id),
+            }
+
+        wave_id = data.pop("wave_id", None)
+        if wave_id:
+            wave = self.repository.get_wave_by_id(wave_id)
+            if not wave:
+                raise HTTPException(
+                    status_code=404, detail="Gelombang tujuan tidak ditemukan"
+                )
+            applicant.wave_id = wave.id
+
+        email = data.get("email")
+        if email and email.lower() != (applicant.email or "").lower():
+            clash = self.repository.get_applicant_by_email_active(email)
+            if clash and clash.id != applicant.id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Email sudah dipakai pendaftar lain.",
+                )
+            if self.repository.get_user_by_email(email):
+                raise HTTPException(
+                    status_code=400, detail="Email sudah dipakai akun lain."
+                )
+            # Email akun login ikut disesuaikan agar tetap sinkron.
+            if applicant.user_id:
+                user = self.repository.get_user_by_id(applicant.user_id)
+                if user:
+                    user.email = email
+                    user.updated_at = datetime.now(WIB)
+
+        full_name = data.get("full_name")
+        if full_name and applicant.user_id:
+            user = self.repository.get_user_by_id(applicant.user_id)
+            if user:
+                user.full_name = full_name
+                user.updated_at = datetime.now(WIB)
+
+        for key, value in data.items():
+            if hasattr(applicant, key):
+                setattr(applicant, key, value)
+
+        applicant.updated_at = datetime.now(WIB)
+        self.repository.update_applicant(applicant)
+
+        return {
+            "success": True,
+            "message": "Data pendaftar berhasil diperbarui",
+            "applicant": self.get_applicant(applicant_id),
+        }
+
+    def delete_applicant(self, applicant_id: str) -> dict[str, Any]:
+        """Hapus permanen pendaftar + akun login + seluruh data turunannya."""
+        applicant = self.repository.get_applicant_by_id(applicant_id)
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+
+        full_name = applicant.full_name
+        # Kumpulkan path berkas SEBELUM baris DB dihapus.
+        files = self.repository.get_applicant_document_files(applicant_id)
+        self.repository.delete_applicant_permanent(applicant)
+
+        # Berkas fisik dihapus setelah transaksi DB selesai. `delete_upload`
+        # sudah menangani local / cloudinary / db:// beserta error-nya.
+        from src.core.uploads import delete_upload
+
+        for storage_path in files:
+            delete_upload(storage_path)
+
+        logger.info(
+            "Applicant permanently deleted: id=%s name=%s files_purged=%d",
+            applicant_id,
+            full_name,
+            len(files),
+        )
+        return {
+            "success": True,
+            "message": f"Pendaftar {full_name} beserta seluruh datanya dihapus permanen.",
+        }
+
+    def _notify_credentials(
+        self, user: User, applicant: PPDBApplicant, raw_password: str
+    ) -> None:
+        """Kirim kredensial via WhatsApp setelah pendaftar dibuat oleh admin."""
+        from src.core.config import settings
+
+        try:
+            wave = (
+                self.repository.get_wave_by_id(applicant.wave_id)
+                if applicant.wave_id
+                else None
+            )
+            tanggal_tutup = (
+                wave.end_date.strftime("%d %B %Y")
+                if wave and wave.end_date
+                else "sesuai jadwal"
+            )
+            send_notifications(
+                [
+                    (
+                        "registration_account_created",
+                        {
+                            "username": user.username,
+                            "nama_peserta": user.full_name,
+                            "password": raw_password,
+                            "nama_sekolah": "Pesantren Ar-Rahman",
+                            "link_login": f"{settings.ppdb_frontend_url}/auth/login",
+                            "tanggal_tutup_gelombang": tanggal_tutup,
+                        },
+                    ),
+                ],
+                user.id,
+                user_row={
+                    "id": user.id,
+                    "email": user.email,
+                    "username": user.username,
+                    "full_name": user.full_name,
+                },
+                applicant_row={
+                    "id": applicant.id,
+                    "full_name": applicant.full_name,
+                    "phone": applicant.phone,
+                },
+            )
+        except Exception:
+            logger.exception("send_notifications failed after create; continuing")
 
     def reset_applicant_password(
         self, applicant_id: str, new_password: str
@@ -666,7 +1061,13 @@ class PPDBService:
                     "username": user.username,
                     "full_name": user.full_name,
                 },
-                applicant_row={"id": applicant.id, "full_name": applicant.full_name},
+                applicant_row={
+                    "id": applicant.id,
+                    "full_name": applicant.full_name,
+                    # Sama seperti create: nomor WA wajib disertakan agar
+                    # notifikasi password_reset benar-benar terkirim.
+                    "phone": applicant.phone,
+                },
             )
         except Exception:
             logger.exception("send password_reset notification failed; continuing")
@@ -767,7 +1168,7 @@ class PPDBService:
     def verify_applicant_documents(
         self, applicant_id: str, status: str, rejection_reason: str | None
     ) -> dict[str, Any]:
-        from src.core.notif_service import send_notification
+        from src.core.config import settings
 
         applicant = self.repository.get_applicant_by_id(applicant_id)
         if not applicant:
@@ -786,11 +1187,38 @@ class PPDBService:
         self.repository.update_applicant(applicant)
 
         try:
-            send_notification(
-                status,
-                applicant.user_id,
-                {"alasan_penolakan": applicant.rejection_reason or ""},
-            )
+            if status == "document_rejected":
+                # Spec baru: document_rejected_revision
+                send_notification(
+                    "document_rejected_revision",
+                    applicant.user_id,
+                    {
+                        "alasan_penolakan": applicant.rejection_reason or "",
+                        "link_aplikasi": f"{settings.ppdb_frontend_url}/dashboard",
+                    },
+                )
+            elif status == "document_approved":
+                # Cek jalur pendaftaran: TIU → instruksi SEB, lainnya → pilih jadwal Tahfidz
+                is_tiu = (
+                    getattr(applicant, "registration_path", "") or ""
+                ).lower() == "tiu"
+                if is_tiu:
+                    send_notification(
+                        "tiu_exam_instructions",
+                        applicant.user_id,
+                        {
+                            "link_aplikasi": f"{settings.ppdb_frontend_url}/dashboard",
+                            "link_panduan_seb": f"{settings.ppdb_frontend_url}/panduan-seb",
+                        },
+                    )
+                else:
+                    send_notification(
+                        "document_approved_non_tiu",
+                        applicant.user_id,
+                        {
+                            "link_aplikasi": f"{settings.ppdb_frontend_url}/dashboard",
+                        },
+                    )
         except Exception:
             logger.exception("send document notification failed; continuing")
 
@@ -881,71 +1309,30 @@ class PPDBService:
 
         self.repository.soft_delete_applicants(applicants, now_str)
 
+        # payment_expired: tidak ada padanan di spec baru, tetap dikirim
+        # karena user perlu tahu akun mereka kedaluwarsa.
         for app in applicants:
             send_notifications([("payment_expired", {})], app.user_id)
 
         return {"deleted": len(applicants), "applicant_ids": [a.id for a in applicants]}
 
     def run_reminders(self) -> dict[str, Any]:
-        now_wib = datetime.now(ZoneInfo("Asia/Jakarta"))
-        now_wib_str = now_wib.strftime("%Y-%m-%d %H:%M:%S")
-        tomorrow_wib = now_wib + timedelta(days=1)
-        tomorrow_wib_str = tomorrow_wib.strftime("%Y-%m-%d %H:%M:%S")
+        """
+        Cron harian — digantikan oleh endpoint-endpoint baru:
+          - payment_reminder_monday  → POST /notifications/cron/payment-reminder-monday
+          - reminder_upload_docs_h3  → belum ada cron khusus, TODO
+          - reminder_exam_1hour      → belum ada cron khusus, TODO
+          - selection_reminder_*     → dihapus, tidak ada padanan di spec baru
 
-        # Payment reminders
-        payment_apps = self.repository.get_applicants_for_payment_reminder(
-            now_wib_str, tomorrow_wib_str
-        )
-        for app in payment_apps:
-            send_notification(
-                "payment_reminder_day7",
-                app.user_id,
-                {"batas_waktu_bayar": tomorrow_wib_str},
-            )
-
-        # Document reminders
-        doc_apps = self.repository.get_applicants_for_document_reminder()
-        for app, wave in doc_apps:
-            end_date = wave.document_upload_end_date
-            if not end_date:
-                continue
-
-            if isinstance(end_date, str):
-                try:
-                    end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S").date()
-                except ValueError:
-                    end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
-            elif isinstance(end_date, datetime):
-                end_date = end_date.date()
-
-            days_left = (end_date - now_wib.date()).days
-            if days_left == 3:
-                send_notification("document_reminder_3days", app.user_id, {})
-            elif days_left == 1:
-                send_notification("document_reminder_1day", app.user_id, {})
-
-        # Selection reminders
-        sel_apps = self.repository.get_applicants_for_selection_reminder()
-        for app, wave in sel_apps:
-            sel_date = wave.selection_date
-            if not sel_date:
-                continue
-
-            if isinstance(sel_date, str):
-                try:
-                    sel_date = datetime.strptime(sel_date, "%Y-%m-%d %H:%M:%S").date()
-                except ValueError:
-                    sel_date = datetime.strptime(sel_date, "%Y-%m-%d").date()
-            elif isinstance(sel_date, datetime):
-                sel_date = sel_date.date()
-
-            days_left = (sel_date - now_wib.date()).days
-            if days_left == 5:
-                send_notification("selection_reminder_5days", app.user_id, {})
-            elif days_left == 1:
-                send_notification("selection_reminder_1day", app.user_id, {})
-
-        return {"success": True}
+        Fungsi ini dipertahankan agar endpoint cron lama tidak error 500,
+        tapi tidak mengirim notifikasi apapun lagi — semua sudah dipindah ke
+        endpoint baru yang lebih granular.
+        """
+        return {
+            "success": True,
+            "migrated": True,
+            "message": "Reminder system migrated to new endpoints",
+        }
 
     # -------------------------------------------------------------------------
     # MOU

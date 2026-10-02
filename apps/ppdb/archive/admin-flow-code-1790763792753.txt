@@ -1,0 +1,55 @@
+[MONITORING LIST PENDAFTAR MASUK]
+       │
+       ├────────────────────────────────────────────────────────────────────────┐
+       ▼                                                                        ▼
+[1. VERIFIKASI DOKUMEN GRANULAR]                                       [MONITORING PEMBAYARAN]
+(Cek per-dokumen: KK, NISN, Foto, Medcheck, dll)                        (Status Pak Kasir: Formulir
+       │                                                                 & Pembayaran Tahap 2)
+       ├──────────────────────────┐                                             │
+       ▼ (Semua Dokumen Valid)    ▼ (Ada Dokumen Salah/Blur)                    │
+[APPROVE SELURUHNYA]       [REJECT DOKUMEN SPESIFIK]                            │
+       │                   (Centang file yang salah + Isi Catatan)              │
+       │                          │                                             │
+       │                          ▼                                             │
+       │                   [AUTO NOTIF WA: SURUH RE-UPLOAD FILE SPESIFIK]       │
+       │                          │                                             │
+       │                          └─────────► (User Re-upload)                  ┤
+       │                                                                        │
+       ▼                                                                        │
+[2. INPUT / REKAP NILAI TES TIU]                                                │
+(Admin input / rekap hasil nilai ujian tulis dari GForm/Sistem)                 │
+       │                                                                        │
+       ▼                                                                        │
+[3. EXECUTE UJIAN TAHFIDZ (TAKE SESSION)]                                       │
+(Khusus pendaftar Tahfidz -> Penguji Buka Slot -> Input Nilai Tahfidz)          │
+       │                                                                        │
+       ▼                                                                        │
+[4. EXECUTE WAWANCARA (TAKE SESSION)]                                           │
+(Semua pendaftar -> Interviewer Buka Slot -> Cek Online/Offline -> Input Nilai) │
+       │                                                                        │
+       ▼                                                                        │
+[5. SISTEM AUTO-GENERATE DOKUMEN TRANSKRIP HASIL SELEKSI (PDF)]                 │
+(Kumpulan Nilai Berkas + Nilai Ujian TIU/Tahfidz + Nilai Wawancara)             │
+       │                                                                        │
+       ▼                                                                        │
+[6. KEPUTUSAN FINAL (LULUS / TIDAK LULUS)]                                      │
+       │                                                                        │
+       ├──────────────────────────┐                                             │
+       ▼ (TIDAK LULUS)            ▼ (LULUS)                                     │
+[SET TIDAK LULUS]          [SET LULUS]                                          │
+(Auto WA Notif +           (Auto WA Notif + Link Transkrip                      │
+ Link Transkrip PDF)        + Form TTD MOU In-App)                              │
+                                  │                                             │
+                                  ▼                                             │
+                           [7. MONITORING TTD MOU IN-APP & BAYAR TAHAP 2] ◄─────┘
+                           (Pendaftar TTD di Canvas Dashboard & Bayar Pak Kasir)
+                                  │
+                                  ▼ (LUNAS / MINIMUM DP TAHAP 2 MASUK)
+                           [8. GENERATE NO. REGISTRASI & SURAT KETERANGAN DITERIMA (SKD)]
+                           (Sistem Auto-Generate SKD / Sertifikat Kelulusan)
+                                  │
+                                  ▼
+                           [KIRIM WA NOTIFIKASI REVIEW & DOWNLOAD SKD]
+                                  │
+                                  ▼
+                              (SELESAI)

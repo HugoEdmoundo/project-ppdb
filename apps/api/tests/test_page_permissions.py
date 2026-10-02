@@ -98,7 +98,7 @@ def restricted_user(client: TestClient) -> Generator[str, None, None]:
 
 
 def test_seed_exposes_canonical_page_keys(client: TestClient) -> None:
-    admin = _login(client, "superadmin", "Admin123!")
+    admin = _login(client, "superadmin", "SuperAdmin123!.")
     assert admin["user"]["is_superadmin"] is True
 
     keys = set(_page_ids_by_key(client))
@@ -116,7 +116,7 @@ def test_events_endpoint_requires_auth() -> None:
 def test_page_permissions_roundtrip_and_key_contract(
     client: TestClient, restricted_user: str
 ) -> None:
-    _login(client, "superadmin", "Admin123!")
+    _login(client, "superadmin", "SuperAdmin123!.")
     page_ids = _page_ids_by_key(client)
     picked = [page_ids["dashboard"], page_ids["periods"], page_ids["applicants"]]
 
@@ -145,7 +145,7 @@ def test_page_permissions_roundtrip_and_key_contract(
     assert sorted(resp.json()["page_permissions"]) == EXPECTED_KEYS
 
     # clearing the allow-list restores full access (empty array)
-    _login(client, "superadmin", "Admin123!")
+    _login(client, "superadmin", "SuperAdmin123!.")
     resp = client.put(
         f"/users/{restricted_user}/page-permissions", json={"page_ids": []}
     )

@@ -1,0 +1,56 @@
+[ADMIN KEUANGAN]                                   [ADMIN VERIFIKATOR / PENGUJI]
+          │                                                  │
+[MONITORING PEMBAYARAN FORMULIR]                   [1. VERIFIKASI DOKUMEN 1 MODUL]
+(Status Pak Kasir via Webhook)                     (Cek Dokumen Wajib & Tambahan sekaligus dlm 1 layar)
+Pendaftar belum bayar menerima pengingat setiap Senin sampai gelombang ditutup.
+Saat kuota tercapai, tagihan formulir pending dibatalkan dan pendaftar diberi info gelombang berikutnya.
+          │                                                  │
+          │                                                  ├─────────────┐
+          │                                                  ▼             ▼
+          │                                        [APPROVE SEMUA]   [REJECT DOKUMEN SPESIFIK] -> [AUTO NOTIF WA]
+          │                                                  │
+          │                                                  ▼
+          │                                        [2. MONITOR HASIL TIU OTOMATIS]
+          │                                        (Soal disinkronkan dari Google Form melalui
+          │                                         Apps Script tanpa publish manual; hasil nilai masuk
+          │                                         real-time ke sistem lewat webhook Apps Script.
+          │                                         Sistem menyimpan hasil dan kirim notifikasi WA;
+          │                                         admin tidak input nilai TIU manual.)
+          │                                                  │
+          │                                                  ▼
+          │                                        [3. EXECUTE UJIAN TAHFIDZ]
+          │                                        (Penguji input nilai Tahfidz agar Pendaftar
+          │                                         bisa membuka jadwal Take Session Wawancara)
+          │                                                  │
+          │                                                  ▼
+          │                                        [4. EXECUTE WAWANCARA]
+          │                                        (Interviewer input Nilai Wawancara)
+          │                                                  │
+          │                                                  ▼
+          │                                        [5. SISTEM AUTO-GENERATE DOKUMEN TRANSKRIP]
+          │                                                  │
+          │                                                  ▼
+          │                                        [6. KEPUTUSAN FINAL (LULUS / TIDAK LULUS)]
+          │                                                  │
+          │                                                  ├──────────────────────────┐
+          │                                                  ▼ (TIDAK LULUS)            ▼ (LULUS)
+          │                                            [SET TIDAK LULUS]         [GENERATE LoA]
+          │                                                                             │
+          ▼                                                                             ▼
+[7. MONITORING PEMBAYARAN TAHAP 2 & CICILAN] ◄──────────────────────────────────────────┘
+(Cek masuknya DP via Pak Kasir)
+(Pantau alur tagihan cicilan yang dipilih Pendaftar)
+          │
+          ▼ (JIKA DP MASUK & PEMBAYARAN TAHAP 2 CLEAR)
+[8. SISTEM TAMPILKAN LINK GROUP WA & SKD KE PENDAFTAR]
+          │
+          ▼
+[KIRIM WA NOTIFIKASI INFO BERHASIL, TAGIHAN AKTIF, & LINK WA GROUP]
+
+PENANGANAN ADMIN UNTUK PENGECUALIAN
+- Webhook pembayaran duplikat tidak boleh menggandakan transaksi atau hitungan kuota.
+- Pembayaran sukses yang terlambat setelah tagihan dibatalkan karena kuota penuh ditandai untuk pemeriksaan admin; jangan pindahkan pendaftar otomatis.
+- Jika sinkronisasi soal gagal/tidak didukung, paket soal valid terakhir tetap digunakan dan admin mendapat pesan kesalahan. Tidak ada tahap publish manual.
+- Dashboard konfigurasi menampilkan status dan waktu sinkronisasi terakhir agar admin tahu apakah perubahan Google Form sudah masuk.
+- Jika peserta melaporkan koneksi putus, cari attempt aktifnya. Jawaban otomatis tersimpan di server; setelah koneksi pulih peserta resume attempt yang sama melalui SEB dan jawaban tersimpan dipulihkan. Jangan membuat attempt tambahan atau mengubah nilai diam-diam. Timer tetap berjalan.
+- Arsip/dossier serta unduhan hanya untuk admin dengan izin khusus; akses sensitif harus dapat diaudit.

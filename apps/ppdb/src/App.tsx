@@ -15,15 +15,14 @@ import RegisterPage from './pages/public/RegisterPage'
 import CheckoutPage from './pages/applicant/CheckoutPage'
 import ApplicantDashboardPage from './pages/applicant/DashboardPage'
 import ExamCardPage from './pages/applicant/ExamCardPage'
-import PaymentsPage from './pages/admin/ppdb/PaymentsPage'
 import NotificationsPage from './pages/admin/notifications/NotificationsPage'
-import ApplicantsPage from './pages/admin/ppdb/ApplicantsPage'
 import DataPendaftarPage from './pages/admin/ppdb/DataPendaftarPage'
 import AdminProfilePage from './pages/admin/ProfilePage'
 import SelectionPage from './pages/admin/ppdb/SelectionPage'
 import MouPage from './pages/admin/ppdb/MouPage'
 import DiskonasiPage from './pages/admin/ppdb/DiskonasiPage'
-import Stage2PaymentsPage from './pages/admin/ppdb/Stage2PaymentsPage'
+import DocumentSettingsPage from './pages/admin/ppdb/DocumentSettingsPage'
+import TIUSettingsPage from './pages/admin/ppdb/TIUSettingsPage'
 import * as api from './api/client'
 
 export default function App() {
@@ -51,21 +50,20 @@ export default function App() {
             <Route path="/globe" element={<GlobeDemoPage />} />
             <Route path="/auth/login" element={<LoginPage />} />
 
-            {/* Alias: /applicant/login → /auth/login — untuk user yang salah ketik URL */}
+            {/* Alias: /applicant/login -> /auth/login untuk user yang salah ketik URL */}
             <Route path="/applicant/login" element={<Navigate to="/auth/login" replace />} />
 
             <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout><Outlet /></AdminLayout></ProtectedRoute>}>
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="data-pendaftar" element={<DataPendaftarPage />} />
-              <Route path="applicants" element={<ApplicantsPage />} />
               <Route path="periods" element={<PeriodsPage />} />
-              <Route path="payments" element={<PaymentsPage />} />
+              <Route path="document-settings" element={<DocumentSettingsPage />} />
+              <Route path="tiu-settings" element={<TIUSettingsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="selection" element={<SelectionPage />} />
               <Route path="mou" element={<MouPage />} />
               <Route path="diskonasi" element={<DiskonasiPage />} />
-              <Route path="stage2-pembayaran" element={<Stage2PaymentsPage />} />
               <Route path="profile" element={<AdminProfilePage />} />
             </Route>
 
@@ -73,7 +71,6 @@ export default function App() {
 
             <Route path="/applicant" element={<ProtectedRoute role="applicant" requirePaid={true}><ApplicantDashboardPage /></ProtectedRoute>} />
             <Route path="/applicant/kartu-ujian" element={<ProtectedRoute role="applicant" requirePaid={true}><ExamCardPage /></ProtectedRoute>} />
-
 
             <Route path="/403" element={<ForbiddenPage />} />
             <Route path="*" element={<NotFoundPage />} />

@@ -1,763 +1,164 @@
-﻿> ⚠️ **OBSOLETE — DO NOT USE**
->
-> Dokumen versi **lama** untuk PPDB. Seluruh flow, model data, dan arsitektur sudah diganti (rebuild dari nol: Periode → Gelombang).
-> **JANGAN dipakai.** Baca dokumentasi terbaru di `ppdb/README.md`, `ppdb/PRD.md`, `ppdb/FLOW.md`, `ppdb/ERD.md`, `ppdb/plan/PLAN.md`.
-
-# ERD Sistem PPDB Terintegrasi Pesantren / Sekolah
-
-## 1. MASTER USER & AUTHENTICATION
-
-### users
-
-| Field         | Type      |
-| ------------- | --------- |
-| id            | bigint PK |
-| username      | varchar   |
-| email         | varchar   |
-| password_hash | varchar   |
-| is_active     | boolean   |
-| last_login_at | datetime  |
-| created_at    | datetime  |
-| updated_at    | datetime  |
-
-### roles
-
-| Field       | Type      |
-| ----------- | --------- |
-| id          | bigint PK |
-| name        | varchar   |
-| description | text      |
-
-### user_roles
-
-| Field   | Type      |
-| ------- | --------- |
-| id      | bigint PK |
-| user_id | FK users  |
-| role_id | FK roles  |
-
-### refresh_tokens
-
-| Field      | Type      |
-| ---------- | --------- |
-| id         | bigint PK |
-| user_id    | FK users  |
-| token      |           |
-| expired_at |           |
-| revoked_at |           |
-
----
-
-# 2. PERIODE PPDB
-
-### ppdb_periods
-*(Catatan: Sistem didesain agar hanya ada maksimal 1 periode dengan status = 'active' pada satu waktu. Saat sebuah periode diaktifkan, periode lain otomatis non-aktif. Data di Dashboard dan tabel-tabel utama secara default akan merujuk pada periode yang berstatus 'active' ini).*
-
-| Field      |
-| ---------- |
-| id PK      |
-| name       |
-| year       |
-| start_date |
-| end_date   |
-| status     |
-| created_by |
-
-### ppdb_waves
-
-| Field                  |
-| ---------------------- |
-| id PK                  |
-| period_id FK           |
-| name                   |
-| start_date             |
-| end_date               |
-| quota                  |
-| waiting_list_enabled   |
-| auto_move_next_wave    |
-| default_discount_type  |
-| default_discount_value |
-| status                 |
-
----
-
-# 3. MASTER JENJANG
-
-### education_levels
-
-| Field       |
-| ----------- |
-| id PK       |
-| code        |
-| name        |
-| description |
-
-Contoh:
-
-* SMP
-* SMA
-* SMK
-* Pesantren Tahfidz
-
----
-
-# 4. MASTER KATEGORI PENDAFTARAN
-
-### registration_categories
-
-| Field       |
-| ----------- |
-| id PK       |
-| code        |
-| name        |
-| description |
-
-Contoh:
-
-* Reguler
-* Prestasi
-* Tahfidz
-* Beasiswa
-
----
-
-# 5. FLOW SELEKSI DINAMIS
-
-### selection_flows
-
-| Field       |
-| ----------- |
-| id PK       |
-| name        |
-| description |
-| is_active   |
-
-### selection_flow_steps
-
-| Field       |
-| ----------- |
-| id PK       |
-| flow_id FK  |
-| sequence    |
-| code        |
-| name        |
-| step_type   |
-| is_required |
-
-Contoh:
-
-1. Pembayaran
-2. Dokumen
-3. Tes Akademik
-4. Psikotes
-5. MOU
-6. Pembayaran Akhir
-
----
-
-# 6. KONFIGURASI GELOMBANG
-
-### wave_configurations
-
-| Field               |
-| ------------------- |
-| id PK               |
-| wave_id FK          |
-| level_id FK         |
-| category_id FK      |
-| flow_id FK          |
-| payment_stage_count |
-| quota               |
-| status              |
-
----
-
-# 7. CALON PESERTA
-
-### applicants
-
-| Field               |
-| ------------------- |
-| id PK               |
-| user_id FK          |
-| registration_number |
-| period_id FK        |
-| wave_id FK          |
-| level_id FK         |
-| category_id FK      |
-| current_status      |
-| registration_date   |
-| is_waiting_list     |
-
----
-
-# 8. DATA PRIBADI PESERTA
-
-### applicant_profiles
-
-| Field              |
-| ------------------ |
-| applicant_id PK FK |
-| full_name          |
-| gender             |
-| birth_place        |
-| birth_date         |
-| religion           |
-| phone              |
-| email              |
-| address            |
-| province           |
-| city               |
-| district           |
-| village            |
-| postal_code        |
-
----
-
-# 9. DATA ORANG TUA
-
-### applicant_parents
-
-| Field           |
-| --------------- |
-| id PK           |
-| applicant_id FK |
-| parent_type     |
-| full_name       |
-| phone           |
-| occupation      |
-| income          |
-| address         |
-
-parent_type:
-
-* father
-* mother
-* guardian
-
----
-
-# 10. STATUS HISTORY
-
-### applicant_status_histories
-
-| Field           |
-| --------------- |
-| id PK           |
-| applicant_id FK |
-| old_status      |
-| new_status      |
-| changed_by      |
-| notes           |
-| created_at      |
-
----
-
-# 11. MASTER DOKUMEN
-
-### document_requirements
-
-| Field         |
-| ------------- |
-| id PK         |
-| level_id FK   |
-| code          |
-| name          |
-| is_required   |
-| max_file_size |
-
----
-
-# 12. DOKUMEN PESERTA
-
-### applicant_documents
-
-| Field                      |
-| -------------------------- |
-| id PK                      |
-| applicant_id FK            |
-| document_requirement_id FK |
-| file_url                   |
-| status                     |
-| review_notes               |
-| reviewed_by                |
-| reviewed_at                |
-
-status:
-
-* pending
-* approved
-* rejected
-* revision
-
----
-
-# 13. MASTER TES
-
-### test_types
-
-| Field       |
-| ----------- |
-| id PK       |
-| code        |
-| name        |
-| description |
-
-Contoh:
-
-* Akademik
-* Hafalan
-* Baca Quran
-* Psikotes
-* Interview
-
----
-
-# 14. PARAMETER TES
-
-### test_parameters
-
-| Field           |
-| --------------- |
-| id PK           |
-| test_type_id FK |
-| parameter_name  |
-| max_score       |
-| weight          |
-
----
-
-# 15. SESI TES
-
-### test_sessions
-
-| Field           |
-| --------------- |
-| id PK           |
-| test_type_id FK |
-| session_name    |
-| test_date       |
-| start_time      |
-| end_time        |
-| location        |
-| capacity        |
-
----
-
-# 16. PENUGASAN PESERTA TES
-
-### applicant_test_sessions
-
-| Field           |
-| --------------- |
-| id PK           |
-| applicant_id FK |
-| session_id FK   |
-| assigned_by     |
-| assigned_at     |
-
----
-
-# 17. HASIL TES
-
-### applicant_test_results
-
-| Field           |
-| --------------- |
-| id PK           |
-| applicant_id FK |
-| test_type_id FK |
-| total_score     |
-| recommendation  |
-| evaluator_id    |
-| evaluated_at    |
-
----
-
-# 18. DETAIL NILAI TES
-
-### applicant_test_scores
-
-| Field           |
-| --------------- |
-| id PK           |
-| result_id FK    |
-| parameter_id FK |
-| score           |
-
----
-
-# 19. RULE KELULUSAN
-
-### graduation_rules
-
-| Field         |
-| ------------- |
-| id PK         |
-| wave_id FK    |
-| mode          |
-| minimum_score |
-| created_by    |
-
-mode:
-
-* manual
-* automatic
-* hybrid
-
----
-
-# 20. HASIL KELULUSAN
-
-### applicant_graduations
-
-| Field           |
-| --------------- |
-| id PK           |
-| applicant_id FK |
-| final_score     |
-| recommendation  |
-| decision        |
-| approved_by     |
-| approved_at     |
-
----
-
-# 21. DISKON
-
-### discounts
-
-| Field         |
-| ------------- |
-| id PK         |
-| name          |
-| discount_type |
-| value         |
-| description   |
-
----
-
-# 22. DISKON PESERTA
-
-### applicant_discounts
-
-| Field           |
-| --------------- |
-| id PK           |
-| applicant_id FK |
-| discount_id FK  |
-| granted_by      |
-| notes           |
-
----
-
-# 23. TAHAP PEMBAYARAN
-
-### payment_stages
-
-| Field        |
-| ------------ |
-| id PK        |
-| wave_id FK   |
-| stage_number |
-| stage_name   |
-| amount       |
-| due_days     |
-
----
-
-# 24. INVOICE
-
-### invoices
-
-| Field               |
-| ------------------- |
-| id PK               |
-| applicant_id FK     |
-| payment_stage_id FK |
-| invoice_number      |
-| amount              |
-| discount_amount     |
-| final_amount        |
-| due_date            |
-| status              |
-
----
-
-# 25. TRANSAKSI PEMBAYARAN
-
-### payment_transactions
-
-| Field             |
-| ----------------- |
-| id PK             |
-| invoice_id FK     |
-| gateway_reference |
-| payment_method    |
-| amount            |
-| status            |
-| paid_at           |
-| raw_response_json |
-
----
-
-# 26. CICILAN
-
-### installment_plans
-
-| Field           |
-| --------------- |
-| id PK           |
-| applicant_id FK |
-| total_amount    |
-| tenor           |
-| start_date      |
-| end_date        |
-
----
-
-# 27. DETAIL CICILAN
-
-### installment_schedules
-
-| Field              |
-| ------------------ |
-| id PK              |
-| plan_id FK         |
-| installment_number |
-| amount             |
-| due_date           |
-| status             |
-
----
-
-# 28. MOU
-
-### mou_templates
-
-| Field         |
-| ------------- |
-| id PK         |
-| name          |
-| template_file |
-| version       |
-
-### applicant_mous
-
-| Field           |
-| --------------- |
-| id PK           |
-| applicant_id FK |
-| template_id FK  |
-| generated_file  |
-| uploaded_file   |
-| status          |
-| review_notes    |
-| approved_by     |
-
----
-
-# 29. SURAT PENERIMAAN
-
-### acceptance_letters
-
-| Field           |
-| --------------- |
-| id PK           |
-| applicant_id FK |
-| document_number |
-| file_url        |
-| generated_at    |
-
----
-
-# 30. REGISTRASI ULANG
-
-### re_registrations
-
-| Field           |
-| --------------- |
-| id PK           |
-| applicant_id FK |
-| schedule_date   |
-| attended_at     |
-| status          |
-
----
-
-# 31. MPLS
-
-### mpls_schedules
-
-| Field       |
-| ----------- |
-| id PK       |
-| title       |
-| start_date  |
-| end_date    |
-| description |
-
-### applicant_mpls
-
-| Field               |
-| ------------------- |
-| id PK               |
-| applicant_id FK     |
-| mpls_schedule_id FK |
-
----
-
-# 32. KALENDER AKADEMIK
-
-### academic_calendars
-
-| Field       |
-| ----------- |
-| id PK       |
-| title       |
-| description |
-| start_date  |
-| end_date    |
-
----
-
-# 33. NOTIFIKASI
-
-### notifications
-
-| Field           |
-| --------------- |
-| id PK           |
-| applicant_id FK |
-| channel         |
-| subject         |
-| content         |
-| status          |
-| sent_at         |
-
-channel:
-
-* email
-* whatsapp
-
----
-
-# 34. TEMPLATE NOTIFIKASI
-
-### notification_templates
-
-| Field   |
-| ------- |
-| id PK   |
-| code    |
-| channel |
-| title   |
-| body    |
-
----
-
-# 35. FILE STORAGE
-
-### file_uploads
-
-| Field       |
-| ----------- |
-| id PK       |
-| owner_type  |
-| owner_id    |
-| file_name   |
-| file_path   |
-| mime_type   |
-| file_size   |
-| uploaded_by |
-
----
-
-# 36. AUDIT TRAIL
-
-### audit_logs
-
-| Field         |
-| ------------- |
-| id PK         |
-| user_id FK    |
-| role_name     |
-| module        |
-| action        |
-| entity_name   |
-| entity_id     |
-| old_data_json |
-| new_data_json |
-| ip_address    |
-| user_agent    |
-| created_at    |
-
----
-
-# 37. DASHBOARD SNAPSHOT
-
-### dashboard_statistics
-
-| Field        |
-| ------------ |
-| id PK        |
-| period_id FK |
-| metric_name  |
-| metric_value |
-| generated_at |
-
----
-
-# RELATIONSHIP SUMMARY
-
-users
-â†’ applicants
-
-roles
-â†’ user_roles
-
-ppdb_periods
-â†’ ppdb_waves
-
-ppdb_waves
-â†’ wave_configurations
-â†’ payment_stages
-
-education_levels
-â†’ wave_configurations
-
-registration_categories
-â†’ wave_configurations
-
-selection_flows
-â†’ selection_flow_steps
-
-applicants
-â†’ applicant_profiles
-â†’ applicant_parents
-â†’ applicant_documents
-â†’ applicant_test_results
-â†’ invoices
-â†’ applicant_discounts
-â†’ applicant_mous
-â†’ acceptance_letters
-â†’ re_registrations
-â†’ installment_plans
-â†’ notifications
-â†’ applicant_status_histories
-
-test_types
-â†’ test_parameters
-â†’ test_sessions
-
-applicant_test_results
-â†’ applicant_test_scores
-
-installment_plans
-â†’ installment_schedules
-
-invoices
-â†’ payment_transactions
-
-users
-â†’ audit_logs
+# ERD — PPDB Database Schema (Periods & Waves)
+
+Language: English (technical) · Business rules: see [`PRD.md`](../PRD.md)
+
+> Scope of this iteration: only **`ppdb_periods`** and **`ppdb_waves`**.
+> All other PPDB tables from the legacy schema are **dropped** and will be re-added in later iterations.
+
+## Conventions
+
+- Engine: `InnoDB`, charset `utf8mb4`, collation `utf8mb4_unicode_ci`.
+- All PKs are `VARCHAR(36)` (UUID).
+- Timestamps: `DATETIME(3)`, `NOT NULL` (`created_at`, `updated_at`).
+- Status column: `VARCHAR(20)`, values only `active` | `inactive`, default `'inactive'`.
+  - "Only one active" is **enforced at the application layer** (transaction), not by DB constraint.
+
+## Table: ppdb_periods
+
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `id` | VARCHAR(36) | NO | | PK |
+| `name` | VARCHAR(200) | NO | | e.g. `PPDB 2026/2027` |
+| `academic_year` | VARCHAR(20) | NO | | e.g. `2026/2027` |
+| `status` | VARCHAR(20) | NO | `'inactive'` | `active,inactive` |
+| `description` | TEXT | YES | NULL | |
+| `created_by` | VARCHAR(36) | YES | NULL | FK → users.id, ON DELETE SET NULL |
+| `created_at` | DATETIME(3) | NO | | |
+| `updated_at` | DATETIME(3) | NO | | |
+
+Indexes:
+- PK `id`
+- KEY `idx_ppdb_periods_status (status)`
+- CONSTRAINT FK `created_by` → `users(id)` ON DELETE SET NULL
+
+```sql
+CREATE TABLE IF NOT EXISTS ppdb_periods (
+    id VARCHAR(36) NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    academic_year VARCHAR(20) NOT NULL COMMENT 'e.g. 2026/2027',
+    status VARCHAR(20) DEFAULT 'inactive' COMMENT 'active,inactive',
+    description TEXT NULL,
+    created_by VARCHAR(36) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_ppdb_periods_status (status),
+    CONSTRAINT fk_ppdb_periods_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+## Table: ppdb_waves
+
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `id` | VARCHAR(36) | NO | | PK |
+| `period_id` | VARCHAR(36) | NO | | FK → ppdb_periods.id, ON DELETE CASCADE |
+| `name` | VARCHAR(200) | NO | | e.g. `Gelombang 1` |
+| `wave_number` | INT | NO | | auto = max+1 within period |
+| `registration_start_date` | DATE | NO | | |
+| `registration_end_date` | DATE | NO | | |
+| `document_upload_end_date` | DATE | NO | | |
+| `selection_date` | DATE | NO | | |
+| `quota` | INT | NO | | |
+| `status` | VARCHAR(20) | NO | `'inactive'` | `active,inactive` |
+| `created_by` | VARCHAR(36) | YES | NULL | FK → users.id, ON DELETE SET NULL |
+| `created_at` | DATETIME(3) | NO | | |
+| `updated_at` | DATETIME(3) | NO | | |
+
+Indexes:
+- PK `id`
+- UNIQUE `uk_ppdb_waves_period_number (period_id, wave_number)`
+- KEY `idx_ppdb_waves_status (status)`
+- CONSTRAINT FK `period_id` → `ppdb_periods(id)` ON DELETE CASCADE
+- CONSTRAINT FK `created_by` → `users(id)` ON DELETE SET NULL
+
+```sql
+CREATE TABLE IF NOT EXISTS ppdb_waves (
+    id VARCHAR(36) NOT NULL,
+    period_id VARCHAR(36) NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    wave_number INT NOT NULL,
+    registration_start_date DATE NOT NULL,
+    registration_end_date DATE NOT NULL,
+    document_upload_end_date DATE NOT NULL,
+    selection_date DATE NOT NULL,
+    quota INT NOT NULL,
+    status VARCHAR(20) DEFAULT 'inactive' COMMENT 'active,inactive',
+    created_by VARCHAR(36) NULL,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_ppdb_waves_period_number (period_id, wave_number),
+    KEY idx_ppdb_waves_status (status),
+    CONSTRAINT fk_ppdb_waves_period FOREIGN KEY (period_id) REFERENCES ppdb_periods(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ppdb_waves_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+## Relationships
+
+```
+users 1 ──── 0..* ppdb_periods   (created_by, SET NULL)
+users 1 ──── 0..* ppdb_waves     (created_by, SET NULL)
+ppdb_periods 1 ──── 0..* ppdb_waves  (period_id, CASCADE)
+```
+
+- Deleting a period cascades to all its waves.
+- `wave_number` uniqueness is scoped per period (`UNIQUE(period_id, wave_number)`); calculated by app as `MAX(wave_number)+1` within the period.
+
+## Table: ppdb_applicants
+
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `id` | VARCHAR(36) | NO | | PK |
+| `wave_id` | VARCHAR(36) | NO | | FK → ppdb_waves.id |
+| `user_id` | VARCHAR(36) | NO | | FK → users.id |
+| `full_name` | VARCHAR(255) | NO | | |
+| `email` | VARCHAR(100) | NO | | |
+| `phone` | VARCHAR(20) | NO | | |
+| `registration_path` | VARCHAR(50) | NO | | `reguler`, `pindahan` |
+| `registration_level` | VARCHAR(50) | NO | | e.g. `SMP Kelas 7`, `SMA Kelas 10` |
+| `birth_place` | VARCHAR(100) | YES | NULL | |
+| `birth_date` | DATE | YES | NULL | |
+| `gender` | VARCHAR(10) | YES | NULL | `L` or `P` |
+| `nisn` | VARCHAR(50) | YES | NULL | |
+| `nik` | VARCHAR(50) | YES | NULL | |
+| `parent_name` | VARCHAR(255) | YES | NULL | |
+| `previous_school` | VARCHAR(255) | YES | NULL | |
+| `major_choice` | VARCHAR(100) | YES | NULL | |
+| `address` | TEXT | YES | NULL | |
+| `status` | VARCHAR(20) | NO | `'pending_payment'` | `pending_payment, paid, document_upload, document_verified, selection, passed, failed, expired` |
+| `created_at` | DATETIME(3) | NO | | |
+| `updated_at` | DATETIME(3) | NO | | |
+
+```sql
+CREATE TABLE IF NOT EXISTS ppdb_applicants (
+    id VARCHAR(36) NOT NULL,
+    wave_id VARCHAR(36) NOT NULL,
+    user_id VARCHAR(36) NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    registration_path VARCHAR(50) NOT NULL,
+    registration_level VARCHAR(50) NOT NULL,
+    birth_place VARCHAR(100) NULL,
+    birth_date DATE NULL,
+    gender VARCHAR(10) NULL,
+    nisn VARCHAR(50) NULL,
+    nik VARCHAR(50) NULL,
+    parent_name VARCHAR(255) NULL,
+    previous_school VARCHAR(255) NULL,
+    major_choice VARCHAR(100) NULL,
+    address TEXT NULL,
+    status VARCHAR(50) DEFAULT 'pending_payment',
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_ppdb_applicants_wave FOREIGN KEY (wave_id) REFERENCES ppdb_waves(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ppdb_applicants_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+## Not in this iteration
+
+Tables previously present in the legacy PPDB schema are **dropped**. They will be re-designed and re-added in future iterations.

@@ -1,25 +1,23 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, ListTree, Star, ArrowRight, Activity, Users } from 'lucide-react'
+import { CalendarDays, ListTree, ArrowRight, Activity, Users } from 'lucide-react'
 import { Button } from "@/components/ui"
 import { TabsTrigger } from "@/components/ui"
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/api/client'
 import SelectionSessions from './components/SelectionSessions'
 import SelectionCategories from './components/SelectionCategories'
-import SelectionResults from './components/SelectionResults'
 import PageHeaderCard from '@/components/shared/PageHeaderCard'
 import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
 import TabsBarCard from '@/components/shared/TabsBarCard'
 
 const TAB_LABELS: Record<string, string> = {
   sesi: 'Jadwal Sesi',
-  kategori: 'Struktur Penilaian',
-  nilai: 'Penilai & Status',
+  kategori: 'Struktur Penilaian'
 }
 
 export default function SelectionPage() {
-  const [activeTab, setActiveTab] = useState<'sesi' | 'kategori' | 'nilai'>('sesi')
+  const [activeTab, setActiveTab] = useState<'sesi' | 'kategori'>('sesi')
 
   const activeWaveQuery = useQuery({
     queryKey: ['waves-active'],
@@ -36,7 +34,7 @@ export default function SelectionPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeaderCard
         title="Seleksi"
-        description="Kelola sesi ujian (booking), kriteria penilaian, dan input nilai peserta."
+        description="Kelola sesi ujian (booking) dan kriteria penilaian."
         loading={wavesLoading}
         action={
           <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
@@ -58,9 +56,6 @@ export default function SelectionPage() {
         <TabsTrigger value="kategori" className="flex-1 rounded-full text-xs sm:text-sm">
           <ListTree className="h-4 w-4 mr-1.5" /> Struktur Penilaian
         </TabsTrigger>
-        <TabsTrigger value="nilai" className="flex-1 rounded-full text-xs sm:text-sm">
-          <Star className="h-4 w-4 mr-1.5" /> Penilai & Status
-        </TabsTrigger>
       </TabsBarCard>
 
       {!wavesLoading && !activeWave && (
@@ -70,7 +65,6 @@ export default function SelectionPage() {
       {/* Tab Content */}
       {activeTab === 'sesi' && <SelectionSessions />}
       {activeTab === 'kategori' && <SelectionCategories />}
-      {activeTab === 'nilai' && <SelectionResults />}
     </div>
   )
 }

@@ -85,6 +85,6 @@ export async function getMe() {
 }
 
 export async function logout() {
-  try { await fetchWithFallback(`${API_BASE}/auth/logout`, { method: 'POST', body: JSON.stringify({}) }) } catch (e) { void e }
+  try { await fetchWithFallback(`${API_BASE}/auth/logout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }) } catch (e) { void e }
   clearAuth()
 }

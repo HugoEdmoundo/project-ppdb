@@ -6,7 +6,7 @@ from uuid import uuid4
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
-from src.models.ppdb import PPDBApplicant, PPDBWave
+from src.models.ppdb import PPDBApplicant, PPDBWave, TIUResult
 from src.models.selection import (
     SelectionCategory,
     SelectionCriteria,
@@ -341,3 +341,7 @@ class SelectionRepository:
             SelectionSession.session_date == target_date,
         )
         return cast(Sequence[SelectionSession], self.db.scalars(stmt).all())
+
+    def get_tiu_result_by_applicant(self, applicant_id: str) -> TIUResult | None:
+        stmt = select(TIUResult).where(TIUResult.applicant_id == applicant_id)
+        return cast(TIUResult | None, self.db.execute(stmt).scalars().first())

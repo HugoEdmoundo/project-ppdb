@@ -1,0 +1,69 @@
+[1. AKSES WEBSITE & KLIK DAFTAR]
+       │
+       ▼
+[2. PILIH JALUR & ISI DATA AWAL]
+       │
+       ▼
+[3. SISTEM GENERATE KREDENSIAL] ──► (Kirim Notif WA: Username, Password, Link Login)
+       │
+       ▼
+[4. USER LOGIN KE APLIKASI/WEB]
+       │
+       ▼
+[5. PEMBAYARAN BIAYA FORMULIR (PAK KASIR)]
+       │ (Webhook otomatis lunas)
+       ▼
+[6. UNLOCK DASHBOARD: UPLOAD DOKUMEN]
+(Dokumen Wajib: NISN, KK, Akte Kelahiran, Medical Checkup, Pas Foto 3x4 / 4x6)
+       │
+       ├─────────────────────────────────────────────────┐
+       ▼                                                 ▼
+(Jalur Prestasi) = Min 3, Max 10 Sertifikat         (Jalur Tes/TIU) = Kartu Pelajar, Opsional SKL (Surat Keterangan Lulus) / Ijazah Terakhir.
+(Jalur Tahfidz)  = 1 Bukti Hafalan                  (Jalur Raport)  = 4 Raport Terakhir
+       │
+       ▼
+[7. ADMIN VERIFIKASI DOKUMEN (MANUAL)] ──► (REVISI/TIDAK VALID) ──► [NOTIF WA: UPLOAD ULANG]
+       │
+       ▼ (DOKUMEN VALID & APPROVED)
+[8. SISTEM BACA JALUR PENDAFTARAN]
+       │
+       ├───────────────────────────┬───────────────────────────┐
+       ▼ (Jalur Tes/TIU)           ▼ (Jalur Tahfidz)           ▼ (Jalur Prestasi / Raport)
+[9a. UJIAN TULIS ONLINE]      [9b. TAKE SESSION TAHFIDZ]    [9c. SKIP UJIAN]
+(Via GForm / Sistem web       (Pilih Jadwal Tes Muka/              │
+ fleksibel kapan aja)          Online dengan Penguji)              │
+       │                           │                               │
+       └───────────────────────────┴───────────────────────────────┘
+       │ (Semua berhak lanjut tanpa ada yang gugur)
+       ▼
+[10. TAKE SESSION WAWANCARA]
+(Semua pendaftar milih jadwal/slot wawancara yang tersedia)
+       │
+       ▼
+[11. WAWANCARA (ONLINE / OFFLINE SESUAI JADWAL YANG DI TAKE IT)]
+       │
+       ▼
+[12. ADMIN INPUT PENILAIAN AKHIR (PENGUMUMAN KELULUSAN)]
+       │
+       ├─────────────────────────────────────────┐
+       ▼ (TIDAK LULUS)                           ▼ (LULUS)
+[NOTIF: MOHON MAAF GAGAL]                 [13. SISTEM GENERATE MOU]
+       │                                  (Kop Surat Image + Teks GDocs + Data Dinamis)
+   (SELESAI)                                     │
+                                                 ▼
+                                          [14. TANDA TANGAN DIGITAL]
+                                          (Pendaftar TTD langsung di layar)
+                                                 │
+                                                 ▼
+                                          [15. GENERATE TAGIHAN TAHAP 2]
+                                          (Diskon Gelombang, SPP, Uang Gedung)
+                                                 │
+                                                 ▼
+                                          [16. PEMBAYARAN TAHAP 2 (PAK KASIR)]
+                                                 │
+                                                 ▼ (LUNAS / DP MASUK)
+                                          [17. GET NO. REGISTRASI & SURAT KETERANGAN DITERIMA (SKD)]
+                                          (Sistem Auto-Generate SKD / Sertifikat Kelulusan)
+                                                 │
+                                                 ▼
+                                             (SELESAI)

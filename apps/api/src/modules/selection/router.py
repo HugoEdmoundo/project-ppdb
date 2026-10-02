@@ -40,6 +40,7 @@ from src.modules.selection.schemas import (
     BroadcastSession,
     CategoryCreate,
     CriteriaCreate,
+    CriteriaUpdate,
     SessionCreate,
     SessionUpdate,
 )
@@ -145,6 +146,16 @@ def create_criteria(
     return svc.create_criteria(category_id, body)
 
 
+@router.put("/criteria/{criteria_id}")
+def update_criteria(
+    criteria_id: str,
+    body: CriteriaUpdate,
+    user: dict = Depends(require_ppdb_admin),
+    svc: SelectionService = Depends(get_selection_service),
+):
+    return svc.update_criteria(criteria_id, body)
+
+
 @router.delete("/categories/{id}")
 def delete_category(
     id: str,
@@ -163,11 +174,6 @@ def delete_criteria(
     return svc.delete_criteria(id)
 
 
-# ---------------------------------------------------------------------------
-# Results (Dynamic Scores)
-# ---------------------------------------------------------------------------
-
-
 @router.get("/results")
 def get_results(
     user: dict = Depends(require_ppdb_read),
@@ -180,7 +186,7 @@ def get_results(
     return {"data": data, "total": len(data), "active_wave": active_wave}
 
 
-@router.post("/results", status_code=200)
+@router.post("/results")
 def save_result(
     body: ApplicantScoreSave,
     user: dict = Depends(require_ppdb_admin),
@@ -189,8 +195,17 @@ def save_result(
     return svc.save_result(body)
 
 
-@router.put("/results/{applicant_id}/status")
-def update_applicant_status(
+@router.get("/results/{applicant_id}")
+def get_result_by_applicant(
+    applicant_id: str,
+    user: dict = Depends(require_ppdb_read),
+    svc: SelectionService = Depends(get_selection_service),
+):
+    return svc.get_result_by_applicant(applicant_id)
+
+
+@router.put("/applicants/{applicant_id}/status")
+def update_applicant_selection_status(
     applicant_id: str,
     body: ApplicantStatusUpdate,
     user: dict = Depends(require_ppdb_admin),

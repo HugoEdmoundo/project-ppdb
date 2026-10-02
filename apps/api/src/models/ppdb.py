@@ -5,6 +5,7 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     LargeBinary,
@@ -49,8 +50,12 @@ class PPDBWave(Base):
     document_upload_end_date: Mapped[date | None] = mapped_column(Date)
     selection_date: Mapped[date | None] = mapped_column(Date)
     quota: Mapped[int] = mapped_column(Integer, default=0)
+    early_discount_quota: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False
+    )
     registration_fee: Mapped[int] = mapped_column(BigInteger, default=0)
     second_stage_fee: Mapped[int] = mapped_column(BigInteger, default=0)
+    minimum_dp: Mapped[int] = mapped_column(BigInteger, default=0)
     mou_template: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="inactive")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -99,6 +104,24 @@ class PPDBApplicant(Base):
     rejection_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class TIUResult(Base):
+    """Idempotent server record of the automatically graded TIU result."""
+
+    __tablename__ = "tiu_results"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    applicant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("ppdb_applicants.id", ondelete="CASCADE"), unique=True
+    )
+    attempt_id: Mapped[str | None] = mapped_column(String(64), unique=True)
+    idempotency_key: Mapped[str] = mapped_column(
+        String(200), unique=True, nullable=False
+    )
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    completed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class FileUpload(Base):
@@ -179,27 +202,67 @@ class PPDBPaymentTransaction(Base):
 class NotificationTemplate(Base):
     """Template pesan notifikasi yang bisa di-custom oleh admin.
 
-    event_key adalah identifier unik per jenis notifikasi:
-      welcome              → Selamat datang + kredensial login
-      payment_reminder     → Pengingat bayar formulir (langsung saat daftar)
-      payment_reminder_d7  → Reminder bayar H-7 (hari ke-7 belum bayar)
-      payment_success      → Pembayaran berhasil
-      payment_failed       → Pembayaran gagal / ditolak PG
-      payment_expired      → Akun expired (hari ke-8 belum bayar, soft delete)
-      document_reminder_d3 → Reminder upload dokumen H-3 batas gelombang
-      document_reminder_d1 → Reminder upload dokumen H-1 batas gelombang
-      document_approved    → Dokumen disetujui admin
-      document_rejected    → Dokumen ditolak admin (+ alasan)
-      selection_reminder_d5 → Reminder seleksi H-5
-      selection_reminder_d1 → Reminder seleksi H-1
-      selection_result     → Pengumuman hasil seleksi
+    event_key adalah identifier unik per jenis notifikasi.
 
-    channel: email | whatsapp | both
+    ── EVENT KEYS AKTIF (sesuai spec notifikasi terbaru) ──────────────────────
+    Fase 1 – Pendaftaran Awal & Formulir:
+      registration_account_created  → Pendaftaran akun berhasil
+      payment_success_formulir      → Pembayaran formulir berhasil
+      wave_closed_pending_payment   → Gelombang ditutup, tagihan dibatalkan
+      payment_reminder_monday       → Pengingat bayar formulir setiap Senin
 
-    Body template mendukung variabel sistem:
-      {nama_peserta}, {username}, {password}, {link_login},
-      {batas_waktu_bayar}, {nama_gelombang}, {tanggal_seleksi},
-      {alasan_penolakan}, {link_pembayaran}, {nominal_bayar}
+    Fase 2 – Verifikasi Dokumen & TIU:
+      document_rejected_revision    → Dokumen ditolak (perlu revisi)
+      document_approved_non_tiu     → Dokumen disetujui (bukan jalur TIU)
+      tiu_exam_instructions         → Dokumen disetujui (jalur TIU) — instruksi SEB
+      tiu_result_ready              → Hasil TIU tersedia via webhook Apps Script
+
+    Fase 3 – Ujian & Wawancara:
+      session_confirmed             → Jadwal ujian Tahfidz/Wawancara terkonfirmasi
+      tahfidz_score_recorded        → Nilai Tahfidz direkam, lanjut ke wawancara
+      interview_completed           → Wawancara selesai, menunggu pengumuman
+
+    Fase 4 – Kelulusan & Pembayaran DP:
+      selection_result_passed       → Lulus + instruksi bayar DP
+      selection_result_failed       → Tidak lulus
+      dp_payment_reminder           → Pengingat bayar DP mingguan (3 bulan)
+      dp_payment_success            → DP berhasil + SKD + link grup WA
+
+    Fase 5 – Pengingat Lanjutan:
+      reminder_upload_docs_h3       → Pengingat upload dokumen H+3
+      reminder_take_session_h2      → Pengingat pilih jadwal ujian H+2
+      reminder_exam_1hour           → Pengingat ujian 1 jam sebelum
+      reminder_installment          → Pengingat cicilan bulanan
+
+    ── EVENT KEYS LEGACY (tetap ada untuk backward-compat) ───────────────────
+      registration_welcome, payment_failed, payment_reminder_day7,
+      payment_expired, payment_success, document_reminder_3days,
+      document_reminder_1day, document_rejected, document_approved,
+      selection_announced, selection_reminder_5days, selection_reminder_1day,
+      selection_passed, selection_failed, payment_manual_approved,
+      reregistration_reminder, reregistration_success, wave_closing,
+      user_created, password_reset
+
+    ── CHANNEL ────────────────────────────────────────────────────────────────
+    channel: whatsapp (email tidak digunakan; field tetap ada di skema DB
+    untuk backward-compat tapi notif_email_enabled=False di config)
+
+    ── VARIABEL TEMPLATE ──────────────────────────────────────────────────────
+    Body mendukung placeholder {variable_name}. Variabel tersedia:
+      Identitas: {nama_peserta}, {username}, {email}, {phone}, {password},
+                 {nama_sekolah}
+      Link: {link_login}, {link_aplikasi}, {link_pembayaran},
+            {link_panduan_seb}, {link_grup_whatsapp}
+      Gelombang: {nama_gelombang}, {tanggal_tutup}, {tanggal_tutup_gelombang},
+                 {batas_waktu_bayar}
+      Pembayaran: {nominal_bayar}, {alasan_gagal}
+      Dokumen: {alasan_penolakan}
+      TIU: {nilai_tiu}
+      Ujian: {nama_ujian}, {tanggal}, {jam_mulai}, {jam_selesai}, {waktu},
+             {lokasi_atau_link}
+      Kelulusan: {deadline_daftar_ulang}
+      DP: {sisa_waktu}, {tanggal_jatuh_tempo}
+      Cicilan: {bulan_cicilan}, {nominal_cicilan}
     """
 
     __tablename__ = "notification_templates"
@@ -268,6 +331,11 @@ class PPDBWaveFeeItem(Base):
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     nominal: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    discount_type: Mapped[str | None] = mapped_column(String(10))
+    discount_value: Mapped[float | None] = mapped_column(Float)
+    discount_scope: Mapped[str] = mapped_column(
+        String(10), default="all", nullable=False
+    )
     order_index: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

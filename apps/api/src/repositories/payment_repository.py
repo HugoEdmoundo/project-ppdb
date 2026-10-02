@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, cast
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, delete, func, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from src.models.ppdb import (
@@ -212,7 +212,7 @@ class PaymentRepository:
         return results, len(results)
 
     def get_wave_fee_items_with_discounts(
-        self, applicant_id: str, wave_id: str
+        self, applicant_id: str, wave_id: str, early_discount_eligible: bool = False
     ) -> list[dict]:
         stmt = (
             select(PPDBWaveFeeItem, PPDBApplicantDiscount)
@@ -243,14 +243,69 @@ class PaymentRepository:
                 "updated_at": fi.updated_at,
                 "discount": None,
             }
-            if d and d.discount_type:
+            if d:
+                if d.discount_type:
+                    i_dict["discount"] = {
+                        "discount_type": d.discount_type,
+                        "discount_value": d.discount_value,
+                        "installment_count": d.installment_count,
+                        "source": "applicant",
+                    }
+            elif fi.discount_type and (
+                fi.discount_scope == "all" or early_discount_eligible
+            ):
                 i_dict["discount"] = {
-                    "discount_type": d.discount_type,
-                    "discount_value": d.discount_value,
-                    "installment_count": d.installment_count,
+                    "discount_type": fi.discount_type,
+                    "discount_value": fi.discount_value,
+                    "installment_count": 0,
+                    "source": "wave",
+                    "scope": fi.discount_scope,
                 }
             items.append(i_dict)
         return items
+
+    def get_paid_form_payment_rank(self, applicant_id: str, wave_id: str) -> int | None:
+        paid_applicants = (
+            select(
+                PPDBApplicant.id.label("applicant_id"),
+                func.min(
+                    func.coalesce(
+                        PPDBPaymentTransaction.confirmed_at,
+                        PPDBPaymentTransaction.created_at,
+                    )
+                ).label("paid_at"),
+            )
+            .join(
+                PPDBPaymentTransaction,
+                PPDBPaymentTransaction.applicant_id == PPDBApplicant.id,
+            )
+            .where(
+                PPDBApplicant.wave_id == wave_id,
+                PPDBPaymentTransaction.status == "success",
+            )
+            .group_by(PPDBApplicant.id)
+            .subquery()
+        )
+        target_paid_at_stmt = select(paid_applicants.c.paid_at).where(
+            paid_applicants.c.applicant_id == applicant_id
+        )
+        if self.db.scalar(target_paid_at_stmt) is None:
+            return None
+        target_paid_at = target_paid_at_stmt.scalar_subquery()
+        rank_stmt = (
+            select(func.count())
+            .select_from(paid_applicants)
+            .where(
+                or_(
+                    paid_applicants.c.paid_at < target_paid_at,
+                    and_(
+                        paid_applicants.c.paid_at == target_paid_at,
+                        paid_applicants.c.applicant_id <= applicant_id,
+                    ),
+                )
+            )
+        )
+        return int(self.db.scalar(rank_stmt) or 0)
 
     def get_mou_by_applicant_id(self, applicant_id: str) -> PPDBBMOU | None:
         stmt = select(PPDBBMOU).where(PPDBBMOU.applicant_id == applicant_id)

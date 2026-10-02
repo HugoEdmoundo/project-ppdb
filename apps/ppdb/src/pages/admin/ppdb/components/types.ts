@@ -3,10 +3,14 @@ export interface Session {
   wave_id: string
   wave_name?: string
   name: string
+  session_type?: 'tahfidz' | 'interview' | null
   session_date?: string
   start_time?: string
   end_time?: string
+  mode?: 'online' | 'offline' | null
+  officer_name?: string | null
   location?: string
+  meeting_url?: string | null
   description?: string
   quota: number
   booked_count?: number
@@ -23,6 +27,7 @@ interface SelectionCriteria {
   id: string
   category_id: string
   name: string
+  weight: number
 }
 
 export interface SelectionResult {

@@ -1,45 +1,50 @@
-# PPDB — Penerimaan Peserta Didik Baru
+<div align="center">
+  <h1>🎓 PPDB Frontend</h1>
+  <p><strong>Aplikasi Portal Pendaftaran Peserta Didik Baru</strong></p>
 
-Dokumentasi resmi modul PPDB untuk **Pesantren Tahfidz Qur'an dan Digital Ar-Rahman**.
+  [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+  [![Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)](https://vitejs.dev/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+</div>
 
-> ⚠️ **Status: REBUILD DARI NOL**
-> Backend PPDB lama dihapus seluruhnya dan dibangun ulang. Model baru berbasis **Periode → Gelombang** dengan aturan aktivasi ketat.
-> Dokumentasi versi lama ada di `archive/` (banner OBSOLETE). **Semua AI/manusia wajib membaca dokumen baru ini.**
+---
 
-## Peta dokumen
+Ini adalah aplikasi frontend berbasis **Vite + React + TypeScript** untuk portal pendaftaran Peserta Didik Baru (PPDB) di Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.
 
-| Dokumen | Isi | Bahasa |
-|---|---|---|
-| [`README.md`](./README.md) | Pintu masuk, status project, peta dokumen (file ini) | Indonesia |
-| [`PRD.md`](./PRD.md) | Kebutuhan bisnis & aturan (model Periode → Gelombang) | Indonesia |
-| [`FLOW.md`](./FLOW.md) | Alur sistem: admin config, aktivasi, visibilitas data | Indonesia |
-| [`ERD.md`](./ERD.md) | Skema database teknis (`ppdb_periods`, `ppdb_waves`) | English |
-| [`plan/PLAN.md`](./plan/PLAN.md) | Rencana implementasi backend (delete lama → build baru → verifikasi) | English |
+Aplikasi ini melayani para pendaftar (calon siswa/orang tua) untuk:
+- 📝 Melakukan pendaftaran dan mengisi biodata.
+- 📁 Mengunggah dokumen persyaratan.
+- 🔍 Memantau status verifikasi dan hasil kelulusan.
+- 💻 Mendapatkan tiket ujian TIU (terintegrasi Safe Exam Browser).
+- 📜 Mengakses LoA dan Surat Keterangan Diterima (SKD).
+- 💳 Melihat tagihan dan status pembayaran formulir/cicilan.
 
-## Status saat ini
+## 🛠️ Stack Teknologi
 
-| Komponen | Status |
-|---|---|
-| Model bisnis & aturan | ✅ Dikunci (lihat PRD) |
-| Skema DB baru | ✅ Dirancang (lihat ERD) |
-| Backend (Hono/Bun/MySQL) | 🔜 Belum dibangun — lihat `plan/PLAN.md` |
-| Frontend (Vite/React) | ⏸ Belum dibangun (fokus backend config dulu) |
-| Jenjang, kategori, pendaftar, payment, seleksi, dll. | ⏳ Menyusul (tidak dibahas di scope ini) |
+- **Framework:** React 18, Vite
+- **Bahasa:** TypeScript
+- **Styling:** Tailwind CSS
+- **State/Data Fetching:** React Query / SWR
+- **Koneksi API:** Berkomunikasi dengan [`apps/api`](../api/README.md) (FastAPI)
 
-## Cara baca untuk AI baru
+## 📦 Menjalankan secara Lokal
 
-1. Baca `PRD.md` dulu — pahami **model bisnis** (Periode → Gelombang) dan **6 aturan aktivasi**.
-2. Baca `FLOW.md` — pahami alur & matriks visibilitas.
-3. Baca `ERD.md` — pahami skema DB target.
-4. Baca `plan/PLAN.md` — pahami langkah implementasi yang harus dieksekusi di `backend/`.
+Aplikasi ini merupakan bagian dari pnpm workspace. Buka terminal di root repository dan jalankan:
 
-Jangan membaca dokumen di `archive/` untuk kebutuhan teknis — semuanya sudah basi.
+```bash
+# Instalasi dependensi workspace
+pnpm install
 
-## Konteks monorepo
+# Menjalankan development server (port 5173)
+pnpm --filter ppdb dev
+```
 
-- `companyprofile/` — website publik + admin CRUD company profile (Next.js)
-- `ppdb/` — aplikasi PPDB (Vite + React) **+ dokumentasi ini**
-- `superadmin/` — panel manajemen users & roles (Vite + React)
-- `backend/` — API utama Hono (Bun/TypeScript) + MySQL
-- `api/` — FastAPI legacy/PoC, **jangan dipakai untuk fitur baru**
-- `TA/` — project terpisah, **tidak terkait** dengan monorepo ini
+> **Catatan Endpoint API:**
+> Secara default, aplikasi memanggil backend API lokal. Jika menggunakan Docker untuk API, pastikan `apps/api` berjalan. Set environment variable `VITE_API_URL` untuk menunjuk ke IP WSL Anda (lihat panduan Docker).
+
+## 📚 Referensi Aturan Bisnis
+Bukan di sini tempatnya! Untuk memahami alur pendaftaran, sistem Gelombang dan Periode, atau aturan ujian TIU menggunakan SEB, silakan rujuk ke:
+- 📖 [**Dokumen Requirements Global**](../../docs/REQUIREMENTS.md)
+
+---
+⬅️ [Kembali ke Halaman Utama](../../README.md)

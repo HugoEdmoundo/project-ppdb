@@ -31,16 +31,14 @@ ATURAN GELOMBANG & KUOTA
 
 PENGATURAN TIU
 - Pengaturan TIU berlaku global, tidak dibuat per gelombang; durasi attempt diatur di sini.
-- Webhook secret Apps Script dipakai untuk mengirim nilai TIU ke backend secara real-time; backend menautkan hasil dengan applicant/attempt ID dan memicu notifikasi WhatsApp setelah nilai berhasil disimpan.
-- Admin membuat semua soal pilihan ganda dan menandai satu kunci jawaban per soal di Google Form Quiz.
-- Apps Script menyinkronkan langsung soal, urutan, opsi, dan kunci ke bank soal aplikasi; tidak ada review/publish manual. Kunci jawaban hanya disimpan/dipakai di server. Pendaftar mengerjakan di halaman ujian PPDB, bukan di Google Form.
-- Setiap kali Apps Script menjalankan sinkronisasi setelah admin mengubah Form, aplikasi menampilkan status dan waktu sinkronisasi terakhir. Soal/payload tidak valid harus menghasilkan pesan tindakan yang jelas; jangan merusak paket valid terakhir.
-- Setelah submit atau timer habis, hasil nilai TIU dikirim Apps Script melalui webhook secara real-time, divalidasi dan disimpan backend ke dossier pendaftar tanpa input manual admin.
-- Integrasikan Safe Exam Browser (SEB) untuk mode lockdown. Peserta harus memasang dan memakai aplikasi SEB di komputer desktop/laptop Windows atau macOS; ponsel/tablet tidak didukung. Tombol Mulai membuka halaman ujian melalui SEB. Halaman web biasa tidak dapat mengunci aplikasi lain.
-- Peluncuran: aplikasi membuat attempt pending + tiket singkat sekali pakai; konfigurasi SEB membuka route ujian aplikasi. Backend memvalidasi tiket, pemilik attempt, dan kunci SEB sebelum mengikat attempt/memulai timer. Jangan masukkan secret atau kunci jawaban ke URL.
-- Bila sinkronisasi soal gagal atau memuat tipe tak didukung, jangan mengganti paket valid terakhir; tampilkan detail kesalahan yang dapat ditindaklanjuti admin.
+- Webhook secret Apps Script dipakai untuk mengamankan pengiriman nilai TIU ke backend secara real-time.
+- Admin membuat kuis di Google Form, dan menambahkan 1 soal khusus "Token" (Wajib Isi). Admin mengambil Pre-filled URL dari Google Form tersebut dan memasukkannya ke pengaturan aplikasi (dengan variabel `{token}`).
+- Pendaftar tidak mengerjakan kuis di halaman internal PPDB, melainkan langsung di Google Form yang dibungkus oleh Safe Exam Browser (SEB).
+- Integrasikan Safe Exam Browser (SEB) untuk mode lockdown. Peserta harus memasang aplikasi SEB di komputer desktop/laptop Windows atau macOS; ponsel tidak didukung.
+- Peluncuran: Saat tombol "Download SEB" diklik, aplikasi men-generate attempt token sekali pakai dan mencatat waktu mulainya. File konfigurasi `.seb` yang terunduh akan berisi StartURL berupa Pre-filled Google Form tersebut, sehingga identitas/token pendaftar otomatis terisi dan tidak dapat diubah (karena URL bar disembunyikan SEB).
+- Setelah peserta menekan tombol Submit di Google Form, trigger `onSubmit` dari Apps Script akan menembak webhook nilai beserta token pendaftar kembali ke sistem PPDB.
+- Backend memvalidasi ketersambungan waktu (waktu webhook diterima tidak boleh melebihi: waktu mulai + durasi ujian + 5 menit). Jika kedaluwarsa, nilai ditolak.
 - Pengecualian kuota: webhook bayar sukses yang datang setelah invoice pending dibatalkan masuk antrean pemeriksaan admin; jangan pindahkan pendaftar otomatis.
-- Satu pendaftar hanya memiliki satu attempt TIU; tidak ada retake setelah selesai atau waktu habis.
-- Simpan jawaban otomatis ke server selama ujian. Jika koneksi putus, peserta kembali melalui SEB untuk melanjutkan attempt yang sama lewat tiket resume; pulihkan jawaban tersimpan dan teruskan timer server tanpa reset. Jika waktu habis saat terputus, auto-submit jawaban terakhir yang berhasil tersimpan.
+- Satu pendaftar hanya memiliki satu attempt TIU sah yang dicatat; Google Form dapat dikonfigurasi untuk membatasi 1 tanggapan (Limit to 1 response) atau divalidasi dari backend (token hanya berlaku sekali).
 
 Koreksi rubrik: formulir evaluator manual hanya untuk Tahfidz dan wawancara. Nilai TIU pilihan ganda masuk otomatis ke sistem; admin tidak menginput nilai TIU.

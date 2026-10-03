@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import gsap from 'gsap'
 import GlobeLogo from './globe'
 import { cn } from '@/lib/utils'
+import { prefersReducedMotion } from '@/lib/motion'
 
 /**
  * Globe yang "mengikuti" section: satu elemen `fixed` yang berpindah posisi &
@@ -50,6 +51,15 @@ export interface UseSectionGlobeResult {
   opacity: number
   activeStop?: ResolvedGlobeStop
   activeIndex: number
+  /**
+   * `true` SATU frame setelah perangkat berubah (mobile ↔ desktop). Dipakai
+   * komponen untuk men-snap durasi transisi jadi 0ms pada frame itu, sehingga
+   * lompatan posisi karena ganti stop-set tidak "menyeret" globe menyusuri
+   * viewport selama 1.6 detik. State aktif tanpa perangkat alias mempertahankan
+   * nilai ini sampai terjadi perubahan lain (mis. pindah section) — yang benar:
+   * durasi normal hanya berlaku saat transition benar-benar dimulai.
+   */
+  justSwitched: boolean
 }
 
 const parsePercent = (value: string) => parseFloat(value.replace('%', ''))
@@ -76,9 +86,10 @@ interface GlobeState {
   index: number
   inRange: boolean
   mobile: boolean
+  justSwitched: boolean
 }
 
-const INITIAL_STATE: GlobeState = { index: -1, inRange: false, mobile: false }
+const INITIAL_STATE: GlobeState = { index: -1, inRange: false, mobile: false, justSwitched: false }
 
 export function useSectionGlobe(
   stops: GlobeStop[],
@@ -95,13 +106,42 @@ export function useSectionGlobe(
   const desktop = useMemo(() => resolveStops(stops), [stops])
   const mobile = useMemo(() => resolveStops(mobileStops ?? stops), [mobileStops, stops])
 
-  const [state, setState] = useState<GlobeState>(INITIAL_STATE)
+  const [state, setState] = useState<GlobeState>(() => {
+    // prefers-reduced-motion: globe diam saja di posisi stop pertama — tidak
+    // mengikuti scroll dan tidak ada ticker sama sekali. State di-set di lazy
+    // initializer (bukan di dalam effect) supaya tidak ada setState sinkron di
+    // body effect; perangkat dicatat sekali di mount.
+    if (!prefersReducedMotion()) return INITIAL_STATE
+    return {
+      index: 0,
+      inRange: true,
+      mobile: typeof window !== 'undefined' && window.innerWidth < mobileBreakpoint,
+      justSwitched: false,
+    }
+  })
   // `state` hanya dibaca untuk render, sedangkan perbandingan "berubah atau tidak"
   // terjadi 60x/detik di dalam ticker. Tanpa gate ini, `setState` dipanggil tiap
-  // frame walau nilainya identik.
-  const stateRef = useRef<GlobeState>(INITIAL_STATE)
+  // frame walau nilainya identik. Di-ref supaya bernilai sama dengan state awal.
+  const stateRef = useRef<GlobeState>(state)
+  // Handle elemen section di-cache, bukan di-`getElementById` tiap frame.
+  // `getBoundingClientRect` tetap dibaca fresh tiap frame (memang diperlukan),
+  // tapi query DOM yang mahal cukup sekali per elemen.
+  const elementCache = useRef(new Map<string, HTMLElement>())
+
+  const getStopElement = (id: string) => {
+    const cached = elementCache.current.get(id)
+    if (cached?.isConnected) return cached
+    const el = document.getElementById(id)
+    if (el) elementCache.current.set(id, el)
+    else elementCache.current.delete(id)
+    return el
+  }
 
   useEffect(() => {
+    // prefers-reduced-motion: globe sudah diam di stop pertama dari state awal,
+    // jadi ticker tidak perlu didaftarkan sama sekali.
+    if (prefersReducedMotion()) return
+
     const update = () => {
       const isMobile = window.innerWidth < mobileBreakpoint
       const activeSet = isMobile ? mobile : desktop
@@ -111,7 +151,7 @@ export function useSectionGlobe(
       let minDistance = Infinity
 
       activeSet.forEach((stop, index) => {
-        const element = document.getElementById(stop.id)
+        const element = getStopElement(stop.id)
         if (!element) return
         const rect = element.getBoundingClientRect()
         const distance = Math.abs(rect.top + rect.height / 2 - viewportCenter)
@@ -126,7 +166,15 @@ export function useSectionGlobe(
       const previous = stateRef.current
       if (previous.index === bestIndex && previous.inRange === inRange && previous.mobile === isMobile) return
 
-      const next: GlobeState = { index: bestIndex, inRange, mobile: isMobile }
+      const next: GlobeState = {
+        index: bestIndex,
+        inRange,
+        mobile: isMobile,
+        // `previous.mobile !== isMobile` → perangkat baru saja berganti. Satu
+        // frame ini `justSwitched` = true supaya lompatan posisi tidak ditransisi
+        // 1.6 detik. Setelahnya false lagi sampai section berpindah.
+        justSwitched: previous.mobile !== isMobile,
+      }
       stateRef.current = next
       setState(next)
     }
@@ -148,6 +196,7 @@ export function useSectionGlobe(
     opacity: state.index >= 0 && state.inRange ? (target.opacity ?? defaultOpacity) : 0,
     activeStop: state.index >= 0 ? target : undefined,
     activeIndex: state.index,
+    justSwitched: state.justSwitched,
   }
 }
 
@@ -167,7 +216,7 @@ export function SectionGlobe({
   zIndex = 20,
   ...options
 }: SectionGlobeProps) {
-  const { transform, opacity } = useSectionGlobe(stops, mobileStops, options)
+  const { transform, opacity, justSwitched } = useSectionGlobe(stops, mobileStops, options)
 
   return (
     <div
@@ -178,7 +227,10 @@ export function SectionGlobe({
         transform,
         opacity,
         transitionProperty: 'transform, opacity',
-        transitionDuration: '1600ms, 400ms',
+        // Saat perangkat barusan berganti (mobile ↔ desktop), stop target bisa
+        // melompat jauh (set posisi berbeda) — `justSwitched` men-snap durasi jadi
+        // 0ms pada frame itu supaya globe tidak "terseret" menyusuri viewport.
+        transitionDuration: justSwitched ? '0ms, 0ms' : '1600ms, 400ms',
         transitionTimingFunction: 'cubic-bezier(0.22, 0.61, 0.24, 1), ease-out',
         willChange: 'transform, opacity',
       }}

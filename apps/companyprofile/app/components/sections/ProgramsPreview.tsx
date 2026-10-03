@@ -2,12 +2,12 @@
 
 import { useRef, useEffect } from 'react'
 import Link from 'next/link'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
 import { ArrowRight, BookOpen, Cpu, Globe, Award } from 'lucide-react'
 import { useScrollReveal } from '../../hooks/useScrollAnimations'
 import { useProgramLinks } from '../../hooks/useProgramLinks'
+import { gsap, ScrollTrigger } from '@/app/lib/gsap'
+import { onLayoutReady, prefersReducedMotion } from '@/app/lib/motion'
 import TiltCard from '../ui/TiltCard'
 
 const programData = [
@@ -53,8 +53,11 @@ export default function ProgramsPreview() {
   useScrollReveal(headerRef, { start: 'top 80%', stagger: 0.1 })
 
   useEffect(() => {
-    gsap.registerPlugin(ScrollTrigger);
-    let timer: NodeJS.Timeout | null = null;
+    if (prefersReducedMotion()) {
+      if (pinWrapRef.current) gsap.set(pinWrapRef.current, { clearProps: 'all' })
+      return
+    }
+
     const ctx = gsap.context(() => {
       const sec = sectionRef.current
       const pinContainer = pinContainerRef.current
@@ -77,13 +80,16 @@ export default function ProgramsPreview() {
           anticipatePin: 1,
         }
       });
-      
-      // Delay sedikit hanya untuk refresh perhitungan ScrollTrigger
-      timer = setTimeout(() => ScrollTrigger.refresh(), 100);
-    });
+    }, sectionRef);
+
+    // Refresh terkoordinasi, bukan `setTimeout(..., 100)`. Timeout tetap mengukur
+    // layout saat gambar Unsplash + webfont (`display: swap`) belum dimuat, lalu
+    // ScrollTrigger meng-cache start/end yang salah dan tidak pernah dihitung ulang —
+    // Akibatnya pin horizontal berhenti di tengah dan kartu tertinggal.
+    const cleanupLayout = onLayoutReady(() => ScrollTrigger.refresh());
 
     return () => {
-      if (timer) clearTimeout(timer);
+      cleanupLayout();
       ctx.revert();
     }
   }, [])
@@ -110,7 +116,7 @@ export default function ProgramsPreview() {
 
       <div className="relative z-10 w-full flex-1 flex items-start pt-2 sm:pt-4">
         <div ref={pinWrapRef} className="horiz-gallery-strip flex gap-4 sm:gap-6 px-4 sm:px-6 md:px-12 w-max">
-          {programData.map((prog, i) => {
+          {programData.map((prog) => {
             const Icon = prog.icon
             return (
               <TiltCard key={prog.id} className="group shrink-0 w-[85vw] sm:w-[380px] md:w-[400px]">

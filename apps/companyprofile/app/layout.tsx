@@ -4,23 +4,10 @@ import "./globals.css"
 import { Providers } from "./context/Providers"
 import ServiceWorkerCleanup from "./components/ServiceWorkerCleanup"
 import { API_BASE } from "./lib/api"
-import type { SettingsItem } from "./lib/types"
+import { getPublicSettings } from "./lib/server-settings"
 
-async function getFavicon(): Promise<string | undefined> {
-  try {
-    const res = await fetch(`${API_BASE}/companyprofile/settings`, {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(5000),
-    })
-    if (!res.ok) return undefined
-    const settings: SettingsItem[] = await res.json()
-    const value = settings.find((s) => s.key === 'favicon')?.value
-    if (!value || value.startsWith(API_BASE)) return undefined
-    return value
-  } catch {
-    return undefined
-  }
-}
+const FALLBACK_DESCRIPTION =
+  "Pesantren Tahfidz Qur'an dan Digital Arrahman — Pesantren yang menggabungkan hafalan Al-Quran dengan pendidikan teknologi digital mutakhir di Bekasi, Jawa Barat."
 
 const inter = Inter({
   variable: "--font-body",
@@ -58,15 +45,26 @@ const amiri = Amiri({
 })
 
 export async function generateMetadata(): Promise<Metadata> {
-  const favicon = await getFavicon()
+  const settings = await getPublicSettings()
+  const favicon = settings.favicon && !settings.favicon.startsWith(API_BASE)
+    ? settings.favicon
+    : undefined
+  // `site_description` is CMS-editable; the hardcoded string is only the
+  // fallback for when the setting is empty or the API is unreachable.
+  const description = settings.site_description || FALLBACK_DESCRIPTION
+  // No static brand asset may be baked in here (see apps/companyprofile/AGENTS.md):
+  // the share image is the same dynamic `logo` the whole system uses, and the
+  // key is simply omitted when the setting is empty or the API is unreachable.
+  const ogImage = settings.logo && !settings.logo.startsWith(API_BASE)
+    ? settings.logo
+    : undefined
   return {
     metadataBase: new URL('https://ptdarrahman.sch.id'),
     title: {
       default: "Pesantren Tahfidz Qur'an dan Digital Arrahman",
       template: '%s | PTDARRAHMAN',
     },
-    description:
-      "Pesantren Tahfidz Qur'an dan Digital Arrahman — Pesantren yang menggabungkan hafalan Al-Quran dengan pendidikan teknologi digital mutakhir di Bekasi, Jawa Barat.",
+    description,
     keywords: ["pesantren", "tahfidz", "digital", "quran", "bekasi", "sekolah islam", "pondok pesantren", "arrahman"],
     authors: [{ name: 'PTDARRAHMAN' }],
     creator: 'PTDARRAHMAN',
@@ -85,23 +83,16 @@ export async function generateMetadata(): Promise<Metadata> {
       url: 'https://ptdarrahman.sch.id',
       siteName: "Pesantren Tahfidz Qur'an dan Digital Arrahman",
       title: "Pesantren Tahfidz Qur'an dan Digital Arrahman",
-      description:
-        'Pesantren premium yang menggabungkan hafalan Al-Quran dengan pendidikan teknologi digital mutakhir di Bekasi.',
-      images: [
-        {
-          url: 'https://res.cloudinary.com/dunynusuh/image/upload/v1771353749/82ed87dd-4f99-46ca-b481-775f19b6b7c9.png',
-          width: 512,
-          height: 512,
-          alt: 'Logo Ar-Rahman',
-        },
-      ],
+      description,
+      images: ogImage
+        ? [{ url: ogImage, width: 512, height: 512, alt: 'Logo Ar-Rahman' }]
+        : [],
     },
     twitter: {
       card: 'summary_large_image',
       title: "Pesantren Tahfidz Qur'an dan Digital Arrahman",
-      description:
-        'Pesantren premium yang menggabungkan hafalan Al-Quran dengan pendidikan teknologi digital mutakhir di Bekasi.',
-      images: ['https://res.cloudinary.com/dunynusuh/image/upload/v1771353749/82ed87dd-4f99-46ca-b481-775f19b6b7c9.png'],
+      description,
+      images: ogImage ? [ogImage] : [],
       creator: '@ptdar_rahman',
     },
     robots: {

@@ -26,15 +26,22 @@ export default function Particles({ count = 30, className = '' }: { count?: numb
     if (!ctx) return
 
     let animId: number
-    let w = window.innerWidth
-    let h = window.innerHeight
+    let running = false
+    let w = 0
+    let h = 0
 
-    canvas.width = w
-    canvas.height = h
+    // Ukuran mengikuti elemen (bukan window.innerWidth/Height) supaya partikel
+    // tidak dirender di luar section lalu terpotong.
+    const size = () => {
+      w = canvas.clientWidth
+      h = canvas.clientHeight
+      canvas.width = w
+      canvas.height = h
+    }
 
     const particles: Particle[] = Array.from({ length: count }, () => ({
-      x: Math.random() * w,
-      y: Math.random() * h,
+      x: Math.random(),
+      y: Math.random(),
       vx: (Math.random() - 0.5) * 0.3,
       vy: (Math.random() - 0.5) * 0.3 - 0.1,
       size: Math.random() * 3 + 1,
@@ -42,28 +49,20 @@ export default function Particles({ count = 30, className = '' }: { count?: numb
       color: Math.random() > 0.5 ? 'var(--color-emerald)' : 'var(--color-gold)',
     }))
 
-    const resize = () => {
-      w = window.innerWidth
-      h = window.innerHeight
-      canvas!.width = w
-      canvas!.height = h
-    }
-    window.addEventListener('resize', resize)
-
     const draw = () => {
       ctx!.clearRect(0, 0, w, h)
 
       for (const p of particles) {
-        p.x += p.vx
-        p.y += p.vy
+        p.x += p.vx / (w || 1)
+        p.y += p.vy / (h || 1)
 
-        if (p.x < 0) p.x = w
-        if (p.x > w) p.x = 0
-        if (p.y < 0) p.y = h
-        if (p.y > h) p.y = 0
+        if (p.x < 0) p.x += 1
+        if (p.x > 1) p.x -= 1
+        if (p.y < 0) p.y += 1
+        if (p.y > 1) p.y -= 1
 
         ctx!.beginPath()
-        ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+        ctx!.arc(p.x * w, p.y * h, p.size, 0, Math.PI * 2)
         ctx!.fillStyle =
           p.color === 'var(--color-emerald)'
             ? `rgba(26, 107, 71, ${p.opacity})`
@@ -74,10 +73,36 @@ export default function Particles({ count = 30, className = '' }: { count?: numb
       animId = requestAnimationFrame(draw)
     }
 
-    draw()
+    const start = () => {
+      if (running || !w || !h) return
+      running = true
+      draw()
+    }
+    const stop = () => {
+      running = false
+      cancelAnimationFrame(animId)
+    }
+    const resize = () => {
+      size()
+      // Partikel semi-permanen tetap, hanya koordinat yang dinormalisasi ulang.
+    }
+
+    size()
+
+    const io = new IntersectionObserver(
+      ([entry]) => (entry.isIntersecting ? start() : stop()),
+      { threshold: 0 },
+    )
+    io.observe(canvas)
+
+    window.addEventListener('resize', resize)
+
+    // Grafis pertama kali langsung hidup kalau canvas sudah terlihat.
+    start()
 
     return () => {
-      cancelAnimationFrame(animId)
+      stop()
+      io.disconnect()
       window.removeEventListener('resize', resize)
     }
   }, [count])

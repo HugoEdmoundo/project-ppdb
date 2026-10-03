@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import GlobeLogo from '@/components/ui/globe'
 import { useSectionGlobe, type GlobeStop } from '@/components/ui/section-globe'
 import { cn } from '@/lib/utils'
@@ -42,7 +42,7 @@ export function ScrollGlobe({
   wordmarkUrl,
   className,
 }: ScrollGlobeProps) {
-  const [scrollProgress, setScrollProgress] = useState(0)
+  const progressRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef<(HTMLElement | null)[]>([])
   const animationFrameId = useRef<number | undefined>(undefined)
 
@@ -60,11 +60,14 @@ export function ScrollGlobe({
   )
 
   // Semua section di halaman ini setinggi layar, jadi tidak pernah "idle".
-  const { transform, activeStop, activeIndex } = useSectionGlobe(stops, undefined, {
+  const { transform, activeStop, activeIndex, justSwitched } = useSectionGlobe(stops, undefined, {
     fadeOutWhenIdle: false,
   })
 
   // Progress bar tetap pakai listener sendiri — hanya butuh posisi scroll global.
+  // Nilainya ditulis langsung ke DOM lewat `style` (bukan state) supaya tidak
+  // memicu re-render komponen ini 60x/detik — ScrollGlobe ini mahal (render
+  // semua section + canvas globe).
   useEffect(() => {
     let ticking = false
 
@@ -72,9 +75,12 @@ export function ScrollGlobe({
       if (ticking) return
       ticking = true
       animationFrameId.current = requestAnimationFrame(() => {
-        const docHeight = document.documentElement.scrollHeight - window.innerHeight
-        const progress = docHeight > 0 ? Math.min(Math.max(window.pageYOffset / docHeight, 0), 1) : 0
-        setScrollProgress(progress)
+        const bar = progressRef.current
+        if (bar) {
+          const docHeight = document.documentElement.scrollHeight - window.innerHeight
+          const progress = docHeight > 0 ? Math.min(Math.max(window.pageYOffset / docHeight, 0), 1) : 0
+          bar.style.transform = `scaleX(${progress})`
+        }
         ticking = false
       })
     }
@@ -105,9 +111,10 @@ export function ScrollGlobe({
       {/* Progress bar */}
       <div className="fixed left-0 top-0 z-50 h-0.5 w-full bg-gradient-to-r from-border/20 via-border/40 to-border/20">
         <div
+          ref={progressRef}
           className="h-full origin-left bg-gradient-to-r from-primary via-emerald-bright to-gold-accent"
           style={{
-            transform: `scaleX(${scrollProgress})`,
+            transform: 'scaleX(0)',
             transition: 'transform 0.15s ease-out',
           }}
         />
@@ -164,7 +171,9 @@ export function ScrollGlobe({
             // utilitas `duration-*` dan `ease-*` ambigu (transition vs animation) sehingga
             // nilai arbitrary-nya dibuang oleh Tailwind v3.
             transitionProperty: 'transform, opacity',
-            transitionDuration: '1600ms, 400ms',
+            // `justSwitched` men-snap durasi jadi 0ms satu frame saat perangkat
+            // berganti (mobile ↔ desktop) — lihat `useSectionGlobe`.
+            transitionDuration: justSwitched ? '0ms, 0ms' : '1600ms, 400ms',
             transitionTimingFunction: 'cubic-bezier(0.22, 0.61, 0.24, 1), ease-out',
           }}
         >
@@ -308,72 +317,5 @@ export function ScrollGlobe({
         )
       })}
     </div>
-  )
-}
-
-/** Halaman demo: 4 section dengan konten PPDB. */
-export default function GlobeScrollDemo() {
-  const demoSections: GlobeSection[] = [
-    {
-      id: 'hero',
-      badge: 'Selamat Datang',
-      title: 'Penerimaan Peserta',
-      subtitle: 'Didik Baru',
-      description:
-        'Pesantren Tahfidz Qur’an dan Digital Ar-Rahman membuka pendaftaran untuk jenjang SMP dan SMK. Setiap peserta belajar dengan ritme sendiri: tahfidz terstruktur, mata pelajaran tematik, dan literasi digital yang dekat dengan kehidupan sehari-hari.',
-      align: 'left',
-      actions: [
-        { label: 'Daftar Sekarang', variant: 'primary' },
-        { label: 'Lihat Syarat', variant: 'secondary' },
-      ],
-    },
-    {
-      id: 'inovasi',
-      badge: 'Inovasi',
-      title: 'Belajar',
-      subtitle: 'Tematik & Digital',
-      description:
-        'Kurikulum memadukan tahfidz, ilmu pengetahuan terapan, dan literasi digital. Setiap peserta punya guru pembimbing, target hafalan harian, dan laporan perkembangan yang bisa dipantau orang tua dari mana saja.',
-      align: 'center',
-    },
-    {
-      id: 'program',
-      badge: 'Program',
-      title: 'Pilihan Jalur',
-      subtitle: 'Sesuai Kebutuhan',
-      description:
-        'Jalur reguler dan jalur pindahan dibuka sesuai gelombang yang sedang aktif. Halaman pendaftaran otomatis menyembunyikan opsi yang belum dibuka.',
-      align: 'left',
-      features: [
-        {
-          title: 'Tahfidz Intensif',
-          description: 'Target hafalan harian dengan murojaah terjadwal dan pendampingan wali.',
-        },
-        {
-          title: 'Digital Literacy',
-          description: 'Pengenalan teknologi AI, keamanan data, dan etika digital sebagai bekal abad ke-21.',
-        },
-        {
-          title: 'Life Skills',
-          description: 'Kewirausahaan, pembiasaan ibadah, dan layanan masyarakat sebagai karakter.',
-        },
-      ],
-    },
-    {
-      id: 'jadwal',
-      badge: 'Jadwal',
-      title: 'Daftar Gelombang',
-      subtitle: 'Aktif',
-      description:
-        'Pendaftaran hanya bisa dilakukan ketika tepat satu Periode dan satu Gelombang berstatus aktif. Biaya pendaftaran tahap pertama mengikuti konfigurasi gelombang yang sedang berjalan.',
-      align: 'center',
-    },
-  ]
-
-  return (
-    <ScrollGlobe
-      sections={demoSections}
-      className="bg-gradient-to-br from-background via-muted/20 to-background"
-    />
   )
 }

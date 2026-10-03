@@ -27,7 +27,7 @@ export const FlowSection: React.FC<FlowSectionProps> = ({
   <section
     data-flow-section
     aria-label={ariaLabel}
-    className={cx('relative h-screen w-full overflow-hidden', className)}
+    className={cx('sticky top-0 h-screen w-full overflow-hidden', className)}
   >
     <div
       data-flow-inner
@@ -102,16 +102,16 @@ const FlowArt: React.FC<FlowArtProps> = ({
           if (tween.scrollTrigger) triggers.push(tween.scrollTrigger);
         }
 
-        // Each card (except the last) is pinned in place until the NEXT card
-        // fully arrives at the top of viewport — no early disappearing
+        // Each card (except the last) is pinned in place until the container's
+        // bottom hits the bottom of the viewport. This keeps them stacked in 
+        // the background so they reveal correctly when scrolling back up.
         if (i < sections.length - 1) {
-          const nextSection = sections[i + 1];
           triggers.push(
             ScrollTrigger.create({
               trigger: section,
               start: 'top top',         // pin when this card hits the top
-              endTrigger: nextSection,
-              end: 'top top',           // unpin only when next card has fully arrived
+              endTrigger: containerRef.current,
+              end: 'bottom bottom',     // unpin only when the entire container finishes
               pin: true,
               pinSpacing: false,
               anticipatePin: 1,         // prevents scroll jump / jank on fast scroll

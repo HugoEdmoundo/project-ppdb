@@ -20,7 +20,7 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import URL, MetaData, create_engine, text
-from sqlalchemy.engine import Engine, make_url
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from src.core.config import settings
@@ -66,39 +66,47 @@ def get_engine() -> Engine:
     if _engine is not None:
         return _engine
 
-    default_url = URL.create(
-        drivername="mysql+pymysql",
-        username=settings.mysql_user,
-        password=settings.mysql_password,
-        host=settings.mysql_host,
-        port=settings.mysql_port,
-        database=settings.mysql_database,
-    )
-    url = make_url(settings.database_url) if settings.database_url_override else default_url
-    if url.get_backend_name() == "sqlite":
-        _engine = create_engine(url, connect_args={"check_same_thread": False})
-        return _engine
+    engine_kwargs: dict[str, Any]
+    url: str | URL
+    if settings.database_url_override:
+        # DATABASE_URL override; the test suite points this at a throwaway
+        # SQLite file. Pool sizing and pymysql-only connect args do not apply
+        # to other drivers.
+        url = settings.database_url_override
+        engine_kwargs = {
+            "connect_args": (
+                {"check_same_thread": False} if url.startswith("sqlite") else {}
+            )
+        }
+    else:
+        url = URL.create(
+            drivername="mysql+pymysql",
+            username=settings.mysql_user,
+            password=settings.mysql_password,
+            host=settings.mysql_host,
+            port=settings.mysql_port,
+            database=settings.mysql_database,
+        )
+        connect_args: dict[str, Any] = {
+            "charset": "utf8mb4",
+            # Timeout pada koneksi/query jauh dari client (DB remote hostinger).
+            # Tanpa ini, pymysql yang menggantung pada handshake/read akan
+            # memblokir event loop tanpa batas → seluruh API tidak responsif.
+            "connect_timeout": 5,
+            "read_timeout": 30,
+            "write_timeout": 30,
+        }
+        if settings.mysql_ssl:
+            connect_args["ssl"] = {}
+        engine_kwargs = {
+            "pool_pre_ping": True,
+            "pool_recycle": 280,
+            "pool_size": 5,
+            "max_overflow": 10,
+            "connect_args": connect_args,
+        }
 
-    connect_args: dict[str, Any] = {
-        "charset": "utf8mb4",
-        # Timeout pada koneksi/query jauh dari client (DB remote hostinger).
-        # Tanpa ini, pymysql yang menggantung pada handshake/read akan
-        # memblokir event loop tanpa batas → seluruh API tidak responsif.
-        "connect_timeout": 5,
-        "read_timeout": 30,
-        "write_timeout": 30,
-    }
-    if settings.mysql_ssl:
-        connect_args["ssl"] = {}
-
-    _engine = create_engine(
-        url,
-        pool_pre_ping=True,
-        pool_recycle=280,
-        pool_size=5,
-        max_overflow=10,
-        connect_args=connect_args,
-    )
+    _engine = create_engine(url, **engine_kwargs)
     return _engine
 
 

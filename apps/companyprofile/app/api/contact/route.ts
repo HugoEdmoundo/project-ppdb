@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
+import { getPublicSettings } from '@/app/lib/server-settings'
 
-const TO_EMAIL = process.env.CONTACT_TO_EMAIL || 'ptdarrahmanm9@gmail.com'
+const TO_EMAIL_FALLBACK = process.env.CONTACT_TO_EMAIL || 'ptdarrahmanm9@gmail.com'
+
+/**
+ * Recipient of contact-form submissions.
+ *
+ * `to_email` in the CMS (tab Pengaturan) is authoritative so an admin can
+ * retarget the mailbox without a redeploy. `CONTACT_TO_EMAIL` stays as the
+ * env-level override for deployments that must not depend on the API, and the
+ * hardcoded address is the last resort when both are empty.
+ */
+async function resolveToEmail(): Promise<string> {
+  const fromCms = (await getPublicSettings()).to_email
+  return fromCms || TO_EMAIL_FALLBACK
+}
 
 function sanitize(val: string): string {
   return val.replace(/[&<>"'/]/g, (c) => {
@@ -64,6 +78,8 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       )
     }
+
+    const TO_EMAIL = await resolveToEmail()
 
     const safeName = sanitize(name)
     const safeEmail = sanitize(email)

@@ -13,7 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/app/components/ui/Dialog'
 import {
-  TABS, FORM_FIELDS, CONTENT_FIELDS, HAS_CONTENT, SOCIAL_PRESETS,
+  TABS, FORM_FIELDS, CONTENT_FIELDS, HAS_CONTENT, SOCIAL_PRESETS, maxLengthFor,
 } from './_constants'
 import type { RowRecord, FormState } from './_types'
 import { errorMessage } from './_types'
@@ -59,6 +59,14 @@ export function CrudFormDialog({
   }
 
   async function handleSave() {
+    // Penjaga anti-kehilangan-data: saat mode edit, `editingItem.content` wajib
+    // ada. Kalau null, form ini kemungkinan diisi dari baris list yang `content`
+    //‑nya sudah dilucuti backend — Menyimpan akan menimpa isi artikel & galeri
+    // dengan string kosong. Better ditolak daripada dihapus.
+    if (mode === 'edit' && HAS_CONTENT.includes(activeTab) && !editingItem?.content) {
+      toast('error', 'Data artikel tidak lengkap dimuat. Tutup form dan buka kembali, atau muat ulang halaman.')
+      return
+    }
     setSaving(true)
     try {
       const payload: Record<string, unknown> = {}
@@ -166,26 +174,38 @@ export function CrudFormDialog({
                   <div key={f.name} className="space-y-1.5">
                     <Label>{f.label}</Label>
                     {activeTab === 'social' && f.name === 'path' ? (
-                      <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 pt-2">
-                        {SOCIAL_PRESETS.map((preset) => (
-                          <button
-                            key={preset.label}
-                            type="button"
-                            onClick={() => setFormData({ ...formData, [f.name]: preset.path })}
-                            className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${formData[f.name] === preset.path
-                                ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                                : 'border-border hover:border-primary/50 hover:bg-primary/5'
-                              }`}
-                            title={preset.label}
-                          >
-                            <svg className="w-6 h-6 text-foreground" viewBox="0 0 24 24" fill="currentColor">
-                              <path d={preset.path} />
-                            </svg>
-                            <span className="text-[10px] text-muted-foreground truncate w-full text-center leading-tight">
-                              {preset.label}
-                            </span>
-                          </button>
-                        ))}
+                      <div className="space-y-3 pt-2">
+                        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                          {SOCIAL_PRESETS.map((preset) => (
+                            <button
+                              key={preset.label}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, [f.name]: preset.path })}
+                              className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${formData[f.name] === preset.path
+                                  ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                                  : 'border-border hover:border-primary/50 hover:bg-primary/5'
+                                }`}
+                              title={preset.label}
+                            >
+                              <svg className="w-6 h-6 text-foreground" viewBox="0 0 24 24" fill="currentColor">
+                                <path d={preset.path} />
+                              </svg>
+                              <span className="text-[10px] text-muted-foreground truncate w-full text-center leading-tight">
+                                {preset.label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                        {/* `path` is NOT NULL on the column, so a row saved
+                            without one is rejected with a 422. A preset-only
+                            picker made custom icons impossible and turned that
+                            rejection into a dead end -- keep free text open. */}
+                        <Textarea
+                          value={String(formData[f.name] ?? '')}
+                          onChange={(e) => setFormData({ ...formData, [f.name]: e.target.value })}
+                          rows={3}
+                          placeholder="M12 2c2.717 0 3.056..."
+                        />
                       </div>
                     ) : f.type === 'textarea' ? (
                       <Textarea
@@ -197,7 +217,7 @@ export function CrudFormDialog({
                     ) : (
                       <Input
                         type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
-                        maxLength={255}
+                        maxLength={maxLengthFor(f.name)}
                         value={String(formData[f.name] ?? '')}
                         onChange={(e) => setFormData({ ...formData, [f.name]: e.target.value })}
                       />

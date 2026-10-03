@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     mysql_password: str = ""
     mysql_database: str = "ptdarrahman"
     mysql_ssl: bool = False
+
+    # Full SQLAlchemy URL override, supplied via the DATABASE_URL env var.
+    # Tests set this to a throwaway SQLite file; production never sets it and
+    # keeps using the mysql_* fields above. Without this, `database_url` below
+    # could only ever describe MySQL, so a test run would silently migrate and
+    # seed the real database instead of its own throwaway one.
     database_url_override: str | None = Field(
         default=None, validation_alias="DATABASE_URL"
     )
@@ -25,6 +31,12 @@ class Settings(BaseSettings):
 
     # TTL cache user-session di Redis (detik). Default 5 menit.
     user_cache_ttl: int = 300
+
+    # Jeda sebelum mencoba konek ulang ke Redis setelah gagal (detik).
+    # Tanpa ini, `get_redis()` me-retry dial TCP pada SETIAP request yang
+    # butuh cache/rate-limit, dan tiap percobaan blocking sampai 4 detik
+    # (socket_connect_timeout 2 + socket_timeout 2).
+    redis_retry_cooldown: int = 30
 
     # ── JWT ──────────────────────────────────────────────────────────────────
     jwt_secret: str = ""
@@ -94,7 +106,11 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        """MySQL connection URL (single source of truth for alembic/seed)."""
+        """Connection URL used by alembic, seed and the app engine.
+
+        Honours DATABASE_URL when present (tests), otherwise assembles the
+        MySQL URL from the mysql_* fields.
+        """
         if self.database_url_override:
             return self.database_url_override
         return cast(

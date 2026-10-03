@@ -112,6 +112,7 @@ export default function TestimonialsCarousel({ testimonials }: { testimonials: T
   const pausedRef = useRef(false)
   const startedRef = useRef(false)
   const setWidthRef = useRef(0)
+  const visibleRef = useRef(true)
   const reduced = useReducedMotion()
 
   const items = useMemo(() => sortByOrder(testimonials), [testimonials])
@@ -120,10 +121,24 @@ export default function TestimonialsCarousel({ testimonials }: { testimonials: T
 
   const translateX = useMotionValue(0)
 
+  // Pause rAF loop saat section di luar viewport supaya tidak menghabiskan CPU.
+  useEffect(() => {
+    const section = sectionRef.current
+    if (!section) return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        visibleRef.current = entry.isIntersecting
+      },
+      { threshold: 0 },
+    )
+    io.observe(section)
+    return () => io.disconnect()
+  }, [])
+
   useAnimationFrame((_, delta) => {
     const track = trackRef.current
     if (!track || !startedRef.current) return
-    if (pausedRef.current || reduced) return
+    if (pausedRef.current || reduced || !visibleRef.current) return
     const distance = setWidthRef.current
     if (distance <= 0) return
     // Pace matching the reference: one full loop (a single copy of the set)
@@ -135,7 +150,8 @@ export default function TestimonialsCarousel({ testimonials }: { testimonials: T
   })
 
   // Measure one full set (distance between the two copies of the first card)
-  // once layout is ready; re-measure if item count changes.
+  // once layout is ready; re-measure jika jumlah item berubah ATAU viewport di-resize
+  // (kartu memakai `w-[82vw]`, jadi lebar track ikut viewport).
   useEffect(() => {
     const measure = () => {
       const track = trackRef.current
@@ -149,7 +165,21 @@ export default function TestimonialsCarousel({ testimonials }: { testimonials: T
     }
     measure()
     const t = window.setTimeout(measure, 300)
-    return () => window.clearTimeout(t)
+    let debounce: ReturnType<typeof setTimeout> | null = null
+    let raf = 0
+    const onResize = () => {
+      if (debounce) clearTimeout(debounce)
+      debounce = setTimeout(() => {
+        raf = requestAnimationFrame(measure)
+      }, 150)
+    }
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.clearTimeout(t)
+      window.removeEventListener('resize', onResize)
+      if (debounce) clearTimeout(debounce)
+      cancelAnimationFrame(raf)
+    }
   }, [items.length])
 
   const header = (

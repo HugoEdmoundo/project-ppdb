@@ -11,6 +11,7 @@ import {
   LayoutDashboard, Zap, Headphones, Waves,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { prefersReducedMotion } from '@/lib/motion'
 import { ArabesquePattern, MihrabArch } from '@/components/landing/HeroDecorations'
 import Footer from '@/components/layout/Footer'
 
@@ -66,6 +67,28 @@ export default function LandingPage() {
 
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger)
+
+    // prefers-reduced-motion: Lenis & parallax GSAP dimatikan, posisi navbar dan
+    // garis progress tetap jalan lewat listener scroll native (dibaca langsung,
+    // bukan dari `lenis.scroll` yang tidak akan pernah update).
+    if (prefersReducedMotion()) {
+      const onScroll = () => {
+        setScrolled(window.scrollY > 80)
+        const bar = progressRef.current
+        if (bar) {
+          const max = document.documentElement.scrollHeight - window.innerHeight
+          const ratio = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0
+          bar.style.transform = `scaleX(${ratio})`
+        }
+      }
+      window.addEventListener('scroll', onScroll, { passive: true })
+      window.addEventListener('resize', onScroll)
+      onScroll()
+      return () => {
+        window.removeEventListener('scroll', onScroll)
+        window.removeEventListener('resize', onScroll)
+      }
+    }
 
     const ctx = gsap.context(() => {
       const triggerElement = parallaxRef.current?.querySelector('[data-parallax-layers]')
@@ -213,10 +236,10 @@ export default function LandingPage() {
           bikin interpolasinya linear, dan secara visual tetap persis pill. */}
       <header className={cn(
         'fixed z-50 ease-brand-pill',
-        'transition-[left,right,top,border-radius,background-color,box-shadow,border-color]',
+        'transition-[left,right,top,max-width,border-radius,background-color,box-shadow,border-color]',
         scrolled
           ? cn('left-2 right-2 top-2 mx-auto max-w-6xl border border-slate-200/80 bg-white/95 shadow-[0_8px_30px_rgb(0,0,0,0.08)] backdrop-blur-2xl md:left-8 md:right-8 md:top-4', PILL_RADIUS)
-          : cn('left-0 right-0 top-0 border border-transparent bg-white/85 shadow-sm backdrop-blur-2xl', PILL_RADIUS_OFF)
+          : cn('left-0 right-0 top-0 mx-auto max-w-[100vw] border border-transparent bg-white/85 shadow-sm backdrop-blur-2xl', PILL_RADIUS_OFF)
       )}>
         {/* Scroll progress line — radiusnya HARUS sama persis dengan header,
             kalau tidak sudutnya desync saat transisi. */}

@@ -249,6 +249,24 @@ async function fetchApiWithAuth<T>(endpoint: string, opts: RequestInit): Promise
   return parseJsonSafe<T>(res, `API ${endpoint}`)
 }
 
+/**
+ * Fetch a single row with its FULL payload for the admin edit form.
+ *
+ * The list endpoint deliberately strips the heavy `content` body and nulls
+ * `gallery` to keep public list responses small. The admin edit form must
+ * never be seeded from that stripped row — saving it back would wipe the
+ * article text and the gallery. Always go through this function before
+ * opening the edit dialog.
+ */
+export async function getEntityDetail(endpoint: string, key: string): Promise<JsonValue> {
+  const clean = endpoint.replace(/^\/+/, '')
+  const item = await fetchApiWithAuth<JsonValue>(
+    `/${clean}/${encodeURIComponent(key)}`,
+    { method: 'GET' },
+  )
+  return mapContent(item) as JsonValue
+}
+
 export async function createItem(endpoint: string, data: JsonValue) {
   return fetchApiWithAuth(endpoint, { method: 'POST', body: JSON.stringify(data) })
 }

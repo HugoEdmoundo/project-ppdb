@@ -7,7 +7,8 @@ Shared Redis client + helpers untuk:
 
 Koneksi dibuat sekali (lazy singleton) via get_redis().
 Jika Redis tidak tersedia saat startup, aplikasi tetap jalan —
-cache/rate-limit fallback ke no-op / in-process fallback.
+cache/rate-limit fallback ke no-op / in-process fallback, dan
+get_redis() berhenti mencoba konek selama `redis_retry_cooldown` detik.
 """
 
 from __future__ import annotations
@@ -24,13 +25,22 @@ from src.core.config import settings
 logger = logging.getLogger(__name__)
 
 _redis: Redis | None = None  # type: ignore[type-arg]
+_redis_retry_at: float = 0.0
 
 
 def get_redis() -> Redis | None:  # type: ignore[type-arg]
-    """Return a Redis client, or None if Redis is unavailable."""
-    global _redis
+    """Return a Redis client, or None if Redis is unavailable.
+
+    The client is created once and reused. After a failed connect we stay
+    "down" for `settings.redis_retry_cooldown` seconds and answer None straight
+    away, so a Redis outage costs one timed-out dial per cooldown window
+    instead of one per request.
+    """
+    global _redis, _redis_retry_at
     if _redis is not None:
         return _redis
+    if time.monotonic() < _redis_retry_at:
+        return None
     try:
         client: Redis = Redis.from_url(  # type: ignore[type-arg]
             settings.redis_url,
@@ -41,10 +51,16 @@ def get_redis() -> Redis | None:  # type: ignore[type-arg]
         )
         client.ping()
         _redis = client
+        _redis_retry_at = 0.0
         logger.info("Redis connected: %s", settings.redis_url)
     except Exception as exc:
-        logger.warning("Redis unavailable (%s) — cache/rate-limit degraded", exc)
         _redis = None
+        _redis_retry_at = time.monotonic() + settings.redis_retry_cooldown
+        logger.warning(
+            "Redis unavailable (%s) — cache/rate-limit degraded for %ss",
+            exc,
+            settings.redis_retry_cooldown,
+        )
     return _redis
 
 

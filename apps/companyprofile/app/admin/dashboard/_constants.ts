@@ -22,6 +22,31 @@ export const HAS_CONTENT: string[] = [
   'news', 'programs', 'facilities', 'staff', 'achievements', 'gallery', 'testimonials',
 ]
 
+/**
+ * Per-field character caps, mirroring `MAX_LENGTHS` in
+ * `apps/api/src/modules/companyprofile/schemas.py`.
+ *
+ * Without these the form accepted 255 characters into a `category`/`role`
+ * column that is only `String(100)` wide, and the admin only learned about it
+ * from a 422 after pressing Simpan. Keep both sides in sync.
+ */
+export const FIELD_MAX_LENGTHS: Record<string, number> = {
+  slug: 255,
+  image: 255,
+  icon: 255,
+  category: 100,
+  date: 50,
+  label: 255,
+  href: 255,
+  name: 255,
+  child: 255,
+  role: 100,
+}
+
+export function maxLengthFor(field: string): number {
+  return FIELD_MAX_LENGTHS[field] ?? 255
+}
+
 export const TABLE_COLS: Record<string, { label: string; accessor: (item: import('./_types').RowRecord) => string | undefined }[]> = {
   news: [
     { label: 'Judul', accessor: (i) => i.content?.title || '' },

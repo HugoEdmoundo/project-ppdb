@@ -180,6 +180,10 @@ def require_module_access(module: str, required: str = AccessLevel.READ) -> Call
     return _dependency
 
 
+def require_cp_read() -> Callable:
+    return require_module_access(Module.COMPANYPROFILE, AccessLevel.READ)
+
+
 def require_cp_crud() -> Callable:
     return require_module_access(Module.COMPANYPROFILE, AccessLevel.CRUD)
 

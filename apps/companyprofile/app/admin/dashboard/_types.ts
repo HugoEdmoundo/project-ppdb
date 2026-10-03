@@ -56,6 +56,7 @@ export interface AdminUser {
   avatar_url?: string
   role_name?: string
   user_type?: string
+  is_superadmin?: boolean
   permissions?: Record<string, string>
   page_permissions?: string[]
 }

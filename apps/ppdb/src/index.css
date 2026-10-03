@@ -314,4 +314,14 @@
   .globe-motion {
     animation: none !important;
   }
+
+  /* Utility animasi entri/label mati total — konten langsung muncul tanpa fade. */
+  .animate-fade-in {
+    animation: none !important;
+  }
+
+  /* Dipakai label dot-nav di `ScrollGlobe` (landing-page.tsx). */
+  .animate-fadeOut {
+    animation: none !important;
+  }
 }

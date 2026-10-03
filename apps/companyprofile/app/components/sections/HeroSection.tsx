@@ -10,6 +10,8 @@ import { useScrollReveal } from '../../hooks/useScrollAnimations'
 import dynamic from 'next/dynamic'
 import MagneticButton from '../ui/MagneticButton'
 import { buildSchedule, type ActivePpdbWave } from '@/app/lib/ppdb'
+import { gsap, ScrollTrigger } from '@/app/lib/gsap'
+import { onLayoutReady, prefersReducedMotion } from '@/app/lib/motion'
 
 const Particles = dynamic(() => import('../ui/Particles'), { ssr: false })
 
@@ -18,39 +20,68 @@ export default function HeroSection({ wave = null }: { wave?: ActivePpdbWave | n
   const sectionRef = useRef<HTMLElement>(null)
   const ppdb = buildSchedule(wave)
 
-  useScrollReveal(sectionRef, { start: 'top 60%' })
-
   const decorRef1 = useRef<HTMLDivElement>(null)
   const decorRef2 = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
+  const leftRef = useRef<HTMLDivElement>(null)
+  const hintRef = useRef<HTMLDivElement>(null)
+
+  // Reveal diarahkan ke elemen konten, BUKAN ke sectionRef. Section dipakai sebagai
+  // trigger ScrollTrigger parallax di bawah, dan ScrollTrigger mengukur lewat
+  // getBoundingClientRect() yang ikut transform — kalau section ikut bergeser karena
+  // reveal, start/end parallax ikut bergeser sendiri.
+  useScrollReveal(leftRef, { start: 'top 60%' })
+  useScrollReveal(hintRef, { start: 'top 92%' })
 
   useEffect(() => {
-    import('gsap').then(({ default: gsap }) => {
-      import('gsap/ScrollTrigger').then(({ ScrollTrigger }) => {
-        gsap.registerPlugin(ScrollTrigger)
+    if (prefersReducedMotion()) return
 
-        if (decorRef1.current) {
-          gsap.to(decorRef1.current, {
-            y: -80,
-            ease: 'none',
-            scrollTrigger: { trigger: sectionRef.current, start: 'top bottom', end: 'bottom top', scrub: 1.5 },
-          })
-        }
-        if (decorRef2.current) {
-          gsap.to(decorRef2.current, {
-            y: 60,
-            ease: 'none',
-            scrollTrigger: { trigger: sectionRef.current, start: 'top bottom', end: 'bottom top', scrub: 1.5 },
-          })
-        }
-        if (rightRef.current) {
-          gsap.fromTo(rightRef.current,
-            { opacity: 0, x: 100, scale: 0.95 },
-            { opacity: 1, x: 0, scale: 1, duration: 1.2, ease: 'power3.out', scrollTrigger: { trigger: rightRef.current, start: 'top 80%' } }
-          )
-        }
-      })
+    const ctx = gsap.context(() => {
+      if (decorRef1.current) {
+        gsap.to(decorRef1.current, {
+          y: -80,
+          ease: 'none',
+          scrollTrigger: { trigger: sectionRef.current, start: 'top bottom', end: 'bottom top', scrub: 1.5, invalidateOnRefresh: true },
+        })
+      }
+      if (decorRef2.current) {
+        gsap.to(decorRef2.current, {
+          y: 60,
+          ease: 'none',
+          scrollTrigger: { trigger: sectionRef.current, start: 'top bottom', end: 'bottom top', scrub: 1.5, invalidateOnRefresh: true },
+        })
+      }
+    }, sectionRef)
+
+    // Elemen kanan ini `hidden lg:block`; di bawah lg ScrollTrigger tidak punya
+    // ukuran yang bisa diukur, jadi tween-nya hanya dibuat di breakpoint desktop.
+    const mm = gsap.matchMedia()
+    mm.add('(min-width: 1024px)', () => {
+      if (rightRef.current) {
+        gsap.fromTo(rightRef.current,
+          { opacity: 0, x: 100, scale: 0.95 },
+          {
+            opacity: 1,
+            x: 0,
+            scale: 1,
+            duration: 1.2,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: rightRef.current,
+              start: 'top 80%',
+            },
+          }
+        )
+      }
     })
+
+    const cleanupLayout = onLayoutReady(() => ScrollTrigger.refresh())
+
+    return () => {
+      cleanupLayout()
+      mm.revert()
+      ctx.revert()
+    }
   }, [])
 
   if (pathname !== '/') return null
@@ -77,7 +108,7 @@ export default function HeroSection({ wave = null }: { wave?: ActivePpdbWave | n
       <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full pt-20 sm:pt-28 pb-16 sm:pb-20">
         <div className="grid lg:grid-cols-12 gap-8 md:gap-12 items-center">
           {/* Left Content */}
-          <div className="lg:col-span-7">
+          <div ref={leftRef} className="lg:col-span-7">
             <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 flex-wrap">
               <span className="w-6 sm:w-8 h-[2px] bg-[var(--accent-gold)]" />
               <span className="text-[10px] sm:text-xs font-[var(--font-heading)] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.15em] text-[var(--accent-gold)]">
@@ -193,7 +224,7 @@ export default function HeroSection({ wave = null }: { wave?: ActivePpdbWave | n
         </div>
 
         {/* Scroll indicator */}
-        <div className="flex flex-col items-center mt-10 sm:mt-16 animate-bounce">
+        <div ref={hintRef} className="flex flex-col items-center mt-10 sm:mt-16 animate-bounce">
           <span className="text-[10px] sm:text-xs font-[var(--font-heading)] uppercase tracking-[0.15em] sm:tracking-[0.2em] text-[var(--text-muted)] mb-1 sm:mb-2">
             {'Scroll untuk Eksplorasi'}
           </span>

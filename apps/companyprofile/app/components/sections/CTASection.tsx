@@ -11,29 +11,41 @@ import WiggleMagneticButton from '../ui/WiggleMagneticButton'
 import PpdbCountdown from '../ui/PpdbCountdown'
 import { ContainerScroll } from '@/components/ui/container-scroll-animation'
 import { buildSchedule, type ActivePpdbWave } from '@/app/lib/ppdb'
+import { gsap, ScrollTrigger } from '@/app/lib/gsap'
+import { onLayoutReady, prefersReducedMotion } from '@/app/lib/motion'
 
 const Particles = dynamic(() => import('../ui/Particles'), { ssr: false })
 
 export default function CTASection({ wave = null }: { wave?: ActivePpdbWave | null }) {
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
   const ppdb = buildSchedule(wave)
 
-  useScrollReveal(sectionRef, { start: 'top 80%' })
+  // Reveal diarahkan ke konten, BUKAN ke sectionRef — sectionRef dipakai sebagai
+  // trigger ScrollTrigger bg di bawah, dan transform reveal akan menggeser
+  // posisi yang diukur trigger.
+  useScrollReveal(contentRef, { targets: 'children', start: 'top 80%' })
 
   useEffect(() => {
-    import('gsap').then(({ default: gsap }) => {
-      import('gsap/ScrollTrigger').then(({ ScrollTrigger }) => {
-        gsap.registerPlugin(ScrollTrigger)
-        if (bgRef.current) {
-          gsap.to(bgRef.current, {
-            backgroundPosition: '50% 100%',
-            ease: 'none',
-            scrollTrigger: { trigger: sectionRef.current, start: 'top bottom', end: 'bottom top', scrub: 1 },
-          })
-        }
-      })
-    })
+    if (prefersReducedMotion()) return
+
+    const ctx = gsap.context(() => {
+      if (bgRef.current) {
+        gsap.to(bgRef.current, {
+          backgroundPosition: '50% 100%',
+          ease: 'none',
+          scrollTrigger: { trigger: sectionRef.current, start: 'top bottom', end: 'bottom top', scrub: 1, invalidateOnRefresh: true },
+        })
+      }
+    }, sectionRef)
+
+    const cleanupLayout = onLayoutReady(() => ScrollTrigger.refresh())
+
+    return () => {
+      cleanupLayout()
+      ctx.revert()
+    }
   }, [])
 
   return (
@@ -49,7 +61,7 @@ export default function CTASection({ wave = null }: { wave?: ActivePpdbWave | nu
         style={{ backgroundImage: 'radial-gradient(2px 2px at 20px 30px, white, transparent)', backgroundSize: '60px 60px' }}
       />
 
-      <div className="relative z-10">
+      <div ref={contentRef} className="relative z-10">
         <ContainerScroll
           titleComponent={
             <>

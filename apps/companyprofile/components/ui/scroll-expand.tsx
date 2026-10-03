@@ -24,9 +24,11 @@ const easeOutCubic = (n: number) => 1 - Math.pow(1 - n, 3);
 
 // Hijau muda: 10% emerald + 90% putih, tetap sinkron dengan brand token.
 const TINT = "color-mix(in srgb, var(--color-emerald) 10%, #FFFFFF)";
-// Greensilan sudah hilang sepenuhnya di progress ini agar teks tetap tajam.
-const TINT_FADE_END = 0.5;
-const TINT_START = 0.05;
+// Hijau sudah hilang sepenuhnya di progress ini agar teks tetap tajam. Nilai lama
+// 0.5 membuat konten About tertutup wash hijau selama ~45% dari tinggi scroll
+// (puluhan viewport height), yang terbaca sebagai "reveal aneh".
+const TINT_FADE_END = 0.18;
+const TINT_START = 0;
 
 /** Progress scroll; fallback ke 0 bila dipakai tanpa `ScrollExpand` root. */
 const useScrollExpandProgress = () => {
@@ -61,7 +63,7 @@ export interface ScrollExpandProps {
  */
 export const ScrollExpand = ({
   children,
-  scrollLength = "h-[250vh]",
+  scrollLength = "h-[200vh]",
   className = "",
 }: ScrollExpandProps) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -107,7 +109,9 @@ export const ScrollExpandSticky = ({
     <div
       data-scroll-expand-frame=""
       className={`relative flex w-full items-center justify-center overflow-hidden ${
-        reduced ? "relative" : "sticky top-0 h-[100svh]"
+        // `dvh`, bukan `svh`: saat URL bar mobile menyusut, `svh` (< viewport nyata)
+        // menyisakan celah di bawah frame sticky yang memperlihatkan background root.
+        reduced ? "relative" : "sticky top-0 h-dvh"
       } ${className}`}
     >
       {/* Di render sebelum children => reveal (children) menimpanya. */}
@@ -243,7 +247,7 @@ export const ScrollExpandInset = ({
       ref={revealRef}
       data-scroll-expand-reveal=""
       style={{ clipPath: reduced ? "none" : clipPath }}
-      className={`absolute inset-0 will-change-[clip-path] ${className}`}
+      className={`absolute inset-0 ${className}`}
     >
       <div className="absolute inset-0 flex items-center justify-center">
         <div

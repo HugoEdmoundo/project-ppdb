@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { onLayoutReady, prefersReducedMotion } from '@/app/lib/motion'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -13,17 +14,40 @@ export function useScrollReveal(ref: React.RefObject<HTMLElement | null>, option
   start?: string
   toggleActions?: string
   stagger?: number
+  /**
+   * Elemen yang dianimasikan.
+   * - `self` (default lama): animasi elemen `ref` itu sendiri.
+   * - `children`: animasi anak langsung dari `ref`.
+   *
+   * Pakai `children` kalau elemen `ref` juga dipakai sebagai `trigger` ScrollTrigger
+   * lain pada elemen yang sama — ScrollTrigger mengukur lewat getBoundingClientRect()
+   * yang ikut transform, sehingga trigger yang ikut digeser bikin start/end bergeser.
+   */
+  targets?: 'self' | 'children'
 }) {
-  const { from, to, trigger, start, toggleActions, stagger } = options ?? {}
+  const {
+    from,
+    to,
+    trigger,
+    start,
+    toggleActions,
+    stagger,
+    targets = 'self',
+  } = options ?? {}
 
   useEffect(() => {
     if (!ref.current) return
+    if (prefersReducedMotion()) {
+      gsap.set(ref.current, { clearProps: 'all' })
+      return
+    }
+
     const ctx = gsap.context(() => {
       const children = ref.current!.children
-      const targets = stagger ? Array.from(children) : ref.current
+      const tweenTargets = targets === 'children' ? Array.from(children) : ref.current!
 
       gsap.fromTo(
-        targets,
+        tweenTargets,
         { opacity: 0, y: 40, ...from },
         {
           opacity: 1,
@@ -39,8 +63,18 @@ export function useScrollReveal(ref: React.RefObject<HTMLElement | null>, option
           ...to,
         }
       )
-    })
+    }, ref)
 
-    return () => ctx.revert()
-  }, [ref, from, to, trigger, start, toggleActions, stagger])
+    // Font + gambar baru selesai dimuat setelah ScrollTrigger dihitung, jadi start/end
+    // masih memakai layout lama. Refresh sekali begitu layout benar-benar final.
+    const cleanupLayout = onLayoutReady(() => ScrollTrigger.refresh())
+
+    return () => {
+      cleanupLayout()
+      ctx.revert()
+    }
+    // `from`/`to` sengaja di luar deps: pemanggil meneruskan objek literal baru tiap
+    // render, dimasukkan ke deps akan membuat effect recreate tween tiap render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ref, trigger, start, toggleActions, stagger, targets])
 }

@@ -802,6 +802,11 @@ export default function ApplicantDossierModal({
         onOpenChange={setLoaOpen}
         applicantId={applicantId}
       />
+      <ApplicantSKDModal
+        open={skdOpen}
+        onOpenChange={setSkdOpen}
+        applicantId={applicantId}
+      />
     </>
   )
 }

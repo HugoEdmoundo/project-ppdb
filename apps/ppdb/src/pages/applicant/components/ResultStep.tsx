@@ -21,7 +21,7 @@ export default function ResultStep({ applicant, selectionResult, mou, stage2Bill
   const hasPaidDP = stage2Bills?.some(b => b.status === 'paid')
   const { data: skdData } = useQuery({
     queryKey: ['applicant-skd', applicant?.id],
-    queryFn: () => apiFetch<any>(/ppdb/applicants//skd),
+    queryFn: () => apiFetch<any>(`/ppdb/applicants/${applicant?.id}/skd`),
     enabled: !!applicant?.id && hasPaidDP,
   })
 

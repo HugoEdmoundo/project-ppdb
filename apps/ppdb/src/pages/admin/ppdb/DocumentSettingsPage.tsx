@@ -24,6 +24,7 @@ export default function DocumentSettingsPage() {
   const queryClient = useQueryClient()
   const [template, setTemplate] = useState('')
   const [backgroundUrl, setBackgroundUrl] = useState('')
+  const [waLink, setWaLink] = useState('')
 
   const settingsQuery = useQuery({
     queryKey: ['ppdb-document-settings'],

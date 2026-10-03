@@ -75,6 +75,22 @@ async def _async_send_to_wa_service(
         return cast(dict[str, Any], resp.json())
 
 
+# ── Channel resolution ───────────────────────────────────────────────────────
+
+
+def resolve_channel(channel: str) -> str:
+    """Tentukan channel efektif untuk sebuah template.
+
+    Email belum dipakai sama sekali, jadi selama ``NOTIF_EMAIL_ENABLED`` False,
+    semua template — baik ``email``, ``whatsapp``, maupun ``both`` — dikirim via
+    WhatsApp. Tanpa ini, template ber-channel ``email`` akan dilewati begitu saja
+    dan penerima tidak pernah diberi tahu.
+    """
+    if not settings.notif_email_enabled:
+        return "whatsapp"
+    return channel
+
+
 # ── Template Rendering ────────────────────────────────────────────────────────
 
 
@@ -213,7 +229,15 @@ async def _async_send_notifications(
             }
 
             subject, body = _render_template(template, ctx)
-            channel = template.get("channel", "email")
+            raw_channel = template.get("channel", "email")
+            channel = resolve_channel(raw_channel)
+            if channel != raw_channel:
+                logger.debug(
+                    "Template %s: channel %s -> %s (email nonaktif)",
+                    event_key,
+                    raw_channel,
+                    channel,
+                )
             phone = (applicant or {}).get("phone") or user.get("phone", "")
             template_id = template.get("id")
 
@@ -284,6 +308,9 @@ async def _async_send_custom_notifications(
     try:
         if not recipient_user_ids:
             return
+
+        # Email nonaktif → semua blast dipaksa ke WhatsApp.
+        channel = resolve_channel(channel)
 
         pool = get_raw_pool()
         with pool.connect() as conn:

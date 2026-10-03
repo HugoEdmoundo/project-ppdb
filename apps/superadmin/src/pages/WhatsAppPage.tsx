@@ -11,6 +11,7 @@ import SessionCard from '../components/whatsapp/SessionCard'
 import QueueStats from '../components/whatsapp/QueueStats'
 import LogsPanel from '../components/whatsapp/LogsPanel'
 import type { LoginMethod } from '../components/whatsapp/constants'
+import ComposeMessageCard from '../components/whatsapp/ComposeMessageCard'
 
 export default function WhatsAppPage() {
   const [session, setSession] = useState<WAProxyStatus | null>(null)
@@ -161,6 +162,14 @@ export default function WhatsAppPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────
 
+  function handleContactMessageSent(contact: { name: string; phone: string }) {
+    setActionMsg({
+      type: 'success',
+      text: `Pesan berhasil dikirim ke ${contact.name} (${contact.phone}).`,
+    })
+    fetchLogs(1, '')
+  }
+
   function handleMethodChange(method: LoginMethod) {
     if (method === 'qr' && loginMethod === 'phone' && session?.pairingCode) {
       waCancelPairing()
@@ -294,9 +303,10 @@ WA_SERVICE_API_KEY=<api-key-yang-sama-dengan-apps/whatsapp/.env>`}
           />
         </div>
 
-        {/* ── Right: Stats + Logs ── */}
+        {/* ── Right: Stats + Compose + Logs ── */}
         <div className="lg:col-span-2 space-y-6">
           <QueueStats stats={queueStats} onRefresh={fetchQueueStats} />
+          <ComposeMessageCard isReady={isReady} onSent={handleContactMessageSent} />
           <LogsPanel
             logs={logs}
             total={logsTotal}

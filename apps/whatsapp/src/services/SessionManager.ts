@@ -11,6 +11,8 @@
  * - Graceful shutdown
  */
 
+import fs from "fs";
+import os from "os";
 import path from "path";
 import { EventEmitter } from "events";
 import { Client, LocalAuth, Message } from "whatsapp-web.js";
@@ -35,6 +37,8 @@ export class SessionManager extends EventEmitter {
   private isShuttingDown = false;
   private initializePromise: Promise<void> | null = null;
   private pairingActive = false;
+
+  private static readonly CLIENT_ID = "ptdarrahman-wa";
 
   // SSE subscribers
   private sseClients: Set<{
@@ -75,6 +79,8 @@ export class SessionManager extends EventEmitter {
     logger.info("[Session] Initializing WhatsApp client...");
     this.updateStatus("initializing");
 
+    this.clearStaleChromiumProfileLock();
+
     const puppeteerArgs = [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -91,7 +97,7 @@ export class SessionManager extends EventEmitter {
     this.client = new Client({
       authStrategy: new LocalAuth({
         dataPath: path.resolve(env.WA_SESSION_PATH),
-        clientId: "ptdarrahman-wa",
+        clientId: SessionManager.CLIENT_ID,
       }),
       puppeteer: {
         headless: true,
@@ -122,6 +128,10 @@ export class SessionManager extends EventEmitter {
         const msg = (err as Error).message;
         logger.error("[Session] Failed to initialize client", { error: msg });
         this.updateStatus("disconnected", { lastError: msg });
+        // Lepas client yang gagal: kalau tidak, initialize() berikutnya
+        // short-circuit ("Already initialized") dan sesi tidak bisa dipulihkan
+        // tanpa restart container.
+        this.client = null;
         if (!this.isShuttingDown) {
           this.scheduleReconnect();
         }
@@ -283,6 +293,86 @@ export class SessionManager extends EventEmitter {
   }
 
   // ── Private ────────────────────────────────────────────────────────────────
+
+  /**
+   * Chromium menolak start dengan `Code: 21` kalau `SingletonLock` di profile
+   * menunjuk ke host lain. Di Docker, `wa_session` persisten memakai volume:
+   * begitu container di-recreate, hostname berubah tetapi lock lama tetap ada →
+   * sesi WA tidak bisa start selamanya ("The profile appears to be in use by
+   * another Chromium process on another computer"). Hapus lock yang sudah stale
+   * (hostname beda / pid mati) sebelum launch.
+   */
+  private clearStaleChromiumProfileLock(): void {
+    const dataPath = path.resolve(env.WA_SESSION_PATH);
+    const profileDirs: string[] = [];
+
+    const preferred = path.join(dataPath, `session-${SessionManager.CLIENT_ID}`);
+    if (fs.existsSync(preferred)) profileDirs.push(preferred);
+
+    try {
+      for (const entry of fs.readdirSync(dataPath, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const dir = path.join(dataPath, entry.name);
+        if (dir !== preferred) profileDirs.push(dir);
+      }
+    } catch (err) {
+      logger.debug("[Session] Tidak bisa scan dataPath WA session", {
+        error: (err as Error).message,
+      });
+    }
+
+    for (const dir of profileDirs) {
+      this.removeStaleLockIn(dir);
+    }
+  }
+
+  private removeStaleLockIn(profileDir: string): void {
+    const lockPath = path.join(profileDir, "SingletonLock");
+    let lockTarget: string;
+    try {
+      lockTarget = fs.readlinkSync(lockPath);
+    } catch {
+      // Lock tidak ada (atau bukan symlink) — tidak ada yang perlu dibersihkan.
+      return;
+    }
+
+    const separator = lockTarget.lastIndexOf("-");
+    const host = separator === -1 ? lockTarget : lockTarget.slice(0, separator);
+    const pid = Number(separator === -1 ? "" : lockTarget.slice(separator + 1));
+    const sameHost = host === os.hostname();
+    const alive = sameHost && Number.isInteger(pid) && pid > 0 ? this.isPidAlive(pid) : false;
+
+    if (sameHost && alive) {
+      logger.warn("[Session] SingletonLock dipakai proses lain — dibiarkan apa adanya", {
+        lock: lockTarget,
+      });
+      return;
+    }
+
+    for (const name of ["SingletonLock", "SingletonSocket", "SingletonCookie"]) {
+      try {
+        fs.rmSync(path.join(profileDir, name), { force: true });
+      } catch (err) {
+        logger.warn("[Session] Gagal hapus stale Chromium lock", {
+          file: name,
+          error: (err as Error).message,
+        });
+      }
+    }
+    logger.warn("[Session] Stale Chromium lock dibersihkan (container/host berubah)", {
+      profile: profileDir,
+      lock: lockTarget,
+    });
+  }
+
+  private isPidAlive(pid: number): boolean {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch (err) {
+      return (err as NodeJS.ErrnoException).code === "EPERM";
+    }
+  }
 
   private attachEventHandlers(): void {
     if (!this.client) return;

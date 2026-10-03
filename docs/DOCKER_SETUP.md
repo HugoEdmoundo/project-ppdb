@@ -87,6 +87,9 @@ docker-compose.yml
 | 10 | `docker.service`, `containerd.service`, `docker.socket` sengaja di-SET `disabled` (manual-start). Setelah boot / `wsl --shutdown`, WAJIB `sudo systemctl start docker` dulu. | Owner MENOLAK auto-start saat boot WSL (mau kontrol manual penuh, bukan karena proses laptop idle). Kalau dinyalakan otomatis, dockerd ikut menyala setiap WSL boot. |
 | 11 | Update kode = **sync ke copy WSL dulu, LALU `docker compose up -d --build`**. `up -d` TANPA `--build` TIDAK menerapkan perubahan. | Frontend & API di-bake ke image saat build (bukan bind-mount live). Tanpa `--build`, container tetap pakai image lama yang sudah ada. `--build` sekali jalan = build + recreate + start, tidak perlu `up -d` lagi. |
 | 12 | `/etc/docker/daemon.json` **wajib** memuat `{"dns": ["8.8.8.8", "1.1.1.1"]}`. | Saat `docker build` (BuildKit), build container TIDAK memakai konfigurasi `dns` dari `docker-compose.yml`, melainkan mewarisi `/etc/resolv.conf` host WSL (`10.255.255.254`) yang sering drop → `pip install` / `npm ci` / `apt-get` gagal dengan `Temporary failure in name resolution` atau timeout download wheel. |
+| 13 | Redis: `vm.overcommit_memory=1` **wajib** aktif, dipasang lewat `/etc/sysctl.d/99-ptdarrahman-redis.conf`. | Tanpa itu Redis boot dengan `WARNING Memory overcommit must be enabled!`; fork-based BGSAVE/AOF rewrite bisa GAGAL saat memori rendah sehingga RDB/AOF korup dan queue BullMQ hilang. |
+| 14 | Redis `--maxmemory` (192mb) **harus lebih kecil** dari `mem_limit` container (256m). | Kalau sama, cgroup OOM-kill duluan sehingga Redis tidak pernah sampai ke `--maxmemory-policy noeviction` dan tidak shutdown bersih. Sisakan ruang untuk overhead, AOF buffer, dan fork child. |
+| 15 | `/etc/sudoers.d/ptdarrahman-docker` **wajib ada** (NOPASSWD hanya untuk `systemctl` docker/containerd). | Tanpa itu `wsl -e sudo systemctl start docker` (bagian 7) menggantung menunggu password — pada sesi non-interaktif (script/agent/task scheduler) container tidak pernah hidup. Cakupanrule sengaja sempit; `sudo` lain tetap minta password. |
 
 ## 4. Langkah Setup (verbatim)
 
@@ -121,6 +124,19 @@ sudo tee /etc/docker/daemon.json > /dev/null << 'EOF'
   "dns": ["8.8.8.8", "1.1.1.1"]
 }
 EOF
+# Redis fork-based save butuh overcommit (aturan #13). systemd-sysctl
+# membacanya tiap WSL boot karena [boot] systemd=true di /etc/wsl.conf.
+sudo tee /etc/sysctl.d/99-ptdarrahman-redis.conf > /dev/null << 'EOF'
+vm.overcommit_memory = 1
+EOF
+sudo sysctl --system
+# NOPASSWD untuk systemctl docker/containerd saja (aturan #15) supaya
+# `wsl -e sudo systemctl start docker` tidak hang menunggu password.
+sudo tee /etc/sudoers.d/ptdarrahman-docker > /dev/null << 'EOF'
+hugoedmoundo ALL=(root) NOPASSWD: /usr/bin/systemctl start docker, /usr/bin/systemctl stop docker, /usr/bin/systemctl restart docker, /usr/bin/systemctl status docker, /usr/bin/systemctl start docker.service, /usr/bin/systemctl stop docker.service, /usr/bin/systemctl restart docker.service, /usr/bin/systemctl status docker.service, /usr/bin/systemctl start docker.socket, /usr/bin/systemctl stop docker.socket, /usr/bin/systemctl start containerd, /usr/bin/systemctl start containerd.service, /usr/bin/systemctl restart containerd.service
+EOF
+sudo chmod 0440 /etc/sudoers.d/ptdarrahman-docker
+sudo visudo -c          # WAJIB: pastikan "parsed OK" sebelum lanjut
 sudo systemctl disable docker.service containerd.service docker.socket
 sudo systemctl start docker            # setiap habis boot / wsl --shutdown
 
@@ -160,6 +176,16 @@ Setup nyata owner memakai **dua copy repo**, dan ini sumber kebingungan paling s
       /home/<user>/project-ppdb/apps/api/src/modules/companyprofile/router.py
    ```
    (opsional: sync seluruh `apps/` & `packages/` via `rsync`, tapi JANGAN timpa `.env`).
+   **WAJIB cek file yang hilang, bukan cuma file yang berubah** — copy WSL bisa
+   kekurangan file yang sifatnya BARU di Windows (untracked di git), terutama
+   `apps/api/alembic/versions/*.py`. Gejalanya: api crash-loop
+   `Can't locate revision identified by '00XX'`. Cek cepat dari dalam WSL:
+   ```bash
+   cd /home/<user>/project-ppdb
+   git -C /mnt/c/ptdarrahman.sch.id/project-ppdb status --porcelain -- apps/api/alembic/versions/
+   ls -1 apps/api/alembic/versions/            # bandingkan dengan output di atas
+   ```
+   `??` = file baru di Windows yang belum ada di WSL → wajib di-`cp`.
 3. Build ulang & jalankan dari **copy WSL** (aturan #11):
    ```bash
    cd /home/<user>/project-ppdb
@@ -254,6 +280,13 @@ docker compose logs -f whatsapp     # WhatsApp session/QR
 | **Semua container berhenti tiba-tiba, `wsl -l -v` → `Stopped`** walau tidak `docker compose stop` | VM WSL auto-shutdown karena idle | Pastikan `.wslconfig` punya `instanceIdleTimeout=-1` + `vmIdleTimeout=-1` (aturan #9). Setelah boot lagi jangan lupa `sudo systemctl start docker`. |
 | **Kode sudah diedit tapi build/output tetap versi lama ("ga update")** | (a) Build dari copy WSL yang belum di-sync dari copy Windows, dan/atau (b) `up -d` tanpa `--build` | Sync file ke `/home/<user>/project-ppdb` dulu (bagian 4a), lalu `docker compose up -d --build` (aturan #11). |
 | `docker build` pip install / npm ci gagal `Temporary failure in name resolution` atau `ReadTimeoutError` | Build container mewarisi resolver host WSL (10.255.255.254) | Buat `/etc/docker/daemon.json` berisi `{"dns": ["8.8.8.8", "1.1.1.1"]}` (aturan #12) lalu `sudo systemctl restart docker`. |
+| **redis log: `WARNING Memory overcommit must be enabled!`** | `vm.overcommit_memory=0` | Buat `/etc/sysctl.d/99-ptdarrahman-redis.conf` berisi `vm.overcommit_memory = 1` lalu `sudo sysctl --system` (aturan #13). Restart redis. |
+| **redis mati sendiri / `OOMKilled`, queue BullMQ kosong** | `--maxmemory` = `mem_limit` container | `--maxmemory` harus < `mem_limit`; sekarang 192mb vs 256m (aturan #14). `docker compose up -d --build redis`. |
+| **`wsl -e sudo systemctl start docker` menggantung / tidak ada output** | `sudo` menunggu password di sesi non-interaktif | Pasang `/etc/sudoers.d/ptdarrahman-docker` (aturan #15) lalu `sudo visudo -c`. Alternatif: `wsl -d Ubuntu -u root -- systemctl start docker`. |
+| **whatsapp log: `[ioredis] Unhandled error event: ... ECONNREFUSED`** lalu container crash | Koneksi BullMQ dibuat tanpa handler `error`; ioredis melempar error event tanpa listener → proses mati | `createRedisConnection()` di `apps/whatsapp/src/lib/redis.ts` sudah attach handler. Kalau muncul lagi setelah edit: sync ke copy WSL lalu `docker compose up -d --build whatsapp`. |
+| **whatsapp `docker compose stop` selalu 30s lalu "Force exiting"** | Koneksi BullMQ tidak ditutup saat shutdown | Queue/queueEvents harus selalu di-`close()` di `server.ts` shutdown (bukan hanya saat `redisReady`). Sudah diperbaiki. |
+| **api crash-loop: `Can't locate revision identified by '0024'` lalu `dependency failed to start: container project-ppdb-api-1 is unhealthy`** | Copy build WSL (/home/hugoedmoundo) KURANG BANYAK dari Windows (C:\ptdarrahman.sch.id) — file migrasi `0023`/`0024` ada di Windows tapi belum tersinkron. DB sudah ter-stamp `0024`, jadi Alembic tidak bisa resolve chain dan exit. | Copy file yang kurang dari Windows ke WSL (lihat "Sync Source Windows → WSL" di bawah), lalu `docker compose up -d --build api`. Verifikasi: `docker compose exec -T api alembic current` harus cocok dengan `alembic heads`. |
+| **whatsapp log ~15-20 baris `Redis error` / `ECONNREFUSED` / `ENOTFOUND redis` tepat setelah boot** | `restart: unless-stopped` menyalakan SEMUA container paralel saat dockerd start, jadi `depends_on: service_healthy` TIDAK berlaku — BullMQ connect sebelum redis listen. Self-heals dalam ~8 detik. | Sudah di-downgrade ke `warn` di `lib/redis.ts` (hanya error SEJAK koneksi pernah `ready` yang di-`error`). Kalau muncul lagi: file WSL belum ter-sync/rebuild. |
 | `socket.gaierror` / API hang saat dipanggil karena koneksi DB | Panggilan DB blocking di event loop | Endpoint async jangan memanggil DB sinkron langsung; pakai `asyncio.to_thread` atau jadikan endpoint `def` (lihat fix `apps/api/src/modules/companyprofile/router.py`). |
 | API log: `pymysql ... socket.readinto` / event loop blocked, `/health` lambat | `connect_timeout`/`read_timeout` tidak diset | Pastikan engine `connect_args` memuat `connect_timeout=5, read_timeout=30, write_timeout=30` (`apps/api/src/core/database.py`). |
 
@@ -273,7 +306,7 @@ mati sendiri + dua-copy repo), ikuti urutan ini:
 4. **Env files**: `cp apps/api/.env.example apps/api/.env`, `cp apps/whatsapp/.env.example
    apps/whatsapp/.env`, lalu isi dengan nilai yang benar (creds DB, JWT, API key, WEBHOOK secret).
    Set `CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium` di whatsapp/.env.
-5. **Docker daemon DNS & Manual-start (aturan #10 & #12)**:
+5. **Docker daemon DNS & Manual-start (aturan #10, #12, #13, #15)**:
    ```bash
    sudo mkdir -p /etc/docker
    sudo tee /etc/docker/daemon.json > /dev/null << 'EOF'
@@ -281,6 +314,15 @@ mati sendiri + dua-copy repo), ikuti urutan ini:
      "dns": ["8.8.8.8", "1.1.1.1"]
    }
    EOF
+   sudo tee /etc/sysctl.d/99-ptdarrahman-redis.conf > /dev/null << 'EOF'
+   vm.overcommit_memory = 1
+   EOF
+   sudo sysctl --system
+   sudo tee /etc/sudoers.d/ptdarrahman-docker > /dev/null << 'EOF'
+   hugoedmoundo ALL=(root) NOPASSWD: /usr/bin/systemctl start docker, /usr/bin/systemctl stop docker, /usr/bin/systemctl restart docker, /usr/bin/systemctl status docker, /usr/bin/systemctl start docker.service, /usr/bin/systemctl stop docker.service, /usr/bin/systemctl restart docker.service, /usr/bin/systemctl status docker.service, /usr/bin/systemctl start docker.socket, /usr/bin/systemctl stop docker.socket, /usr/bin/systemctl start containerd, /usr/bin/systemctl start containerd.service, /usr/bin/systemctl restart containerd.service
+   EOF
+   sudo chmod 0440 /etc/sudoers.d/ptdarrahman-docker
+   sudo visudo -c
    sudo systemctl disable docker.service containerd.service docker.socket
    ```
 6. Build & jalankan: `sudo systemctl start docker` lalu `docker compose up -d --build`.

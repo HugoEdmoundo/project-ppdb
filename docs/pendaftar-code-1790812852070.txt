@@ -65,13 +65,13 @@ Setelah webhook Apps Script berhasil memasukkan nilai TIU ke sistem, peserta men
        ▼ (TIDAK LULUS)                                   ▼ (LULUS)
 [NOTIF: MOHON MAAF GAGAL]                      [15. MENDAPATKAN LoA (Letter of Acceptance)]
        │                                       *(MoU Dihold)*
-   (SELESAI)                                   *Info Wajib di LoA: "Seluruh dana yang 
+   (SELESAI)                                   *Info Wajib di LoA: "Seluruh dana yang
                                                 dibayarkan tidak dapat dikembalikan"*
                                                          │
                                                          ▼
                                                [16. PEMBAYARAN TAHAP 2 DI APLIKASI (PAK KASIR)]
                                                - Bayar DP (Syarat utama diterima). DP di luar tagihan.
-                                               - Pendaftar mengatur skema cicilan untuk sisa tagihan 
+                                               - Pendaftar mengatur skema cicilan untuk sisa tagihan
                                                  (Pilih dibagi berapa kali cicilan/tagihan).
                                                - *Tersedia fitur bayar rapel cicilan sekaligus (misal ngaret)*.
                                                          │

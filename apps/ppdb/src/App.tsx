@@ -23,6 +23,7 @@ import MouPage from './pages/admin/ppdb/MouPage'
 import DiskonasiPage from './pages/admin/ppdb/DiskonasiPage'
 import DocumentSettingsPage from './pages/admin/ppdb/DocumentSettingsPage'
 import TIUSettingsPage from './pages/admin/ppdb/TIUSettingsPage'
+import ArsipPendaftarPage from './pages/admin/ppdb/ArsipPendaftarPage'
 import * as api from './api/client'
 
 export default function App() {
@@ -57,6 +58,7 @@ export default function App() {
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="data-pendaftar" element={<DataPendaftarPage />} />
+              <Route path="arsip" element={<ArsipPendaftarPage />} />
               <Route path="periods" element={<PeriodsPage />} />
               <Route path="document-settings" element={<DocumentSettingsPage />} />
               <Route path="tiu-settings" element={<TIUSettingsPage />} />

@@ -194,6 +194,9 @@ export async function logout() {
   try {
     await fetchWithFallback(`${API_BASE}/companyprofile/auth/logout`, {
       method: 'POST',
+      // Wajib: tanpa Content-Type, fetch kirim `text/plain` dan FastAPI
+      // menolak body sebagai JSON → 422 (cookie tetap aktif di server).
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
       credentials: 'include' as RequestCredentials,
     })

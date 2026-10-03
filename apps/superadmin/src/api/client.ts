@@ -159,6 +159,7 @@ export async function logout() {
   try {
     await fetchWithFallback(`${API_BASE}/companyprofile/auth/logout`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({})
     })
   } catch { /* best effort */ }
@@ -278,8 +279,47 @@ export async function deleteRole(id: string): Promise<void> {
   await apiFetch(`/roles/${id}`, { method: 'DELETE' })
 }
 
-export async function getDashboardStats(): Promise<any> {
-  return apiFetch('/superadmin/dashboard')
+export async function getDashboardStats(params?: {
+  period_id?: string
+  wave_id?: string
+}): Promise<any> {
+  const q = new URLSearchParams()
+  if (params?.period_id) q.set('period_id', params.period_id)
+  if (params?.wave_id) q.set('wave_id', params.wave_id)
+  return apiFetch(`/superadmin/dashboard${q.toString() ? '?' + q : ''}`)
+}
+
+export interface WhatsAppContact {
+  id: string
+  user_id: string | null
+  name: string
+  phone: string
+  email?: string | null
+  username?: string | null
+  kind: 'applicant' | 'user'
+  period_name?: string | null
+  wave_name?: string | null
+}
+
+export async function getWhatsAppContacts(params?: {
+  search?: string
+  page?: number
+  per_page?: number
+}): Promise<{ data: WhatsAppContact[]; total: number; totalPages: number }> {
+  const q = new URLSearchParams()
+  if (params?.search) q.set('search', params.search)
+  if (params?.page) q.set('page', String(params.page))
+  if (params?.per_page) q.set('per_page', String(params.per_page))
+  return apiFetch(`/superadmin/whatsapp-contacts${q.toString() ? '?' + q : ''}`)
+}
+
+export async function waSendMessage(body: {
+  phone: string
+  message: string
+  eventKey?: string
+  recipientUserId?: string
+}): Promise<any> {
+  return apiFetch('/whatsapp/send', { method: 'POST', body: JSON.stringify(body) })
 }
 
 export async function getAuditLogs(params?: any): Promise<any> {
@@ -312,7 +352,59 @@ export async function updateUserPagePermissions(id: string, page_ids: string[]) 
 
 export async function getApplicants(params?: any): Promise<any> {
   const query = params ? '?' + new URLSearchParams(params) : ''
-  return await apiFetch(`/ppdb/applicants${query}`)
+  return apiFetch(`/ppdb/applicants${query}`)
+}
+
+// ── Applicants CRUD (Superadmin) ─────────────────────────────────
+// Tanpa filter, backend mengembalikan pendaftar dari SEMUA periode &
+// gelombang; tiap baris membawa period_name + wave_name sebagai label.
+
+export interface ApplicantPeriod {
+  id: string
+  name: string
+  status: string
+  academic_year?: string | null
+}
+
+export interface ApplicantWave {
+  id: string
+  name: string
+  status: string
+  quota: number
+  period_id: string
+  period_name: string
+  total?: number
+}
+
+export async function getPeriods(): Promise<ApplicantPeriod[]> {
+  const res = await apiFetch<{ data: ApplicantPeriod[] }>('/superadmin/periods')
+  return res?.data || []
+}
+
+export async function getWaves(periodId?: string): Promise<ApplicantWave[]> {
+  const q = periodId ? `?period_id=${encodeURIComponent(periodId)}` : ''
+  const res = await apiFetch<{ data: ApplicantWave[] }>(`/superadmin/waves${q}`)
+  return res?.data || []
+}
+
+export async function getApplicant(id: string): Promise<any> {
+  return apiFetch(`/ppdb/applicants/${id}`)
+}
+
+/**
+ * Buat pendaftar baru. Password dibuat sistem (opsional kirim `password`
+ * sendiri) dan hanya dikembalikan SEKALI di respons `credentials`.
+ */
+export async function createApplicant(data: any): Promise<any> {
+  return apiFetch('/ppdb/applicants', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function updateApplicant(id: string, data: any): Promise<any> {
+  return apiFetch(`/ppdb/applicants/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function deleteApplicant(id: string): Promise<any> {
+  return apiFetch(`/ppdb/applicants/${id}`, { method: 'DELETE' })
 }
 
 // ── Notifications (custom send / logs) ─────────────────────

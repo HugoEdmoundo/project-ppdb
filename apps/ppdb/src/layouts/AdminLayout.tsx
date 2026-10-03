@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth, useFilteredNav } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, ChevronDown, ChevronLeft, Menu, CalendarDays, CreditCard, Bell, Users, FileCheck2, FileText, Timer
+  LayoutDashboard, ChevronDown, ChevronLeft, Menu, CalendarDays, CreditCard, Bell, Users, FileCheck2, FileText, Timer, Archive
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -12,6 +12,7 @@ import TopBar from '@/components/shared/TopBar'
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/admin/dashboard', module: 'ppdb' },
   { label: 'Data Pendaftar', icon: Users, href: '/admin/data-pendaftar', module: 'ppdb', minLevel: 'read' },
+  { label: 'Arsip Pendaftar', icon: Archive, href: '/admin/arsip', module: 'ppdb', minLevel: 'read' },
   {
     label: 'Persyaratan Seleksi',
     icon: FileCheck2,

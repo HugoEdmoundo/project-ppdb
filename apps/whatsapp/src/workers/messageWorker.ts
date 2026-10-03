@@ -231,8 +231,12 @@ export function createMessageWorker(): Worker<SendMessageJobData, MessageJobResu
     }
   });
 
+  // BullMQ meneruskan error koneksi Redis ke event ini. Error yang sama juga
+  // sudah dicatat oleh handler ioredis di lib/redis.ts, jadi cukup `warn`
+  // supaya satu outage tidak terlog dua kali. Job tetap aman: BullMQ hanya
+  // abandon job bila Redis tidak bisa ditulis, dan job itu kembali ke queue.
   worker.on("error", (err) => {
-    logger.error("[Worker] Worker error", { error: err.message });
+    logger.warn("[Worker] Worker error", { error: err.message });
   });
 
   worker.on("stalled", (jobId) => {

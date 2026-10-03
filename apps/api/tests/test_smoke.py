@@ -12,7 +12,7 @@ def client() -> TestClient:
 def test_health(client: TestClient):
     res = client.get("/health")
     assert res.status_code == 200
-    assert res.json()["status"] == "ok"
+    assert res.json()["status"] == "gwenchana"
 
 
 def test_root(client: TestClient):

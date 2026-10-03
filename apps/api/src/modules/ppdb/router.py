@@ -17,6 +17,7 @@ from fastapi import (
     Request,
     UploadFile,
 )
+from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -747,6 +748,81 @@ def verify_applicant_documents(
     service: PPDBService = Depends(get_ppdb_service),
 ):
     return service.verify_applicant_documents(id, body.status, body.rejection_reason)
+
+
+@router.get("/applicants/{id}/transcript")
+def get_applicant_transcript(
+    id: str,
+    user: dict = Depends(require_ppdb_read),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    return service.get_applicant_transcript(id)
+
+
+@router.get("/applicants/{id}/loa")
+def get_applicant_loa(
+    id: str,
+    user: dict = Depends(require_ppdb_read),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    return service.get_applicant_loa(id)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Arsip / Dossier Pendaftar (Lintas Periode & Gelombang)
+# ─────────────────────────────────────────────────────────────────────────────
+@router.get("/archive/applicants")
+def get_archive_applicants(
+    period_id: str | None = Query(None),
+    wave_id: str | None = Query(None),
+    search: str | None = Query(None),
+    status: str | None = Query(None),
+    page: int = Query(1),
+    perPage: int = Query(20),
+    user: dict = Depends(require_ppdb_read),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    return service.get_archive_applicants(
+        period_id=period_id,
+        wave_id=wave_id,
+        search=search,
+        status=status,
+        page=page,
+        per_page=perPage,
+    )
+
+
+@router.get("/archive/applicants/{id}/dossier")
+def get_applicant_dossier(
+    id: str,
+    request: Request,
+    user: dict = Depends(require_ppdb_read),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    ip_addr = request.client.host if request.client else None
+    return service.get_applicant_dossier(id, admin_user=user, ip_address=ip_addr)
+
+
+@router.get("/archive/applicants/{id}/dossier/zip")
+def download_applicant_dossier_zip(
+    id: str,
+    request: Request,
+    user: dict = Depends(require_ppdb_admin),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    import io
+
+    ip_addr = request.client.host if request.client else None
+    zip_bytes, zip_filename = service.export_applicant_dossier_zip(
+        id, admin_user=user, ip_address=ip_addr
+    )
+    return StreamingResponse(
+        io.BytesIO(zip_bytes),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{zip_filename}"'},
+    )
+
+
 
 
 # Rute /applicants/me/* didaftarkan SEBELUM /applicants/{id} agar "me"

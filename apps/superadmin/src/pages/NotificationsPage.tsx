@@ -20,7 +20,7 @@ import {
   EmptyState,
 } from '@/components/ui'
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// ÔöÇÔöÇ Types ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 interface Template {
   id: string
@@ -56,7 +56,7 @@ interface Recipient {
   type: 'Admin' | 'Pendaftar'
 }
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// ÔöÇÔöÇ Constants ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 const AVAILABLE_VARS = [
   { key: '{nama_peserta}', desc: 'Nama lengkap penerima' },
@@ -109,7 +109,7 @@ const CHANNEL_META: Record<string, { label: string; color: string; icon: React.E
   both:     { label: 'WA + Email', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Zap },
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ÔöÇÔöÇ Helpers ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 function renderPreview(body: string): string {
   let result = body
@@ -120,7 +120,7 @@ function renderPreview(body: string): string {
 }
 
 function fmtDate(d?: string) {
-  if (!d) return '—'
+  if (!d) return 'ÔÇö'
   return new Intl.DateTimeFormat('id-ID', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
@@ -142,7 +142,7 @@ function exportCSV(logs: NotifLog[]) {
   URL.revokeObjectURL(url)
 }
 
-// ── VarChip ───────────────────────────────────────────────────────────────────
+// ÔöÇÔöÇ VarChip ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 function VarChip({ varKey, desc, onInsert }: { varKey: string; desc: string; onInsert: (v: string) => void }) {
   const [copied, setCopied] = useState(false)
@@ -158,7 +158,7 @@ function VarChip({ varKey, desc, onInsert }: { varKey: string; desc: string; onI
   )
 }
 
-// ── Tab 1: Kirim Pesan ────────────────────────────────────────────────────────
+// ÔöÇÔöÇ Tab 1: Kirim Pesan ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 function SendTab({ templates }: { templates: Template[] }) {
   const { toast } = useToast()
@@ -275,7 +275,7 @@ function SendTab({ templates }: { templates: Template[] }) {
                     <Badge variant="secondary" className="text-[10px] shrink-0">{r.type}</Badge>
                   </div>
                   <div className="text-xs text-muted-foreground truncate">
-                    {r.email || '—'} · {r.phone || 'Tanpa WA'}
+                    {r.email || 'ÔÇö'} ┬À {r.phone || 'Tanpa WA'}
                   </div>
                 </div>
               </label>
@@ -307,7 +307,7 @@ function SendTab({ templates }: { templates: Template[] }) {
               <Label>Template</Label>
               <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={selectedTpl} onChange={e => onTplChange(e.target.value)}>
-                <option value="">— Pilih template —</option>
+                <option value="">ÔÇö Pilih template ÔÇö</option>
                 {templates.filter(t => t.is_active).map(t => (
                   <option key={t.id} value={t.id}>{t.label}</option>
                 ))}
@@ -358,7 +358,7 @@ function SendTab({ templates }: { templates: Template[] }) {
   )
 }
 
-// ── Tab 2: Template Manager ───────────────────────────────────────────────────
+// ÔöÇÔöÇ Tab 2: Template Manager ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 function TemplateTab() {
   const { toast } = useToast()
@@ -570,7 +570,7 @@ function TemplateEditDialog({ template, open, onClose, onSaved }: {
               onChange={e => setForm(p => ({ ...p, is_active: e.target.checked }))}
               className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
             <label htmlFor="is_active_sa" className="text-sm font-medium cursor-pointer">
-              Template aktif — akan dikirim saat event terpicu
+              Template aktif ÔÇö akan dikirim saat event terpicu
             </label>
           </div>
         </div>
@@ -583,7 +583,7 @@ function TemplateEditDialog({ template, open, onClose, onSaved }: {
   )
 }
 
-// ── Tab 3: Log ────────────────────────────────────────────────────────────────
+// ÔöÇÔöÇ Tab 3: Log ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 function LogTab() {
   const { toast } = useToast()
@@ -686,8 +686,8 @@ function LogTab() {
               return (
                 <TableRow key={log.id} className="hover:bg-muted/20 transition-colors">
                   <TableCell>
-                    <div className="text-sm font-medium">{log.recipient_name || '—'}</div>
-                    <div className="text-xs text-muted-foreground font-mono">{log.recipient_phone || log.recipient_email || '—'}</div>
+                    <div className="text-sm font-medium">{log.recipient_name || 'ÔÇö'}</div>
+                    <div className="text-xs text-muted-foreground font-mono">{log.recipient_phone || log.recipient_email || 'ÔÇö'}</div>
                   </TableCell>
                   <TableCell>
                     <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">{log.event_key}</span>
@@ -705,13 +705,13 @@ function LogTab() {
                   </TableCell>
                   <TableCell className="text-center">
                     {(log.retry_count ?? 0) > 0
-                      ? <span className="text-xs font-semibold text-amber-600">{log.retry_count}×</span>
-                      : <span className="text-muted-foreground text-xs">—</span>}
+                      ? <span className="text-xs font-semibold text-amber-600">{log.retry_count}├ù</span>
+                      : <span className="text-muted-foreground text-xs">ÔÇö</span>}
                   </TableCell>
                   <TableCell>
                     {log.wa_message_id
-                      ? <span className="font-mono text-[10px] text-muted-foreground">{log.wa_message_id.slice(0, 16)}…</span>
-                      : <span className="text-muted-foreground text-xs">—</span>}
+                      ? <span className="font-mono text-[10px] text-muted-foreground">{log.wa_message_id.slice(0, 16)}ÔÇª</span>
+                      : <span className="text-muted-foreground text-xs">ÔÇö</span>}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                     {fmtDate(log.sent_at || log.created_at)}
@@ -742,7 +742,7 @@ function LogTab() {
   )
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ÔöÇÔöÇ Main Page ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 export default function NotificationsPage() {
   const [templates, setTemplates] = useState<Template[]>([])

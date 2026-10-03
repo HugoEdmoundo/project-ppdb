@@ -4,16 +4,16 @@
 [DASHBOARD UTAMA ADMIN]
        │
        ├─────────────────────┬─────────────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────────────────────────┐
-       ▼                     ▼                     ▼                     ▼                     ▼                     ▼                          
+       ▼                     ▼                     ▼                     ▼                     ▼                     ▼
 [1. KELOLA GELOMBANG] [2. KELOLA TEMPLATE & LoA] [3. KELOLA RUBRIK]  [4. KELOLA SESI TAHFIDZ] [5. KELOLA SESI WAWANCARA] [6. PENGATURAN TIU] ◄── (BARU)
-- Set Buka/Tutup      - Generate Teks LoA        - Kriteria Nilai    - Set Jadwal (Tgl/Jam)   - Set Jadwal (Tgl/Jam)     - Google Form URL      
-- Harga Formulir      - Upload Background SKD    - Bobot Nilai (%)   - Set Penguji            - Set Interviewer          - Webhook Secret       
-- Diskon Gelombang    - *Preview Template LoA*   - Form Evaluator    - Mode Online/Offline    - Mode Online/Offline      - Petunjuk Apps Script 
-- Set Batas Slot /      *(Cek Sblm Publish)*       (Tahfidz, TIU,    - Link Zoom / Ruangan    - Link Zoom / Ruangan        (Dokumentasi)        
-  Kuota Pendaftar     - Set Teks Non-Refundable     Wawancara)                                                            
-- Set Diskon untuk      (Hardcoded)                                                                                      
-  {X} Pendaftar Awal                                                                                                     
-- Set Minimal DP                                                                                                          
+- Set Buka/Tutup      - Generate Teks LoA        - Kriteria Nilai    - Set Jadwal (Tgl/Jam)   - Set Jadwal (Tgl/Jam)     - Google Form URL
+- Harga Formulir      - Upload Background SKD    - Bobot Nilai (%)   - Set Penguji            - Set Interviewer          - Webhook Secret
+- Diskon Gelombang    - *Preview Template LoA*   - Form Evaluator    - Mode Online/Offline    - Mode Online/Offline      - Petunjuk Apps Script
+- Set Batas Slot /      *(Cek Sblm Publish)*       (Tahfidz, TIU,    - Link Zoom / Ruangan    - Link Zoom / Ruangan        (Dokumentasi)
+  Kuota Pendaftar     - Set Teks Non-Refundable     Wawancara)
+- Set Diskon untuk      (Hardcoded)
+  {X} Pendaftar Awal
+- Set Minimal DP
        │                     │                     │                     │                     │                     │
        └─────────────────────┴──────────────┬──────┴─────────────────────┴─────────────────────┴─────────────────────┘
                                             │

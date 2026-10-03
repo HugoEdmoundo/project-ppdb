@@ -79,8 +79,12 @@ services:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 20s
+      # Start period longgar: startup API menunggu MySQL remote siap (retry
+      # sampai 90s di src/main.py::_wait_for_database). start_period pendek
+      # membuat container ditandai unhealthy → frontend + whatsapp (yang
+      # depends_on service_healthy) ikut gagal start.
+      retries: 5
+      start_period: 150s
 
   # ── Container 3: WhatsApp Microservice (Node.js/npm — WA bridge only) ──────
   whatsapp:
@@ -137,7 +141,7 @@ services:
       redis-server
         --appendonly yes
         --appendfsync everysec
-        --maxmemory 256mb
+        --maxmemory 192mb
         --maxmemory-policy noeviction
         --save 60 1
         --loglevel notice
@@ -148,6 +152,10 @@ services:
       retries: 5
       start_period: 5s
     restart: unless-stopped
+    # WAJIB > --maxmemory (192mb). Redis butuh memory di luar dataset untuk
+    # overhead, AOF buffer, dan fork child saat BGSAVE. Kalau mem_limit == maxmemory,
+    # cgroup OOM-kill container duluan sehingga Redis tidak pernah sampai ke
+    # --maxmemory-policy (noeviction) dan shutdown cleanliness.
     mem_limit: 256m
 
 # ── Named Volumes ──────────────────────────────────────────────────────────

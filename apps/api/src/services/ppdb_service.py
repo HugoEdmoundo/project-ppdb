@@ -1,4 +1,5 @@
 import logging
+import os
 import random
 import string
 import uuid
@@ -17,6 +18,7 @@ from src.models.ppdb import (
     PPDBApplicant,
     PPDBPaymentTransaction,
     PPDBPeriod,
+    PPDBStage2Bill,
     PPDBWave,
     PPDBWaveFeeItem,
 )
@@ -1391,3 +1393,291 @@ class PPDBService:
         mou.updated_at = datetime.now(WIB)
         self.repository.update_mou(mou)
         return {"success": True, "message": "MOU berhasil ditandatangani"}
+
+    def get_applicant_transcript(self, applicant_id: str) -> dict[str, Any]:
+        applicant = self.repository.get_applicant_detail(applicant_id)
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+
+        from src.models.selection import SelectionCategory, SelectionCriteria, SelectionResult, SelectionScore
+        from sqlalchemy import select
+
+        scores_rows = (
+            self.repository.db.execute(
+                select(
+                    SelectionScore.score,
+                    SelectionCriteria.name.label("criteria_name"),
+                    SelectionCriteria.weight,
+                    SelectionCategory.name.label("category_name"),
+                    SelectionCategory.id.label("category_id"),
+                )
+                .join(SelectionCriteria, SelectionScore.criteria_id == SelectionCriteria.id)
+                .join(SelectionCategory, SelectionCriteria.category_id == SelectionCategory.id)
+                .where(SelectionScore.applicant_id == applicant_id)
+                .order_by(SelectionCategory.name.asc(), SelectionCriteria.name.asc())
+            ).all()
+        )
+
+        categories_map: dict[str, dict[str, Any]] = {}
+        for row in scores_rows:
+            cat_name = row.category_name
+            if cat_name not in categories_map:
+                categories_map[cat_name] = {
+                    "category_name": cat_name,
+                    "criteria": [],
+                }
+            categories_map[cat_name]["criteria"].append({
+                "criteria_name": row.criteria_name,
+                "weight": row.weight,
+                "score": row.score,
+            })
+
+        sel_res = (
+            self.repository.db.execute(
+                select(SelectionResult).where(SelectionResult.applicant_id == applicant_id)
+            ).scalars().first()
+        )
+
+        tiu_completed = applicant.get("tiu_completed_at")
+        tiu_completed_str = (
+            tiu_completed.isoformat()
+            if hasattr(tiu_completed, "isoformat")
+            else str(tiu_completed) if tiu_completed else None
+        )
+
+        return {
+            "applicant": applicant,
+            "tiu_score": applicant.get("tiu_score"),
+            "tiu_completed_at": tiu_completed_str,
+            "categories": list(categories_map.values()),
+            "evaluator_notes": sel_res.notes if sel_res else None,
+            "graduation_status": sel_res.graduation_status if sel_res else applicant.get("status"),
+            "issued_at": datetime.now(WIB).isoformat(),
+        }
+
+    def get_applicant_loa(self, applicant_id: str) -> dict[str, Any]:
+        applicant = self.repository.get_applicant_detail(applicant_id)
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+
+        from src.models.content import SiteSetting
+        from sqlalchemy import select
+
+        tpl_row = (
+            self.repository.db.execute(
+                select(SiteSetting.value).where(SiteSetting.key == "ppdb_loa_template")
+            ).scalar_one_or_none()
+        )
+
+        template_text = tpl_row or (
+            "SURAT PENERIMAAN SANTRI BARU (LETTER OF ACCEPTANCE)\n\n"
+            "Dengan hormat,\n"
+            "Berdasarkan hasil evaluasi seleksi Penerimaan Peserta Didik Baru (PPDB), kami menyatakan bahwa:\n\n"
+            "Nama Lengkap: {{nama}}\n"
+            "Nomor Induk / NISN: {{nisn}}\n"
+            "Jalur Pendaftaran: {{jalur}}\n"
+            "Jenjang Pendidikan: {{jenjang}}\n"
+            "Gelombang: {{gelombang}}\n\n"
+            "Dinyatakan DITERIMA / LULUS sebagai santri baru di Pesantren Tahfidz Ar-Rahman.\n\n"
+            "Harap segera menyelesaikan tahapan administrasi dan pembayaran Tahap 2 sesuai jadwal yang ditentukan."
+        )
+
+        replacements = {
+            "{{nama}}": applicant.get("full_name") or "",
+            "{{nisn}}": applicant.get("nisn") or applicant.get("nik") or "-",
+            "{{no_registrasi}}": applicant.get("nisn") or str(applicant.get("id", ""))[:8].upper(),
+            "{{jalur}}": str(applicant.get("registration_path") or "").capitalize(),
+            "{{jenjang}}": str(applicant.get("registration_level") or "").upper(),
+            "{{gelombang}}": str(applicant.get("wave_name") or "-"),
+            "{{tanggal}}": datetime.now(WIB).strftime("%d %B %Y"),
+        }
+
+        rendered = template_text
+        for placeholder, val in replacements.items():
+            rendered = rendered.replace(placeholder, val)
+
+        FIXED_LOA_CLAUSE = "Seluruh dana yang telah dibayarkan tidak dapat dikembalikan."
+
+        return {
+            "letter_number": f"LoA/PPDB/{datetime.now(WIB).year}/{str(applicant.get('id', ''))[:8].upper()}",
+            "applicant": applicant,
+            "content": rendered,
+            "fixed_clause": FIXED_LOA_CLAUSE,
+            "is_graduated": applicant.get("status") == "passed",
+            "issued_at": datetime.now(WIB).isoformat(),
+        }
+
+    def get_archive_applicants(
+        self,
+        period_id: str | None,
+        wave_id: str | None,
+        search: str | None,
+        status: str | None,
+        page: int,
+        per_page: int,
+    ) -> dict[str, Any]:
+        """Pencarian lintas periode dan gelombang khusus arsip."""
+        rows, total = self.repository.get_applicants(
+            wave_id=wave_id,
+            period_id=period_id,
+            search=search,
+            status=status,
+            payment_status=None,
+            page=page,
+            per_page=per_page,
+        )
+        return {
+            "data": rows,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+        }
+
+    def get_applicant_dossier(
+        self,
+        applicant_id: str,
+        admin_user: dict[str, Any],
+        ip_address: str | None = None,
+    ) -> dict[str, Any]:
+        applicant = self.repository.get_applicant_detail(applicant_id)
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+
+        docs = self.repository.get_applicant_documents(applicant_id)
+        transcript = self.get_applicant_transcript(applicant_id)
+        loa = self.get_applicant_loa(applicant_id)
+
+        form_payments = (
+            self.repository.db.query(PPDBPaymentTransaction)
+            .filter(PPDBPaymentTransaction.applicant_id == applicant_id)
+            .order_by(PPDBPaymentTransaction.created_at.desc())
+            .all()
+        )
+        stage2_bills = (
+            self.repository.db.query(PPDBStage2Bill)
+            .filter(PPDBStage2Bill.applicant_id == applicant_id)
+            .order_by(PPDBStage2Bill.installment_number.asc())
+            .all()
+        )
+
+        from src.models.auth import AuditLog
+
+        audit = AuditLog(
+            id=str(uuid.uuid4()),
+            user_id=admin_user.get("id"),
+            user_username=admin_user.get("username"),
+            action="view_dossier",
+            entity_type="ppdb_dossier",
+            entity_id=applicant_id,
+            changes=f"Melihat dossier pendaftar {applicant.get('full_name')} ({applicant_id})",
+            ip_address=ip_address,
+            created_at=datetime.now(WIB),
+        )
+        self.repository.db.add(audit)
+        self.repository.db.commit()
+
+        return {
+            "applicant": applicant,
+            "documents": docs,
+            "transcript": transcript,
+            "loa": loa,
+            "payments": {
+                "form_payments": [
+                    {
+                        "id": p.id,
+                        "invoice_number": p.invoice_number,
+                        "amount": p.amount,
+                        "status": p.status,
+                        "paid_at": p.paid_at.isoformat() if p.paid_at else None,
+                        "payment_method": p.payment_method,
+                    }
+                    for p in form_payments
+                ],
+                "stage2_bills": [
+                    {
+                        "id": b.id,
+                        "installment_number": b.installment_number,
+                        "amount": b.amount,
+                        "status": b.status,
+                        "due_date": b.due_date.isoformat() if b.due_date else None,
+                        "confirmed_at": b.confirmed_at.isoformat() if b.confirmed_at else None,
+                    }
+                    for b in stage2_bills
+                ],
+            },
+            "accessed_at": datetime.now(WIB).isoformat(),
+        }
+
+    def export_applicant_dossier_zip(
+        self,
+        applicant_id: str,
+        admin_user: dict[str, Any],
+        ip_address: str | None = None,
+    ) -> tuple[bytes, str]:
+        dossier = self.get_applicant_dossier(applicant_id, admin_user, ip_address)
+        applicant = dossier["applicant"]
+
+        import io
+        import json
+        import zipfile
+
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            summary_json = json.dumps(dossier, indent=2, default=str)
+            zf.writestr("ringkasan_dossier.json", summary_json)
+
+            transcript_txt = (
+                f"TRANSKRIP HASIL SELEKSI PPDB\n"
+                f"Pesantren Tahfidz Ar-Rahman\n"
+                f"----------------------------------------\n"
+                f"Nama: {applicant.get('full_name')}\n"
+                f"NISN: {applicant.get('nisn') or '-'}\n"
+                f"Jalur: {applicant.get('registration_path')}\n"
+                f"Jenjang: {applicant.get('registration_level')}\n"
+                f"Gelombang: {applicant.get('wave_name')}\n"
+                f"Periode: {applicant.get('period_name')}\n"
+                f"Status: {applicant.get('status')}\n\n"
+                f"Skor TIU: {dossier['transcript'].get('tiu_score', '-')}\n"
+                f"Catatan Evaluator: {dossier['transcript'].get('evaluator_notes', '-')}\n"
+            )
+            zf.writestr("transkrip_nilai.txt", transcript_txt)
+
+            loa_txt = (
+                f"{dossier['loa'].get('content', '')}\n\n"
+                f"Ketentuan: {dossier['loa'].get('fixed_clause', '')}\n"
+            )
+            zf.writestr("surat_penerimaan_loa.txt", loa_txt)
+
+            docs = self.repository.get_documents_by_applicant(applicant_id)
+            for d in docs:
+                ext = d.original_name.split(".")[-1] if "." in d.original_name else "dat"
+                filename = f"dokumen_asli/{d.doc_type}_{d.id[:8]}.{ext}"
+                if d.data:
+                    zf.writestr(filename, d.data)
+                elif d.storage_path and os.path.exists(d.storage_path):
+                    with open(d.storage_path, "rb") as f:
+                        zf.writestr(filename, f.read())
+                else:
+                    zf.writestr(f"{filename}.url.txt", f"URL Unduhan: {d.public_url}")
+
+        from src.models.auth import AuditLog
+
+        audit = AuditLog(
+            id=str(uuid.uuid4()),
+            user_id=admin_user.get("id"),
+            user_username=admin_user.get("username"),
+            action="download_dossier_zip",
+            entity_type="ppdb_dossier",
+            entity_id=applicant_id,
+            changes=f"Mengunduh ZIP dossier pendaftar {applicant.get('full_name')} ({applicant_id})",
+            ip_address=ip_address,
+            created_at=datetime.now(WIB),
+        )
+        self.repository.db.add(audit)
+        self.repository.db.commit()
+
+        buffer.seek(0)
+        zip_filename = f"dossier_{applicant.get('full_name', 'pendaftar').replace(' ', '_')}_{applicant_id[:8]}.zip"
+        return buffer.getvalue(), zip_filename
+
+

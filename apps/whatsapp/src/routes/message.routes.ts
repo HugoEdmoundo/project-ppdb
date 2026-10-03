@@ -21,8 +21,11 @@ import {
 } from "../queues/messageQueue";
 import { templateService } from "../services/TemplateService";
 import { auditLogService } from "../services/AuditLogService";
+import { sessionManager } from "../services/SessionManager";
+import { webhookService } from "../services/WebhookService";
 import { sendRateLimiter } from "../middlewares/rateLimiter";
-import { normalizePhoneNumber } from "../lib/phoneUtils";
+import { maskPhone, normalizePhoneNumber, toWhatsAppId } from "../lib/phoneUtils";
+import { logger } from "../lib/logger";
 import type { SendMessageJobData, NotificationLogStatus } from "../types";
 
 const router: ExpressRouter = Router();
@@ -72,6 +75,93 @@ const LogsQuerySchema = z.object({
   recipientUserId: z.string().optional(),
 });
 
+// ── Delivery helpers ─────────────────────────────────────────────────────────
+
+/** True kalau error datang dari Redis/BullMQ (antrean tidak bisa dipakai). */
+function isQueueUnavailable(err: unknown): boolean {
+  const msg = (err as Error)?.message ?? String(err);
+  const code = (err as { code?: string })?.code ?? "";
+  return (
+    msg.includes("ECONNREFUSED") ||
+    msg.includes("Connection is closed") ||
+    msg.includes("Stream isn't writeable") ||
+    msg.includes("maxRetriesPerRequest") ||
+    msg.includes("Redis is already connecting/connected") ||
+    code === "ECONNREFUSED" ||
+    code === "ECONNRESET"
+  );
+}
+
+/**
+ * Kirim langsung lewat WA client, melewati antrean BullMQ.
+ *
+ * Dipakai sebagai fallback ketika Redis tidak tersedia: tanpa ini, pesan dari
+ * Superadmin tertahan selamanya di antrean dan tidak pernah terkirim. Mode
+ * langsung tidak punya retry/backoff, jadi pemanggil harus melaporkan status
+ * ke user dengan jujur.
+ */
+async function deliverDirect(
+  jobData: SendMessageJobData
+): Promise<{ messageId: string }> {
+  const waId = toWhatsAppId(jobData.to);
+
+  try {
+    const messageId = await sessionManager.sendMessage(waId, jobData.message);
+    if (jobData.logId) {
+      await auditLogService.markSent(jobData.logId, messageId);
+    }
+    webhookService.dispatch("message.sent", {
+      jobId: jobData.jobId,
+      waMessageId: messageId,
+      to: maskPhone(jobData.to),
+      eventKey: jobData.eventKey,
+      recipientUserId: jobData.recipientUserId,
+    });
+    logger.info("[Send] Delivered directly (queue unavailable)", {
+      jobId: jobData.jobId,
+      to: maskPhone(jobData.to),
+    });
+    return { messageId };
+  } catch (err) {
+    const message = (err as Error).message;
+    if (jobData.logId) {
+      await auditLogService.markFailed(jobData.logId, message, 1, "failed");
+    }
+    webhookService.dispatch("message.failed", {
+      jobId: jobData.jobId,
+      to: maskPhone(jobData.to),
+      errorCode: "send_failed",
+      errorMessage: message,
+      eventKey: jobData.eventKey,
+      recipientUserId: jobData.recipientUserId,
+    });
+    throw err;
+  }
+}
+
+/**
+ * Enqueue ke antrean; kalau Redis tidak bisa dihubungi, kirim langsung.
+ * Mengembalikan flag ``queued`` supaya pemanggil bisa melaporkan ke user
+ * apakah pesan sudah terkirim atau masih menunggu antrean.
+ */
+async function enqueueWithDirectFallback(
+  jobData: SendMessageJobData
+): Promise<{ jobId: string; queued: boolean; messageId?: string }> {
+  try {
+    const jobId = await enqueueMessage(jobData);
+    return { jobId, queued: true };
+  } catch (err) {
+    if (!isQueueUnavailable(err)) throw err;
+
+    logger.warn(
+      "[Send] Antrean tidak tersedia — mengirim langsung",
+      { jobId: jobData.jobId, error: (err as Error).message }
+    );
+    const { messageId } = await deliverDirect(jobData);
+    return { jobId: jobData.jobId, queued: false, messageId };
+  }
+}
+
 // ── Routes ──────────────────────────────────────────────────────────────────
 
 // POST /api/messages/send
@@ -101,12 +191,14 @@ router.post("/send", sendRateLimiter, async (req: Request, res: Response) => {
   const logId = await auditLogService.createLog(jobData);
   jobData.logId = logId;
 
-  const jobId = await enqueueMessage(jobData);
+  const result = await enqueueWithDirectFallback(jobData);
 
   res.status(202).json({
     success: true,
-    message: "Message queued for delivery",
-    data: { jobId, logId },
+    message: result.queued
+      ? "Message queued for delivery"
+      : "Message sent directly (queue unavailable)",
+    data: { jobId: result.jobId, logId, queued: result.queued, messageId: result.messageId },
   });
 });
 

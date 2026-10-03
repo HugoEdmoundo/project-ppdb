@@ -13,6 +13,7 @@ import { getPool } from "../lib/database";
 import { sessionManager } from "../services/SessionManager";
 import { getQueueStats } from "../queues/messageQueue";
 import { env } from "../config/env";
+import type { WASessionStatus } from "../types";
 
 const router: ExpressRouter = Router();
 
@@ -23,7 +24,7 @@ router.get("/", (_req: Request, res: Response) => {
 
 // GET /health/detailed — Full readiness check
 router.get("/detailed", async (_req: Request, res: Response) => {
-  const checks: Record<string, { status: "ok" | "error"; detail?: string }> = {};
+  const checks: Record<string, { status: "ok" | "error" | "pending"; detail?: string }> = {};
   let overallOk = true;
 
   // Redis check
@@ -47,9 +48,13 @@ router.get("/detailed", async (_req: Request, res: Response) => {
   }
 
   // WhatsApp session check
+  // Status selain "ready" TIDAK otomatis berarti error: "qr"/"initializing"/
+  // "authenticated" adalah state normal menunggu admin scan/pairing. Hanya
+  // state gagal yang ditandai error, supaya log health tidak menyesatkan.
   const sessionInfo = sessionManager.getStatus();
+  const pendingStates: WASessionStatus[] = ["initializing", "qr", "authenticated"];
   checks.whatsapp = {
-    status: sessionInfo.status === "ready" ? "ok" : "error",
+    status: sessionInfo.status === "ready" ? "ok" : pendingStates.includes(sessionInfo.status) ? "pending" : "error",
     detail: sessionInfo.status,
   };
 

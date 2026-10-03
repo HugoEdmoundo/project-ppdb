@@ -39,14 +39,48 @@ FAVICON_SVG = (
 
 
 def keep_db_alive():
+    """Jaga agar pool tidak hanya berisi koneksi mati.
+
+    WAJIB hanya SATU query per 30 detik pada koneksi pooled. Versi lama
+    membuka 5 koneksi tiap 15 detik (~20 koneksi/menit, 28.800/hari) — cukup
+    untuk memicu rate-limit MySQL hostinger; begitu koneksi baru mulai
+    ditolak, `pool_pre_ping` tiap request ikut membuat koneksi baru sehingga
+    terjadi death spiral.
+    """
+    while True:
+        time.sleep(30)
+        try:
+            execute_raw("SELECT 1")
+        except Exception as exc:  # noqa: BLE001 - background thread, jangan fatal
+            logger.debug("Keep-alive DB gagal (dicoba lagi 30s): %s", exc)
+
+
+def _wait_for_database(max_wait: int = 90) -> bool:
+    """Tunggu MySQL siap sebelum API menerima request.
+
+    MySQL remote (hostinger) sesekali menolak koneksi sesaat. Tanpa retry, satu
+    kegagalan fatal saat startup membuat container crash-loop, dan karena
+    `depends_on: service_healthy`, container frontend + whatsapp ikut gagal
+    start — satu kedipan DB menjatuhkan seluruh stack.
+    """
+    deadline = time.monotonic() + max_wait
+    delay = 2.0
     while True:
         try:
-            time.sleep(15)
-            # Execute 5 times to hit multiple connections in the pool
-            for _ in range(5):
-                execute_raw("SELECT 1")
-        except Exception:
-            pass
+            execute_raw("SELECT 1")
+            return True
+        except Exception as exc:  # noqa: BLE001
+            if time.monotonic() >= deadline:
+                logger.error(
+                    "Database tidak tersedia setelah %ss: %s — API tetap jalan, "
+                    "endpoint yang butuh DB akan error sampai koneksi pulih.",
+                    max_wait,
+                    exc,
+                )
+                return False
+            logger.warning("Database belum siap (%s) — retry dalam %.0fs", exc, delay)
+            time.sleep(delay)
+            delay = min(delay * 1.5, 10.0)
 
 
 def _validate_secrets() -> None:
@@ -95,6 +129,7 @@ async def lifespan(app: FastAPI):
         )
 
     threading.Thread(target=keep_db_alive, daemon=True).start()
+    _wait_for_database()
     yield
 
 

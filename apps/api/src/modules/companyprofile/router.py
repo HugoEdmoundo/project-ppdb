@@ -30,6 +30,7 @@ from src.core.database import (
 )
 from src.core.dependencies import get_current_user, require_cp_crud
 from src.core.events import companyprofile_hub
+from src.core.request_body import read_refresh_token
 from src.core.security import hash_password, verify_password
 from src.core.uploads import delete_upload, upload_file
 from src.repositories.auth_repository import AuthRepository
@@ -227,15 +228,17 @@ def cp_refresh(
 
 
 @router.post("/auth/logout")
-def cp_logout(
+async def cp_logout(
     request: Request,
     response: Response,
-    body: RefreshReq | None = None,
     user: dict[str, Any] = Depends(get_current_user),
 ):
+    # Body dibaca manual (bukan Pydantic body param): logout tidak boleh gagal
+    # hanya karena Content-Type request salah — kalau 422, refresh token tidak
+    # dicabut dan cookie httpOnly tetap hidup di browser.
     refresh_token = request.cookies.get("refresh_token")
-    if not refresh_token and body and body.refresh_token:
-        refresh_token = body.refresh_token
+    if not refresh_token:
+        refresh_token = await read_refresh_token(request)
     if refresh_token:
         execute_raw(
             "UPDATE refresh_tokens SET revoked = 1 WHERE user_id = :uid",

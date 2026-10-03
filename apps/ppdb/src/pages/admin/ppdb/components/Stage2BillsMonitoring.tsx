@@ -5,9 +5,8 @@ import { Badge } from "@/components/ui"
 import { Button } from "@/components/ui"
 import { EmptyState } from "@/components/ui"
 import { TableSkeletonRows } from "@/components/ui"
-import { useToast } from '@/components/Toast'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle, XCircle, Download, FileText, CreditCard, Filter } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { CreditCard, Filter, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
 import { apiFetch } from '@/api/client'
 import PaginationControls from '@/components/shared/PaginationControls'
 
@@ -31,8 +30,6 @@ interface Stage2BillItem {
 }
 
 export default function Stage2BillsMonitoring() {
-  const { toast } = useToast()
-  const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [page, setPage] = useState(1)
   const limit = 20
@@ -48,44 +45,25 @@ export default function Stage2BillsMonitoring() {
     },
   })
 
-  const confirmMutation = useMutation({
-    mutationFn: async (billId: string) => {
-      return await apiFetch(`/payment/stage2/bills/${billId}/confirm`, {
-        method: 'PUT',
-      })
-    },
-    onSuccess: () => {
-      toast('success', 'Pembayaran tahap 2 berhasil dikonfirmasi! Notifikasi WhatsApp telah dikirim.')
-      queryClient.invalidateQueries({ queryKey: ['stage2-bills'] })
-      queryClient.invalidateQueries({ queryKey: ['stage2-applicants'] })
-    },
-    onError: (e: any) => {
-      toast('error', e.message || 'Gagal mengonfirmasi pembayaran')
-    },
-  })
-
-  const cancelMutation = useMutation({
-    mutationFn: async (billId: string) => {
-      return await apiFetch(`/payment/stage2/bills/${billId}/cancel`, {
-        method: 'PUT',
-      })
-    },
-    onSuccess: () => {
-      toast('success', 'Konfirmasi pembayaran dibatalkan')
-      queryClient.invalidateQueries({ queryKey: ['stage2-bills'] })
-      queryClient.invalidateQueries({ queryKey: ['stage2-applicants'] })
-    },
-    onError: (e: any) => {
-      toast('error', e.message || 'Gagal membatalkan konfirmasi')
-    },
-  })
-
   const bills = data?.data || []
   const total = data?.total || 0
   const totalPages = Math.ceil(total / limit) || 1
 
   return (
     <div className="space-y-4">
+      {/* Banner Penjelasan Webhook Otomatis */}
+      <div className="p-3.5 bg-muted/40 border rounded-lg flex items-start gap-3">
+        <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+        <div className="text-xs text-muted-foreground space-y-0.5">
+          <p className="font-semibold text-foreground">
+            Monitoring Pembayaran Otomatis (Webhook Payment Gateway)
+          </p>
+          <p>
+            Status pembayaran DP dan cicilan terverifikasi secara otomatis saat dana masuk melalui webhook Pak Kasir. Admin hanya memantau data tanpa konfirmasi manual.
+          </p>
+        </div>
+      </div>
+
       {/* Filter Toolbar */}
       <div className="flex items-center justify-between gap-3 bg-card p-3 rounded-lg border">
         <div className="flex items-center gap-2">
@@ -106,7 +84,7 @@ export default function Stage2BillsMonitoring() {
               className="h-7 text-xs px-2.5 rounded-full"
               onClick={() => { setStatusFilter('pending'); setPage(1) }}
             >
-              Pending (Belum Bayar)
+              Menunggu Pembayaran
             </Button>
             <Button
               variant={statusFilter === 'paid' ? 'default' : 'outline'}
@@ -133,17 +111,16 @@ export default function Stage2BillsMonitoring() {
                 <TableHead>Komponen Biaya / Cicilan</TableHead>
                 <TableHead>Nominal</TableHead>
                 <TableHead>Jatuh Tempo</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Bukti</TableHead>
-                <TableHead className="text-right">Aksi Kasir</TableHead>
+                <TableHead>Status Pembayaran</TableHead>
+                <TableHead className="text-right">Waktu Masuk / Lunas</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableSkeletonRows cols={7} rows={5} />
+                <TableSkeletonRows cols={6} rows={5} />
               ) : bills.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8">
+                  <TableCell colSpan={6} className="py-8">
                     <EmptyState
                       icon={CreditCard}
                       title="Tidak Ada Tagihan Tahap 2"
@@ -176,65 +153,32 @@ export default function Stage2BillsMonitoring() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          bill.status === 'paid'
-                            ? 'success'
-                            : bill.status === 'cancelled'
-                            ? 'destructive'
-                            : 'warning'
-                        }
-                        className="uppercase text-[10px]"
-                      >
-                        {bill.status === 'paid' ? 'Lunas' : bill.status === 'cancelled' ? 'Batal' : 'Pending'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {bill.proof_url ? (
-                        <Button asChild variant="outline" size="sm" className="h-7 text-xs px-2 gap-1">
-                          <a href={bill.proof_url} target="_blank" rel="noreferrer">
-                            <Download className="h-3 w-3" /> Lihat
-                          </a>
-                        </Button>
+                      {bill.status === 'paid' ? (
+                        <Badge variant="success" className="text-[10px] gap-1 py-0.5">
+                          <CheckCircle2 className="h-3 w-3" /> Lunas (Webhook)
+                        </Badge>
+                      ) : bill.status === 'cancelled' ? (
+                        <Badge variant="destructive" className="text-[10px] py-0.5">
+                          Batal
+                        </Badge>
                       ) : (
-                        <span className="text-xs text-muted-foreground italic">Tanpa Bukti</span>
+                        <Badge variant="warning" className="text-[10px] gap-1 py-0.5">
+                          <Clock className="h-3 w-3" /> Menunggu Bayar
+                        </Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {bill.status === 'pending' && (
-                        <Button
-                          size="sm"
-                          className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1"
-                          disabled={confirmMutation.isPending}
-                          onClick={() => {
-                            if (confirm(`Konfirmasi pembayaran ${bill.fee_item_name} (${formatRp(bill.amount)}) untuk ${bill.full_name}?`)) {
-                              confirmMutation.mutate(bill.id)
-                            }
-                          }}
-                        >
-                          <CheckCircle className="h-3.5 w-3.5" /> Konfirmasi Masuk
-                        </Button>
-                      )}
-
-                      {bill.status === 'paid' && (
-                        <div className="flex items-center justify-end gap-2">
-                          <span className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
-                            <CheckCircle className="h-3.5 w-3.5" /> Terverifikasi
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-[11px] text-muted-foreground hover:text-destructive px-2"
-                            disabled={cancelMutation.isPending}
-                            onClick={() => {
-                              if (confirm(`Batalkan konfirmasi pembayaran untuk tagihan ini?`)) {
-                                cancelMutation.mutate(bill.id)
-                              }
-                            }}
-                          >
-                            Batalkan
-                          </Button>
+                      {bill.confirmed_at ? (
+                        <div className="text-xs text-muted-foreground">
+                          <p className="font-medium text-foreground">
+                            {new Date(bill.confirmed_at).toLocaleDateString('id-ID')}
+                          </p>
+                          <p className="text-[10px]">
+                            {new Date(bill.confirmed_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+                          </p>
                         </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
                   </TableRow>

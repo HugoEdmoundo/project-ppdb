@@ -15,6 +15,7 @@ from src.core.config import settings
 from src.core.database import get_db
 from src.core.dependencies import get_current_user, require_superadmin
 from src.core.rate_limit import rate_limit_dependency
+from src.core.request_body import read_refresh_token
 from src.modules.auth.schemas import (
     AccountRecoveryRequest,
     AccountRecoveryVerify,
@@ -124,13 +125,16 @@ def refresh(
 
 
 @router.post("/logout")
-def logout(
+async def logout(
     request: Request,
     response: Response,
-    body: RefreshRequest | None = None,
     service: AuthService = Depends(get_auth_service),
 ):
-    refresh_token = body.refresh_token if body else request.cookies.get("refresh_token")
+    # Body dibaca manual supaya logout tidak 422 hanya karena Content-Type
+    # request salah (kasus nyata: fetch tanpa header JSON).
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        refresh_token = await read_refresh_token(request)
     if refresh_token:
         try:
             service.logout(refresh_token)

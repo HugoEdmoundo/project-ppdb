@@ -23,14 +23,37 @@ const redisOptions = {
 // Singleton for general usage (health checks, etc.)
 let _redis: Redis | null = null;
 
+function attachLogging(client: Redis, label: string): Redis {
+  // Error SEBELUM koneksi pernah `ready` itu startup race, bukan kegagalan:
+  // saat dockerd boot, `restart: unless-stopped` menyalakan semua container
+  // paralel sehingga `depends_on: service_healthy` TIDAK berlaku, dan
+  // koneksi BullMQ bisa mendarat sebelum redis listen (ECONNREFUSED /
+  // ENOTFOUND). ioredis reconnect otomatis, jadi ini cukup `warn` — kalau
+  // dilog `error` tiap boot, log jadi penuh noise palsu.
+  // Setelah pernah ready, error berikutnya = koneksi putus sungguhan, baru `error`.
+  let everReady = false;
+
+  client.on("connect", () => logger.info(`Redis connected (${label})`));
+  client.on("ready", () => {
+    everReady = true;
+    logger.info(`Redis ready (${label})`);
+  });
+  client.on("error", (err) => {
+    const ctx = { error: err.message, everReady };
+    if (everReady) {
+      logger.error(`Redis error (${label})`, ctx);
+    } else {
+      logger.warn(`Redis belum siap (${label}), menunggu connect...`, ctx);
+    }
+  });
+  client.on("close", () => logger.warn(`Redis connection closed (${label})`));
+  client.on("reconnecting", () => logger.warn(`Redis reconnecting... (${label})`));
+  return client;
+}
+
 export function getRedis(): Redis {
   if (!_redis) {
-    _redis = new Redis(redisOptions);
-    _redis.on("connect", () => logger.info("Redis connected"));
-    _redis.on("ready", () => logger.info("Redis ready"));
-    _redis.on("error", (err) => logger.error("Redis error", { error: err.message }));
-    _redis.on("close", () => logger.warn("Redis connection closed"));
-    _redis.on("reconnecting", () => logger.warn("Redis reconnecting..."));
+    _redis = attachLogging(new Redis(redisOptions), "singleton");
   }
   return _redis;
 }
@@ -40,7 +63,11 @@ export function getRedis(): Redis {
  * BullMQ does NOT allow sharing connections between queue and worker instances.
  */
 export function createRedisConnection(): Redis {
-  return new Redis(redisOptions);
+  // WAJIB attach handler `error` di sini juga: BullMQ (Queue/Worker/QueueEvents)
+  // memakai instance ini langsung. Tanpa listener, ioredis melempar
+  // "Unhandled error event" yang membuat proses Node crash setiap Redis
+  // disconnect sesaat (mis. saat container redis restart).
+  return attachLogging(new Redis(redisOptions), "bullmq");
 }
 
 export async function closeRedis(): Promise<void> {

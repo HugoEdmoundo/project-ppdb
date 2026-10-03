@@ -72,6 +72,27 @@ export async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Pro
   return parseJsonSafe<T>(res, `API ${endpoint}`)
 }
 
+export async function apiFetchBlob(endpoint: string, opts: RequestInit = {}): Promise<Blob> {
+  const headers: Record<string, string> = { ...(opts.headers as Record<string, string>) }
+  let res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers })
+  if (res.status === 401) {
+    const refreshed = await tryRefresh()
+    if (refreshed) { res = await fetchWithFallback(`${API_BASE}${endpoint}`, { ...opts, headers }) }
+    if (res.status === 401) {
+      clearAuth()
+      if (window.location.pathname !== '/auth/login') {
+        window.location.href = '/auth/login'
+      }
+      throw new Error('Unauthorized')
+    }
+  }
+  if (!res.ok) {
+    const body = await parseJsonSafe<Record<string, string>>(res, `API ${endpoint}`).catch(() => ({ detail: res.statusText }))
+    throw new Error(body.detail || `API ${res.status}`)
+  }
+  return res.blob()
+}
+
 export async function login(username: string, password: string) {
   const data = await apiFetch<{ user: any }>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) })
   if (data.user) {

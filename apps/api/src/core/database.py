@@ -20,7 +20,7 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import URL, MetaData, create_engine, text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from src.core.config import settings
@@ -66,7 +66,7 @@ def get_engine() -> Engine:
     if _engine is not None:
         return _engine
 
-    url = URL.create(
+    default_url = URL.create(
         drivername="mysql+pymysql",
         username=settings.mysql_user,
         password=settings.mysql_password,
@@ -74,6 +74,11 @@ def get_engine() -> Engine:
         port=settings.mysql_port,
         database=settings.mysql_database,
     )
+    url = make_url(settings.database_url) if settings.database_url_override else default_url
+    if url.get_backend_name() == "sqlite":
+        _engine = create_engine(url, connect_args={"check_same_thread": False})
+        return _engine
+
     connect_args: dict[str, Any] = {
         "charset": "utf8mb4",
         # Timeout pada koneksi/query jauh dari client (DB remote hostinger).

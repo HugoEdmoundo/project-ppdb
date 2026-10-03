@@ -6,8 +6,10 @@ import { Button } from '@/components/ui'
 import { Input } from '@/components/ui'
 import { Badge } from '@/components/ui'
 import { Textarea } from '@/components/ui'
-import { Award, Brain, Check, MessageSquare, Save, AlertCircle, CheckCircle2, XCircle } from 'lucide-react'
-import { toast } from 'sonner'
+import { Award, Brain, MessageSquare, Save, AlertCircle, CheckCircle2, XCircle, FileText } from 'lucide-react'
+import { useToast } from '@/components/Toast'
+import ApplicantTranscriptModal from './ApplicantTranscriptModal'
+import ApplicantLoAModal from './ApplicantLoAModal'
 
 interface Criteria {
   id: string
@@ -44,9 +46,12 @@ export default function ApplicantSelectionAdmin({
   applicantStatus = '',
   onSaved,
 }: ApplicantSelectionAdminProps) {
+  const { toast } = useToast()
   const queryClient = useQueryClient()
   const [scores, setScores] = useState<Record<string, number>>({})
   const [notes, setNotes] = useState<string>('')
+  const [transcriptOpen, setTranscriptOpen] = useState(false)
+  const [loaOpen, setLoaOpen] = useState(false)
 
   const statusMutation = useMutation({
     mutationFn: async (newStatus: 'passed' | 'failed') => {
@@ -60,7 +65,8 @@ export default function ApplicantSelectionAdmin({
       })
     },
     onSuccess: (_, newStatus) => {
-      toast.success(
+      toast(
+        'success',
         newStatus === 'passed'
           ? 'Pendaftar berhasil dinyatakan LULUS! Notifikasi WA otomatis dikirim.'
           : 'Pendaftar dinyatakan TIDAK LULUS. Notifikasi WA otomatis dikirim.'
@@ -70,7 +76,7 @@ export default function ApplicantSelectionAdmin({
       if (onSaved) onSaved()
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Gagal memperbarui status kelulusan')
+      toast('error', err?.message || 'Gagal memperbarui status kelulusan')
     },
   })
 
@@ -127,13 +133,13 @@ export default function ApplicantSelectionAdmin({
       })
     },
     onSuccess: () => {
-      toast.success('Nilai dan catatan seleksi berhasil disimpan!')
+      toast('success', 'Nilai dan catatan seleksi berhasil disimpan!')
       queryClient.invalidateQueries({ queryKey: ['selection-result', applicantId] })
       queryClient.invalidateQueries({ queryKey: ['selection-results'] })
       if (onSaved) onSaved()
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Gagal menyimpan nilai seleksi')
+      toast('error', err?.message || 'Gagal menyimpan nilai seleksi')
     },
   })
 
@@ -382,7 +388,35 @@ export default function ApplicantSelectionAdmin({
         </CardContent>
       </Card>
 
-      {/* 5. ACTIONS: SIMPAN SKOR */}
+      {/* 5. SEKSI DOKUMEN RESMI HASIL SELEKSI (TRANSKRIP & LoA) */}
+      <Card className="bg-muted/20 border-dashed">
+        <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">
+            <p className="font-semibold text-foreground">Dokumen Resmi Hasil Seleksi Santri</p>
+            <p>Cetak lembar Transkrip Nilai lengkap dan Surat Penerimaan (LoA) resmi berkop lembaga.</p>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 sm:flex-initial h-8 text-xs gap-1.5"
+              onClick={() => setTranscriptOpen(true)}
+            >
+              <FileText className="h-3.5 w-3.5 text-primary" /> Transkrip Nilai
+            </Button>
+            <Button
+              variant={applicantStatus === 'passed' ? 'default' : 'secondary'}
+              size="sm"
+              className="flex-1 sm:flex-initial h-8 text-xs gap-1.5"
+              onClick={() => setLoaOpen(true)}
+            >
+              <Award className="h-3.5 w-3.5 text-amber-500" /> Dokumen LoA
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 6. ACTIONS: SIMPAN SKOR */}
       <div className="flex justify-end pt-2">
         <Button
           onClick={() => saveMutation.mutate()}
@@ -398,6 +432,17 @@ export default function ApplicantSelectionAdmin({
           )}
         </Button>
       </div>
+
+      <ApplicantTranscriptModal
+        open={transcriptOpen}
+        onOpenChange={setTranscriptOpen}
+        applicantId={applicantId}
+      />
+      <ApplicantLoAModal
+        open={loaOpen}
+        onOpenChange={setLoaOpen}
+        applicantId={applicantId}
+      />
     </div>
   )
 }

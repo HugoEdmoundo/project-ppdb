@@ -49,4 +49,13 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    // WAJIB: `preview.proxy` default-nya mewarisi `server.proxy`. Tanpa override
+    // ini, `vite preview` (dipakai di container frontend) ikut mem-proxy path
+    // SPA seperti `/whatsapp`, `/users`, `/roles` ke `http://localhost:8000`
+    // yang tidak ada di dalam container → respons 502 Bad Gateway setiap kali
+    // halaman tersebut dibuka langsung / di-refresh. API di produksi memang
+    // dipanggil cross-origin lewat VITE_API_URL, jadi preview tidak perlu proxy.
+    proxy: {},
+  },
 })

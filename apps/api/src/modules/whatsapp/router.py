@@ -10,8 +10,9 @@ Endpoints (semua require_superadmin):
   POST /whatsapp/connect       — inisialisasi / reconnect sesi
   POST /whatsapp/pairing-code  — buat pairing code (login via nomor HP)
   POST /whatsapp/pairing-code/cancel — batalkan pairing code
-  POST /whatsapp/disconnect    — logout & reset sesi
-  POST /whatsapp/test          — kirim pesan uji coba
+POST /whatsapp/disconnect    — logout & reset sesi
+   POST /whatsapp/send          — kirim chat manual ke satu kontak
+   POST /whatsapp/test          — kirim pesan uji coba
   GET  /whatsapp/queue         — statistik antrean pesan
   GET  /whatsapp/logs          — log pengiriman (paginated)
 """
@@ -25,7 +26,7 @@ from urllib.parse import urlparse
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.core.config import settings
 from src.core.dependencies import require_superadmin
@@ -350,6 +351,50 @@ async def whatsapp_disconnect(
 class WhatsAppTestBody(BaseModel):
     phone: str
     message: str = ""
+
+
+class WhatsAppSendBody(BaseModel):
+    """Kirim chat WhatsApp manual ke satu kontak tertentu."""
+
+    phone: str
+    message: str = Field(min_length=1, max_length=4096)
+    event_key: str = Field(default="superadmin_chat", alias="eventKey", max_length=50)
+    recipient_user_id: str | None = Field(default=None, alias="recipientUserId")
+
+    model_config = {"populate_by_name": True}
+
+
+@router.post("/send")
+async def whatsapp_send(
+    body: WhatsAppSendBody,
+    user: dict[str, Any] = Depends(require_superadmin),
+) -> JSONResponse:
+    """Kirim chat manual ke satu kontak (dipakai panel Superadmin).
+
+    Microservice otomatis fallback ke pengiriman langsung bila Redis/antrean
+    tidak tersedia, sehingga pesan tetap sampai meski antrean mati.
+    """
+    phone = "".join(ch for ch in body.phone if ch.isdigit())
+    if not phone:
+        raise HTTPException(status_code=400, detail="Nomor telepon wajib diisi")
+    if len(phone) < 9:
+        raise HTTPException(
+            status_code=400,
+            detail="Nomor telepon tidak valid (minimal 9 digit angka).",
+        )
+
+    payload: dict[str, Any] = {
+        "to": phone,
+        "message": body.message,
+        "eventKey": body.event_key,
+    }
+    if body.recipient_user_id:
+        payload["recipientUserId"] = body.recipient_user_id
+
+    resp = await _proxy_json(
+        "POST", "/api/messages/send", json_body=payload, timeout=20.0
+    )
+    return _json_response(resp)
 
 
 @router.post("/test")

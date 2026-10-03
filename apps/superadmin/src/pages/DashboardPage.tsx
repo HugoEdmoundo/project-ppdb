@@ -1,19 +1,29 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Users, Shield, GraduationCap, Bell, Send, Activity, ChevronRight,
-  UserRound, Settings, CreditCard, Waves, type LucideIcon,
+  UserRound, Settings, CreditCard, Waves, CalendarRange, Filter, type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import * as api from '../api/client'
+import type { ApplicantPeriod, ApplicantWave } from '../api/client'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui"
 import { Skeleton } from "@/components/ui"
 import { Badge } from "@/components/ui"
+import { SelectField } from "@/components/ui"
+import { Button } from "@/components/ui"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
 interface TrendPoint {
   date: string
   users: number
+}
+
+interface PeriodBreakdown {
+  id: string
+  name: string
+  status: string
+  total: number
 }
 
 interface AuditLog {
@@ -29,6 +39,7 @@ interface Stats {
     total_users: number
     total_roles: number
     total_applicants: number
+    total_applicants_all_periods: number
     users_by_type: Record<string, number>
     users_active: number
     users_inactive: number
@@ -36,10 +47,19 @@ interface Stats {
     system_roles: number
     custom_roles: number
     applicants_by_payment: Record<string, number>
+    applicants_by_status: Record<string, number>
+    applicants_by_period: PeriodBreakdown[]
+    applicants_by_wave: ApplicantWave[]
     applicants_new_30d: number
   }
   notifications: { sent: number; failed: number; sent_today: number } | null
   active_wave: { name: string; quota: number; filled: number } | null
+  scope?: {
+    period_id: string | null
+    wave_id: string | null
+    filtered: boolean
+    active_wave_id: string | null
+  }
   recent_logs: AuditLog[]
   trend: TrendPoint[]
   trend_delta: { current: number; previous: number; pct: number | null } | null
@@ -82,10 +102,24 @@ const PAYMENT_META: { key: string; label: string; color: string }[] = [
   { key: 'failed', label: 'Gagal', color: '#F97316' },
 ]
 
+const STATUS_META: { key: string; label: string; color: string }[] = [
+  { key: 'pending_payment', label: 'Menunggu Bayar', color: '#D4A853' },
+  { key: 'document_uploaded_pending', label: 'Menunggu Verifikasi', color: '#F59E0B' },
+  { key: 'document_approved', label: 'Dokumen Disetujui', color: '#3B82F6' },
+  { key: 'document_rejected', label: 'Dokumen Ditolak', color: '#F97316' },
+  { key: 'selection', label: 'Seleksi', color: '#8B5CF6' },
+  { key: 'passed', label: 'Lulus', color: '#22C55E' },
+  { key: 'failed', label: 'Tidak Lulus', color: '#F43F5E' },
+  { key: 'expired', label: 'Kedaluwarsa', color: '#94A3B8' },
+]
+
+const ALL = '__all__'
+
 const emptyStats = (): Stats['stats'] => ({
   total_users: 0,
   total_roles: 0,
   total_applicants: 0,
+  total_applicants_all_periods: 0,
   users_by_type: {},
   users_active: 0,
   users_inactive: 0,
@@ -93,6 +127,9 @@ const emptyStats = (): Stats['stats'] => ({
   system_roles: 0,
   custom_roles: 0,
   applicants_by_payment: {},
+  applicants_by_status: {},
+  applicants_by_period: [],
+  applicants_by_wave: [],
   applicants_new_30d: 0,
 })
 
@@ -247,31 +284,98 @@ function WaveQuotaCard({ wave }: { wave: Stats['active_wave'] }) {
   )
 }
 
+/**
+ * Rincian pendaftar per periode dan per gelombang — inilah yang memberi
+ * konteks asal data ketika dashboard tidak difilter (mode global).
+ */
+function BreakdownCard({ title, description, icon: Icon, rows, total }: {
+  title: string
+  description: string
+  icon: LucideIcon
+  rows: { id: string; label: string; sub: string; total: number; status?: string }[]
+  total: number
+}) {
+  const sorted = [...rows].sort((a, b) => b.total - a.total)
+  return (
+    <Card className="flex flex-col rounded-2xl border-slate-100 shadow-sm">
+      <CardHeader className="border-b border-slate-50 bg-slate-50/50 pb-4">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Icon className="h-4 w-4 text-primary" />
+          {title}
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </CardHeader>
+      <CardContent className="flex-1 pt-4">
+        {sorted.length === 0 || total === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Belum ada data pendaftar.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {sorted.map((r) => {
+              const pct = total > 0 ? Math.round((r.total / total) * 100) : 0
+              return (
+                <li key={r.id}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="truncate text-sm font-medium text-slate-700">
+                      {r.label}
+                      <span className="ml-1.5 text-xs font-normal text-slate-400">
+                        {r.sub}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-sm">
+                      <span className="font-semibold text-slate-900">{r.total}</span>
+                      <span className="ml-1 text-[11px] text-slate-400">{pct}%</span>
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [data, setData] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [periods, setPeriods] = useState<ApplicantPeriod[]>([])
+  const [waves, setWaves] = useState<ApplicantWave[]>([])
+  const [periodFilter, setPeriodFilter] = useState(ALL)
+  const [waveFilter, setWaveFilter] = useState(ALL)
 
-  useEffect(() => {
-    api.getDashboardStats()
+  const load = useCallback((periodId: string, waveId: string) => {
+    setLoading(true)
+    const params =
+      periodId === ALL && waveId === ALL
+        ? undefined
+        : {
+            ...(periodId !== ALL ? { period_id: periodId } : {}),
+            ...(waveId !== ALL ? { wave_id: waveId } : {}),
+          }
+    api
+      .getDashboardStats(params)
       .then((res: any) => {
-        if (res.stats) {
+        if (res?.stats) {
           setData(res)
         } else {
+          // Bentuk lama (tanpa wrapper `stats`) — tetap ditampilkan.
           setData({
             stats: {
-              total_users: res.total_users || 0,
-              total_roles: res.total_roles || 0,
-              total_applicants: res.total_applicants || 0,
-              users_by_type: {},
-              users_active: 0,
-              users_inactive: 0,
-              users_new_30d: 0,
-              system_roles: 0,
-              custom_roles: 0,
-              applicants_by_payment: {},
-              applicants_new_30d: 0,
+              ...emptyStats(),
+              total_users: res?.total_users || 0,
+              total_roles: res?.total_roles || 0,
+              total_applicants: res?.total_applicants || 0,
             },
             notifications: null,
             active_wave: null,
@@ -284,6 +388,48 @@ export default function DashboardPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    // Opsi filter periode & gelombang.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    ;(async () => {
+      try {
+        const [p, w] = await Promise.all([api.getPeriods(), api.getWaves()])
+        setPeriods(p)
+        setWaves(w)
+      } catch {
+        // Filter bersifat opsional.
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load(periodFilter, waveFilter)
+  }, [load, periodFilter, waveFilter])
+
+  const waveOptions = [
+    { value: ALL, label: 'Semua Gelombang' },
+    ...waves
+      .filter((w) => periodFilter === ALL || w.period_id === periodFilter)
+      .map((w) => ({ value: w.id, label: `${w.name} — ${w.period_name}` })),
+  ]
+
+  const isFiltered = periodFilter !== ALL || waveFilter !== ALL
+  const scopeText = isFiltered
+    ? [
+        periodFilter !== ALL
+          ? periods.find((p) => p.id === periodFilter)?.name
+          : null,
+        waveFilter !== ALL
+          ? waves.find((w) => w.id === waveFilter)?.name
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : 'Semua periode & gelombang'
 
   const s = data?.stats ?? emptyStats()
   const usersByType = s.users_by_type || {}
@@ -303,6 +449,22 @@ export default function DashboardPage() {
   const paymentItems: ColorItem[] = [
     ...PAYMENT_META.map((m) => ({ label: m.label, value: s.applicants_by_payment[m.key] || 0, color: m.color })),
     ...(otherPayment > 0 ? [{ label: 'Lainnya', value: otherPayment, color: '#94A3B8' }] : []),
+  ]
+
+  const knownStatus = STATUS_META.reduce(
+    (sum, m) => sum + (s.applicants_by_status?.[m.key] || 0),
+    0
+  )
+  const otherStatus = Math.max(s.total_applicants - knownStatus, 0)
+  const statusItems: ColorItem[] = [
+    ...STATUS_META.map((m) => ({
+      label: m.label,
+      value: s.applicants_by_status?.[m.key] || 0,
+      color: m.color,
+    })),
+    ...(otherStatus > 0
+      ? [{ label: 'Lainnya', value: otherStatus, color: '#CBD5E1' }]
+      : []),
   ]
 
   const activeBarItems: ColorItem[] = [
@@ -419,7 +581,7 @@ export default function DashboardPage() {
   const todayLabel = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const heroChips = [
     { icon: Users, label: `${s.total_users} Pengguna` },
-    { icon: Waves, label: data?.active_wave?.name ?? 'Tanpa Gelombang Aktif' },
+    { icon: CalendarRange, label: scopeText },
     { icon: Bell, label: `${data?.notifications?.sent_today ?? 0} Notif Hari Ini` },
   ]
 
@@ -468,10 +630,54 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Filter periode / gelombang — opsional, default semua */}
+      <Card className="rounded-2xl border-slate-100 shadow-sm">
+        <CardContent className="flex flex-col gap-3 p-4 lg:flex-row lg:items-end">
+          <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+            <SelectField
+              label="Periode"
+              value={periodFilter}
+              onValueChange={(v) => {
+                setPeriodFilter(v)
+                setWaveFilter(ALL)
+              }}
+              options={[
+                { value: ALL, label: 'Semua Periode' },
+                ...periods.map((p) => ({ value: p.id, label: p.name })),
+              ]}
+            />
+            <SelectField
+              label="Gelombang"
+              value={waveFilter}
+              onValueChange={setWaveFilter}
+              options={waveOptions}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="h-9 px-3">
+              <Filter className="mr-1.5 h-3.5 w-3.5" />
+              {scopeText}
+            </Badge>
+            {isFiltered && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setPeriodFilter(ALL)
+                  setWaveFilter(ALL)
+                }}
+              >
+                Reset
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Bento Grid Layout */}
-      {!loading && !data?.active_wave && (
+      {!loading && s.total_applicants === 0 && !isFiltered && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Tidak ada gelombang aktif. Aktifkan periode &amp; gelombang terlebih dahulu untuk menampilkan data pendaftar (Pendaftar, Trend, Status Pembayaran, Kuota).
+          Belum ada pendaftar di periode/gelombang mana pun. Data akan muncul
+          otomatis saat calon siswa mendaftar.
         </div>
       )}
 
@@ -544,7 +750,11 @@ export default function DashboardPage() {
                   <Activity className="h-5 w-5 text-primary" />
                   Trend Pendaftaran
                 </CardTitle>
-                <p className="mt-1 text-xs text-muted-foreground">Registrasi pendaftar pada gelombang aktif dalam 30 hari terakhir</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {isFiltered
+                    ? `Registrasi pendaftar ${scopeText} dalam 30 hari terakhir`
+                    : 'Registrasi pendaftar dari seluruh periode & gelombang dalam 30 hari terakhir'}
+                </p>
               </div>
               {!loading && deltaPct !== null && (
                 <Badge
@@ -664,12 +874,65 @@ export default function DashboardPage() {
           />
           <DonutCard
             title="Status Pembayaran"
-            description="Distribusi status pembayaran pendaftar pada gelombang aktif"
+            description={
+              isFiltered
+                ? `Distribusi status pembayaran pendaftar ${scopeText}`
+                : 'Distribusi status pembayaran seluruh pendaftar'
+            }
             icon={CreditCard}
             items={paymentItems}
             emptyText="Belum ada data pendaftar"
           />
-          <WaveQuotaCard wave={data?.active_wave ?? null} />
+          <DonutCard
+            title="Status Pendaftaran"
+            description="Distribusi tahap alur pendaftar (dokumen, seleksi, kelulusan)"
+            icon={GraduationCap}
+            items={statusItems}
+            emptyText="Belum ada data pendaftar"
+          />
+        </div>
+      )}
+
+      {/* Rincian asal data: periode & gelombang */}
+      {!loading && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <BreakdownCard
+            title="Pendaftar per Periode"
+            description="Jumlah pendaftar tiap periode, lintas gelombang"
+            icon={CalendarRange}
+            total={s.total_applicants_all_periods || s.total_applicants}
+            rows={(s.applicants_by_period || []).map((p) => ({
+              id: p.id,
+              label: p.name,
+              sub: p.status === 'active' ? 'aktif' : p.status,
+              total: p.total,
+            }))}
+          />
+          <BreakdownCard
+            title="Pendaftar per Gelombang"
+            description={
+              isFiltered
+                ? `Rincian gelombang dalam ${scopeText}`
+                : 'Jumlah pendaftar tiap gelombang beserta periode induknya'
+            }
+            icon={Waves}
+            total={s.total_applicants_all_periods || s.total_applicants}
+            rows={(s.applicants_by_wave || []).map((w) => ({
+              id: w.id,
+              label: w.name,
+              sub: w.period_name,
+              total: w.total ?? 0,
+            }))}
+          />
+        </div>
+      )}
+
+      {/* Kuota gelombang aktif tetap ditampilkan sebagai konteks operasional */}
+      {!loading && data?.active_wave && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-1">
+            <WaveQuotaCard wave={data.active_wave} />
+          </div>
         </div>
       )}
     </div>

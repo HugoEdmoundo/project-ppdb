@@ -10,12 +10,14 @@
 
 import { env } from "./config/env";
 import { logger } from "./lib/logger";
-import { getRedis, closeRedis, createRedisConnection } from "./lib/redis";
+import { getRedis, closeRedis } from "./lib/redis";
 import { closePool } from "./lib/database";
 import { createApp } from "./app";
 import { sessionManager } from "./services/SessionManager";
-import { messageQueue } from "./queues/messageQueue";
+import { messageQueue, queueEvents } from "./queues/messageQueue";
 import { createMessageWorker } from "./workers/messageWorker";
+import type { Worker } from "bullmq";
+import type { MessageJobResult, SendMessageJobData } from "./types";
 import http from "http";
 
 async function bootstrap(): Promise<void> {
@@ -24,24 +26,38 @@ async function bootstrap(): Promise<void> {
   logger.info(` Node.js ${process.version} | ${env.NODE_ENV}`);
   logger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-  // 1. Pre-warm Redis connection
-  const redis = getRedis();
-  await redis.connect();
-  logger.info("Redis connection established");
+  // 1. Redis hanya dibutuhkan untuk antrean BullMQ. Redis mati TIDAK boleh
+  //    membuat service mati total — endpoint HTTP, sesi WhatsApp, dan pengiriman
+  //    langsung (fallback tanpa antrean) tetap harus hidup supaya admin bisa
+  //    scan QR dan kirim pesan. ioredis reconnect sendiri di background.
+  let redisReady = false;
+  try {
+    const redis = getRedis();
+    await redis.connect();
+    redisReady = true;
+    logger.info("Redis connection established");
+  } catch (err) {
+    logger.error(
+      "Redis tidak dapat dihubungi saat startup — antrean dinonaktifkan sementara",
+      { error: (err as Error).message }
+    );
+  }
 
   // 2. Create Express app
   const app = createApp();
   const server = http.createServer(app);
 
-  // 3. Start BullMQ worker
-  const worker = createMessageWorker();
+  // 3. Start BullMQ worker (hanya bila Redis ada)
+  let worker: Worker<SendMessageJobData, MessageJobResult> | null = null;
 
-  // QueueEvents untuk monitoring — harus di-close saat shutdown
-  // agar koneksi Redis tidak menggantung dan proses bisa exit bersih.
-  const { QueueEvents } = await import("bullmq");
-  const queueEvents = new QueueEvents(messageQueue.name, {
-    connection: createRedisConnection(),
-  });
+  if (redisReady) {
+    worker = createMessageWorker();
+  } else {
+    logger.warn(
+      "BullMQ worker tidak dijalankan (Redis tidak tersedia). " +
+        "Pengiriman pesan memakai mode langsung."
+    );
+  }
 
   // 4. Initialize WhatsApp session (non-blocking)
   logger.info("Starting WhatsApp session initialization...");
@@ -83,9 +99,15 @@ async function bootstrap(): Promise<void> {
 
     try {
       // Close in order: worker → queueEvents → queue → session → db connections
-      logger.info("Closing worker...");
-      await worker.close();
+      if (worker) {
+        logger.info("Closing worker...");
+        await worker.close();
+      }
 
+      // Selalu tutup queue & queueEvents: keduanya dibuat di module scope, jadi
+      // koneksi Redis-nya tetap terbuka walau worker tidak pernah start
+      // (Redis tidak tersedia saat boot). Kalau tidak ditutup, proses tidak
+      // bisa exit bersih dan docker harus SIGKILL setelah timeout.
       logger.info("Closing queue events...");
       await queueEvents.close();
 
@@ -95,8 +117,16 @@ async function bootstrap(): Promise<void> {
       logger.info("Destroying WhatsApp session...");
       await sessionManager.destroy();
 
-      logger.info("Closing Redis...");
-      await closeRedis();
+      if (redisReady) {
+        logger.info("Closing Redis...");
+        await closeRedis();
+      } else {
+        // Startup gagal connect: ioredis masih di mode auto-reconnect yang
+        // menahan event loop, jadi proses tidak akan exit sendiri. Putuskan
+        // paksa supaya container benar-benar mati bersih.
+        logger.info("Closing Redis (force disconnect, was not ready)...");
+        getRedis().disconnect();
+      }
 
       logger.info("Closing MySQL pool...");
       await closePool();

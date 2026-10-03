@@ -89,6 +89,7 @@ class PPDBApplicant(Base):
     village: Mapped[str | None] = mapped_column(String(100))
     postal_code: Mapped[str | None] = mapped_column(String(20))
     address: Mapped[str | None] = mapped_column(Text)
+    disease_history: Mapped[str | None] = mapped_column(String(255))
     # status alur pendaftaran: pending_payment | paid | document_uploaded |
     #   document_approved | document_rejected | selection | passed | failed | expired
     status: Mapped[str] = mapped_column(String(50), default="pending_payment")

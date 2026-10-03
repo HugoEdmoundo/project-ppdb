@@ -1,3 +1,7 @@
+from src.core.security import create_access_token
+from fastapi.responses import Response
+from datetime import timedelta
+from src.core.config import settings
 """
 Selection module router.
 
@@ -266,3 +270,25 @@ def send_h1_reminders(
     if x_cron_secret != settings.cron_secret:
         raise HTTPException(status_code=401, detail="Unauthorized cron request")
     return svc.send_h1_reminders()
+
+@router.get("/applicants/me/tiu-seb")
+def generate_tiu_seb(
+    user: dict = Depends(get_current_user),
+):
+    ticket = create_access_token({"sub": user["id"], "type": "tiu_attempt"}, expires_delta=timedelta(hours=2))
+    start_url = f"{settings.ppdb_frontend_url}/applicant/ujian-tiu?ticket={ticket}"
+    
+    seb_xml = f"""<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>startURL</key>
+    <string>{start_url}</string>
+  </dict>
+</plist>"""
+    
+    return Response(
+        content=seb_xml, 
+        media_type="application/seb", 
+        headers={"Content-Disposition": "attachment; filename=ujian-tiu.seb"}
+    )

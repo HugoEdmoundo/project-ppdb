@@ -457,9 +457,14 @@ class SelectionService:
                 my_session = s_row.__dict__.copy()
                 my_session.pop("_sa_instance_state", None)
 
+        scores = self.repo.get_applicant_scores_with_details(app.id)
+        has_tahfidz = any("tahfidz" in (row[2] or "").lower() for row in scores)
+
         av_rows = self.repo.get_sessions(app.wave_id)
         available = []
         for s, _, booked_count in av_rows:
+            if (s.session_type or "").lower() == "wawancara" and not has_tahfidz:
+                continue
             sd = s.__dict__.copy()
             sd.pop("_sa_instance_state", None)
             sd["booked_count"] = booked_count or 0
@@ -485,6 +490,14 @@ class SelectionService:
             )
         if session.quota > 0 and booked_count >= session.quota:
             raise HTTPException(status_code=400, detail="Kuota sesi ini sudah penuh")
+
+        if (session.session_type or "").lower() == "wawancara":
+            scores = self.repo.get_applicant_scores_with_details(app.id)
+            has_tahfidz = any("tahfidz" in (row[2] or "").lower() for row in scores)
+            if not has_tahfidz:
+                raise HTTPException(
+                    status_code=400, detail="Anda harus memiliki nilai ujian Tahfidz sebelum memilih jadwal wawancara."
+                )
 
         self.repo.update_selection_result_session(app.id, session_id, now)
         self.repo.db.commit()

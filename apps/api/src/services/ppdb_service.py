@@ -42,7 +42,14 @@ WIB = ZoneInfo("Asia/Jakarta")
 logger = logging.getLogger("ptdarrahman.ppdb")
 
 # Nama dokumen wajib (disinkronkan dengan REQUIRED_DOCUMENTS di frontend).
-REQUIRED_DOCUMENTS = [
+TIU_DOCUMENTS = [
+    "NISN",
+    "Kartu Keluarga (KK)",
+    "Akta Kelahiran",
+    "Pas Foto",
+]
+
+NON_TIU_DOCUMENTS = [
     "Ijazah atau SKL",
     "Akta Kelahiran",
     "Kartu Keluarga (KK)",
@@ -55,6 +62,11 @@ REQUIRED_DOCUMENTS = [
     "Surat Pernyataan Orang Tua",
     "Medical Checkup",
 ]
+
+def get_required_documents(path: str) -> list[str]:
+    if "tiu" in (path or "").lower():
+        return TIU_DOCUMENTS
+    return NON_TIU_DOCUMENTS
 
 # Status tempat pendaftar boleh mengunggah/kirim dokumen.
 _DOCUMENT_UPLOAD_STATUSES = {"document_uploaded_pending", "document_rejected"}
@@ -669,7 +681,7 @@ class PPDBService:
 
         try:
             # Kirim dua event: spec baru (registration_account_created) dan
-            # legacy (registration_welcome) — keduanya aktif selama transisi.
+            # legacy (registration_welcome) Ã¢â‚¬â€ keduanya aktif selama transisi.
             wave_end = wave.end_date
             tanggal_tutup = (
                 wave_end.strftime("%d %B %Y") if wave_end else "sesuai jadwal"
@@ -876,7 +888,7 @@ class PPDBService:
     ) -> dict[str, Any]:
         """Update data pendaftar dari Superadmin.
 
-        Password TIDAK bisa diubah lewat sini — tetap memakai
+        Password TIDAK bisa diubah lewat sini Ã¢â‚¬â€ tetap memakai
         ``reset_applicant_password`` supaya konsep kredensial tidak berubah.
         """
         applicant = self.repository.get_applicant_by_id(applicant_id)
@@ -1092,6 +1104,24 @@ class PPDBService:
             )
         return applicant
 
+    def change_my_path(self, user_id: str, new_path: str) -> dict[str, Any]:
+        applicant = self.repository.get_applicant_by_user_id(user_id)
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Data pendaftaran tidak ditemukan")
+        
+        allowed_statuses = {"pending_payment", "document_uploaded_pending", "document_rejected"}
+        if applicant.status not in allowed_statuses:
+            raise HTTPException(
+                status_code=400, 
+                detail="Tidak dapat mengganti jalur pada status saat ini"
+            )
+            
+        applicant.registration_path = new_path
+        applicant.updated_at = datetime.now(WIB)
+        self.repository.update_applicant(applicant)
+        
+        return {"message": "Jalur pendaftaran berhasil diubah", "registration_path": new_path}
+
     def get_my_documents(self, user_id: str) -> dict[str, Any]:
         applicant = self.repository.get_applicant_by_user_id(user_id)
         if not applicant:
@@ -1115,7 +1145,7 @@ class PPDBService:
             )
 
         doc_type = (doc_type or "").strip()
-        if doc_type not in REQUIRED_DOCUMENTS:
+        if doc_type not in get_required_documents(applicant.registration_path):
             raise HTTPException(status_code=400, detail="Jenis dokumen tidak dikenal")
 
         file_id = str(uuid.uuid4())
@@ -1145,7 +1175,7 @@ class PPDBService:
 
         docs = self.repository.get_applicant_documents(applicant.id)
         uploaded_types = {d["doc_type"] for d in docs}
-        missing = [name for name in REQUIRED_DOCUMENTS if name not in uploaded_types]
+        missing = [name for name in get_required_documents(applicant.registration_path) if name not in uploaded_types]
         if missing:
             raise HTTPException(
                 status_code=400,
@@ -1200,7 +1230,7 @@ class PPDBService:
                     },
                 )
             elif status == "document_approved":
-                # Cek jalur pendaftaran: TIU → instruksi SEB, lainnya → pilih jadwal Tahfidz
+                # Cek jalur pendaftaran: TIU Ã¢â€ â€™ instruksi SEB, lainnya Ã¢â€ â€™ pilih jadwal Tahfidz
                 is_tiu = (
                     getattr(applicant, "registration_path", "") or ""
                 ).lower() == "tiu"
@@ -1320,14 +1350,14 @@ class PPDBService:
 
     def run_reminders(self) -> dict[str, Any]:
         """
-        Cron harian — digantikan oleh endpoint-endpoint baru:
-          - payment_reminder_monday  → POST /notifications/cron/payment-reminder-monday
-          - reminder_upload_docs_h3  → belum ada cron khusus, TODO
-          - reminder_exam_1hour      → belum ada cron khusus, TODO
-          - selection_reminder_*     → dihapus, tidak ada padanan di spec baru
+        Cron harian Ã¢â‚¬â€ digantikan oleh endpoint-endpoint baru:
+          - payment_reminder_monday  Ã¢â€ â€™ POST /notifications/cron/payment-reminder-monday
+          - reminder_upload_docs_h3  Ã¢â€ â€™ belum ada cron khusus, TODO
+          - reminder_exam_1hour      Ã¢â€ â€™ belum ada cron khusus, TODO
+          - selection_reminder_*     Ã¢â€ â€™ dihapus, tidak ada padanan di spec baru
 
         Fungsi ini dipertahankan agar endpoint cron lama tidak error 500,
-        tapi tidak mengirim notifikasi apapun lagi — semua sudah dipindah ke
+        tapi tidak mengirim notifikasi apapun lagi Ã¢â‚¬â€ semua sudah dipindah ke
         endpoint baru yang lebih granular.
         """
         return {
@@ -1507,6 +1537,32 @@ class PPDBService:
             "issued_at": datetime.now(WIB).isoformat(),
         }
 
+    def get_applicant_skd(self, applicant_id: str) -> dict[str, Any]:
+        applicant = self.repository.get_applicant_detail(applicant_id)
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+        if applicant.get("status") != "passed":
+            raise HTTPException(status_code=400, detail="Pendaftar belum dinyatakan lulus")
+
+        from src.models.content import SiteSetting
+        from sqlalchemy import select
+
+        bg_row = self.repository.db.execute(
+            select(SiteSetting.value).where(SiteSetting.key == "ppdb_skd_background_url")
+        ).scalar_one_or_none()
+        
+        wa_link_row = self.repository.db.execute(
+            select(SiteSetting.value).where(SiteSetting.key == "ppdb_whatsapp_group_link")
+        ).scalar_one_or_none()
+
+        return {
+            "letter_number": f"SKD/PPDB/{datetime.now(WIB).year}/{str(applicant.get('id', ''))[:8].upper()}",
+            "applicant": applicant,
+            "background_url": bg_row or "",
+            "whatsapp_group_link": wa_link_row or "",
+            "issued_at": datetime.now(WIB).isoformat(),
+        }
+
     def get_archive_applicants(
         self,
         period_id: str | None,
@@ -1546,6 +1602,10 @@ class PPDBService:
         docs = self.repository.get_applicant_documents(applicant_id)
         transcript = self.get_applicant_transcript(applicant_id)
         loa = self.get_applicant_loa(applicant_id)
+        try:
+            skd = self.get_applicant_skd(applicant_id)
+        except Exception:
+            skd = None
 
         form_payments = (
             self.repository.db.query(PPDBPaymentTransaction)
@@ -1581,6 +1641,7 @@ class PPDBService:
             "documents": docs,
             "transcript": transcript,
             "loa": loa,
+            "skd": skd,
             "payments": {
                 "form_payments": [
                     {
@@ -1647,6 +1708,15 @@ class PPDBService:
                 f"Ketentuan: {dossier['loa'].get('fixed_clause', '')}\n"
             )
             zf.writestr("surat_penerimaan_loa.txt", loa_txt)
+
+            if dossier.get("skd"):
+                skd_txt = (
+                    f"SURAT KETERANGAN DITERIMA (SKD)\n"
+                    f"Nomor: {dossier['skd'].get('letter_number')}\n\n"
+                    f"Background Latar SKD: {dossier['skd'].get('background_url') or '-'}\n"
+                    f"Link Grup WhatsApp: {dossier['skd'].get('whatsapp_group_link') or '-'}\n"
+                )
+                zf.writestr("surat_keterangan_diterima_skd.txt", skd_txt)
 
             docs = self.repository.get_documents_by_applicant(applicant_id)
             for d in docs:

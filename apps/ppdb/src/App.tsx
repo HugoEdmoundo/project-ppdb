@@ -15,6 +15,7 @@ import RegisterPage from './pages/public/RegisterPage'
 import CheckoutPage from './pages/applicant/CheckoutPage'
 import ApplicantDashboardPage from './pages/applicant/DashboardPage'
 import ExamCardPage from './pages/applicant/ExamCardPage'
+import TiuExamPage from './pages/applicant/TiuExamPage'
 import NotificationsPage from './pages/admin/notifications/NotificationsPage'
 import DataPendaftarPage from './pages/admin/ppdb/DataPendaftarPage'
 import AdminProfilePage from './pages/admin/ProfilePage'
@@ -73,6 +74,7 @@ export default function App() {
 
             <Route path="/applicant" element={<ProtectedRoute role="applicant" requirePaid={true}><ApplicantDashboardPage /></ProtectedRoute>} />
             <Route path="/applicant/kartu-ujian" element={<ProtectedRoute role="applicant" requirePaid={true}><ExamCardPage /></ProtectedRoute>} />
+            <Route path="/applicant/ujian-tiu" element={<ProtectedRoute role="applicant" requirePaid={true}><TiuExamPage /></ProtectedRoute>} />
 
             <Route path="/403" element={<ForbiddenPage />} />
             <Route path="*" element={<NotFoundPage />} />

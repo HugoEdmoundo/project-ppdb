@@ -13,6 +13,7 @@ type DocumentSettings = {
   loa_is_published: boolean
   loa_published_at: string
   skd_background_url: string
+  whatsapp_group_link?: string
 }
 
 const FIXED_LOA_CLAUSE = 'Seluruh dana yang telah dibayarkan tidak dapat dikembalikan.'
@@ -33,6 +34,7 @@ export default function DocumentSettingsPage() {
     if (!settingsQuery.data) return
     setTemplate(settingsQuery.data.loa_draft_template || settingsQuery.data.loa_template)
     setBackgroundUrl(settingsQuery.data.skd_background_url)
+    setWaLink(settingsQuery.data.whatsapp_group_link || '')
   }, [settingsQuery.data])
 
   const saveTemplate = useMutation({
@@ -55,11 +57,23 @@ export default function DocumentSettingsPage() {
     onError: (error: any) => toast('error', error.message || 'Gagal mempublikasikan template LoA'),
   })
 
+  const saveWaLink = useMutation({
+    mutationFn: () => apiFetch('/ppdb/document-settings/whatsapp-link', {
+      method: 'PUT', body: JSON.stringify({ whatsapp_group_link: waLink }),
+    }),
+    onSuccess: () => {
+      toast('success', 'Link Grup WhatsApp tersimpan')
+      queryClient.invalidateQueries({ queryKey: ['ppdb-document-settings'] })
+    },
+    onError: (error: any) => toast('error', error.message || 'Gagal menyimpan link grup'),
+  })
+
   const uploadBackground = useMutation({
     mutationFn: (file: File) => {
       const form = new FormData()
       form.append('file', file)
-      return apiFetch<{ skd_background_url: string }>('/ppdb/document-settings/skd-background', {
+      return apiFetch<{ skd_background_url: string
+  whatsapp_group_link?: string }>('/ppdb/document-settings/skd-background', {
         method: 'POST', body: form,
       })
     },
@@ -147,6 +161,34 @@ export default function DocumentSettingsPage() {
               className="max-w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground"
             />
             {uploadBackground.isPending && <span className="text-sm text-muted-foreground">Mengunggah...</span>}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-4 p-5">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold">Link Grup WhatsApp</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Tautan undangan grup WhatsApp yang akan ditampilkan ke pendaftar setelah mereka berhasil membayar Tahap 2 (DP).
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="wa-link">Tautan Undangan</Label>
+            <div className="flex items-center gap-2">
+              <input
+                id="wa-link"
+                type="url"
+                value={waLink}
+                onChange={e => setWaLink(e.target.value)}
+                placeholder="https://chat.whatsapp.com/..."
+                disabled={!canCrud || saveWaLink.isPending}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <Button onClick={() => saveWaLink.mutate()} disabled={!canCrud || saveWaLink.isPending}>
+                <Save className="mr-2 h-4 w-4" />{saveWaLink.isPending ? 'Menyimpan...' : 'Simpan'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

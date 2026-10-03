@@ -55,6 +55,7 @@ export default function RegisterPage() {
     previous_school: '',
     major_choice: '',
     address: '',
+    disease_history: '',
     province: '',
     city: '',
     district: '',
@@ -591,6 +592,24 @@ export default function RegisterPage() {
                       className="min-h-[100px] transition-shadow focus-visible:ring-emerald-primary/30 focus-visible:border-emerald-primary resize-y"
                     />
                   </div>
+                  </div>
+                </div>
+
+                {/* Section: Riwayat Kesehatan */}
+                <div className="space-y-5 pt-4">
+                  <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
+                    <div className="h-6 w-1.5 rounded-full bg-emerald-primary" />
+                    <h3 className="text-lg font-bold text-slate-800">Riwayat Kesehatan</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="disease_history" className="font-semibold text-slate-700">Riwayat Penyakit (Pengganti Medcheck)</Label>
+                    <Textarea
+                      id="disease_history" maxLength={500}
+                      placeholder="Sebutkan jika ada riwayat penyakit bawaan, kronis, atau alergi (Tulis '-' jika tidak ada)"
+                      value={formData.disease_history}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({...formData, disease_history: e.target.value})}
+                      className="min-h-[100px] transition-shadow focus-visible:ring-emerald-primary/30 focus-visible:border-emerald-primary resize-y"
+                    />
                   </div>
                 </div>
 

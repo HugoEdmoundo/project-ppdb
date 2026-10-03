@@ -99,7 +99,7 @@ class PaymentService:
             applicant.status = "document_uploaded_pending"
             self.repo.update_applicant(applicant)
 
-            # Notifikasi pembayaran berhasil — sistem baru: 1 pintu via QRIS/pak kasir
+            # Notifikasi pembayaran berhasil â€” sistem baru: 1 pintu via QRIS/pak kasir
             try:
                 from src.core.config import settings
                 from src.core.notif_service import send_notifications
@@ -161,7 +161,7 @@ class PaymentService:
 
     def process_webhook(self, payload: dict) -> dict:
         """
-        DEPRECATED — Midtrans tidak lagi digunakan.
+        DEPRECATED â€” Midtrans tidak lagi digunakan.
         Sistem pembayaran sekarang 1 pintu: QRIS via pak kasir (konfirmasi manual admin).
         Webhook ini dipertahankan agar endpoint tidak 404 jika masih ada pemanggil lama,
         tapi semua payload di-ignore dan tidak memproses transaksi apapun.
@@ -174,7 +174,7 @@ class PaymentService:
         )
         return {
             "status": "ignored",
-            "message": "Midtrans webhook deprecated — sistem pembayaran sekarang via QRIS/pak kasir",
+            "message": "Midtrans webhook deprecated â€” sistem pembayaran sekarang via QRIS/pak kasir",
         }
 
     def get_stage2_applicants(self) -> dict:
@@ -442,16 +442,19 @@ class PaymentService:
             from src.core.config import settings
             from src.core.notif_service import send_notification
 
+            from src.models.content import SiteSetting
             applicant = self.repo.get_applicant_by_id(bill.applicant_id)
             if applicant:
+                wa_link_setting = self.repo.db.get(SiteSetting, "ppdb_whatsapp_group_link")
+                wa_link = wa_link_setting.value if wa_link_setting and wa_link_setting.value else f"{settings.ppdb_frontend_url}/dashboard"
+
                 send_notification(
                     "dp_payment_success",
                     applicant.user_id,
                     {
                         "nama_sekolah": "Pesantren Tahfidz Ar-Rahman",
                         "link_aplikasi": f"{settings.ppdb_frontend_url}/dashboard",
-                        # Link grup WA dikonfigurasi oleh admin — fallback ke dashboard
-                        "link_grup_whatsapp": f"{settings.ppdb_frontend_url}/dashboard",
+                        "link_grup_whatsapp": wa_link,
                     },
                 )
         except Exception:

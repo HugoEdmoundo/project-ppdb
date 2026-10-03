@@ -8,11 +8,12 @@ import { useToast } from '@/components/Toast'
 interface DocumentUploadStepProps {
   applicant: any
   documents: any[]
+  requiredDocuments?: any[]
   onDocumentsChange: (docs: any[]) => void
   onSubmitRequest: () => void
 }
 
-export default function DocumentUploadStep({ applicant, documents, onDocumentsChange, onSubmitRequest }: DocumentUploadStepProps) {
+export default function DocumentUploadStep({ applicant, documents, requiredDocuments, onDocumentsChange, onSubmitRequest }: DocumentUploadStepProps) {
   const { toast } = useToast()
   const [uploading, setUploading] = useState<string | null>(null)
 
@@ -46,6 +47,8 @@ export default function DocumentUploadStep({ applicant, documents, onDocumentsCh
     }
   }
 
+  const activeDocuments = requiredDocuments && requiredDocuments.length > 0 ? requiredDocuments : REQUIRED_DOCUMENTS
+
   return (
     <div className="space-y-4">
       {applicant?.status === 'document_rejected' && (
@@ -66,7 +69,7 @@ export default function DocumentUploadStep({ applicant, documents, onDocumentsCh
         Silakan lengkapi dokumen berikut. Format yang didukung: PDF, JPG, PNG (Maks 2MB per file).
       </p>
       <div className="grid gap-3">
-        {REQUIRED_DOCUMENTS.map((doc, idx) => {
+        {activeDocuments.map((doc: any, idx: number) => {
           const uploaded = documents.find(d => d.entity_type === `ppdb_document:${doc.name}`)
           const isUploading = uploading === doc.name
 
@@ -86,7 +89,7 @@ export default function DocumentUploadStep({ applicant, documents, onDocumentsCh
                         <Badge variant="outline" className="text-[10px] font-normal px-2 py-0 h-5 text-slate-500">Belum diunggah</Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{doc.description}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{doc.description || ''}</p>
                     {uploaded && (
                       <a href={uploaded.public_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:text-blue-700 hover:underline mt-1.5 inline-block font-medium">
                         Lihat dokumen
@@ -115,7 +118,7 @@ export default function DocumentUploadStep({ applicant, documents, onDocumentsCh
       </div>
       <div className="flex justify-end pt-4">
         <Button
-          disabled={documents.length < REQUIRED_DOCUMENTS.length || !['document_uploaded_pending', 'document_rejected'].includes(applicant?.status)}
+          disabled={documents.length < activeDocuments.length || !['document_uploaded_pending', 'document_rejected'].includes(applicant?.status)}
           onClick={onSubmitRequest}
         >
           {applicant?.status === 'document_uploaded_pending' ? 'Kirim Dokumen untuk Verifikasi' :

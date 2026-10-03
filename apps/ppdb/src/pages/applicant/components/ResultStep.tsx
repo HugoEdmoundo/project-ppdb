@@ -1,4 +1,8 @@
-import { CheckCircle, X, Upload, FileSignature, Receipt, PenLine } from 'lucide-react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '@/api/client'
+import ApplicantSKDModal from '@/components/shared/ApplicantSKDModal'
+import { CheckCircle, MessageCircle, X, Upload, FileSignature, Receipt, PenLine } from 'lucide-react'
 import { Badge, Button, Card, CardContent } from '@/components/ui'
 
 const formatRp = (n: number) => 'Rp ' + (n || 0).toLocaleString('id-ID')
@@ -13,6 +17,14 @@ interface ResultStepProps {
 }
 
 export default function ResultStep({ applicant, selectionResult, mou, stage2Bills, onSignMou, onUploadProof }: ResultStepProps) {
+  const [showSkdModal, setShowSkdModal] = useState(false)
+  const hasPaidDP = stage2Bills?.some(b => b.status === 'paid')
+  const { data: skdData } = useQuery({
+    queryKey: ['applicant-skd', applicant?.id],
+    queryFn: () => apiFetch<any>(/ppdb/applicants//skd),
+    enabled: !!applicant?.id && hasPaidDP,
+  })
+
   return (
     <div className="space-y-4">
       {applicant?.status === 'passed' ? (
@@ -197,6 +209,44 @@ export default function ResultStep({ applicant, selectionResult, mou, stage2Bill
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* SKD dan WA Group Link */}
+          {hasPaidDP && (
+            <div className="border rounded-xl bg-card overflow-hidden mt-6 border-emerald-200">
+              <div className="bg-emerald-50 px-4 py-3 border-b border-emerald-200">
+                <h4 className="font-semibold text-emerald-800 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                  Penyelesaian Akhir
+                </h4>
+              </div>
+              <div className="p-5 flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="space-y-1">
+                  <h5 className="font-semibold text-slate-800">Dokumen SKD Resmi</h5>
+                  <p className="text-sm text-muted-foreground">Unduh Surat Keterangan Diterima resmi Anda.</p>
+                </div>
+                <Button onClick={() => setShowSkdModal(true)} className="gap-2">
+                  <FileSignature className="w-4 h-4" />
+                  Lihat / Unduh SKD
+                </Button>
+              </div>
+              {skdData?.whatsapp_group_link && (
+                <div className="p-5 border-t border-emerald-100 flex flex-col sm:flex-row gap-4 items-center justify-between bg-emerald-50/50">
+                  <div className="space-y-1">
+                    <h5 className="font-semibold text-slate-800">Grup WhatsApp Pendaftar Lulus</h5>
+                    <p className="text-sm text-muted-foreground">Silakan bergabung dengan grup komunikasi resmi pendaftar.</p>
+                  </div>
+                  <Button variant="outline" className="gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-100" asChild>
+                    <a href={skdData.whatsapp_group_link} target="_blank" rel="noopener noreferrer">
+                      <MessageCircle className="w-4 h-4" />
+                      Gabung Grup WhatsApp
+                    </a>
+                  </Button>
+                </div>
+              )}
+              
+              <ApplicantSKDModal open={showSkdModal} onOpenChange={setShowSkdModal} applicantId={applicant?.id} />
             </div>
           )}
         </div>

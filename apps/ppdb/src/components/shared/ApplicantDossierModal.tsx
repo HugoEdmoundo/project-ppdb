@@ -41,6 +41,7 @@ import {
 import { useToast } from '@/components/Toast'
 import ApplicantTranscriptModal from './ApplicantTranscriptModal'
 import ApplicantLoAModal from './ApplicantLoAModal'
+import ApplicantSKDModal from './ApplicantSKDModal'
 
 interface ApplicantDossierModalProps {
   open: boolean
@@ -103,6 +104,7 @@ export default function ApplicantDossierModal({
   const [downloadingZip, setDownloadingZip] = useState(false)
   const [transcriptOpen, setTranscriptOpen] = useState(false)
   const [loaOpen, setLoaOpen] = useState(false)
+  const [skdOpen, setSkdOpen] = useState(false)
 
   const { data: dossier, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['applicant-dossier', applicantId],
@@ -116,6 +118,7 @@ export default function ApplicantDossierModal({
   const documents = dossier?.documents || []
   const transcript = dossier?.transcript
   const loa = dossier?.loa
+  const skd = dossier?.skd
   const payments = dossier?.payments
 
   const handleDownloadZip = async () => {
@@ -161,7 +164,7 @@ export default function ApplicantDossierModal({
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
                   <Shield className="h-3.5 w-3.5 text-emerald-600" />
-                  Pencarian Lintas Periode & Gelombang · Tercatat di Audit Log
+                  Pencarian Lintas Periode & Gelombang Â· Tercatat di Audit Log
                 </p>
               </div>
 
@@ -200,7 +203,7 @@ export default function ApplicantDossierModal({
                 <div>
                   <span className="text-muted-foreground block">Periode / Gelombang</span>
                   <span className="font-medium text-slate-700">
-                    {applicant.period_name || 'Periode Aktif'} · {applicant.wave_name || 'Gelombang'}
+                    {applicant.period_name || 'Periode Aktif'} Â· {applicant.wave_name || 'Gelombang'}
                   </span>
                 </div>
                 <div>
@@ -272,8 +275,7 @@ export default function ApplicantDossierModal({
                   </TabsTrigger>
                   <TabsTrigger value="loa" className="text-xs gap-1.5">
                     <Award className="h-3.5 w-3.5" />
-                    Surat LoA
-                  </TabsTrigger>
+                    LoA & SKD</TabsTrigger>
                 </TabsList>
 
                 {/* TAB 1: BIODATA */}
@@ -492,7 +494,7 @@ export default function ApplicantDossierModal({
                       <div className="p-4 rounded-lg bg-emerald-50/50 border border-emerald-100 flex flex-col justify-center items-center">
                         <span className="text-xs text-emerald-800 font-medium">Skor TIU</span>
                         <span className="text-3xl font-extrabold text-emerald-700 mt-1">
-                          {transcript?.tiu_score != null ? transcript.tiu_score : '—'}
+                          {transcript?.tiu_score != null ? transcript.tiu_score : 'â€”'}
                         </span>
                         <span className="text-[10px] text-emerald-600 mt-1">Skala 0 - 100</span>
                       </div>
@@ -729,7 +731,7 @@ export default function ApplicantDossierModal({
                           Surat Penerimaan Resmi (Letter of Acceptance)
                         </h3>
                         <p className="text-xs text-muted-foreground">
-                          Nomor: {loa?.letter_number || '-'} · Diterbitkan: {formatDate(loa?.issued_at)}
+                          Nomor: {loa?.letter_number || '-'} Â· Diterbitkan: {formatDate(loa?.issued_at)}
                         </p>
                       </div>
                       <Button
@@ -753,6 +755,33 @@ export default function ApplicantDossierModal({
                           {loa.fixed_clause}
                         </div>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 p-5 bg-white space-y-4">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <div>
+                        <h3 className="font-semibold text-slate-800 text-sm">
+                          Surat Keterangan Diterima (SKD)
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          Nomor: {skd?.letter_number || "-"}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={() => setSkdOpen(true)}
+                      >
+                        <Printer className="h-3 w-3" />
+                        Cetak SKD
+                      </Button>
+                    </div>
+                    
+                    <div className="bg-slate-50 p-4 rounded-lg border text-xs space-y-3 font-mono">
+                      <p className="text-slate-600">Background URL: {skd?.background_url || "Belum ada"}</p>
+                      <p className="text-slate-600">Grup WA: {skd?.whatsapp_group_link || "Belum ada"}</p>
                     </div>
                   </div>
                 </TabsContent>

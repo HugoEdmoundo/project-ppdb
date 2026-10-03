@@ -219,6 +219,7 @@ class ApplicantRegister(BaseModel):
     village: str = Field(min_length=1, max_length=100)
     postal_code: str | None = Field(default=None, max_length=5)
     address: str = Field(min_length=5, max_length=500)
+    disease_history: str | None = Field(default=None, max_length=255)
 
     @field_validator("phone")
     @classmethod
@@ -269,6 +270,9 @@ class ApplicantPasswordReset(BaseModel):
 # bawah ini — hanya data profil, penempatan gelombang, dan status.
 
 
+class ApplicantChangePath(BaseModel):
+    registration_path: str = Field(min_length=1)
+
 class ApplicantAdminCreate(ApplicantRegister):
     """Buat pendaftar dari panel Superadmin.
 
@@ -313,6 +317,7 @@ class ApplicantAdminUpdate(BaseModel):
     village: str | None = Field(default=None, max_length=100)
     postal_code: str | None = Field(default=None, max_length=5)
     address: str | None = Field(default=None, max_length=500)
+    disease_history: str | None = Field(default=None, max_length=255)
     status: str | None = None
     payment_status: str | None = None
     rejection_reason: str | None = None

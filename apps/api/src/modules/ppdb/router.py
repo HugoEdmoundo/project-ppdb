@@ -34,7 +34,7 @@ from src.models.content import SiteSetting
 from src.models.ppdb import FileUpload
 from src.modules.ppdb.schemas import (
     ApplicantAdminCreate,
-    ApplicantAdminUpdate,
+    ApplicantAdminUpdate, ApplicantChangePath,
     ApplicantPasswordReset,
     ApplicantRegister,
     DocumentVerify,
@@ -230,6 +230,7 @@ def get_document_settings(
         "ppdb_loa_template_draft",
         "ppdb_loa_template_published_at",
         "ppdb_skd_background_url",
+        "ppdb_whatsapp_group_link",
     )
     rows = db.query(SiteSetting).filter(SiteSetting.key.in_(keys)).all()
     values = {row.key: row.value or "" for row in rows}
@@ -240,7 +241,33 @@ def get_document_settings(
         "loa_is_published": bool(values.get("ppdb_loa_template", "").strip()),
         "loa_published_at": values.get("ppdb_loa_template_published_at", ""),
         "skd_background_url": values.get("ppdb_skd_background_url", ""),
+        "whatsapp_group_link": values.get("ppdb_whatsapp_group_link", ""),
     }
+
+
+@router.put("/document-settings/whatsapp-link")
+def update_whatsapp_link(
+    body: dict[str, str],
+    user: dict = Depends(require_ppdb_admin),
+    db: Session = Depends(get_db),
+):
+    link = body.get("whatsapp_group_link", "")
+    now = datetime.now(WIB).replace(tzinfo=None)
+    setting = db.get(SiteSetting, "ppdb_whatsapp_group_link")
+    if setting:
+        setting.value = link
+        setting.updated_at = now
+    else:
+        db.add(
+            SiteSetting(
+                key="ppdb_whatsapp_group_link",
+                value=link,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+    db.commit()
+    return {"success": True}
 
 
 @router.put("/document-settings/loa-template")
@@ -676,7 +703,7 @@ def get_applicant(
 @router.put("/applicants/{id}")
 def update_applicant(
     id: str,
-    body: ApplicantAdminUpdate,
+    body: ApplicantAdminUpdate, ApplicantChangePath,
     user: dict = Depends(require_ppdb_admin),
     service: PPDBService = Depends(get_ppdb_service),
 ):
@@ -705,6 +732,14 @@ def reset_applicant_password(
 # ─────────────────────────────────────────────────────────────────────────────
 # Dokumen Pendaftar
 # ─────────────────────────────────────────────────────────────────────────────
+@router.patch("/applicants/me/path")
+def change_my_path(
+    body: ApplicantChangePath,
+    user: dict[str, Any] = Depends(get_current_user),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    return service.change_my_path(user["id"], body.registration_path)
+
 @router.get("/documents")
 def get_my_documents(
     user: dict[str, Any] = Depends(get_current_user),
@@ -766,6 +801,15 @@ def get_applicant_loa(
     service: PPDBService = Depends(get_ppdb_service),
 ):
     return service.get_applicant_loa(id)
+
+
+@router.get("/applicants/{id}/skd")
+def get_applicant_skd(
+    id: str,
+    user: dict = Depends(require_ppdb_read),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    return service.get_applicant_skd(id)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

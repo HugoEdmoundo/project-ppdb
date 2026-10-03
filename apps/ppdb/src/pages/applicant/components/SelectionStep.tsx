@@ -1,5 +1,6 @@
-import { CalendarDays, Clock, MapPin, Star, Printer, XCircle } from 'lucide-react'
+import { CalendarDays, Clock, MapPin, Star, Printer, XCircle, Download, ExternalLink, ShieldCheck } from 'lucide-react'
 import { Badge, Button, Card, CardContent } from '@/components/ui'
+import { useToast } from '@/components/Toast'
 
 interface SelectionStepProps {
   applicant: any
@@ -11,8 +12,61 @@ interface SelectionStepProps {
 }
 
 export default function SelectionStep({ applicant, selectionSession, availableSessions, selectionResult, booking, onBookSession }: SelectionStepProps) {
+  const { toast } = useToast()
+  const isTiuPath = applicant?.registration_path?.toLowerCase().includes('tiu')
+
+  const downloadSebConfig = async () => {
+    try {
+      const token = localStorage.getItem('access_token') || ''
+      const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const res = await fetch(`${apiUrl}/selection/applicants/me/tiu-seb`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!res.ok) throw new Error('Gagal mengunduh konfigurasi SEB')
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'ujian_tiu.seb'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+    } catch (e: any) {
+      toast('error', e.message)
+    }
+  }
+
   return (
     <div className="space-y-4">
+      {isTiuPath && (
+        <Card className="border-indigo-200 bg-indigo-50/50 shadow-sm">
+          <CardContent className="p-5 space-y-4">
+            <h4 className="font-semibold text-indigo-900 flex items-center gap-2 text-sm">
+              <ShieldCheck className="h-5 w-5 text-indigo-600" />
+              Persiapan Ujian TIU (Safe Exam Browser)
+            </h4>
+            <p className="text-sm text-indigo-800">
+              Jalur pendaftaran Anda mewajibkan ujian TIU secara online. Ujian ini menggunakan aplikasi Safe Exam Browser (SEB) untuk memastikan keamanan.
+            </p>
+            <div className="space-y-2 text-sm text-indigo-700">
+              <p><strong>Langkah-langkah:</strong></p>
+              <ol className="list-decimal pl-5 space-y-1">
+                <li>Unduh dan instal aplikasi Safe Exam Browser dari <a href="https://safeexambrowser.org/download_en.html" target="_blank" rel="noreferrer" className="text-indigo-600 font-semibold hover:underline inline-flex items-center gap-1">situs resminya <ExternalLink className="w-3 h-3"/></a> (Windows/macOS).</li>
+                <li>Unduh konfigurasi SEB khusus untuk ujian Anda melalui tombol di bawah ini.</li>
+                <li>Buka file <code>ujian_tiu.seb</code> yang baru saja diunduh. Aplikasi SEB akan otomatis terbuka.</li>
+                <li>Masukkan kredensial login Anda untuk memulai ujian.</li>
+              </ol>
+            </div>
+            <div className="pt-2">
+              <Button onClick={downloadSebConfig} className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto gap-2">
+                <Download className="w-4 h-4" />
+                Download Konfigurasi SEB (.seb)
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {selectionSession ? (
         <Card className="border-blue-200 bg-blue-50/50 shadow-sm">
           <CardContent className="p-5 space-y-4">

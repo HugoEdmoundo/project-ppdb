@@ -19,6 +19,7 @@ import PaymentStep from './components/PaymentStep'
 import DocumentUploadStep from './components/DocumentUploadStep'
 import SelectionStep from './components/SelectionStep'
 import ResultStep from './components/ResultStep'
+import ChangePathModal from './components/ChangePathModal'
 import { cn } from '@/lib/utils'
 
 const STEP_ICONS: LucideIcon[] = [Wallet, FileUp, ClipboardCheck, Trophy]
@@ -54,6 +55,7 @@ export default function ApplicantDashboardPage() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showSignModal, setShowSignModal] = useState(false)
+  const [showChangePath, setShowChangePath] = useState(false)
 
   const transactionQuery = useQuery({
     queryKey: ['my-transaction'],
@@ -68,6 +70,7 @@ export default function ApplicantDashboardPage() {
   const applicant = transactionQuery.data?.applicant
   const transaction = transactionQuery.data?.transaction
   const documents = documentsQuery.data?.data || []
+  const requiredDocuments = documentsQuery.data?.required_documents || []
   const status = applicant?.status
   const loading = transactionQuery.isLoading || documentsQuery.isLoading
 
@@ -228,6 +231,7 @@ export default function ApplicantDashboardPage() {
         <DocumentUploadStep
           applicant={applicant}
           documents={documents}
+          requiredDocuments={requiredDocuments}
           onDocumentsChange={() => queryClient.invalidateQueries({ queryKey: ['my-documents'] })}
           onSubmitRequest={() => setShowSubmitConfirm(true)}
         />
@@ -341,6 +345,17 @@ export default function ApplicantDashboardPage() {
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/25">
                   {statusLabel}
                 </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/25 capitalize">
+                  Jalur: {applicant?.registration_path || '-'}
+                </span>
+                {['pending_payment', 'document_uploaded_pending', 'document_rejected'].includes(status) && (
+                  <button 
+                    onClick={() => setShowChangePath(true)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700/50 hover:bg-emerald-700/80 px-3 py-1 text-xs font-semibold text-white ring-1 ring-emerald-400/50 transition-colors cursor-pointer"
+                  >
+                    Ganti Jalur
+                  </button>
+                )}
               </div>
             </div>
             <div className="shrink-0 sm:text-right">
@@ -538,6 +553,14 @@ export default function ApplicantDashboardPage() {
           phone={contactInfo.phone_primary}
           whatsapp={contactInfo.whatsapp}
           email={contactInfo.email_primary}
+        />
+      )}
+
+      {showChangePath && (
+        <ChangePathModal 
+          open={showChangePath} 
+          onOpenChange={setShowChangePath} 
+          currentPath={applicant?.registration_path || ''} 
         />
       )}
     </div>

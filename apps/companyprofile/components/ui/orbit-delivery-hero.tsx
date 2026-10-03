@@ -1,4 +1,4 @@
-﻿// @ts-nocheck ÔÇö generated single-file distribution; typed sources live in the app.
+// @ts-nocheck — generated single-file distribution; typed sources live in the app.
 
 
 
@@ -6,7 +6,7 @@
 
 
 
-// Orbit Delivery ÔÇö self-contained 3D hero. Configurable hosted GLB models; all application code and styles in one file.
+// Orbit Delivery — self-contained 3D hero. Configurable hosted GLB models; all application code and styles in one file.
 
 
 
@@ -722,7 +722,8 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 
 
-import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+// DRACOLoader dihapus: tidak ada GLB yang mendeklarasikan KHR_draco_mesh_compression,
+// sehingga decoder tidak pernah dipakai (0 request ke /draco/).
 
 
 
@@ -868,11 +869,7 @@ function usePlanetAsset(onReady) {
 
 
 
-    const draco = new DRACOLoader().setDecoderPath("/draco/gltf/").setDecoderConfig({ type: "js" }).setWorkerLimit(1);
-
-
-
-    const loader = new GLTFLoader().setDRACOLoader(draco);
+    const loader = new GLTFLoader();
 
 
 
@@ -1020,14 +1017,6 @@ function usePlanetAsset(onReady) {
 
 
 
-    }).finally(() => {
-
-
-
-      if (!disposed) draco.dispose();
-
-
-
     });
 
 
@@ -1041,10 +1030,6 @@ function usePlanetAsset(onReady) {
 
 
       abort.abort();
-
-
-
-      draco.dispose();
 
 
 
@@ -2364,7 +2349,7 @@ import { GLTFLoader as GLTFLoader2 } from "three/examples/jsm/loaders/GLTFLoader
 
 
 
-import { DRACOLoader as DRACOLoader2 } from "three/examples/jsm/loaders/DRACOLoader.js";
+// DRACOLoader2 dihapus dengan alasan yang sama seperti di loader planet.
 
 
 
@@ -2732,11 +2717,7 @@ function Courier({ motion, paused, reduced, onReady }) {
 
 
 
-    const draco = new DRACOLoader2().setDecoderPath("/draco/gltf/").setDecoderConfig({ type: "js" }).setWorkerLimit(1);
-
-
-
-    const loader = new GLTFLoader2().setDRACOLoader(draco);
+    const loader = new GLTFLoader2();
 
 
 
@@ -2960,14 +2941,6 @@ function Courier({ motion, paused, reduced, onReady }) {
 
 
 
-    }).finally(() => {
-
-
-
-      if (!cancelled) draco.dispose();
-
-
-
     });
 
 
@@ -2981,10 +2954,6 @@ function Courier({ motion, paused, reduced, onReady }) {
 
 
       abort.abort();
-
-
-
-      draco.dispose();
 
 
 
@@ -4194,7 +4163,7 @@ var SceneBoundary = class extends Component {
 
 
 
-    return this.state.failed ? <div className="scene-fallback"><p>We couldnÔÇÖt load this little world.</p><button onClick={() => location.reload()}>Try again</button></div> : this.props.children;
+    return this.state.failed ? <div className="scene-fallback"><p>We couldn’t load this little world.</p><button onClick={() => location.reload()}>Try again</button></div> : this.props.children;
 
 
 
@@ -4240,7 +4209,7 @@ function buildStories(academicYear) {
 
         "Kurikulum terintegrasi antara hafalan Al-Qur'an 30 Juz mutqin dengan keahlian rekayasa teknologi digital.",
 
-        "Santri pr├│tesissale dilengkapi keterampilan modern: Full-Stack Web, Artificial Intelligence, Mobile App Development, serta kefasihan dwibahasa Arab dan Inggris."
+        "Santri prótesissale dilengkapi keterampilan modern: Full-Stack Web, Artificial Intelligence, Mobile App Development, serta kefasihan dwibahasa Arab dan Inggris."
 
       ]
 
@@ -4847,7 +4816,7 @@ function App({ academicYear }) {
 
 
 
-          {!ready && <div className="loading" role="status"><span />Menyiapkan dunia 3D Ar-RahmanÔÇª</div>}
+          {!ready && <div className="loading" role="status"><span />Menyiapkan dunia 3D Ar-Rahman…</div>}
 
 
 
@@ -4881,7 +4850,7 @@ function App({ academicYear }) {
 
 
 
-    {prototype && <aside className="prototype-label">Movement prototype <a href="./">View finished scene Ôåù</a></aside>}
+    {prototype && <aside className="prototype-label">Movement prototype <a href="./">View finished scene ↗</a></aside>}
 
 
 
@@ -4937,7 +4906,7 @@ function StoryDialog({ story, academicYear, onClose }) {
 
 
 
-  }}><button className="close-dialog" aria-label="Close" onClick={onClose}>├ù</button><span className="eyebrow">{story}</span><h2>{stories[story].title}</h2>{stories[story].paragraphs.map((p) => <p key={p}>{p}</p>)}<button className="explore-button" onClick={onClose}>Kembali ke Dunia 3D <Arrow /></button></dialog>;
+  }}><button className="close-dialog" aria-label="Close" onClick={onClose}>×</button><span className="eyebrow">{story}</span><h2>{stories[story].title}</h2>{stories[story].paragraphs.map((p) => <p key={p}>{p}</p>)}<button className="explore-button" onClick={onClose}>Kembali ke Dunia 3D <Arrow /></button></dialog>;
 
 
 

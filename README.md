@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://via.placeholder.com/150/1e293b/FFFFFF?text=Ar-Rahman" alt="Ar-Rahman Logo" width="120" />
+  <img src="https://res.cloudinary.com/dunynusuh/image/upload/v1755771459/Logo-Ar-Rahman_fm4mgg.png" alt="Ar-Rahman Logo" width="120" />
   <h1>Sistem Terpadu Ar-Rahman</h1>
   <p><strong>Company Profile & Portal PPDB (Penerimaan Peserta Didik Baru)</strong></p>
 

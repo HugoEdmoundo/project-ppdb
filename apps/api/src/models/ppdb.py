@@ -421,3 +421,12 @@ class PPDBBMOU(Base):
     signed_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class PPDBTIUAttempt(Base):
+    __tablename__ = "ppdb_tiu_attempts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    applicant_id: Mapped[str] = mapped_column(String(64), ForeignKey("ppdb_applicants.id", ondelete="CASCADE"))
+    token: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

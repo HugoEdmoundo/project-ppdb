@@ -1,40 +1,50 @@
-# Draf Panduan Peserta — Tes TIU dengan Safe Exam Browser
+# Panduan Ujian TIU (Safe Exam Browser)
 
-Tes TIU dikerjakan di aplikasi PPDB melalui Safe Exam Browser (SEB). Google Form dipakai panitia untuk menyusun soal; peserta tidak mengisi Google Form.
+Pendaftaran PPDB Pesantren Ar-Rahman jalur tertentu mewajibkan peserta untuk mengikuti Tes Intelegensia Umum (TIU) secara online. Untuk menjaga integritas ujian, tes ini dilaksanakan menggunakan aplikasi **Safe Exam Browser (SEB)**.
 
-## Sebelum Ujian
+SEB akan mengunci layar komputer Anda sehingga Anda tidak bisa membuka aplikasi lain atau tab baru selama ujian berlangsung.
 
-1. Siapkan komputer desktop/laptop dan koneksi internet yang stabil. Ponsel dan tablet tidak digunakan untuk tes TIU.
-2. Unduh dan pasang SEB dari [situs resmi Safe Exam Browser](https://safeexambrowser.org/download_en.html). TIU didukung di komputer desktop/laptop Windows dan macOS. Ponsel dan tablet tidak didukung. Ikuti versi yang diumumkan panitia.
-3. Login ke aplikasi PPDB dan pastikan nama yang tampil sudah benar. Nama peserta diambil otomatis dari akun pendaftaran; peserta tidak perlu mengisi form nama terpisah saat ujian.
-4. Sambungkan komputer ke listrik dan tutup aplikasi lain sebelum mulai.
+## 1. Spesifikasi Perangkat yang Didukung
+- Komputer Desktop atau Laptop
+- Sistem Operasi: **Windows** (Windows 10/11) atau **macOS**
+- *Perangkat seluler (HP/Tablet) Android atau iOS tidak didukung.*
 
-## Memulai Tes
+## 2. Cara Mengunduh & Instalasi SEB
+1. Buka browser Anda dan kunjungi situs resmi: [https://safeexambrowser.org/download_en.html](https://safeexambrowser.org/download_en.html)
+2. Klik tombol **Download** sesuai dengan sistem operasi komputer Anda (Pilih versi Windows atau macOS terbaru).
+3. Setelah file installer selesai diunduh, klik ganda (double-click) file tersebut.
+4. Ikuti petunjuk instalasi di layar (klik *Next / Install* hingga selesai).
+5. Anda tidak perlu membuka aplikasi SEB secara manual setelah diinstal. Cukup biarkan terinstal di komputer.
 
-1. Buka menu Tes TIU di dashboard pendaftar dan baca petunjuk serta durasi ujian.
-2. Klik **Mulai TIU**. Aplikasi menyiapkan sesi ujian dan membuka konfigurasi SEB yang menuju halaman tes di aplikasi PPDB. Jangan salin atau bagikan tautan sesi ujian.
-3. Jika komputer meminta izin membuka Safe Exam Browser, pilih **Open/Buka Safe Exam Browser**.
-4. Timer baru dimulai setelah halaman tes terbuka di SEB dan sistem memvalidasi sesi ujian.
+## 3. Cara Memulai Ujian di Portal PPDB
+1. Login ke *Dashboard* Pendaftar PPDB Ar-Rahman.
+2. Masuk ke tahap **Ujian / Seleksi**.
+3. Pastikan Anda sudah siap secara fisik dan mental, serta memiliki koneksi internet yang stabil.
+4. Klik tombol **Download Konfigurasi SEB (.seb)**.
+   *PERHATIAN: Waktu hitung mundur ujian (timer server) akan mulai berjalan sejak Anda mengeklik tombol ini!*
+5. File bernama `ujian_tiu.seb` akan terunduh.
+6. Klik ganda file `ujian_tiu.seb` tersebut. Komputer akan otomatis membuka SEB, mengunci layar, dan menampilkan soal ujian Google Form yang sudah terhubung dengan akun Anda.
+7. Silakan kerjakan soal, lalu klik **Submit** jika sudah selesai.
 
-Jika SEB belum terpasang atau tidak dapat dibuka, jangan mulai melalui browser biasa. Pasang SEB terlebih dahulu atau hubungi panitia.
+## 4. Solusi Masalah / Error (Troubleshooting)
 
-## Saat Mengerjakan
+### A. File `.seb` Terbuka di Aplikasi Lain (Bukan SEB)
+**Penyebab:** Ekstensi file `.seb` belum terasosiasi dengan aplikasi Safe Exam Browser.
+**Solusi:**
+- **Windows:** Klik kanan pada file `ujian_tiu.seb`, pilih **Open With...** -> **Choose another app**. Cari dan pilih "Safe Exam Browser", lalu centang *Always use this app to open .seb files*.
+- **macOS:** Klik kanan file `ujian_tiu.seb`, pilih **Get Info**. Pada bagian *Open with:*, pilih "Safe Exam Browser", lalu klik tombol *Change All...*.
 
-- Kerjakan soal di jendela SEB. Jangan menutup SEB atau berpindah aplikasi selama tes.
-- Waktu berjalan sesuai timer pada halaman. Jawaban disimpan oleh aplikasi selama tes berlangsung.
-- Setiap peserta hanya mendapat satu attempt TIU; tidak ada retake setelah attempt selesai atau waktu habis.
-- Jawaban tersimpan otomatis ke server selama ujian. Jika koneksi terputus, sambungkan kembali, login bila diminta, lalu buka lagi TIU melalui SEB untuk melanjutkan attempt yang sama. Sistem memulihkan jawaban tersimpan agar peserta melanjutkan dari jawaban terakhir; ini bukan attempt baru. Timer tetap berjalan saat offline dan tidak di-reset. Jika waktunya habis, sistem mengirim jawaban terakhir yang berhasil tersimpan untuk dinilai.
+### B. SEB Meminta *Password* Saat Dibuka
+**Penyebab:** Terjadi konflik konfigurasi atau file konfigurasi rusak/usang.
+**Solusi:** Tutup SEB, hapus file `ujian_tiu.seb` yang lama. Kembali ke Dashboard PPDB, dan unduh ulang konfigurasinya. (Catatan: Waktu Anda terus berjalan, segera lakukan langkah ini).
 
-## Mengakhiri Tes
+### C. Komputer Tiba-tiba *Hang* atau Koneksi Internet Terputus Saat Ujian
+**Penyebab:** Masalah teknis dari sisi perangkat atau jaringan peserta.
+**Solusi:**
+- Jangan panik. Anda bisa me-restart komputer dengan menekan dan menahan tombol Power/Daya.
+- Setelah komputer menyala kembali dan koneksi internet terhubung, segera buka kembali file `ujian_tiu.seb` (jika waktu ujian Anda belum habis).
+- Google Form memiliki fitur *auto-save* (bila Anda login Google) atau Anda mungkin harus mengulang pengisian jika form diatur tanpa login. Segera isi jawaban dan klik Submit sebelum batas waktu backend habis. Waktu timer di server PPDB tidak akan berhenti atau di-reset saat Anda offline.
 
-- Jika selesai lebih awal, tekan **Kirim/Selesaikan Tes** dan tunggu konfirmasi.
-- Jika waktu habis, sistem mengirim jawaban yang tersimpan dan menghitung nilai otomatis.
-- Hasil TIU tampil di aplikasi setelah attempt dinilai. Tutup SEB setelah halaman konfirmasi selesai.
-
-## Jika Ada Kendala
-
-- **Tautan tidak membuka SEB:** pastikan SEB sudah terpasang. Pilih konfirmasi **Open/Buka Safe Exam Browser** jika diminta.
-- **SEB meminta konfigurasi atau kata sandi yang tidak tersedia:** jangan menebak; hubungi panitia.
-- **Listrik atau internet bermasalah:** hubungi panitia dan sampaikan nama akun serta waktu kejadian. Setiap attempt tercatat agar panitia dapat meninjau kendala.
-
-> Panduan ini mengikuti rancangan sistem. Nama menu/tombol, versi SEB, dan prosedur koneksi ulang perlu disesuaikan setelah fitur ujian selesai dibuat dan diuji.
+### D. Muncul Peringatan "Session Not Allowed" atau Terblokir Antivirus
+**Penyebab:** Antivirus pihak ketiga memblokir SEB karena SEB membatasi sistem.
+**Solusi:** Matikan sementara (Disable) Antivirus Anda selama ujian berlangsung. SEB aman dan dirancang khusus untuk ujian institusi resmi di seluruh dunia.

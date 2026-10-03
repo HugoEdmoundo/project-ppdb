@@ -271,12 +271,38 @@ def send_h1_reminders(
         raise HTTPException(status_code=401, detail="Unauthorized cron request")
     return svc.send_h1_reminders()
 
+import uuid
+from datetime import datetime
+from src.core.database import get_db
+from sqlalchemy.orm import Session
+from src.models.ppdb import PPDBTIUAttempt, PPDBApplicant
+from src.modules.ppdb.router import get_tiu_settings
+
 @router.get("/applicants/me/tiu-seb")
 def generate_tiu_seb(
     user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    ticket = create_access_token({"sub": user["id"], "type": "tiu_attempt"}, expires_delta=timedelta(hours=2))
-    start_url = f"{settings.ppdb_frontend_url}/applicant/ujian-tiu?ticket={ticket}"
+    applicant = db.query(PPDBApplicant).filter(PPDBApplicant.user_id == user["id"]).first()
+    if not applicant:
+        raise HTTPException(status_code=404, detail="Bukan pendaftar")
+        
+    tiu_settings = get_tiu_settings(user, db)
+    google_form_url = tiu_settings.get("google_form_url", "")
+    if not google_form_url:
+        raise HTTPException(status_code=400, detail="URL Google Form TIU belum dikonfigurasi")
+        
+    token = str(uuid.uuid4())
+    attempt = PPDBTIUAttempt(
+        id=str(uuid.uuid4()),
+        applicant_id=applicant.id,
+        token=token,
+        created_at=datetime.now()
+    )
+    db.add(attempt)
+    db.commit()
+
+    start_url = google_form_url.replace("{token}", token)
     
     seb_xml = f"""<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

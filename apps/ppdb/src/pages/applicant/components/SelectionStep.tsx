@@ -1,5 +1,6 @@
-import { CalendarDays, Clock, MapPin, Star, Printer, XCircle, Download, ExternalLink, ShieldCheck } from 'lucide-react'
-import { Badge, Button, Card, CardContent } from '@/components/ui'
+import { useState } from 'react'
+import { CalendarDays, Clock, MapPin, Star, Printer, XCircle, Download, ExternalLink, ShieldCheck, HelpCircle } from 'lucide-react'
+import { Badge, Button, Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 
 interface SelectionStepProps {
@@ -13,6 +14,7 @@ interface SelectionStepProps {
 
 export default function SelectionStep({ applicant, selectionSession, availableSessions, selectionResult, booking, onBookSession }: SelectionStepProps) {
   const { toast } = useToast()
+  const [showSebGuide, setShowSebGuide] = useState(false)
   const isTiuPath = applicant?.registration_path?.toLowerCase().includes('tiu')
 
   const downloadSebConfig = async () => {
@@ -41,31 +43,94 @@ export default function SelectionStep({ applicant, selectionSession, availableSe
       {isTiuPath && (
         <Card className="border-indigo-200 bg-indigo-50/50 shadow-sm">
           <CardContent className="p-5 space-y-4">
-            <h4 className="font-semibold text-indigo-900 flex items-center gap-2 text-sm">
-              <ShieldCheck className="h-5 w-5 text-indigo-600" />
-              Persiapan Ujian TIU (Safe Exam Browser)
-            </h4>
-            <p className="text-sm text-indigo-800">
-              Jalur pendaftaran Anda mewajibkan ujian TIU secara online. Ujian ini menggunakan aplikasi Safe Exam Browser (SEB) untuk memastikan keamanan.
-            </p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="font-semibold text-indigo-900 flex items-center gap-2 text-sm">
+                  <ShieldCheck className="h-5 w-5 text-indigo-600" />
+                  Persiapan Ujian TIU (Safe Exam Browser)
+                </h4>
+                <p className="text-sm text-indigo-800 mt-1">
+                  Jalur pendaftaran Anda mewajibkan ujian TIU secara online. Ujian ini menggunakan aplikasi Safe Exam Browser (SEB) untuk memastikan keamanan.
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" className="text-indigo-600 hover:bg-indigo-100 hidden sm:flex shrink-0 gap-1" onClick={() => setShowSebGuide(true)}>
+                <HelpCircle className="w-4 h-4" /> Bantuan & Error
+              </Button>
+            </div>
+            
             <div className="space-y-2 text-sm text-indigo-700">
-              <p><strong>Langkah-langkah:</strong></p>
+              <p><strong>Langkah-langkah Singkat:</strong></p>
               <ol className="list-decimal pl-5 space-y-1">
                 <li>Unduh dan instal aplikasi Safe Exam Browser dari <a href="https://safeexambrowser.org/download_en.html" target="_blank" rel="noreferrer" className="text-indigo-600 font-semibold hover:underline inline-flex items-center gap-1">situs resminya <ExternalLink className="w-3 h-3"/></a> (Windows/macOS).</li>
-                <li>Unduh konfigurasi SEB khusus untuk ujian Anda melalui tombol di bawah ini.</li>
+                <li>Unduh konfigurasi SEB khusus Anda melalui tombol di bawah ini. Pastikan Anda siap mengerjakan, <strong>waktu ujian dihitung segera setelah file diklik!</strong></li>
                 <li>Buka file <code>ujian_tiu.seb</code> yang baru saja diunduh. Aplikasi SEB akan otomatis terbuka.</li>
-                <li>Masukkan kredensial login Anda untuk memulai ujian.</li>
+                <li>Soal ujian akan otomatis tampil dengan kode identitas Anda yang sudah terisi. Silakan langsung kerjakan dan klik <strong>Submit</strong> jika sudah selesai.</li>
               </ol>
             </div>
-            <div className="pt-2">
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
               <Button onClick={downloadSebConfig} className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto gap-2">
                 <Download className="w-4 h-4" />
                 Download Konfigurasi SEB (.seb)
+              </Button>
+              <Button variant="outline" className="border-indigo-300 text-indigo-700 hover:bg-indigo-100 w-full sm:hidden gap-2" onClick={() => setShowSebGuide(true)}>
+                <HelpCircle className="w-4 h-4" /> Bantuan & Solusi Error
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* SEB Guide Modal */}
+      <Dialog open={showSebGuide} onOpenChange={setShowSebGuide}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Panduan Instalasi & Solusi Error (Troubleshooting) SEB</DialogTitle>
+            <DialogDescription>
+              Silakan baca panduan di bawah ini jika Anda mengalami kesulitan saat instalasi maupun pelaksanaan Ujian TIU.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5 text-sm text-slate-700 mt-2">
+            <div>
+              <h4 className="font-semibold text-slate-900 mb-1 border-b pb-1">1. Instalasi Safe Exam Browser</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Buka situs <a href="https://safeexambrowser.org/download_en.html" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">safeexambrowser.org/download_en.html</a>.</li>
+                <li>Download versi terbaru sesuai dengan OS komputer Anda (Windows 10/11 atau macOS). <em>Smartphone/Tablet tidak didukung.</em></li>
+                <li>Jalankan file *installer* yang telah di-download, ikuti proses (klik *Next* / *Install*) hingga selesai.</li>
+                <li><strong>Catatan:</strong> Anda tidak perlu membuka aplikasinya secara manual setelah terinstal. Cukup biarkan saja.</li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-slate-900 mb-1 border-b pb-1">2. Solusi: File .seb Terbuka di Aplikasi Lain</h4>
+              <p className="mb-1"><strong>Gejala:</strong> Saat file <code>ujian_tiu.seb</code> diklik, ia malah terbuka di Notepad, Browser biasa, atau program lain.</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li><strong>Windows:</strong> Klik kanan pada file <code>ujian_tiu.seb</code> &rarr; pilih <strong>Open With...</strong> &rarr; <strong>Choose another app</strong>. Cari dan pilih "Safe Exam Browser", lalu centang <em>"Always use this app to open .seb files"</em>.</li>
+                <li><strong>macOS:</strong> Klik kanan file <code>ujian_tiu.seb</code> &rarr; pilih <strong>Get Info</strong>. Pada bagian <em>"Open with:"</em> pilih "Safe Exam Browser", lalu klik tombol <em>Change All...</em>.</li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-slate-900 mb-1 border-b pb-1">3. Solusi: SEB Meminta Password</h4>
+              <p><strong>Gejala:</strong> Begitu file diklik, muncul kotak dialog meminta password konfigurasi atau quit password.</p>
+              <p><strong>Solusi:</strong> File `.seb` Anda mungkin usang atau *corrupt*. Tutup SEB, hapus file `.seb` tersebut. Kembali ke dashboard pendaftar PPDB Anda dan klik tombol <strong>Download Konfigurasi SEB (.seb)</strong> untuk mengambil file yang baru. Segera buka kembali.</p>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-slate-900 mb-1 border-b pb-1">4. Solusi: Komputer Hang / Koneksi Terputus</h4>
+              <p className="mb-1"><strong>Gejala:</strong> Layar macet atau ada notifikasi internet mati.</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Jangan panik. Matikan komputer secara paksa (tahan tombol power) jika hang, lalu nyalakan kembali.</li>
+                <li>Pastikan internet menyala, lalu klik ganda kembali file <code>ujian_tiu.seb</code> yang tadi (tidak perlu download baru kecuali diminta).</li>
+                <li><strong>Perhatian:</strong> Waktu ujian di server akan <strong>terus berjalan</strong> selama Anda offline. Segera lanjutkan pekerjaan Anda dan klik <strong>Submit</strong>!</li>
+              </ul>
+            </div>
+            
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-amber-800">
+              Jika masalah berlanjut dan Anda tidak bisa mengakses ujian sama sekali, segera hubungi Panitia PPDB Ar-Rahman melalui nomor kontak resmi yang tersedia.
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {selectionSession ? (
         <Card className="border-blue-200 bg-blue-50/50 shadow-sm">

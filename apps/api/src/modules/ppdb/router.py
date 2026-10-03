@@ -134,92 +134,70 @@ def update_tiu_settings(
     }
 
 
-@router.post("/tiu-questions/sync")
-async def sync_tiu_questions(
-    request: Request,
+from pydantic import BaseModel
+class TIUWebhookPayload(BaseModel):
+    token: str
+    score: float
+
+@router.post("/webhook/tiu")
+def tiu_webhook(
+    payload: TIUWebhookPayload,
     x_tiu_secret: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ):
+    from src.models.ppdb import PPDBTIUAttempt
+    from src.models.selection import SelectionCategory, SelectionCriteria, SelectionScore
+    from src.core.config import settings
+
     configured = db.get(SiteSetting, "ppdb_tiu_webhook_secret")
     expected = (configured.value if configured else None) or settings.tiu_webhook_secret
-    if (
-        not expected
-        or not x_tiu_secret
-        or not hmac.compare_digest(expected.strip(), x_tiu_secret.strip())
-    ):
-        raise HTTPException(
-            status_code=401, detail="Secret sinkronisasi TIU tidak valid"
-        )
+    if not expected or not x_tiu_secret or not hmac.compare_digest(expected.strip(), x_tiu_secret.strip()):
+        raise HTTPException(status_code=401, detail="Secret tidak valid")
 
-    attempt_time = datetime.now(WIB).isoformat(timespec="seconds")
-    _record_tiu_sync_status(db, "syncing", attempt_time)
+    attempt = db.query(PPDBTIUAttempt).filter(PPDBTIUAttempt.token == payload.token).first()
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt tidak ditemukan")
 
-    try:
-        raw_payload = json.loads(await request.body())
-        if isinstance(raw_payload, dict) and raw_payload.get("error"):
-            raise ValueError(str(raw_payload["error"])[:1000])
-        payload = TIUQuestionSyncPayload.model_validate(raw_payload)
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        message = (
-            "Payload sync bukan JSON yang valid. Periksa Apps Script dan coba lagi."
-        )
-        _record_tiu_sync_status(db, "failed", attempt_time, message)
-        raise HTTPException(status_code=422, detail=message)
-    except ValidationError as exc:
-        # Do not echo submitted answer keys or the full payload in admin errors.
-        errors = getattr(exc, "errors", None)
-        if not callable(errors):
-            raise
-        details = errors()
-        message = (
-            "; ".join(
-                f"{'.'.join(str(part) for part in item.get('loc', []))}: {item.get('msg', 'tidak valid')}"
-                for item in details[:8]
-            )
-            or "Payload soal tidak valid."
-        )
-        _record_tiu_sync_status(db, "failed", attempt_time, message)
-        raise HTTPException(status_code=422, detail=message)
-    except ValueError as exc:
-        message = str(exc) or "Data soal tidak valid. Periksa format sinkronisasi."
-        _record_tiu_sync_status(db, "failed", attempt_time, message)
-        raise HTTPException(status_code=422, detail=message)
+    duration_setting = db.get(SiteSetting, "ppdb_tiu_duration_minutes")
+    duration_minutes = int(duration_setting.value) if duration_setting and duration_setting.value else 120
 
-    package = {
-        "source_form_id": payload.source_form_id,
-        "synced_at": attempt_time,
-        "questions": [question.model_dump() for question in payload.questions],
-    }
-    try:
-        now = datetime.now(WIB).replace(tzinfo=None)
-        _upsert_site_setting(
-            db,
-            "ppdb_tiu_question_package",
-            json.dumps(package, ensure_ascii=False, separators=(",", ":")),
-            now,
-        )
-        _upsert_site_setting(
-            db,
-            "ppdb_tiu_sync_question_count",
-            str(len(payload.questions)),
-            now,
-        )
-        _record_tiu_sync_status(db, "success", attempt_time)
-    except Exception:
-        db.rollback()
-        logger.exception(
-            "Penyimpanan paket soal TIU gagal; paket valid sebelumnya dipertahankan"
-        )
-        message = "Paket soal gagal disimpan. Paket valid sebelumnya tetap digunakan."
-        _record_tiu_sync_status(db, "failed", attempt_time, message)
-        raise HTTPException(status_code=500, detail=message)
-    return {
-        "status": "success",
-        "source_form_id": payload.source_form_id,
-        "question_count": len(payload.questions),
-        "synced_at": attempt_time,
-    }
+    now = datetime.now()
+    if (now - attempt.created_at).total_seconds() > (duration_minutes + 5) * 60:
+        raise HTTPException(status_code=400, detail="Ujian melewati batas waktu")
 
+    # Save score to applicant's selection result
+    # We need category "TIU", criteria "Google Form"
+    # Or create it if it doesn't exist? Since this is a webhook, let's assume active wave
+    from src.models.ppdb import PPDBApplicant
+    applicant = db.query(PPDBApplicant).filter(PPDBApplicant.id == attempt.applicant_id).first()
+    if not applicant:
+        raise HTTPException(status_code=404, detail="Applicant not found")
+
+    category = db.query(SelectionCategory).filter(SelectionCategory.wave_id == applicant.wave_id, SelectionCategory.name.ilike("%TIU%")).first()
+    if not category:
+        import uuid
+        category = SelectionCategory(id=str(uuid.uuid4()), wave_id=applicant.wave_id, name="TIU", created_at=now, updated_at=now)
+        db.add(category)
+        db.commit()
+
+    criteria = db.query(SelectionCriteria).filter(SelectionCriteria.category_id == category.id, SelectionCriteria.name.ilike("%Google Form%")).first()
+    if not criteria:
+        import uuid
+        criteria = SelectionCriteria(id=str(uuid.uuid4()), category_id=category.id, name="Google Form", weight=100.0, created_at=now, updated_at=now)
+        db.add(criteria)
+        db.commit()
+
+    score_entry = db.query(SelectionScore).filter(SelectionScore.applicant_id == applicant.id, SelectionScore.criteria_id == criteria.id).first()
+    if score_entry:
+        score_entry.score = payload.score
+        score_entry.updated_at = now
+    else:
+        import uuid
+        score_entry = SelectionScore(id=str(uuid.uuid4()), applicant_id=applicant.id, criteria_id=criteria.id, score=payload.score, created_at=now, updated_at=now)
+        db.add(score_entry)
+        
+    db.commit()
+    return {"status": "success", "score": payload.score}
 
 @router.get("/document-settings")
 def get_document_settings(

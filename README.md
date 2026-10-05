@@ -1,6 +1,6 @@
 <div align="center">
   <img src="https://res.cloudinary.com/dunynusuh/image/upload/v1755771459/Logo-Ar-Rahman_fm4mgg.png" alt="Ar-Rahman Logo" width="120" />
-  <h1>Sistem Terpadu Ar-Rahman</h1>
+  <h1>Sistem PPDB dan Company Profile PTDARRAHMAN</h1>
   <p><strong>Company Profile & Portal PPDB (Penerimaan Peserta Didik Baru)</strong></p>
 
   [![Turborepo](https://img.shields.io/badge/Turborepo-EF4444?style=for-the-badge&logo=turborepo&logoColor=white)](https://turbo.build/)

@@ -18,3 +18,4 @@ repos:
       - id: mypy
         additional_dependencies: [pydantic>=2.0.0]
         args: [--config-file=apps/api/pyproject.toml]
+        exclude: ^apps/api/alembic/versions/

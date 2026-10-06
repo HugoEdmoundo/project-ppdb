@@ -667,6 +667,14 @@ export default function ApplicantsPage() {
                   <p className="text-muted-foreground text-xs">Alamat Detail</p>
                   <p className="font-medium">{detail.address || '-'}</p>
                 </div>
+                <div className="col-span-2">
+                  <p className="text-muted-foreground text-xs">
+                    Riwayat Penyakit / Alergi
+                  </p>
+                  <p className="font-medium whitespace-pre-line">
+                    {detail.disease_history || '-'}
+                  </p>
+                </div>
               </div>
             </div>
 

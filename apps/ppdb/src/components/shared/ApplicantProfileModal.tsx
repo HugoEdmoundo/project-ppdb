@@ -1,3 +1,4 @@
+import { HealthIdentificationViewer } from './HealthIdentificationViewer'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, Tabs, TabsList, TabsTrigger, TabsContent, Badge } from '@/components/ui'
 import { ShieldCheck } from 'lucide-react'
 import ApplicantDocumentsAdmin from './ApplicantDocumentsAdmin'
@@ -57,10 +58,7 @@ export default function ApplicantProfileModal({ open, onOpenChange, applicant, t
                 <p className="text-muted-foreground text-xs">Jalur Pendaftaran</p>
                 <p className="font-medium capitalize">{applicant.registration_path || '-'}</p>
               </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Jenjang Tujuan</p>
-                <p className="font-medium">{applicant.registration_level || '-'}</p>
-              </div>
+
 
               <div>
                 <p className="text-muted-foreground text-xs">Tempat, Tgl Lahir</p>
@@ -117,6 +115,11 @@ export default function ApplicantProfileModal({ open, onOpenChange, applicant, t
               <div>
                 <p className="text-muted-foreground text-xs">Asal Sekolah</p>
                 <p className="font-medium">{applicant.previous_school || '-'}</p>
+              </div>
+
+              <div className="col-span-1 sm:col-span-2">
+                <p className="text-muted-foreground text-xs mb-1">Riwayat Kesehatan (Pengganti Medcheck)</p>
+                <HealthIdentificationViewer data={applicant.disease_history} />
               </div>
 
               <div>

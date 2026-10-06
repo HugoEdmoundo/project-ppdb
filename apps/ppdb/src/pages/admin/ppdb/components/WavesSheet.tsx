@@ -20,7 +20,6 @@ const PATH_OPTIONS = [
   { value: 'reguler', label: 'Reguler' },
   { value: 'pindahan', label: 'Pindahan' },
 ]
-const LEVEL_OPTIONS = ['SMP', 'SMK']
 const PATH_LABELS: Record<string, string> = { reguler: 'Reguler', pindahan: 'Pindahan' }
 
 const parseCsv = (v?: string | null): string[] =>
@@ -29,7 +28,6 @@ const parseCsv = (v?: string | null): string[] =>
 const waveSchema = z.object({
   name: z.string().min(1, 'Nama gelombang wajib diisi'),
   allowed_paths: z.array(z.string()).min(1, 'Pilih minimal satu jalur pendaftaran'),
-  allowed_levels: z.array(z.string()).min(1, 'Pilih minimal satu jenjang'),
   registration_start_date: z.string().min(1, 'Tanggal mulai pendaftaran wajib diisi'),
   registration_end_date: z.string().min(1, 'Tanggal akhir pendaftaran wajib diisi'),
   document_upload_end_date: z.string().min(1, 'Batas upload dokumen wajib diisi'),
@@ -57,8 +55,7 @@ type WaveFormData = z.infer<typeof waveSchema>;
 
 const emptyWaveForm = (): WaveFormData => ({
   name: '',
-  allowed_paths: ['reguler', 'pindahan'],
-  allowed_levels: ['SMP', 'SMK'],
+  allowed_paths: ['reguler', 'prestasi', 'tahfidz', 'rapot'],
   registration_start_date: '',
   registration_end_date: '',
   document_upload_end_date: '',
@@ -115,7 +112,6 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
   // Subscribe ke field yang dirender sebagai tombol toggle — pakai useWatch
   // (bukan watch()) agar kompatibel dengan React Compiler.
   const allowedPaths = useWatch({ control, name: 'allowed_paths' }) ?? []
-  const allowedLevels = useWatch({ control, name: 'allowed_levels' }) ?? []
   const registrationFee = useWatch({ control, name: 'registration_fee' })
   const secondStageFee = useWatch({ control, name: 'second_stage_fee' })
   const minimumDp = useWatch({ control, name: 'minimum_dp' })
@@ -244,7 +240,6 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
     reset({
       name: w.name || '',
       allowed_paths: parseCsv(w.allowed_paths),
-      allowed_levels: parseCsv(w.allowed_levels),
       registration_start_date: (w.registration_start_date || '').split('T')[0],
       registration_end_date: (w.registration_end_date || '').split('T')[0],
       document_upload_end_date: (w.document_upload_end_date || '').split('T')[0],
@@ -259,7 +254,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
     setShowForm(true)
   }
 
-  const toggleScope = (key: 'allowed_paths' | 'allowed_levels', value: string) => {
+  const toggleScope = (key: 'allowed_paths', value: string) => {
     const list = getValues(key) ?? []
     const next = list.includes(value) ? list.filter((v: string) => v !== value) : [...list, value]
     setValue(key, next, { shouldValidate: true })
@@ -271,7 +266,6 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
       ...data,
       name: data.name.trim(),
       allowed_paths: data.allowed_paths.join(','),
-      allowed_levels: data.allowed_levels.join(','),
     }
     setSaving(true)
     setFormError(null)
@@ -491,19 +485,16 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                       </div>
 
                       <div className="rounded-xl bg-slate-50 p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Layers className="h-3.5 w-3.5" /> Jalur & Jenjang</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Layers className="h-3.5 w-3.5" /> Jalur Pendaftaran</p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {parseCsv(w.allowed_paths).map((p: string) => (
                             <Badge key={p} variant={p === 'reguler' ? 'info' : 'warning'}>
                               {PATH_LABELS[p] || p}
                             </Badge>
                           ))}
-                          {parseCsv(w.allowed_levels).map((l: string) => (
-                            <Badge key={l} variant="gold">{l}</Badge>
-                          ))}
                         </div>
                         <p className="mt-2 text-[11px] text-slate-500 leading-snug">
-                          {parseCsv(w.allowed_paths).length} jalur · {parseCsv(w.allowed_levels).length} jenjang
+                          {parseCsv(w.allowed_paths).length} jalur dibuka
                         </p>
                       </div>
                     </div>
@@ -572,39 +563,21 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
               {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Jalur Pendaftaran *</Label>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {PATH_OPTIONS.map(opt => {
-                    const active = (allowedPaths || []).includes(opt.value)
-                    return (
-                      <button key={opt.value} type="button" aria-pressed={active} disabled={!canCrud}
-                        onClick={() => toggleScope('allowed_paths', opt.value)}
-                        className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'}`}>
-                        {opt.label}
-                      </button>
-                    )
-                  })}
-                </div>
-                {errors.allowed_paths && <p className="text-xs text-red-500">{errors.allowed_paths.message}</p>}
+            <div className="space-y-2">
+              <Label>Jalur Pendaftaran *</Label>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {PATH_OPTIONS.map(opt => {
+                  const active = (allowedPaths || []).includes(opt.value)
+                  return (
+                    <button key={opt.value} type="button" aria-pressed={active} disabled={!canCrud}
+                      onClick={() => toggleScope('allowed_paths', opt.value)}
+                      className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'}`}>
+                      {opt.label}
+                    </button>
+                  )
+                })}
               </div>
-              <div className="space-y-2">
-                <Label>Jenjang *</Label>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {LEVEL_OPTIONS.map(lvl => {
-                    const active = (allowedLevels || []).includes(lvl)
-                    return (
-                      <button key={lvl} type="button" aria-pressed={active} disabled={!canCrud}
-                        onClick={() => toggleScope('allowed_levels', lvl)}
-                        className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'}`}>
-                        {lvl}
-                      </button>
-                    )
-                  })}
-                </div>
-                {errors.allowed_levels && <p className="text-xs text-red-500">{errors.allowed_levels.message}</p>}
-              </div>
+              {errors.allowed_paths && <p className="text-xs text-red-500">{errors.allowed_paths.message}</p>}
             </div>
 
             <div className="space-y-3">

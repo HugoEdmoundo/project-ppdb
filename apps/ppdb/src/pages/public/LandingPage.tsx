@@ -25,7 +25,9 @@ interface ActiveWave {
 
 const PATH_LABEL: Record<string, string> = {
   reguler: 'Reguler',
-  pindahan: 'Pindahan',
+  prestasi: 'Prestasi',
+  tahfidz: 'Tahfidz',
+  rapot: 'Rapot',
 }
 
 // Hoisted di luar component: array-nya stateless, jadi tidak perlu dibuat ulang
@@ -157,14 +159,10 @@ export default function LandingPage() {
   }, [])
 
   const isOpen = wave?.active === true
-  const levels = wave?.allowed_levels ?? []
   const paths = (wave?.allowed_paths ?? []).map((p) => PATH_LABEL[p] ?? p)
   const year = new Date().getFullYear()
 
-  const waveMeta = [
-    levels.length > 0 ? `Jenjang: ${levels.join(', ')}` : '',
-    paths.length > 0 ? `Jalur: ${paths.join(', ')}` : '',
-  ].filter(Boolean).join('  ·  ')
+  const waveMeta = paths.length > 0 ? `Jalur: ${paths.join(', ')}` : ''
 
   const scrollToAlur = () => {
     if (lenisRef.current) {

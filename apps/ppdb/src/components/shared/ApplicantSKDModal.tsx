@@ -98,7 +98,7 @@ export default function ApplicantSKDModal({
                   <div className="grid grid-cols-[140px_10px_1fr]">
                     <span>Jenjang Tujuan</span>
                     <span>:</span>
-                    <span>{applicant.registration_level.toUpperCase()}</span>
+                    <span>{(applicant.registration_level || "-").toUpperCase()}</span>
                   </div>
                 </div>
                 <p>

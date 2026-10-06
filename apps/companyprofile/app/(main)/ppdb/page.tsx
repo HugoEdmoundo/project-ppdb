@@ -115,7 +115,7 @@ export default function PPDBPage() {
                 Jalur Reguler Terpadu
               </h3>
               <p className="text-[var(--text-secondary)] text-sm md:text-base leading-relaxed mb-6">
-                Terbuka bagi seluruh lulusan SD/MI untuk jenjang SMP dan lulusan SMP/MTs untuk jenjang SMK yang memiliki komitmen kuat dalam menghafal Al-Qur&apos;an dan belajar teknologi digital.
+                Terbuka bagi calon santri yang memiliki komitmen kuat dalam menghafal Al-Qur&apos;an dan belajar teknologi digital.
               </p>
 
               <div className="space-y-3 mb-8">

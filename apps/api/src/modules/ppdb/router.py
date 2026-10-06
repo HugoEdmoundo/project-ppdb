@@ -1,5 +1,4 @@
 import hmac
-import json
 import logging
 import uuid
 from datetime import datetime
@@ -18,7 +17,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.responses import StreamingResponse
-from pydantic import ValidationError
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from src.core.config import settings
@@ -34,14 +33,14 @@ from src.models.content import SiteSetting
 from src.models.ppdb import FileUpload
 from src.modules.ppdb.schemas import (
     ApplicantAdminCreate,
-    ApplicantAdminUpdate, ApplicantChangePath,
+    ApplicantAdminUpdate,
+    ApplicantChangePath,
     ApplicantPasswordReset,
     ApplicantRegister,
     DocumentVerify,
     MouSignRequest,
     PeriodCreate,
     PeriodUpdate,
-    TIUQuestionSyncPayload,
     TIUSettingsUpdate,
     WaveCreate,
     WaveFeeItemCreate,
@@ -134,10 +133,10 @@ def update_tiu_settings(
     }
 
 
-from pydantic import BaseModel
 class TIUWebhookPayload(BaseModel):
     token: str
     score: float
+
 
 @router.post("/webhook/tiu")
 def tiu_webhook(
@@ -145,21 +144,35 @@ def tiu_webhook(
     x_tiu_secret: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ):
-    from src.models.ppdb import PPDBTIUAttempt
-    from src.models.selection import SelectionCategory, SelectionCriteria, SelectionScore
     from src.core.config import settings
+    from src.models.ppdb import PPDBTIUAttempt
+    from src.models.selection import (
+        SelectionCategory,
+        SelectionCriteria,
+        SelectionScore,
+    )
 
     configured = db.get(SiteSetting, "ppdb_tiu_webhook_secret")
     expected = (configured.value if configured else None) or settings.tiu_webhook_secret
-    if not expected or not x_tiu_secret or not hmac.compare_digest(expected.strip(), x_tiu_secret.strip()):
+    if (
+        not expected
+        or not x_tiu_secret
+        or not hmac.compare_digest(expected.strip(), x_tiu_secret.strip())
+    ):
         raise HTTPException(status_code=401, detail="Secret tidak valid")
 
-    attempt = db.query(PPDBTIUAttempt).filter(PPDBTIUAttempt.token == payload.token).first()
+    attempt = (
+        db.query(PPDBTIUAttempt).filter(PPDBTIUAttempt.token == payload.token).first()
+    )
     if not attempt:
         raise HTTPException(status_code=404, detail="Attempt tidak ditemukan")
 
     duration_setting = db.get(SiteSetting, "ppdb_tiu_duration_minutes")
-    duration_minutes = int(duration_setting.value) if duration_setting and duration_setting.value else 120
+    duration_minutes = (
+        int(duration_setting.value)
+        if duration_setting and duration_setting.value
+        else 120
+    )
 
     now = datetime.now()
     if (now - attempt.created_at).total_seconds() > (duration_minutes + 5) * 60:
@@ -167,37 +180,104 @@ def tiu_webhook(
 
     # Save score to applicant's selection result
     # We need category "TIU", criteria "Google Form"
-    # Or create it if it doesn't exist? Since this is a webhook, let's assume active wave
+    # Or create it if it doesn't exist? Since this is a webhook, let's assume
+    # active wave
     from src.models.ppdb import PPDBApplicant
-    applicant = db.query(PPDBApplicant).filter(PPDBApplicant.id == attempt.applicant_id).first()
+
+    applicant = (
+        db.query(PPDBApplicant).filter(PPDBApplicant.id == attempt.applicant_id).first()
+    )
     if not applicant:
         raise HTTPException(status_code=404, detail="Applicant not found")
 
-    category = db.query(SelectionCategory).filter(SelectionCategory.wave_id == applicant.wave_id, SelectionCategory.name.ilike("%TIU%")).first()
+    category = (
+        db.query(SelectionCategory)
+        .filter(
+            SelectionCategory.wave_id == applicant.wave_id,
+            SelectionCategory.name.ilike("%TIU%"),
+        )
+        .first()
+    )
     if not category:
         import uuid
-        category = SelectionCategory(id=str(uuid.uuid4()), wave_id=applicant.wave_id, name="TIU", created_at=now, updated_at=now)
+
+        category = SelectionCategory(
+            id=str(uuid.uuid4()),
+            wave_id=applicant.wave_id,
+            name="TIU",
+            created_at=now,
+            updated_at=now,
+        )
         db.add(category)
         db.commit()
 
-    criteria = db.query(SelectionCriteria).filter(SelectionCriteria.category_id == category.id, SelectionCriteria.name.ilike("%Google Form%")).first()
+    criteria = (
+        db.query(SelectionCriteria)
+        .filter(
+            SelectionCriteria.category_id == category.id,
+            SelectionCriteria.name.ilike("%Google Form%"),
+        )
+        .first()
+    )
     if not criteria:
         import uuid
-        criteria = SelectionCriteria(id=str(uuid.uuid4()), category_id=category.id, name="Google Form", weight=100.0, created_at=now, updated_at=now)
+
+        criteria = SelectionCriteria(
+            id=str(uuid.uuid4()),
+            category_id=category.id,
+            name="Google Form",
+            weight=100.0,
+            created_at=now,
+            updated_at=now,
+        )
         db.add(criteria)
         db.commit()
 
-    score_entry = db.query(SelectionScore).filter(SelectionScore.applicant_id == applicant.id, SelectionScore.criteria_id == criteria.id).first()
+    score_entry = (
+        db.query(SelectionScore)
+        .filter(
+            SelectionScore.applicant_id == applicant.id,
+            SelectionScore.criteria_id == criteria.id,
+        )
+        .first()
+    )
     if score_entry:
         score_entry.score = payload.score
         score_entry.updated_at = now
     else:
         import uuid
-        score_entry = SelectionScore(id=str(uuid.uuid4()), applicant_id=applicant.id, criteria_id=criteria.id, score=payload.score, created_at=now, updated_at=now)
+
+        score_entry = SelectionScore(
+            id=str(uuid.uuid4()),
+            applicant_id=applicant.id,
+            criteria_id=criteria.id,
+            score=payload.score,
+            created_at=now,
+            updated_at=now,
+        )
         db.add(score_entry)
-        
+
     db.commit()
+
+    try:
+        from src.core.notif_service import send_notification
+
+        score_str = str(
+            int(payload.score) if float(payload.score).is_integer() else payload.score
+        )
+        send_notification(
+            event_key="tiu_result_ready",
+            recipient_user_id=applicant.user_id,
+            context={
+                "nilai_tiu": score_str,
+                "link_aplikasi": f"{settings.ppdb_frontend_url}/dashboard",
+            },
+        )
+    except Exception:
+        pass
+
     return {"status": "success", "score": payload.score}
+
 
 @router.get("/document-settings")
 def get_document_settings(
@@ -681,7 +761,8 @@ def get_applicant(
 @router.put("/applicants/{id}")
 def update_applicant(
     id: str,
-    body: ApplicantAdminUpdate, ApplicantChangePath,
+    body: ApplicantAdminUpdate,
+    ApplicantChangePath,
     user: dict = Depends(require_ppdb_admin),
     service: PPDBService = Depends(get_ppdb_service),
 ):
@@ -717,6 +798,7 @@ def change_my_path(
     service: PPDBService = Depends(get_ppdb_service),
 ):
     return service.change_my_path(user["id"], body.registration_path)
+
 
 @router.get("/documents")
 def get_my_documents(
@@ -845,8 +927,6 @@ def download_applicant_dossier_zip(
     )
 
 
-
-
 # Rute /applicants/me/* didaftarkan SEBELUM /applicants/{id} agar "me"
 # tidak ditangkap sebagai id.
 @router.get("/applicants/me/mou")
@@ -855,6 +935,21 @@ def get_my_mou(
     service: PPDBService = Depends(get_ppdb_service),
 ):
     return service.get_my_mou(user["id"])
+
+
+@router.get("/applicants/me/loa")
+def get_my_loa(
+    user: dict[str, Any] = Depends(get_current_user),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    # This directly delegates to the existing get_applicant_loa but looks up
+    # the applicant by user id
+    applicant = service.repository.get_applicant_by_user_id(user["id"])
+    if not applicant:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+    return service.get_applicant_loa(applicant.id)
 
 
 @router.post("/applicants/me/mou/sign")

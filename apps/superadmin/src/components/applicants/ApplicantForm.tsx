@@ -4,8 +4,10 @@ import { Input, Label, SelectField, Textarea } from '@/components/ui'
 import type { ApplicantWave } from '../../api/client'
 
 export const REGISTRATION_PATHS = [
-  { value: 'reguler', label: 'Reguler' },
-  { value: 'pindahan', label: 'Pindahan' },
+  { value: 'reguler', label: 'Reguler (Tes TIU)' },
+  { value: 'prestasi', label: 'Prestasi (Non-TIU)' },
+  { value: 'tahfidz', label: 'Tahfidz (Non-TIU)' },
+  { value: 'rapot', label: 'Rapot' },
 ]
 
 /**
@@ -38,7 +40,6 @@ const EMPTY_FORM: Record<string, string> = {
   email: '',
   phone: '',
   registration_path: 'reguler',
-  registration_level: '',
   gender: '',
   birth_place: '',
   birth_date: '',
@@ -46,13 +47,13 @@ const EMPTY_FORM: Record<string, string> = {
   nik: '',
   parent_name: '',
   previous_school: '',
-  major_choice: '',
   province: '',
   city: '',
   district: '',
   village: '',
   postal_code: '',
   address: '',
+  disease_history: '',
   status: 'pending_payment',
   payment_status: 'pending',
 }
@@ -169,8 +170,7 @@ export default function ApplicantForm({
       next.phone = 'Nomor WhatsApp hanya boleh angka'
     else if (form.phone.trim().length < 9)
       next.phone = 'Nomor WhatsApp minimal 9 digit'
-    if (!form.registration_level.trim())
-      next.registration_level = 'Jenjang wajib diisi'
+
     if (!form.province.trim()) next.province = 'Provinsi wajib diisi'
     if (!form.city.trim()) next.city = 'Kota/Kabupaten wajib diisi'
     if (!form.district.trim()) next.district = 'Kecamatan wajib diisi'
@@ -219,14 +219,7 @@ export default function ApplicantForm({
             value={form.registration_path}
             onValueChange={(v) => set('registration_path', v)}
           />
-          <Field
-            label="Jenjang Tujuan"
-            name="registration_level"
-            value={form.registration_level}
-            onChange={set}
-            placeholder="mis. SMP"
-            required
-          />
+
           {mode === 'edit' && (
             <>
               <SelectField
@@ -387,6 +380,22 @@ export default function ApplicantForm({
             }
           />
         </div>
+      </section>
+
+      <section className="space-y-4 border-t pt-4">
+        <h4 className="text-sm font-semibold">Kesehatan</h4>
+        <Textarea
+          id="af-disease_history"
+          label="Riwayat Penyakit / Alergi"
+          rows={3}
+          maxLength={255}
+          helperText="Pengganti dokumen medical checkup. Maksimal 255 karakter, tulis '-' bila tidak ada."
+          placeholder="mis. Tidak ada riwayat penyakit bawaan"
+          value={form.disease_history}
+          onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+            set('disease_history', e.target.value.slice(0, 255))
+          }
+        />
       </section>
 
       {Object.keys(errors).length > 0 && (

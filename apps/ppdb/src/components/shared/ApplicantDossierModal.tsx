@@ -1,3 +1,4 @@
+import { HealthIdentificationViewer } from './HealthIdentificationViewer'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch, apiFetchBlob } from '@/api/client'
@@ -207,9 +208,9 @@ export default function ApplicantDossierModal({
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground block">Jalur & Jenjang</span>
+                  <span className="text-muted-foreground block">Jalur Pendaftaran</span>
                   <span className="font-medium text-slate-700 capitalize">
-                    {applicant.registration_path} ({applicant.registration_level?.toUpperCase()})
+                    {applicant.registration_path || '-'}
                   </span>
                 </div>
                 <div>
@@ -328,6 +329,10 @@ export default function ApplicantDossierModal({
                       <div>
                         <span className="text-xs text-muted-foreground block">Asal Sekolah</span>
                         <span className="font-medium text-slate-800">{applicant.previous_school || '-'}</span>
+                      </div>
+                      <div className="sm:col-span-2 md:col-span-3">
+                        <span className="text-xs text-muted-foreground block mb-1">Riwayat Kesehatan (Pengganti Medcheck)</span>
+                        <HealthIdentificationViewer data={applicant.disease_history} />
                       </div>
                     </div>
                   </div>
@@ -628,15 +633,18 @@ export default function ApplicantDossierModal({
                               <TableCell>
                                 <Badge
                                   variant={
-                                    p.status === 'paid'
+                                    p.status === 'paid' || p.status === 'success'
                                       ? 'success'
-                                      : p.status === 'expired'
+                                      : p.status === 'expired' || p.status === 'cancelled' || p.status === 'failed'
                                       ? 'destructive'
-                                      : 'warning'
+                                      : p.status === 'exception'
+                                      ? 'warning'
+                                      : 'outline'
                                   }
                                   className="text-[10px] uppercase font-bold"
+                                  title={p.notes || undefined}
                                 >
-                                  {p.status}
+                                  {p.status === 'exception' ? 'Pengecualian' : p.status}
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-xs uppercase text-slate-600">
@@ -778,7 +786,7 @@ export default function ApplicantDossierModal({
                         Cetak SKD
                       </Button>
                     </div>
-                    
+
                     <div className="bg-slate-50 p-4 rounded-lg border text-xs space-y-3 font-mono">
                       <p className="text-slate-600">Background URL: {skd?.background_url || "Belum ada"}</p>
                       <p className="text-slate-600">Grup WA: {skd?.whatsapp_group_link || "Belum ada"}</p>
@@ -800,6 +808,11 @@ export default function ApplicantDossierModal({
       <ApplicantLoAModal
         open={loaOpen}
         onOpenChange={setLoaOpen}
+        applicantId={applicantId}
+      />
+      <ApplicantSKDModal
+        open={skdOpen}
+        onOpenChange={setSkdOpen}
         applicantId={applicantId}
       />
     </>

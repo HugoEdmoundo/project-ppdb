@@ -8,14 +8,34 @@ import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
   Button, Input, Label, Alert, ConfirmDialog,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-  Textarea
+  Textarea, Checkbox
 } from '@/components/ui'
 import { SuccessState } from "@/components/ui"
 import { CredentialsCard } from '@/components/CredentialsCard'
-import { ArrowLeft, ArrowRight, LogIn, BookOpen, GraduationCap, Check } from 'lucide-react'
+import {
+  ArrowLeft, ArrowRight, LogIn, BookOpen, GraduationCap, Check, Trophy, Award,
+  Phone
+} from 'lucide-react'
 
 // Batas maksimal tanggal lahir = hari ini (tidak boleh lahir di masa depan)
 const todayStr = new Date().toISOString().split('T')[0]
+
+const DIAGNOSED_CONDITIONS_OPTIONS = [
+  'Asma',
+  'Diabetes',
+  'Epilepsi',
+  'Penyakit jantung',
+  'Hipertensi',
+  'TBC',
+  'Lainnya',
+]
+
+const ALLERGY_OPTIONS = [
+  'Makanan',
+  'Obat',
+  'Debu',
+  'Lainnya',
+]
 
 const WILAYAH_SOURCES = [
   'https://www.emsifa.com/api-wilayah-indonesia/api',
@@ -42,7 +62,6 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
     registration_path: '',
-    registration_level: '',
     full_name: '',
     birth_place: '',
     birth_date: '',
@@ -53,14 +72,45 @@ export default function RegisterPage() {
     phone: '',
     parent_name: '',
     previous_school: '',
-    major_choice: '',
     address: '',
-    disease_history: '',
     province: '',
     city: '',
     district: '',
     village: '',
     postal_code: ''
+  })
+
+  // Formulir Identifikasi Kesehatan (pengganti Medcheck sesuai docs/REQUIREMENTS.md)
+  const [healthForm, setHealthForm] = useState({
+    chronic_disease: false,
+    chronic_disease_description: '',
+
+    diagnosed_conditions: [] as string[],
+    diagnosed_conditions_other: '',
+    diagnosed_conditions_description: '',
+
+    allergies: false,
+    allergy_types: [] as string[],
+    allergy_other: '',
+    allergy_description: '',
+
+    regular_medication: false,
+    regular_medication_description: '',
+
+    physical_limitation: false,
+    physical_limitation_description: '',
+
+    hospitalization_history: false,
+    hospitalization_history_description: '',
+
+    special_needs: false,
+    special_needs_description: '',
+
+    emergency_contact_name: '',
+    emergency_contact_relation: '',
+    emergency_contact_phone: '',
+
+    health_declaration_confirmed: false,
   })
 
   const [loading, setLoading] = useState(false)
@@ -74,13 +124,12 @@ export default function RegisterPage() {
   const [villages, setVillages] = useState<any[]>([])
 
   // Scope gelombang aktif: null = belum diketahui/biarkan semua terbuka,
-  // array kosong = gelombang tidak aktif (semua jalur/jenjang ditutup).
-  const { isActive: waveIsActive, allowedPaths, allowedLevels, isFetching: scopeLoading, isError } = useActiveWave()
+  // array kosong = gelombang tidak aktif (semua jalur ditutup).
+  const { isActive: waveIsActive, allowedPaths, isFetching: scopeLoading, isError } = useActiveWave()
 
   const waveScope = useMemo(() => ({
     paths: scopeLoading || isError ? null : (waveIsActive ? allowedPaths : []),
-    levels: scopeLoading || isError ? null : (waveIsActive ? allowedLevels : []),
-  }), [scopeLoading, isError, waveIsActive, allowedPaths, allowedLevels])
+  }), [scopeLoading, isError, waveIsActive, allowedPaths])
   const scopeLoaded = !scopeLoading
 
   const [selectedProvinceId, setSelectedProvinceId] = useState('')
@@ -132,46 +181,16 @@ export default function RegisterPage() {
     setFormData({...formData, village: name})
   }
 
-  const levelOptions = useMemo(() => {
-    if (formData.registration_path === 'reguler') {
-      return ['SMP', 'SMK']
-    }
-    if (formData.registration_path === 'pindahan') {
-      return ['SMP Kelas 7', 'SMP Kelas 8', 'SMP Kelas 9', 'SMK Kelas 10', 'SMK Kelas 11']
-    }
-    return []
-  }, [formData.registration_path])
-
-  // Saring opsi jenjang sesuai scope gelombang aktif (jenjang yang ditutup disembunyikan)
-  const availableLevels = useMemo(() => {
-    if (!waveScope.levels) return levelOptions
-    return levelOptions.filter(lvl => waveScope.levels!.includes(lvl.split(' ')[0]))
-  }, [levelOptions, waveScope])
-
   const isPathOpen = (path: string) => !waveScope.paths || waveScope.paths.includes(path)
 
   const noActiveWave = scopeLoaded && waveScope.paths !== null && waveScope.paths.length === 0
-
-  // Pilihan jenjang efektif: otomatis tidak berlaku jika ditutup oleh gelombang aktif
-  const effectiveRegistrationLevel = useMemo(() => {
-    if (!formData.registration_level) return ''
-    return availableLevels.includes(formData.registration_level) ? formData.registration_level : ''
-  }, [availableLevels, formData.registration_level])
-
-  const showMajor = useMemo(() => {
-    return effectiveRegistrationLevel.startsWith('SMK')
-  }, [effectiveRegistrationLevel])
 
   const handleNext = () => {
     if (step === 1 && !formData.registration_path) {
       toast('error', 'Pilih jalur pendaftaran terlebih dahulu')
       return
     }
-    if (step === 2 && !effectiveRegistrationLevel) {
-      toast('error', 'Pilih jenjang tujuan terlebih dahulu')
-      return
-    }
-    setStep(s => s + 1)
+    setStep(2)
   }
 
   const handleBack = () => {
@@ -179,9 +198,105 @@ export default function RegisterPage() {
     else setStep(s => s - 1)
   }
 
+  const validateHealthForm = (): string | null => {
+    if (healthForm.chronic_disease && !healthForm.chronic_disease_description.trim()) {
+      return 'Keterangan riwayat penyakit kronis wajib diisi jika menjawab Ya (Pertanyaan 1).'
+    }
+    if (healthForm.diagnosed_conditions.includes('Lainnya') && !healthForm.diagnosed_conditions_other.trim()) {
+      return 'Isian kondisi diagnosis lainnya wajib diisi jika opsi Lainnya dipilih (Pertanyaan 2).'
+    }
+    if (healthForm.allergies) {
+      if (healthForm.allergy_types.includes('Lainnya') && !healthForm.allergy_other.trim()) {
+        return 'Isian jenis alergi lainnya wajib diisi jika opsi Lainnya dipilih (Pertanyaan 3).'
+      }
+    }
+    if (healthForm.regular_medication && !healthForm.regular_medication_description.trim()) {
+      return 'Keterangan pengobatan rutin wajib diisi jika menjawab Ya (Pertanyaan 4).'
+    }
+    if (healthForm.physical_limitation && !healthForm.physical_limitation_description.trim()) {
+      return 'Keterangan keterbatasan fisik wajib diisi jika menjawab Ya (Pertanyaan 5).'
+    }
+    if (healthForm.hospitalization_history && !healthForm.hospitalization_history_description.trim()) {
+      return 'Keterangan riwayat rawat inap/operasi wajib diisi jika menjawab Ya (Pertanyaan 6).'
+    }
+    if (healthForm.special_needs && !healthForm.special_needs_description.trim()) {
+      return 'Keterangan kebutuhan khusus saat belajar wajib diisi jika menjawab Ya (Pertanyaan 7).'
+    }
+    if (!healthForm.emergency_contact_name.trim()) {
+      return 'Nama kontak darurat wajib diisi (Pertanyaan 8).'
+    }
+    if (!healthForm.emergency_contact_relation.trim()) {
+      return 'Hubungan kontak darurat wajib diisi (Pertanyaan 9).'
+    }
+    const cleanPhone = healthForm.emergency_contact_phone.trim().replace(/\D/g, '')
+    if (!cleanPhone || cleanPhone.length < 9 || cleanPhone.length > 16) {
+      return 'Nomor telepon kontak darurat harus berupa 9-16 digit angka (Pertanyaan 10).'
+    }
+    if (!healthForm.health_declaration_confirmed) {
+      return 'Anda wajib mencentang persetujuan pernyataan kesehatan sebelum menyelesaikan pendaftaran.'
+    }
+    return null
+  }
+
+  const buildHealthPayload = () => {
+    return {
+      health_form: {
+        chronic_disease: healthForm.chronic_disease,
+        chronic_disease_description: healthForm.chronic_disease ? healthForm.chronic_disease_description.trim() : null,
+
+        diagnosed_conditions: healthForm.diagnosed_conditions,
+        diagnosed_conditions_other: healthForm.diagnosed_conditions.includes('Lainnya')
+          ? healthForm.diagnosed_conditions_other.trim()
+          : null,
+        diagnosed_conditions_description: healthForm.diagnosed_conditions_description.trim() || null,
+
+        allergies: healthForm.allergies,
+        allergy_types: healthForm.allergies ? healthForm.allergy_types : [],
+        allergy_other: healthForm.allergies && healthForm.allergy_types.includes('Lainnya')
+          ? healthForm.allergy_other.trim()
+          : null,
+        allergy_description: healthForm.allergies ? (healthForm.allergy_description.trim() || null) : null,
+
+        regular_medication: healthForm.regular_medication,
+        regular_medication_description: healthForm.regular_medication
+          ? healthForm.regular_medication_description.trim()
+          : null,
+
+        physical_limitation: healthForm.physical_limitation,
+        physical_limitation_description: healthForm.physical_limitation
+          ? healthForm.physical_limitation_description.trim()
+          : null,
+
+        hospitalization_history: healthForm.hospitalization_history,
+        hospitalization_history_description: healthForm.hospitalization_history
+          ? healthForm.hospitalization_history_description.trim()
+          : null,
+
+        special_needs: healthForm.special_needs,
+        special_needs_description: healthForm.special_needs
+          ? healthForm.special_needs_description.trim()
+          : null,
+
+        emergency_contact_name: healthForm.emergency_contact_name.trim(),
+        emergency_contact_relation: healthForm.emergency_contact_relation.trim(),
+        emergency_contact_phone: healthForm.emergency_contact_phone.trim().replace(/\D/g, ''),
+
+        health_declaration_confirmed: healthForm.health_declaration_confirmed,
+      }
+    }
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitError(null)
+
+    const healthError = validateHealthForm()
+    if (healthError) {
+      setSubmitError(healthError)
+      toast('error', healthError)
+      return
+    }
+
     if (formData.email && formData.phone) {
       setConfirmOpen(true)
       return
@@ -193,7 +308,11 @@ export default function RegisterPage() {
     setConfirmOpen(false)
     setLoading(true)
     try {
-      const res = await ppdbService.registerApplicant({ ...formData, gender: formData.gender || null })
+      const res = await ppdbService.registerApplicant({
+        ...formData,
+        gender: formData.gender || null,
+        ...buildHealthPayload(),
+      })
       setSuccessData(res.credentials)
       toast('success', 'Pendaftaran berhasil!')
     } catch (err: any) {
@@ -255,7 +374,6 @@ export default function RegisterPage() {
               <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 w-full bg-slate-200 -z-10" />
               {[
                 { title: 'Jalur', desc: 'Pilihan Jalur' },
-                { title: 'Jenjang', desc: 'Pilihan Jenjang' },
                 { title: 'Biodata', desc: 'Lengkapi Data' }
               ].map((s, i) => {
                 const isActive = step === i + 1
@@ -290,7 +408,7 @@ export default function RegisterPage() {
             <div className="h-1.5 w-full bg-gradient-to-r from-emerald-primary to-gold-accent" />
             <CardHeader className="text-center pt-8">
               <CardTitle className="text-2xl font-bold font-heading">Pilih Jalur Pendaftaran</CardTitle>
-              <CardDescription className="text-base">Tentukan jalur pendaftaran yang sesuai dengan riwayat pendidikan calon siswa.</CardDescription>
+              <CardDescription className="text-base">Tentukan jalur pendaftaran yang sesuai dengan calon peserta didik.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {noActiveWave && (
@@ -299,8 +417,10 @@ export default function RegisterPage() {
                 </Alert>
               )}
               {[
-                { value: 'reguler', icon: BookOpen, title: 'Reguler (Peserta Didik Baru)', desc: "Untuk lulusan jenjang sebelumnya yang ingin masuk pada tahun ajaran baru.", bg: 'bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-emerald-500/20' },
-                { value: 'pindahan', icon: ArrowRight, title: 'Pindahan (Mutasi Masuk)', desc: 'Untuk siswa yang pindah sekolah di pertengahan tahun ajaran atau naik kelas.', bg: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/20' },
+                { value: 'reguler', icon: BookOpen, title: 'Reguler (Tes TIU)', desc: "Jalur tes kemampuan akademik & TIU online untuk calon santri baru.", bg: 'bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-emerald-500/20' },
+                { value: 'prestasi', icon: Trophy, title: 'Prestasi (Non-TIU)', desc: 'Jalur seleksi berbasis prestasi akademik, rapor, atau sertifikat kejuaraan.', bg: 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/20' },
+                { value: 'tahfidz', icon: Award, title: 'Tahfidz (Non-TIU)', desc: 'Jalur khusus hafalan Al-Qur\'an dengan uji kompetensi Tahfidz intensif.', bg: 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-teal-500/20' },
+                { value: 'rapot', icon: GraduationCap, title: 'Rapot', desc: 'Jalur seleksi berbasis nilai rapor untuk pendaftaran tahun ajaran baru.', bg: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/20' },
               ].map(opt => {
                 const open = isPathOpen(opt.value)
                 const active = formData.registration_path === opt.value
@@ -312,7 +432,7 @@ export default function RegisterPage() {
                       open ? "cursor-pointer hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50" : "opacity-50 cursor-not-allowed",
                       active && open ? "border-emerald-primary bg-emerald-50/50 ring-4 ring-emerald-primary/10" : "border-slate-100 bg-white hover:border-emerald-primary/30"
                     )}
-                    onClick={() => { if (!open) return; setFormData({...formData, registration_path: opt.value, registration_level: ''}) }}
+                     onClick={() => { if (!open) return; setFormData({...formData, registration_path: opt.value}) }}
                   >
                     {active && <div className="absolute right-4 top-4 h-3 w-3 rounded-full bg-emerald-primary animate-pulse" />}
                     <div className="flex items-start gap-4">
@@ -345,56 +465,6 @@ export default function RegisterPage() {
         )}
 
         {step === 2 && (
-          <Card className="glass-card shadow-2xl border-white/50 bg-white/80 backdrop-blur-xl animate-in fade-in slide-in-from-right-4 duration-500 overflow-hidden">
-            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-primary to-gold-accent" />
-            <CardHeader className="text-center pt-8">
-              <CardTitle className="text-2xl font-bold font-heading">Jenjang Pendidikan</CardTitle>
-              <CardDescription className="text-base">Pilih jenjang dan tingkat tujuan pendaftaran calon siswa.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {availableLevels.length === 0 ? (
-                <Alert type="warning" title="Jenjang Tidak Tersedia">
-                  Gelombang yang aktif saat ini tidak membuka jenjang untuk jalur {formData.registration_path === 'pindahan' ? 'pindahan' : 'reguler'}. Silakan pilih jalur lain atau hubungi panitia.
-                </Alert>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {availableLevels.map(lvl => (
-                    <div
-                      key={lvl}
-                      className={cn(
-                        "group p-6 border-2 rounded-2xl cursor-pointer text-center transition-all duration-300",
-                        effectiveRegistrationLevel === lvl
-                          ? "border-emerald-primary bg-emerald-50/50 ring-4 ring-emerald-primary/10 shadow-lg shadow-emerald-primary/10"
-                          : "border-slate-100 bg-white hover:border-emerald-primary/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50"
-                      )}
-                      onClick={() => setFormData({...formData, registration_level: lvl})}
-                    >
-                      <div className={cn(
-                        "mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-300 group-hover:scale-110",
-                        effectiveRegistrationLevel === lvl ? "bg-emerald-primary text-white shadow-md shadow-emerald-primary/30" : "bg-slate-100 text-slate-400"
-                      )}>
-                        <GraduationCap className="h-7 w-7" />
-                      </div>
-                      <h3 className={cn("font-bold text-lg", effectiveRegistrationLevel === lvl ? "text-emerald-900" : "text-slate-700")}>{lvl}</h3>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex justify-end pt-6 border-t border-slate-100">
-                <Button
-                  onClick={handleNext}
-                  disabled={!effectiveRegistrationLevel}
-                  className="rounded-full bg-emerald-primary px-8 h-12 text-base font-bold shadow-lg shadow-emerald-primary/25 transition-all hover:bg-emerald-dark hover:shadow-emerald-primary/40"
-                >
-                  Lanjut ke Biodata <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {step === 3 && (
           <Card className="glass-card shadow-2xl border-white/50 bg-white/80 backdrop-blur-xl animate-in fade-in slide-in-from-right-4 duration-500 overflow-hidden">
             <div className="h-1.5 w-full bg-gradient-to-r from-emerald-primary to-gold-accent" />
             <CardHeader className="text-center pt-8 border-b border-slate-100/50 bg-white/50 pb-6 mb-6">
@@ -515,8 +585,8 @@ export default function RegisterPage() {
                     />
                   </div>
 
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="previous_school" className="font-semibold text-slate-700">Asal Sekolah (TK/SD/SMP) *</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="previous_school" className="font-semibold text-slate-700">Asal Sekolah *</Label>
                     <Input
                       id="previous_school" required maxLength={150}
                       value={formData.previous_school}
@@ -595,45 +665,494 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                {/* Section: Riwayat Kesehatan */}
-                <div className="space-y-5 pt-4">
+                {/* Section: Riwayat Kesehatan (Pengganti Medcheck) */}
+                <div className="space-y-6 pt-4">
                   <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
                     <div className="h-6 w-1.5 rounded-full bg-emerald-primary" />
-                    <h3 className="text-lg font-bold text-slate-800">Riwayat Kesehatan</h3>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-800">Formulir Identifikasi Kesehatan (Pengganti Medcheck)</h3>
+                      <p className="text-xs text-slate-500">
+                        Diisi mandiri oleh pendaftar. Mohon berikan informasi yang akurat demi keselamatan dan kenyamanan santri di sekolah.
+                      </p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="disease_history" className="font-semibold text-slate-700">Riwayat Penyakit (Pengganti Medcheck)</Label>
-                    <Textarea
-                      id="disease_history" maxLength={500}
-                      placeholder="Sebutkan jika ada riwayat penyakit bawaan, kronis, atau alergi (Tulis '-' jika tidak ada)"
-                      value={formData.disease_history}
-                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({...formData, disease_history: e.target.value})}
-                      className="min-h-[100px] transition-shadow focus-visible:ring-emerald-primary/30 focus-visible:border-emerald-primary resize-y"
-                    />
+
+                  {/* 1. Riwayat Penyakit Kronis */}
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <Label className="text-sm font-bold text-slate-800">1. Riwayat Penyakit Kronis *</Label>
+                        <p className="text-xs text-slate-500">Apakah calon peserta didik memiliki riwayat penyakit berat atau kronis?</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={healthForm.chronic_disease ? 'default' : 'outline'}
+                          className={cn(healthForm.chronic_disease && "bg-emerald-600 hover:bg-emerald-700")}
+                          onClick={() => setHealthForm(prev => ({ ...prev, chronic_disease: true }))}
+                        >
+                          Ya
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={!healthForm.chronic_disease ? 'default' : 'outline'}
+                          className={cn(!healthForm.chronic_disease && "bg-slate-700 hover:bg-slate-800")}
+                          onClick={() => setHealthForm(prev => ({ ...prev, chronic_disease: false, chronic_disease_description: '' }))}
+                        >
+                          Tidak
+                        </Button>
+                      </div>
+                    </div>
+                    {healthForm.chronic_disease && (
+                      <div className="pt-2 border-t border-slate-100 space-y-1.5 animate-in fade-in duration-200">
+                        <Label htmlFor="chronic_desc" className="text-xs font-semibold text-slate-700">
+                          Sebutkan nama penyakit kronis dan kondisinya *
+                        </Label>
+                        <Textarea
+                          id="chronic_desc"
+                          required
+                          rows={2}
+                          placeholder="Contoh: Jantung bawaan sejak lahir, sudah operasi di tahun 2021..."
+                          value={healthForm.chronic_disease_description}
+                          onChange={(e) => setHealthForm(prev => ({ ...prev, chronic_disease_description: e.target.value }))}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 2. Diagnosis Tertentu */}
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
+                    <div>
+                      <Label className="text-sm font-bold text-slate-800">2. Diagnosis Kondisi Tertentu</Label>
+                      <p className="text-xs text-slate-500">
+                        Centang kondisi berikut yang pernah atau sedang didiagnosis oleh tenaga medis (dapat memilih lebih dari satu, kosongkan jika tidak ada):
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-1">
+                      {DIAGNOSED_CONDITIONS_OPTIONS.map((cond) => {
+                        const checked = healthForm.diagnosed_conditions.includes(cond)
+                        return (
+                          <label
+                            key={cond}
+                            className={cn(
+                              "flex items-center gap-2 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors",
+                              checked ? "border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                            )}
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(c) => {
+                                setHealthForm(prev => {
+                                  const next = c
+                                    ? [...prev.diagnosed_conditions, cond]
+                                    : prev.diagnosed_conditions.filter(item => item !== cond)
+                                  return {
+                                    ...prev,
+                                    diagnosed_conditions: next,
+                                    diagnosed_conditions_other: next.includes('Lainnya') ? prev.diagnosed_conditions_other : ''
+                                  }
+                                })
+                              }}
+                            />
+                            <span>{cond}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                    {healthForm.diagnosed_conditions.includes('Lainnya') && (
+                      <div className="pt-2 border-t border-slate-100 space-y-1.5 animate-in fade-in duration-200">
+                        <Label htmlFor="diagnosed_other" className="text-xs font-semibold text-slate-700">
+                          Sebutkan kondisi diagnosis lainnya *
+                        </Label>
+                        <Input
+                          id="diagnosed_other"
+                          required
+                          placeholder="Sebutkan kondisi diagnosis lainnya..."
+                          value={healthForm.diagnosed_conditions_other}
+                          onChange={(e) => setHealthForm(prev => ({ ...prev, diagnosed_conditions_other: e.target.value }))}
+                        />
+                      </div>
+                    )}
+                    <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                      <Label htmlFor="diagnosed_notes" className="text-xs font-semibold text-slate-700">
+                        Keterangan tambahan terkait diagnosis di atas (opsional)
+                      </Label>
+                      <Textarea
+                        id="diagnosed_notes"
+                        rows={2}
+                        placeholder="Penjelasan singkat mengenai diagnosis yang dipilih jika ada..."
+                        value={healthForm.diagnosed_conditions_description}
+                        onChange={(e) => setHealthForm(prev => ({ ...prev, diagnosed_conditions_description: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 3. Alergi */}
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <Label className="text-sm font-bold text-slate-800">3. Riwayat Alergi *</Label>
+                        <p className="text-xs text-slate-500">Apakah calon peserta didik memiliki riwayat alergi?</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={healthForm.allergies ? 'default' : 'outline'}
+                          className={cn(healthForm.allergies && "bg-emerald-600 hover:bg-emerald-700")}
+                          onClick={() => setHealthForm(prev => ({ ...prev, allergies: true }))}
+                        >
+                          Ya
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={!healthForm.allergies ? 'default' : 'outline'}
+                          className={cn(!healthForm.allergies && "bg-slate-700 hover:bg-slate-800")}
+                          onClick={() => setHealthForm(prev => ({
+                            ...prev,
+                            allergies: false,
+                            allergy_types: [],
+                            allergy_other: '',
+                            allergy_description: ''
+                          }))}
+                        >
+                          Tidak
+                        </Button>
+                      </div>
+                    </div>
+                    {healthForm.allergies && (
+                      <div className="pt-2 border-t border-slate-100 space-y-3 animate-in fade-in duration-200">
+                        <Label className="text-xs font-semibold text-slate-700 block">Pilih jenis alergi (bisa lebih dari satu):</Label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {ALLERGY_OPTIONS.map((al) => {
+                            const checked = healthForm.allergy_types.includes(al)
+                            return (
+                              <label
+                                key={al}
+                                className={cn(
+                                  "flex items-center gap-2 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors",
+                                  checked ? "border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                                )}
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(c) => {
+                                    setHealthForm(prev => {
+                                      const next = c
+                                        ? [...prev.allergy_types, al]
+                                        : prev.allergy_types.filter(item => item !== al)
+                                      return {
+                                        ...prev,
+                                        allergy_types: next,
+                                        allergy_other: next.includes('Lainnya') ? prev.allergy_other : ''
+                                      }
+                                    })
+                                  }}
+                                />
+                                <span>{al}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                        {healthForm.allergy_types.includes('Lainnya') && (
+                          <div className="space-y-1.5">
+                            <Label htmlFor="allergy_other" className="text-xs font-semibold text-slate-700">
+                              Sebutkan jenis alergi lainnya *
+                            </Label>
+                            <Input
+                              id="allergy_other"
+                              required
+                              placeholder="Sebutkan jenis alergi lainnya..."
+                              value={healthForm.allergy_other}
+                              onChange={(e) => setHealthForm(prev => ({ ...prev, allergy_other: e.target.value }))}
+                            />
+                          </div>
+                        )}
+                        <div className="space-y-1.5">
+                          <Label htmlFor="allergy_desc" className="text-xs font-semibold text-slate-700">
+                            Keterangan gejala atau penanganan alergi (opsional)
+                          </Label>
+                          <Textarea
+                            id="allergy_desc"
+                            rows={2}
+                            placeholder="Contoh: Alergi makanan laut menyebabkan gatal/biduran..."
+                            value={healthForm.allergy_description}
+                            onChange={(e) => setHealthForm(prev => ({ ...prev, allergy_description: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 4. Pengobatan Rutin */}
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <Label className="text-sm font-bold text-slate-800">4. Pengobatan Rutin *</Label>
+                        <p className="text-xs text-slate-500">
+                          Apakah calon peserta didik sedang menjalani pengobatan rutin atau mengonsumsi obat tertentu secara berkala?
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={healthForm.regular_medication ? 'default' : 'outline'}
+                          className={cn(healthForm.regular_medication && "bg-emerald-600 hover:bg-emerald-700")}
+                          onClick={() => setHealthForm(prev => ({ ...prev, regular_medication: true }))}
+                        >
+                          Ya
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={!healthForm.regular_medication ? 'default' : 'outline'}
+                          className={cn(!healthForm.regular_medication && "bg-slate-700 hover:bg-slate-800")}
+                          onClick={() => setHealthForm(prev => ({ ...prev, regular_medication: false, regular_medication_description: '' }))}
+                        >
+                          Tidak
+                        </Button>
+                      </div>
+                    </div>
+                    {healthForm.regular_medication && (
+                      <div className="pt-2 border-t border-slate-100 space-y-1.5 animate-in fade-in duration-200">
+                        <Label htmlFor="regular_med_desc" className="text-xs font-semibold text-slate-700">
+                          Sebutkan nama obat, dosis, atau frekuensi pengobatan *
+                        </Label>
+                        <Textarea
+                          id="regular_med_desc"
+                          required
+                          rows={2}
+                          placeholder="Sebutkan obat rutin yang sedang dikonsumsi..."
+                          value={healthForm.regular_medication_description}
+                          onChange={(e) => setHealthForm(prev => ({ ...prev, regular_medication_description: e.target.value }))}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 5. Keterbatasan Fisik */}
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <Label className="text-sm font-bold text-slate-800">5. Keterbatasan Fisik *</Label>
+                        <p className="text-xs text-slate-500">
+                          Apakah calon peserta didik memiliki kondisi kesehatan atau keterbatasan fisik yang perlu diketahui sekolah?
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={healthForm.physical_limitation ? 'default' : 'outline'}
+                          className={cn(healthForm.physical_limitation && "bg-emerald-600 hover:bg-emerald-700")}
+                          onClick={() => setHealthForm(prev => ({ ...prev, physical_limitation: true }))}
+                        >
+                          Ya
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={!healthForm.physical_limitation ? 'default' : 'outline'}
+                          className={cn(!healthForm.physical_limitation && "bg-slate-700 hover:bg-slate-800")}
+                          onClick={() => setHealthForm(prev => ({ ...prev, physical_limitation: false, physical_limitation_description: '' }))}
+                        >
+                          Tidak
+                        </Button>
+                      </div>
+                    </div>
+                    {healthForm.physical_limitation && (
+                      <div className="pt-2 border-t border-slate-100 space-y-1.5 animate-in fade-in duration-200">
+                        <Label htmlFor="physical_lim_desc" className="text-xs font-semibold text-slate-700">
+                          Jelaskan kondisi atau keterbatasan fisik tersebut *
+                        </Label>
+                        <Textarea
+                          id="physical_lim_desc"
+                          required
+                          rows={2}
+                          placeholder="Jelaskan keterbatasan fisik yang perlu diketahui sekolah..."
+                          value={healthForm.physical_limitation_description}
+                          onChange={(e) => setHealthForm(prev => ({ ...prev, physical_limitation_description: e.target.value }))}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 6. Rawat Inap / Operasi */}
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <Label className="text-sm font-bold text-slate-800">6. Riwayat Rawat Inap / Operasi *</Label>
+                        <p className="text-xs text-slate-500">
+                          Apakah calon peserta didik pernah menjalani rawat inap atau operasi dalam 2 tahun terakhir?
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={healthForm.hospitalization_history ? 'default' : 'outline'}
+                          className={cn(healthForm.hospitalization_history && "bg-emerald-600 hover:bg-emerald-700")}
+                          onClick={() => setHealthForm(prev => ({ ...prev, hospitalization_history: true }))}
+                        >
+                          Ya
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={!healthForm.hospitalization_history ? 'default' : 'outline'}
+                          className={cn(!healthForm.hospitalization_history && "bg-slate-700 hover:bg-slate-800")}
+                          onClick={() => setHealthForm(prev => ({ ...prev, hospitalization_history: false, hospitalization_history_description: '' }))}
+                        >
+                          Tidak
+                        </Button>
+                      </div>
+                    </div>
+                    {healthForm.hospitalization_history && (
+                      <div className="pt-2 border-t border-slate-100 space-y-1.5 animate-in fade-in duration-200">
+                        <Label htmlFor="hosp_desc" className="text-xs font-semibold text-slate-700">
+                          Jelaskan riwayat rawat inap atau operasi dalam 2 tahun terakhir *
+                        </Label>
+                        <Textarea
+                          id="hosp_desc"
+                          required
+                          rows={2}
+                          placeholder="Contoh: Operasi usus buntu bulan Januari 2023..."
+                          value={healthForm.hospitalization_history_description}
+                          onChange={(e) => setHealthForm(prev => ({ ...prev, hospitalization_history_description: e.target.value }))}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 7. Kebutuhan Khusus */}
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <Label className="text-sm font-bold text-slate-800">7. Kebutuhan Khusus Saat Belajar *</Label>
+                        <p className="text-xs text-slate-500">
+                          Apakah calon peserta didik memiliki kebutuhan khusus terkait kesehatan selama mengikuti kegiatan belajar?
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={healthForm.special_needs ? 'default' : 'outline'}
+                          className={cn(healthForm.special_needs && "bg-emerald-600 hover:bg-emerald-700")}
+                          onClick={() => setHealthForm(prev => ({ ...prev, special_needs: true }))}
+                        >
+                          Ya
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={!healthForm.special_needs ? 'default' : 'outline'}
+                          className={cn(!healthForm.special_needs && "bg-slate-700 hover:bg-slate-800")}
+                          onClick={() => setHealthForm(prev => ({ ...prev, special_needs: false, special_needs_description: '' }))}
+                        >
+                          Tidak
+                        </Button>
+                      </div>
+                    </div>
+                    {healthForm.special_needs && (
+                      <div className="pt-2 border-t border-slate-100 space-y-1.5 animate-in fade-in duration-200">
+                        <Label htmlFor="special_needs_desc" className="text-xs font-semibold text-slate-700">
+                          Jelaskan kebutuhan khusus terkait kesehatan tersebut *
+                        </Label>
+                        <Textarea
+                          id="special_needs_desc"
+                          required
+                          rows={2}
+                          placeholder="Jelaskan kebutuhan khusus saat belajar..."
+                          value={healthForm.special_needs_description}
+                          onChange={(e) => setHealthForm(prev => ({ ...prev, special_needs_description: e.target.value }))}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 8, 9, 10. Kontak Darurat */}
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-5 shadow-sm space-y-4">
+                    <div className="flex items-center gap-2 border-b border-emerald-200 pb-2">
+                      <Phone className="h-4 w-4 text-emerald-700" />
+                      <h4 className="font-bold text-sm text-slate-800">Kontak Darurat Medis (Pertanyaan 8 - 10)</h4>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="emg_name" className="text-xs font-semibold text-slate-700">
+                          8. Nama Kontak Darurat *
+                        </Label>
+                        <Input
+                          id="emg_name"
+                          required
+                          maxLength={150}
+                          placeholder="Nama lengkap kontak..."
+                          value={healthForm.emergency_contact_name}
+                          onChange={(e) => setHealthForm(prev => ({ ...prev, emergency_contact_name: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="emg_rel" className="text-xs font-semibold text-slate-700">
+                          9. Hubungan dengan Calon Siswa *
+                        </Label>
+                        <Input
+                          id="emg_rel"
+                          required
+                          maxLength={100}
+                          placeholder="Contoh: Ayah / Ibu / Wali / Paman..."
+                          value={healthForm.emergency_contact_relation}
+                          onChange={(e) => setHealthForm(prev => ({ ...prev, emergency_contact_relation: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="emg_phone" className="text-xs font-semibold text-slate-700">
+                          10. No. Telepon Darurat *
+                        </Label>
+                        <Input
+                          id="emg_phone"
+                          required
+                          inputMode="numeric"
+                          minLength={9}
+                          maxLength={16}
+                          placeholder="08xxxxxxxxxx (9-16 digit)"
+                          value={healthForm.emergency_contact_phone}
+                          onChange={(e) => setHealthForm(prev => ({ ...prev, emergency_contact_phone: e.target.value.replace(/\D/g, '') }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pernyataan Wajib */}
+                  <div className={cn(
+                    "rounded-xl border p-4 sm:p-5 transition-all",
+                    healthForm.health_declaration_confirmed
+                      ? "border-emerald-500 bg-emerald-50/50 shadow-sm"
+                      : "border-slate-300 bg-slate-50"
+                  )}>
+                    <label className="flex items-start gap-3 cursor-pointer select-none">
+                      <Checkbox
+                        id="health_declaration"
+                        checked={healthForm.health_declaration_confirmed}
+                        onCheckedChange={(c) => setHealthForm(prev => ({ ...prev, health_declaration_confirmed: !!c }))}
+                        className="mt-1"
+                      />
+                      <div className="space-y-1">
+                        <p className="text-xs sm:text-sm font-semibold text-slate-900 leading-snug">
+                          Pernyataan Kebenaran Data Kesehatan *
+                        </p>
+                        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed italic">
+                          "Saya menyatakan bahwa informasi kesehatan yang saya berikan adalah benar dan dapat dipertanggungjawabkan. Apabila terdapat perubahan kondisi kesehatan, saya bersedia memberitahukan pihak sekolah."
+                        </p>
+                      </div>
+                    </label>
                   </div>
                 </div>
-
-                {showMajor && (
-                  <div className="space-y-5 pt-4">
-                    <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
-                      <div className="h-6 w-1.5 rounded-full bg-emerald-primary" />
-                      <h3 className="text-lg font-bold text-slate-800">Pilihan Keahlian</h3>
-                    </div>
-                    <div className="space-y-2">
-                      <Select required value={formData.major_choice} onValueChange={(v: string) => setFormData({...formData, major_choice: v})}>
-                        <SelectTrigger><SelectValue placeholder="Pilih kompetensi keahlian..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Teknik Komputer & Jaringan (TKJ)">Teknik Komputer &amp; Jaringan (TKJ)</SelectItem>
-                          <SelectItem value="Rekayasa Perangkat Lunak (RPL)">Rekayasa Perangkat Lunak (RPL)</SelectItem>
-                          <SelectItem value="Desain Komunikasi Visual (DKV)">Desain Komunikasi Visual (DKV)</SelectItem>
-                          <SelectItem value="Bisnis Digital">Bisnis Digital</SelectItem>
-                          <SelectItem value="Akuntansi dan Keuangan Lembaga (AKL)">Akuntansi dan Keuangan Lembaga (AKL)</SelectItem>
-                          <SelectItem value="Otomatisasi Tata Kelola Perkantoran (OTKP)">Otomatisasi Tata Kelola Perkantoran (OTKP)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
 
                 <div className="pt-2">
                   <Alert type="warning" title="Periksa Email & No. WhatsApp Anda" className="border-amber-200 bg-amber-50">

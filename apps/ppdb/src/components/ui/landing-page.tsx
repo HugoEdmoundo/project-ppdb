@@ -320,7 +320,7 @@ export default function GlobeScrollDemo() {
       title: 'Penerimaan Peserta',
       subtitle: 'Didik Baru',
       description:
-        'Pesantren Tahfidz Qur’an dan Digital Ar-Rahman membuka pendaftaran untuk jenjang SMP dan SMK. Setiap peserta belajar dengan ritme sendiri: tahfidz terstruktur, mata pelajaran tematik, dan literasi digital yang dekat dengan kehidupan sehari-hari.',
+        'Pesantren Tahfidz Qur’an dan Digital Ar-Rahman membuka pendaftaran peserta didik baru. Setiap santri belajar dengan ritme sendiri: tahfidz terstruktur, mata pelajaran tematik, dan literasi digital yang dekat dengan kehidupan sehari-hari.',
       align: 'left',
       actions: [
         { label: 'Daftar Sekarang', variant: 'primary' },
@@ -342,7 +342,7 @@ export default function GlobeScrollDemo() {
       title: 'Pilihan Jalur',
       subtitle: 'Sesuai Kebutuhan',
       description:
-        'Jalur reguler dan jalur pindahan dibuka sesuai gelombang yang sedang aktif. Halaman pendaftaran otomatis menyembunyikan opsi yang belum dibuka.',
+        'Pilihan jalur seleksi (Reguler, Prestasi, Tahfidz, dan Rapot) dibuka sesuai gelombang yang aktif. Halaman pendaftaran otomatis menyembunyikan opsi yang belum dibuka.',
       align: 'left',
       features: [
         {

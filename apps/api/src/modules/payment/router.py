@@ -5,14 +5,15 @@ from fastapi import (
     APIRouter,
     Depends,
     File,
+    Form,
     HTTPException,
     Query,
     Request,
     UploadFile,
 )
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from src.core.config import settings
 from src.core.database import get_db
 from src.core.dependencies import (
     AccessLevel,
@@ -108,15 +109,22 @@ async def payment_webhook(
     service: PaymentService = Depends(get_payment_service),
 ):
     """
-    Webhook for Payment Gateway (e.g., Midtrans).
-    Verifikasi signature Midtrans (sha512) wajib; menolak jika `MIDTRANS_SERVER_KEY`
-    tidak dikonfigurasi (fail-closed) supaya tidak bisa di-forge.
-    Catatan: Midtrans mengirim `signature_key` di BODY JSON, bukan header.
+    Webhook pembayaran formulir & PPDB (Pak Kasir QRIS / Gateway).
     """
     payload = await request.json()
-    signature_key = payload.get("signature_key")
-    _verify_midtrans_signature(payload, signature_key, settings.midtrans_server_key)
-    return service.process_webhook(payload)
+    return service.process_pakkasir_webhook(payload)
+
+
+@router.post("/webhook/pak-kasir")
+async def pakkasir_webhook(
+    request: Request,
+    service: PaymentService = Depends(get_payment_service),
+):
+    """
+    Webhook resmi 1 Pintu QRIS Pak Kasir untuk verifikasi pembayaran real-time.
+    """
+    payload = await request.json()
+    return service.process_pakkasir_webhook(payload)
 
 
 # ─── Stage 2 — Diskonasi (per peserta lulus) ─────────────────────────────────
@@ -201,3 +209,38 @@ async def upload_stage2_proof(
 ):
     result = await upload_file(file)
     return service.upload_stage2_proof(bill_id, user["id"], result.public_url)
+
+
+class InstallmentPlanPayload(BaseModel):
+    installment_count: int
+
+
+@router.post("/stage2/my-installment-plan")
+def set_my_installment_plan(
+    payload: InstallmentPlanPayload,
+    user: dict = Depends(get_current_user),
+    service: PaymentService = Depends(get_payment_service),
+):
+    return service.configure_my_installment_plan(user["id"], payload.installment_count)
+
+
+@router.post("/stage2/my-bills/upload-proof-batch")
+async def upload_stage2_proof_batch(
+    bill_ids: str = Form(...),
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+    service: PaymentService = Depends(get_payment_service),
+):
+    import json
+
+    try:
+        parsed_ids = (
+            json.loads(bill_ids)
+            if bill_ids.startswith("[")
+            else [b.strip() for b in bill_ids.split(",") if b.strip()]
+        )
+    except Exception:
+        parsed_ids = [b.strip() for b in bill_ids.split(",") if b.strip()]
+
+    result = await upload_file(file)
+    return service.upload_stage2_proof_batch(parsed_ids, user["id"], result.public_url)

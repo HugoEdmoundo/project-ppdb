@@ -75,7 +75,7 @@ export default function ApplicantsTable({ applicants, loading, hasActiveWave, sh
         <TableRow className="hover:bg-transparent">
           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Pendaftar</TableHead>
           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Email / No. WA</TableHead>
-          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Jalur / Jenjang</TableHead>
+          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Jalur Pendaftaran</TableHead>
           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pembayaran</TableHead>
           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Dokumen</TableHead>
           {showSelectionColumn && (
@@ -130,7 +130,7 @@ export default function ApplicantsTable({ applicants, loading, hasActiveWave, sh
               </TableCell>
               <TableCell className="text-sm">
                 <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold capitalize text-slate-600">
-                  {a.registration_path}{a.registration_level ? ` · ${a.registration_level.toUpperCase()}` : ''}
+                  {a.registration_path || '-'}
                 </span>
               </TableCell>
               <TableCell>

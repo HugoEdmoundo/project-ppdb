@@ -3,7 +3,7 @@ from datetime import date, datetime
 from typing import Any, cast
 from uuid import uuid4
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from src.models.ppdb import PPDBApplicant, PPDBWave, TIUResult
@@ -32,7 +32,12 @@ class SelectionRepository:
                 SelectionSession,
                 PPDBWave.name.label("wave_name"),
                 select(func.count())
-                .where(SelectionResult.session_id == SelectionSession.id)
+                .where(
+                    or_(
+                        SelectionResult.session_id == SelectionSession.id,
+                        SelectionResult.interview_session_id == SelectionSession.id,
+                    )
+                )
                 .scalar_subquery()
                 .label("booked_count"),
             )
@@ -56,7 +61,12 @@ class SelectionRepository:
         stmt = select(
             SelectionSession,
             select(func.count())
-            .where(SelectionResult.session_id == SelectionSession.id)
+            .where(
+                or_(
+                    SelectionResult.session_id == SelectionSession.id,
+                    SelectionResult.interview_session_id == SelectionSession.id,
+                )
+            )
             .scalar_subquery()
             .label("booked_count"),
         ).where(SelectionSession.id == session_id)
@@ -264,10 +274,17 @@ class SelectionRepository:
         self.db.flush()
 
     def update_selection_result_session(
-        self, applicant_id: str, session_id: str, now: datetime
+        self,
+        applicant_id: str,
+        session_id: str,
+        now: datetime,
+        session_type: str | None = None,
     ):
         row = self.ensure_selection_result(applicant_id, now)
-        row.session_id = session_id
+        if (session_type or "").lower() == "wawancara":
+            row.interview_session_id = session_id
+        else:
+            row.session_id = session_id
         row.updated_at = now
         self.db.add(row)
         self.db.flush()
@@ -318,7 +335,12 @@ class SelectionRepository:
             select(
                 SelectionSession,
                 select(func.count())
-                .where(SelectionResult.session_id == SelectionSession.id)
+                .where(
+                    or_(
+                        SelectionResult.session_id == SelectionSession.id,
+                        SelectionResult.interview_session_id == SelectionSession.id,
+                    )
+                )
                 .scalar_subquery()
                 .label("booked_count"),
             )

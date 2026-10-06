@@ -24,6 +24,7 @@ export default function DocumentSettingsPage() {
   const queryClient = useQueryClient()
   const [template, setTemplate] = useState('')
   const [backgroundUrl, setBackgroundUrl] = useState('')
+  const [waLink, setWaLink] = useState('')
 
   const settingsQuery = useQuery({
     queryKey: ['ppdb-document-settings'],
@@ -72,8 +73,7 @@ export default function DocumentSettingsPage() {
     mutationFn: (file: File) => {
       const form = new FormData()
       form.append('file', file)
-      return apiFetch<{ skd_background_url: string
-  whatsapp_group_link?: string }>('/ppdb/document-settings/skd-background', {
+      return apiFetch<{ skd_background_url: string; whatsapp_group_link?: string }>('/ppdb/document-settings/skd-background', {
         method: 'POST', body: form,
       })
     },

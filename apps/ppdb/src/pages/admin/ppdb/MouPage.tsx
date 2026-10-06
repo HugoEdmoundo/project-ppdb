@@ -165,7 +165,7 @@ export default function MouPage() {
                 <TableHeader className="bg-emerald-primary/5">
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Peserta</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Jenjang / Jalur</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Jalur Pendaftaran</TableHead>
                     <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Status MOU</TableHead>
                     <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</TableHead>
                   </TableRow>
@@ -203,7 +203,7 @@ export default function MouPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-sm capitalize text-slate-600">
-                          {a.registration_level} / {a.registration_path}
+                          {a.registration_path || '-'}
                         </TableCell>
                         <TableCell>
                           {a.mou_status === 'signed' ? (

@@ -44,6 +44,9 @@ class SelectionResult(Base):
     session_id: Mapped[str | None] = mapped_column(
         String(36), nullable=True, index=True
     )
+    interview_session_id: Mapped[str | None] = mapped_column(
+        String(36), nullable=True, index=True
+    )
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     # graduation: None = belum ditentukan, 'passed' = lulus, 'failed' = tidak lulus

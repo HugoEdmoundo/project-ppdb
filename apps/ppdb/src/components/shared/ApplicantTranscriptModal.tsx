@@ -98,9 +98,9 @@ export default function ApplicantTranscriptModal({
                 <span className="font-semibold text-sm text-slate-900">{applicant.nisn || applicant.nik || '-'}</span>
               </div>
               <div>
-                <span className="text-slate-500 block">Jalur & Jenjang Pendaftaran</span>
+                <span className="text-slate-500 block">Jalur Pendaftaran</span>
                 <span className="font-medium text-slate-800 capitalize">
-                  {applicant.registration_path} / {applicant.registration_level}
+                  {applicant.registration_path || '-'}
                 </span>
               </div>
               <div>

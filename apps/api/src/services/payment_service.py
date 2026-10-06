@@ -5,7 +5,12 @@ from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 
-from src.models.ppdb import PPDBBMOU, PPDBApplicantDiscount, PPDBStage2Bill
+from src.models.ppdb import (
+    PPDBBMOU,
+    PPDBApplicantDiscount,
+    PPDBStage2Bill,
+    PPDBWaveFeeItem,
+)
 from src.repositories.payment_repository import PaymentRepository
 
 WIB = ZoneInfo("Asia/Jakarta")
@@ -44,7 +49,6 @@ class PaymentService:
             "email": applicant.email,
             "phone": applicant.phone,
             "registration_path": applicant.registration_path,
-            "registration_level": applicant.registration_level,
             "birth_place": applicant.birth_place,
             "birth_date": applicant.birth_date,
             "gender": applicant.gender,
@@ -52,7 +56,6 @@ class PaymentService:
             "nik": applicant.nik,
             "parent_name": applicant.parent_name,
             "previous_school": applicant.previous_school,
-            "major_choice": applicant.major_choice,
             "province": applicant.province,
             "city": applicant.city,
             "district": applicant.district,
@@ -64,6 +67,16 @@ class PaymentService:
             "payment_deadline": applicant.payment_deadline,
             "rejection_reason": applicant.rejection_reason,
             "wave_name": wave.name if wave else None,
+            "wave_registration_end_date": (
+                wave.registration_end_date.strftime("%Y-%m-%d")
+                if wave and wave.registration_end_date
+                else (
+                    wave.end_date.strftime("%Y-%m-%d")
+                    if wave and wave.end_date
+                    else None
+                )
+            ),
+            "wave_quota": wave.quota if wave else 0,
             "created_at": applicant.created_at,
         }
 
@@ -78,6 +91,114 @@ class PaymentService:
                 "proof_url": transaction.proof_url,
             }
         return {"applicant": app_dict, "transaction": tx_dict}
+
+    def check_wave_quota_and_close_if_full(self, wave_id: str | None) -> bool:
+        """
+        Cek apakah kuota pendaftaran gelombang sudah penuh berdasarkan
+        pembayaran formulir sukses.
+        Jika kuota tercapai, tutup gelombang dan batalkan tagihan pending.
+        """
+        if not wave_id:
+            return False
+        wave = self.repo.get_wave_by_id(wave_id)
+        if not wave or wave.quota <= 0:
+            return False
+
+        paid_count = self.repo.count_paid_form_payments_in_wave(wave.id)
+        if paid_count >= wave.quota:
+            self.close_wave_and_cancel_pending_invoices(wave.id, reason="kuota penuh")
+            return True
+        return False
+
+    def close_wave_and_cancel_pending_invoices(
+        self, wave_id: str, reason: str = "kuota_penuh"
+    ) -> dict:
+        """
+        Menutup gelombang dan membatalkan seluruh tagihan formulir pending
+        saat kuota tercapai atau tanggal pendaftaran gelombang berakhir.
+        Mengirim notifikasi wave_closed_pending_payment dan menghentikan
+        penagihan Senin.
+        """
+        import logging
+
+        from sqlalchemy import select
+
+        from src.core.config import settings
+        from src.core.notif_service import send_notification
+        from src.models.ppdb import PPDBApplicant, PPDBPaymentTransaction
+
+        logger = logging.getLogger("ptdarrahman.payment")
+        wave = self.repo.get_wave_by_id(wave_id)
+        if not wave:
+            return {"closed": False, "message": "Gelombang tidak ditemukan"}
+
+        now_wib = datetime.now(WIB)
+        wave.status = "inactive"
+        wave.updated_at = now_wib
+        self.repo.db.add(wave)
+
+        # Cari semua pendaftar berstatus pending_payment di gelombang ini
+        stmt = select(PPDBApplicant).where(
+            PPDBApplicant.wave_id == wave_id,
+            PPDBApplicant.status == "pending_payment",
+            PPDBApplicant.payment_status == "pending",
+            PPDBApplicant.deleted_at.is_(None),
+        )
+        pending_applicants = list(self.repo.db.scalars(stmt).all())
+
+        cancelled_count = 0
+        for app in pending_applicants:
+            # Batalkan transaksi formulir pending
+            tx_stmt = select(PPDBPaymentTransaction).where(
+                PPDBPaymentTransaction.applicant_id == app.id,
+                PPDBPaymentTransaction.status == "pending",
+            )
+            pending_txs = list(self.repo.db.scalars(tx_stmt).all())
+            for tx in pending_txs:
+                tx.status = "cancelled"
+                tx.failure_reason = f"Gelombang ditutup ({reason})"
+                tx.updated_at = now_wib
+                self.repo.db.add(tx)
+
+            # Update status pendaftar menjadi expired
+            app.status = "expired"
+            app.payment_status = "failed"
+            app.updated_at = now_wib
+            self.repo.db.add(app)
+            cancelled_count += 1
+
+        self.repo.db.commit()
+
+        # Kirim notifikasi pembatalan invoice ke setiap pendaftar yang terdampak
+        for app in pending_applicants:
+            try:
+                send_notification(
+                    event_key="wave_closed_pending_payment",
+                    recipient_user_id=str(app.user_id),
+                    context={
+                        "nama_gelombang": wave.name,
+                        "link_aplikasi": f"{settings.ppdb_frontend_url}/auth/login",
+                    },
+                )
+            except Exception:
+                logger.exception(
+                    "Gagal mengirim notifikasi wave_closed_pending_payment "
+                    "untuk user %s",
+                    app.user_id,
+                )
+
+        logger.info(
+            "Gelombang %s ditutup (%s): %d pendaftar pending dibatalkan",
+            wave_id,
+            reason,
+            cancelled_count,
+        )
+        return {
+            "closed": True,
+            "wave_id": wave_id,
+            "cancelled_count": cancelled_count,
+            "reason": reason,
+        }
 
     def confirm_payment(self, transaction_id: str, admin_user_id: str) -> dict:
         tx = self.repo.get_transaction_by_id(transaction_id)
@@ -99,7 +220,7 @@ class PaymentService:
             applicant.status = "document_uploaded_pending"
             self.repo.update_applicant(applicant)
 
-            # Notifikasi pembayaran berhasil â€” sistem baru: 1 pintu via QRIS/pak kasir
+            # Notifikasi pembayaran berhasil — sistem baru: 1 pintu via QRIS/pak kasir
             try:
                 from src.core.config import settings
                 from src.core.notif_service import send_notifications
@@ -111,7 +232,9 @@ class PaymentService:
                             "payment_success_formulir",
                             {
                                 "nominal_bayar": nominal_fmt,
-                                "link_aplikasi": f"{settings.ppdb_frontend_url}/dashboard",
+                                "link_aplikasi": (
+                                    f"{settings.ppdb_frontend_url}/applicant"
+                                ),
                             },
                         ),
                     ],
@@ -124,6 +247,9 @@ class PaymentService:
                     "Failed to send payment_success_formulir notification for tx %s",
                     transaction_id,
                 )
+
+            # Evaluasi kuota gelombang: tutup otomatis jika kuota terpenuhi
+            self.check_wave_quota_and_close_if_full(applicant.wave_id)
 
         return {"success": True, "message": "Payment confirmed successfully"}
 
@@ -159,23 +285,168 @@ class PaymentService:
             "message": "Payment confirmation cancelled successfully",
         }
 
-    def process_webhook(self, payload: dict) -> dict:
+    def process_pakkasir_webhook(self, payload: dict) -> dict:
         """
-        DEPRECATED â€” Midtrans tidak lagi digunakan.
-        Sistem pembayaran sekarang 1 pintu: QRIS via pak kasir (konfirmasi manual admin).
-        Webhook ini dipertahankan agar endpoint tidak 404 jika masih ada pemanggil lama,
-        tapi semua payload di-ignore dan tidak memproses transaksi apapun.
+        Webhook 1 Pintu QRIS Pak Kasir untuk pembayaran formulir PPDB.
+        Idempoten, atomik, dan otomatis menutup gelombang jika kuota terpenuhi.
         """
         import logging
 
-        logging.getLogger("ptdarrahman.payment").warning(
-            "process_webhook dipanggil tapi Midtrans tidak lagi digunakan. "
-            "Sistem pembayaran sekarang via QRIS/pak kasir. Payload di-ignore."
+        from src.core.config import settings
+        from src.core.notif_service import send_notifications
+
+        logger = logging.getLogger("ptdarrahman.payment")
+        logger.info("Menerima webhook Pak Kasir: %s", payload)
+
+        order_id = (
+            payload.get("order_id")
+            or payload.get("transaction_id")
+            or payload.get("invoice_id")
+            or payload.get("external_id")
+            or payload.get("id")
         )
+        applicant_id = payload.get("applicant_id")
+        status = str(
+            payload.get("status")
+            or payload.get("transaction_status")
+            or payload.get("payment_status")
+            or ""
+        ).upper()
+
+        tx = None
+        if order_id:
+            tx = self.repo.get_transaction_by_id(
+                str(order_id)
+            ) or self.repo.get_transaction_by_external_id(str(order_id))
+
+        if not tx and applicant_id:
+            tx = self.repo.get_latest_transaction_by_applicant_id(str(applicant_id))
+
+        if not tx:
+            logger.warning(
+                "Transaksi Pak Kasir tidak ditemukan untuk "
+                "order_id=%s, applicant_id=%s",
+                order_id,
+                applicant_id,
+            )
+            raise HTTPException(
+                status_code=404, detail="Transaction not found for this payment"
+            )
+
+        # Cek idempotensi: jika sudah sukses sebelumnya, langsung return sukses
+        if tx.status == "success":
+            logger.info("Transaksi %s sudah lunas sebelumnya (idempoten)", tx.id)
+            return {
+                "success": True,
+                "message": "Transaksi sudah tercatat lunas sebelumnya",
+                "status": "already_paid",
+                "transaction_id": tx.id,
+            }
+
+        now_wib = datetime.now(WIB)
+        is_success = status in ("PAID", "SUCCESS", "SETTLEMENT", "COMPLETED", "LUNAS")
+        is_failed = status in ("FAILED", "CANCELLED", "EXPIRED", "GAGAL", "BATAL")
+
+        if is_success:
+            applicant = self.repo.get_applicant_by_id(tx.applicant_id)
+
+            # Periksa apakah transaksi sebelumnya sudah dibatalkan atau kedaluwarsa
+            # (misalnya kuota gelombang penuh sehingga tagihan dibatalkan otomatis)
+            is_late_or_cancelled = tx.status in ("cancelled", "expired") or (
+                applicant is not None and applicant.status in ("expired", "cancelled")
+            )
+
+            if is_late_or_cancelled:
+                # Sesuai aturan bisnis docs/REQUIREMENTS.md & AGENTS.md:
+                # "Jika webhook sukses datang setelah tagihan dibatalkan
+                # (karena kuota penuh), tandai sebagai pengecualian untuk pemeriksaan
+                # admin — jangan otomatis memindahkan pendaftar ke gelombang lain atau
+                # langsung meluluskan tagihan."
+                tx.status = "exception"
+                tx.method = payload.get("payment_method") or "qris_pak_kasir"
+                tx.confirmed_at = now_wib
+                tx.notes = (
+                    f"[PENGECUALIAN ADMIN] Pembayaran sukses terlambat diterima "
+                    f"setelah tagihan dibatalkan/expired ({order_id or tx.id}). "
+                    f"Memerlukan pemeriksaan manual admin."
+                )
+                self.repo.update_transaction(tx)
+
+                logger.warning(
+                    "Pembayaran terlambat terdeteksi untuk tx %s "
+                    "(applicant %s). Ditandai sebagai pengecualian admin.",
+                    tx.id,
+                    tx.applicant_id,
+                )
+                return {
+                    "success": True,
+                    "message": (
+                        "Pembayaran diterima setelah tagihan "
+                        "dibatalkan/expired; ditandai sebagai pengecualian admin"
+                    ),
+                    "status": "exception",
+                    "transaction_id": tx.id,
+                }
+
+            tx.status = "success"
+            tx.method = payload.get("payment_method") or "qris_pak_kasir"
+            tx.confirmed_at = now_wib
+            tx.notes = f"Webhook Pak Kasir QRIS ({order_id or tx.id})"
+            self.repo.update_transaction(tx)
+
+            if applicant:
+                applicant.payment_status = "paid"
+                applicant.status = "document_uploaded_pending"
+                self.repo.update_applicant(applicant)
+
+                # Notifikasi WhatsApp formulir berhasil
+                try:
+                    nominal_fmt = f"Rp {tx.amount:,}".replace(",", ".")
+                    send_notifications(
+                        [
+                            (
+                                "payment_success_formulir",
+                                {
+                                    "nominal_bayar": nominal_fmt,
+                                    "link_aplikasi": (
+                                        f"{settings.ppdb_frontend_url}/applicant"
+                                    ),
+                                },
+                            ),
+                        ],
+                        applicant.user_id,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Gagal mengirim notif payment_success_formulir untuk tx %s",
+                        tx.id,
+                    )
+
+                # Evaluasi penutupan gelombang jika kuota tercapai
+                self.check_wave_quota_and_close_if_full(applicant.wave_id)
+
+            return {
+                "success": True,
+                "message": (
+                    "Pembayaran formulir berhasil diverifikasi " "via QRIS Pak Kasir"
+                ),
+                "transaction_id": tx.id,
+            }
+
+        elif is_failed:
+            tx.status = "failed"
+            tx.failure_reason = payload.get("failure_reason") or f"Status: {status}"
+            self.repo.update_transaction(tx)
+            return {"success": True, "status": tx.status, "transaction_id": tx.id}
+
         return {
-            "status": "ignored",
-            "message": "Midtrans webhook deprecated â€” sistem pembayaran sekarang via QRIS/pak kasir",
+            "success": True,
+            "message": f"Webhook diterima dengan status: {status}",
+            "transaction_id": tx.id,
         }
+
+    def process_webhook(self, payload: dict) -> dict:
+        return self.process_pakkasir_webhook(payload)
 
     def get_stage2_applicants(self) -> dict:
         active_wave = self.repo.get_active_wave_info()
@@ -372,7 +643,7 @@ class PaymentService:
             "{email}": applicant.email or "",
             "{nomor_wa}": applicant.phone or "",
             "{jalur}": applicant.registration_path or "",
-            "{jenjang}": applicant.registration_level or "",
+            "{jenjang}": "SMK",
             "{tanggal}": now_wib.strftime("%d %B %Y"),
         }
         for k, v in replacements.items():
@@ -416,10 +687,60 @@ class PaymentService:
             raise HTTPException(status_code=404, detail="Applicant not found")
 
         bills = self.repo.get_my_stage2_bills(applicant.id)
+        wave = (
+            self.repo.get_wave_by_id(applicant.wave_id) if applicant.wave_id else None
+        )
+
+        # Auto-initialize stage 2 bills if applicant is passed and has no bills yet
+        if not bills and applicant.status == "passed" and applicant.wave_id:
+            try:
+                fee_items = self.repo.get_wave_fee_items_with_discounts(
+                    applicant.id, applicant.wave_id
+                )
+                if (
+                    not fee_items
+                    and wave
+                    and wave.second_stage_fee
+                    and wave.second_stage_fee > 0
+                ):
+                    now_wib = datetime.now(WIB)
+                    fi = PPDBWaveFeeItem(
+                        id=str(uuid.uuid4()),
+                        wave_id=wave.id,
+                        name="Biaya Pendidikan Tahap 2",
+                        nominal=wave.second_stage_fee,
+                        order_index=1,
+                        created_at=now_wib,
+                        updated_at=now_wib,
+                    )
+                    self.repo.db.add(fi)
+                    self.repo.db.commit()
+                    fee_items = self.repo.get_wave_fee_items_with_discounts(
+                        applicant.id, applicant.wave_id
+                    )
+
+                if fee_items:
+                    items_payload = [
+                        {
+                            "fee_item_id": fi["id"],
+                            "installment_count": 0,
+                        }
+                        for fi in fee_items
+                    ]
+                    self.save_applicant_discounts(applicant.id, items_payload)
+                    bills = self.repo.get_my_stage2_bills(applicant.id)
+            except Exception:
+                pass
+
         mou = self.repo.get_mou_by_applicant_id(applicant.id)
         mou_signed = mou.status == "signed" if mou else False
 
-        return {"bills": bills, "mou_signed": mou_signed}
+        return {
+            "bills": bills,
+            "mou_signed": mou_signed,
+            "minimum_dp": wave.minimum_dp if wave else 0,
+            "second_stage_fee": wave.second_stage_fee if wave else 0,
+        }
 
     def confirm_stage2_bill(self, bill_id: str, admin_user_id: str) -> dict:
         bill = self.repo.get_stage2_bill_by_id(bill_id)
@@ -441,12 +762,18 @@ class PaymentService:
         try:
             from src.core.config import settings
             from src.core.notif_service import send_notification
-
             from src.models.content import SiteSetting
+
             applicant = self.repo.get_applicant_by_id(bill.applicant_id)
             if applicant:
-                wa_link_setting = self.repo.db.get(SiteSetting, "ppdb_whatsapp_group_link")
-                wa_link = wa_link_setting.value if wa_link_setting and wa_link_setting.value else f"{settings.ppdb_frontend_url}/dashboard"
+                wa_link_setting = self.repo.db.get(
+                    SiteSetting, "ppdb_whatsapp_group_link"
+                )
+                wa_link = (
+                    wa_link_setting.value
+                    if wa_link_setting and wa_link_setting.value
+                    else f"{settings.ppdb_frontend_url}/dashboard"
+                )
 
                 send_notification(
                     "dp_payment_success",
@@ -503,3 +830,109 @@ class PaymentService:
         self.repo.update_stage2_bill(bill)
 
         return {"success": True, "proof_url": proof_url}
+
+    def configure_my_installment_plan(
+        self, user_id: str, installment_count: int
+    ) -> dict:
+        applicant = self.repo.get_applicant_by_user_id(user_id)
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Applicant not found")
+        if applicant.status != "passed":
+            raise HTTPException(
+                status_code=400,
+                detail="Hanya pendaftar yang lulus yang dapat mengatur cicilan",
+            )
+        if installment_count < 1 or installment_count > 12:
+            raise HTTPException(
+                status_code=400, detail="Jumlah cicilan harus antara 1 sampai 12"
+            )
+
+        wave = (
+            self.repo.get_wave_by_id(applicant.wave_id) if applicant.wave_id else None
+        )
+        if not wave:
+            raise HTTPException(status_code=400, detail="Gelombang tidak ditemukan")
+
+        fee_items = self.repo.get_wave_fee_items_with_discounts(
+            applicant.id, applicant.wave_id
+        )
+        if (
+            not fee_items
+            and wave
+            and wave.second_stage_fee
+            and wave.second_stage_fee > 0
+        ):
+            now_wib = datetime.now(WIB)
+            fi = PPDBWaveFeeItem(
+                id=str(uuid.uuid4()),
+                wave_id=wave.id,
+                name="Biaya Pendidikan Tahap 2",
+                nominal=wave.second_stage_fee,
+                order_index=1,
+                created_at=now_wib,
+                updated_at=now_wib,
+            )
+            self.repo.db.add(fi)
+            self.repo.db.commit()
+            fee_items = self.repo.get_wave_fee_items_with_discounts(
+                applicant.id, applicant.wave_id
+            )
+
+        # Check if any bills are already paid
+        for fee in fee_items:
+            if self.repo.has_paid_stage2_bills(applicant.id, fee["id"]):
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Terdapat tagihan yang sudah dibayar, skema cicilan "
+                        "tidak dapat diubah"
+                    ),
+                )
+
+        items_payload = []
+        for fee in fee_items:
+            is_dp = "dp" in fee["name"].lower() or "uang muka" in fee["name"].lower()
+            icount = 0 if (is_dp or installment_count <= 1) else installment_count
+            discount_type = (
+                fee.get("discount", {}).get("discount_type")
+                if fee.get("discount")
+                else None
+            )
+            discount_value = (
+                fee.get("discount", {}).get("discount_value")
+                if fee.get("discount")
+                else None
+            )
+            items_payload.append(
+                {
+                    "fee_item_id": fee["id"],
+                    "installment_count": icount,
+                    "discount_type": discount_type,
+                    "discount_value": discount_value,
+                }
+            )
+
+        self.save_applicant_discounts(applicant.id, items_payload)
+        return {"success": True, "bills": self.repo.get_my_stage2_bills(applicant.id)}
+
+    def upload_stage2_proof_batch(
+        self, bill_ids: list[str], user_id: str, proof_url: str
+    ) -> dict:
+        applicant = self.repo.get_applicant_by_user_id(user_id)
+        if not applicant:
+            raise HTTPException(status_code=404, detail="Applicant not found")
+
+        updated = 0
+        for bid in bill_ids:
+            bill = self.repo.get_stage2_bill_by_id(bid)
+            if bill and bill.applicant_id == applicant.id and bill.status == "pending":
+                bill.proof_url = proof_url
+                self.repo.update_stage2_bill(bill)
+                updated += 1
+
+        if updated == 0:
+            raise HTTPException(
+                status_code=400, detail="Tidak ada tagihan valid yang dapat diperbarui"
+            )
+
+        return {"success": True, "updated_count": updated, "proof_url": proof_url}

@@ -287,14 +287,11 @@ function SendTab({ templates }: { templates: Template[] }) {
       {/* Composer */}
       <Card className="lg:col-span-2">
         <CardContent className="p-5 space-y-4">
-          <div className="space-y-1.5">
-            <Label>Channel</Label>
-            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              value={channel} onChange={e => setChannel(e.target.value)}>
-              <option value="whatsapp">WhatsApp</option>
-              <option value="email">Email</option>
-              <option value="both">WhatsApp + Email</option>
-            </select>
+          {/* Channel badge - WA only */}
+          <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2">
+            <MessageSquare className="h-4 w-4 text-green-600 shrink-0" />
+            <span className="text-sm font-medium text-green-700">WhatsApp</span>
+            <span className="ml-auto text-xs text-green-600">Satu-satunya channel</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -315,12 +312,7 @@ function SendTab({ templates }: { templates: Template[] }) {
             </div>
           )}
 
-          {(channel === 'email' || channel === 'both') && (
-            <div className="space-y-1.5">
-              <Label>Subject Email</Label>
-              <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Judul email..." />
-            </div>
-          )}
+
 
           <div className="space-y-1.5">
             <Label>Body Pesan *</Label>
@@ -376,7 +368,7 @@ function TemplateTab() {
   }, [toast])
 
   useEffect(() => {
-     
+
     fetchTemplates()
   }, [fetchTemplates])
 
@@ -486,7 +478,11 @@ function TemplateEditDialog({ template, open, onClose, onSaved }: {
     setSaving(true)
     try {
       await api.apiFetch(`/notifications/templates/${template.id}`, {
-        method: 'PUT', body: JSON.stringify(form),
+        method: 'PUT', body: JSON.stringify({
+          ...form,
+          channel: 'whatsapp',
+          email_subject: null,
+        }),
       })
       // Clear WA template cache silently (via FastAPI proxy)
       try {
@@ -515,21 +511,14 @@ function TemplateEditDialog({ template, open, onClose, onSaved }: {
             <Label>Label</Label>
             <Input value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} />
           </div>
-          <div className="space-y-1.5">
-            <Label>Channel</Label>
-            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              value={form.channel} onChange={e => setForm(p => ({ ...p, channel: e.target.value }))}>
-              <option value="whatsapp">WhatsApp saja</option>
-              <option value="email">Email saja</option>
-              <option value="both">WhatsApp + Email</option>
-            </select>
+          {/* Channel fixed */}
+          <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+            <MessageSquare className="h-4 w-4 text-green-600 shrink-0" />
+            <span className="text-sm font-medium text-green-700">WhatsApp</span>
+            <span className="ml-2 text-xs text-muted-foreground">
+              Channel tidak bisa diubah — email tidak digunakan
+            </span>
           </div>
-          {(form.channel === 'email' || form.channel === 'both') && (
-            <div className="space-y-1.5">
-              <Label>Subject Email</Label>
-              <Input value={form.email_subject} onChange={e => setForm(p => ({ ...p, email_subject: e.target.value }))} />
-            </div>
-          )}
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
               <Info className="h-3.5 w-3.5 text-muted-foreground" />

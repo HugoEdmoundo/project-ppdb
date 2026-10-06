@@ -25,8 +25,12 @@ rsync -a --delete \
   --exclude='.env' \
   --exclude='.env.*' \
   --exclude='node_modules' \
+  --exclude='.pnpm-store' \
+  --exclude='.turbo' \
   --exclude='.venv' \
+  --exclude='venv' \
   --exclude='__pycache__' \
+  --exclude='*.pyc' \
   --exclude='.mypy_cache' \
   --exclude='.ruff_cache' \
   --exclude='.pytest_cache' \
@@ -34,6 +38,11 @@ rsync -a --delete \
   --exclude='dist' \
   --exclude='*.tsbuildinfo' \
   --exclude='uploads' \
+  --exclude='wa-session' \
+  --exclude='wa_logs' \
+  --exclude='*.log' \
+  --exclude='.DS_Store' \
+  --exclude='Thumbs.db' \
   "$SRC/" "$DST/"
 echo "   Sync selesai."
 

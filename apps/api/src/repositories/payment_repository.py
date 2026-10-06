@@ -117,6 +117,28 @@ class PaymentRepository:
         )
         return cast(PPDBPaymentTransaction | None, self.db.scalars(stmt).first())
 
+    def get_transaction_by_external_id(
+        self, external_id: str
+    ) -> PPDBPaymentTransaction | None:
+        stmt = select(PPDBPaymentTransaction).where(
+            PPDBPaymentTransaction.external_id == external_id
+        )
+        return cast(PPDBPaymentTransaction | None, self.db.scalars(stmt).first())
+
+    def count_paid_form_payments_in_wave(self, wave_id: str) -> int:
+        stmt = (
+            select(func.count(func.distinct(PPDBPaymentTransaction.applicant_id)))
+            .join(
+                PPDBApplicant,
+                PPDBApplicant.id == PPDBPaymentTransaction.applicant_id,
+            )
+            .where(
+                PPDBApplicant.wave_id == wave_id,
+                PPDBPaymentTransaction.status == "success",
+            )
+        )
+        return int(self.db.scalar(stmt) or 0)
+
     def update_transaction(self, transaction: PPDBPaymentTransaction):
         transaction.updated_at = datetime.now(WIB)
         self.db.add(transaction)
@@ -199,7 +221,7 @@ class PaymentRepository:
                 "nisn": app.nisn,
                 "email": app.email,
                 "phone": app.phone,
-                "registration_level": app.registration_level,
+                "registration_level": "SMK",
                 "registration_path": app.registration_path,
                 "discount_configured": app.id in has_discount_set,
                 "bills_generated": len(bills) > 0,

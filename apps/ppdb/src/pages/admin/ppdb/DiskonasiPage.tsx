@@ -167,7 +167,7 @@ export default function DiskonasiPage() {
             <TableHeader className="bg-primary/5">
               <TableRow>
                 <TableHead>Nama & Email</TableHead>
-                <TableHead>Jenjang/Jalur</TableHead>
+                <TableHead>Jalur Pendaftaran</TableHead>
                 <TableHead>Total Tagihan</TableHead>
                 <TableHead>Status Diskon</TableHead>
                 <TableHead>Status Tagihan</TableHead>
@@ -200,7 +200,7 @@ export default function DiskonasiPage() {
                       <div className="text-xs text-muted-foreground">{a.email}</div>
                     </TableCell>
                     <TableCell>
-                      {a.registration_level} / {a.registration_path}
+                      <span className="capitalize">{a.registration_path || '-'}</span>
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">{a.total_bills} tagihan</span>

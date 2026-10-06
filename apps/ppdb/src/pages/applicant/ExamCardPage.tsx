@@ -163,11 +163,6 @@ export default function ExamCardPage() {
                         <td className="py-2 px-2 text-slate-400">:</td>
                         <td className="py-2 font-medium text-slate-800 capitalize">{applicant.path}</td>
                       </tr>
-                      <tr>
-                        <td className="py-2 font-semibold text-slate-500">Jenjang</td>
-                        <td className="py-2 px-2 text-slate-400">:</td>
-                        <td className="py-2 font-bold text-slate-900 uppercase">{applicant.level}</td>
-                      </tr>
                     </tbody>
                   </table>
                 </div>

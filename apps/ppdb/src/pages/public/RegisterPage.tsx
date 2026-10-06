@@ -32,7 +32,7 @@ const DIAGNOSED_CONDITIONS_OPTIONS = [
 
 const ALLERGY_OPTIONS = [
   'Makanan',
-  'Obat',
+  'Obat-obatan',
   'Debu',
   'Lainnya',
 ]
@@ -678,43 +678,48 @@ export default function RegisterPage() {
                   </div>
 
                   {/* 1. Riwayat Penyakit Kronis */}
-                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div>
-                        <Label className="text-sm font-bold text-slate-800">1. Riwayat Penyakit Kronis *</Label>
-                        <p className="text-xs text-slate-500">Apakah calon peserta didik memiliki riwayat penyakit berat atau kronis?</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={healthForm.chronic_disease ? 'default' : 'outline'}
-                          className={cn(healthForm.chronic_disease && "bg-emerald-600 hover:bg-emerald-700")}
-                          onClick={() => setHealthForm(prev => ({ ...prev, chronic_disease: true }))}
-                        >
-                          Ya
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={!healthForm.chronic_disease ? 'default' : 'outline'}
-                          className={cn(!healthForm.chronic_disease && "bg-slate-700 hover:bg-slate-800")}
-                          onClick={() => setHealthForm(prev => ({ ...prev, chronic_disease: false, chronic_disease_description: '' }))}
-                        >
-                          Tidak
-                        </Button>
-                      </div>
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 sm:p-5 shadow-sm space-y-3">
+                    <Label className="text-sm font-bold text-slate-800 block">
+                      1. Apakah Anda memiliki riwayat penyakit kronis? *
+                    </Label>
+                    <div className="flex items-center gap-6 pt-1">
+                      <label className={cn(
+                        "flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        healthForm.chronic_disease ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      )}>
+                        <input
+                          type="radio"
+                          name="chronic_disease"
+                          checked={healthForm.chronic_disease}
+                          onChange={() => setHealthForm(prev => ({ ...prev, chronic_disease: true }))}
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                        />
+                        <span>Ya</span>
+                      </label>
+                      <label className={cn(
+                        "flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        !healthForm.chronic_disease ? "border-slate-400 bg-slate-100 text-slate-900 font-semibold" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      )}>
+                        <input
+                          type="radio"
+                          name="chronic_disease"
+                          checked={!healthForm.chronic_disease}
+                          onChange={() => setHealthForm(prev => ({ ...prev, chronic_disease: false, chronic_disease_description: '' }))}
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                        />
+                        <span>Tidak</span>
+                      </label>
                     </div>
                     {healthForm.chronic_disease && (
                       <div className="pt-2 border-t border-slate-100 space-y-1.5 animate-in fade-in duration-200">
                         <Label htmlFor="chronic_desc" className="text-xs font-semibold text-slate-700">
-                          Sebutkan nama penyakit kronis dan kondisinya *
+                          Jika Ya, sebutkan: *
                         </Label>
                         <Textarea
                           id="chronic_desc"
                           required
                           rows={2}
-                          placeholder="Contoh: Jantung bawaan sejak lahir, sudah operasi di tahun 2021..."
+                          placeholder="Sebutkan riwayat penyakit kronis yang dimiliki..."
                           value={healthForm.chronic_disease_description}
                           onChange={(e) => setHealthForm(prev => ({ ...prev, chronic_disease_description: e.target.value }))}
                         />
@@ -722,12 +727,14 @@ export default function RegisterPage() {
                     )}
                   </div>
 
-                  {/* 2. Diagnosis Tertentu */}
-                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
+                  {/* 2. Kondisi yang Pernah Didiagnosis */}
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 sm:p-5 shadow-sm space-y-3">
                     <div>
-                      <Label className="text-sm font-bold text-slate-800">2. Diagnosis Kondisi Tertentu</Label>
-                      <p className="text-xs text-slate-500">
-                        Centang kondisi berikut yang pernah atau sedang didiagnosis oleh tenaga medis (dapat memilih lebih dari satu, kosongkan jika tidak ada):
+                      <Label className="text-sm font-bold text-slate-800">
+                        2. Apakah Anda pernah didiagnosis memiliki salah satu kondisi berikut?
+                      </Label>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        (Bisa checklist — kosongkan jika tidak ada)
                       </p>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-1">
@@ -737,7 +744,7 @@ export default function RegisterPage() {
                           <label
                             key={cond}
                             className={cn(
-                              "flex items-center gap-2 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors",
+                              "flex items-center gap-2.5 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors",
                               checked ? "border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
                             )}
                           >
@@ -764,7 +771,7 @@ export default function RegisterPage() {
                     {healthForm.diagnosed_conditions.includes('Lainnya') && (
                       <div className="pt-2 border-t border-slate-100 space-y-1.5 animate-in fade-in duration-200">
                         <Label htmlFor="diagnosed_other" className="text-xs font-semibold text-slate-700">
-                          Sebutkan kondisi diagnosis lainnya *
+                          Lainnya: *
                         </Label>
                         <Input
                           id="diagnosed_other"
@@ -777,7 +784,7 @@ export default function RegisterPage() {
                     )}
                     <div className="pt-2 border-t border-slate-100 space-y-1.5">
                       <Label htmlFor="diagnosed_notes" className="text-xs font-semibold text-slate-700">
-                        Keterangan tambahan terkait diagnosis di atas (opsional)
+                        Keterangan tambahan (opsional)
                       </Label>
                       <Textarea
                         id="diagnosed_notes"
@@ -790,42 +797,50 @@ export default function RegisterPage() {
                   </div>
 
                   {/* 3. Alergi */}
-                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div>
-                        <Label className="text-sm font-bold text-slate-800">3. Riwayat Alergi *</Label>
-                        <p className="text-xs text-slate-500">Apakah calon peserta didik memiliki riwayat alergi?</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={healthForm.allergies ? 'default' : 'outline'}
-                          className={cn(healthForm.allergies && "bg-emerald-600 hover:bg-emerald-700")}
-                          onClick={() => setHealthForm(prev => ({ ...prev, allergies: true }))}
-                        >
-                          Ya
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={!healthForm.allergies ? 'default' : 'outline'}
-                          className={cn(!healthForm.allergies && "bg-slate-700 hover:bg-slate-800")}
-                          onClick={() => setHealthForm(prev => ({
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 sm:p-5 shadow-sm space-y-3">
+                    <div className="border-b border-slate-100 pb-1">
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Alergi</span>
+                      <Label className="text-sm font-bold text-slate-800 block mt-0.5">
+                        3. Apakah Anda memiliki alergi? *
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-6 pt-1">
+                      <label className={cn(
+                        "flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        healthForm.allergies ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      )}>
+                        <input
+                          type="radio"
+                          name="allergies"
+                          checked={healthForm.allergies}
+                          onChange={() => setHealthForm(prev => ({ ...prev, allergies: true }))}
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                        />
+                        <span>Ya</span>
+                      </label>
+                      <label className={cn(
+                        "flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        !healthForm.allergies ? "border-slate-400 bg-slate-100 text-slate-900 font-semibold" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      )}>
+                        <input
+                          type="radio"
+                          name="allergies"
+                          checked={!healthForm.allergies}
+                          onChange={() => setHealthForm(prev => ({
                             ...prev,
                             allergies: false,
                             allergy_types: [],
                             allergy_other: '',
                             allergy_description: ''
                           }))}
-                        >
-                          Tidak
-                        </Button>
-                      </div>
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                        />
+                        <span>Tidak</span>
+                      </label>
                     </div>
                     {healthForm.allergies && (
                       <div className="pt-2 border-t border-slate-100 space-y-3 animate-in fade-in duration-200">
-                        <Label className="text-xs font-semibold text-slate-700 block">Pilih jenis alergi (bisa lebih dari satu):</Label>
+                        <Label className="text-xs font-semibold text-slate-700 block">Jika Ya:</Label>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           {ALLERGY_OPTIONS.map((al) => {
                             const checked = healthForm.allergy_types.includes(al)
@@ -833,7 +848,7 @@ export default function RegisterPage() {
                               <label
                                 key={al}
                                 className={cn(
-                                  "flex items-center gap-2 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors",
+                                  "flex items-center gap-2.5 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors",
                                   checked ? "border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
                                 )}
                               >
@@ -860,7 +875,7 @@ export default function RegisterPage() {
                         {healthForm.allergy_types.includes('Lainnya') && (
                           <div className="space-y-1.5">
                             <Label htmlFor="allergy_other" className="text-xs font-semibold text-slate-700">
-                              Sebutkan jenis alergi lainnya *
+                              Lainnya: *
                             </Label>
                             <Input
                               id="allergy_other"
@@ -873,12 +888,12 @@ export default function RegisterPage() {
                         )}
                         <div className="space-y-1.5">
                           <Label htmlFor="allergy_desc" className="text-xs font-semibold text-slate-700">
-                            Keterangan gejala atau penanganan alergi (opsional)
+                            Keterangan:
                           </Label>
                           <Textarea
                             id="allergy_desc"
                             rows={2}
-                            placeholder="Contoh: Alergi makanan laut menyebabkan gatal/biduran..."
+                            placeholder="Contoh: Gejala atau obat penanganan jika alergi kambuh..."
                             value={healthForm.allergy_description}
                             onChange={(e) => setHealthForm(prev => ({ ...prev, allergy_description: e.target.value }))}
                           />
@@ -888,45 +903,51 @@ export default function RegisterPage() {
                   </div>
 
                   {/* 4. Pengobatan Rutin */}
-                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div>
-                        <Label className="text-sm font-bold text-slate-800">4. Pengobatan Rutin *</Label>
-                        <p className="text-xs text-slate-500">
-                          Apakah calon peserta didik sedang menjalani pengobatan rutin atau mengonsumsi obat tertentu secara berkala?
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={healthForm.regular_medication ? 'default' : 'outline'}
-                          className={cn(healthForm.regular_medication && "bg-emerald-600 hover:bg-emerald-700")}
-                          onClick={() => setHealthForm(prev => ({ ...prev, regular_medication: true }))}
-                        >
-                          Ya
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={!healthForm.regular_medication ? 'default' : 'outline'}
-                          className={cn(!healthForm.regular_medication && "bg-slate-700 hover:bg-slate-800")}
-                          onClick={() => setHealthForm(prev => ({ ...prev, regular_medication: false, regular_medication_description: '' }))}
-                        >
-                          Tidak
-                        </Button>
-                      </div>
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 sm:p-5 shadow-sm space-y-3">
+                    <div className="border-b border-slate-100 pb-1">
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Pengobatan Rutin</span>
+                      <Label className="text-sm font-bold text-slate-800 block mt-0.5">
+                        4. Apakah Anda sedang menjalani pengobatan rutin atau mengonsumsi obat tertentu secara berkala? *
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-6 pt-1">
+                      <label className={cn(
+                        "flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        healthForm.regular_medication ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      )}>
+                        <input
+                          type="radio"
+                          name="regular_medication"
+                          checked={healthForm.regular_medication}
+                          onChange={() => setHealthForm(prev => ({ ...prev, regular_medication: true }))}
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                        />
+                        <span>Ya</span>
+                      </label>
+                      <label className={cn(
+                        "flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        !healthForm.regular_medication ? "border-slate-400 bg-slate-100 text-slate-900 font-semibold" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      )}>
+                        <input
+                          type="radio"
+                          name="regular_medication"
+                          checked={!healthForm.regular_medication}
+                          onChange={() => setHealthForm(prev => ({ ...prev, regular_medication: false, regular_medication_description: '' }))}
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                        />
+                        <span>Tidak</span>
+                      </label>
                     </div>
                     {healthForm.regular_medication && (
                       <div className="pt-2 border-t border-slate-100 space-y-1.5 animate-in fade-in duration-200">
                         <Label htmlFor="regular_med_desc" className="text-xs font-semibold text-slate-700">
-                          Sebutkan nama obat, dosis, atau frekuensi pengobatan *
+                          Jika Ya: *
                         </Label>
                         <Textarea
                           id="regular_med_desc"
                           required
                           rows={2}
-                          placeholder="Sebutkan obat rutin yang sedang dikonsumsi..."
+                          placeholder="Sebutkan nama obat, dosis, atau frekuensi konsumsi..."
                           value={healthForm.regular_medication_description}
                           onChange={(e) => setHealthForm(prev => ({ ...prev, regular_medication_description: e.target.value }))}
                         />
@@ -935,45 +956,51 @@ export default function RegisterPage() {
                   </div>
 
                   {/* 5. Keterbatasan Fisik */}
-                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div>
-                        <Label className="text-sm font-bold text-slate-800">5. Keterbatasan Fisik *</Label>
-                        <p className="text-xs text-slate-500">
-                          Apakah calon peserta didik memiliki kondisi kesehatan atau keterbatasan fisik yang perlu diketahui sekolah?
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={healthForm.physical_limitation ? 'default' : 'outline'}
-                          className={cn(healthForm.physical_limitation && "bg-emerald-600 hover:bg-emerald-700")}
-                          onClick={() => setHealthForm(prev => ({ ...prev, physical_limitation: true }))}
-                        >
-                          Ya
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={!healthForm.physical_limitation ? 'default' : 'outline'}
-                          className={cn(!healthForm.physical_limitation && "bg-slate-700 hover:bg-slate-800")}
-                          onClick={() => setHealthForm(prev => ({ ...prev, physical_limitation: false, physical_limitation_description: '' }))}
-                        >
-                          Tidak
-                        </Button>
-                      </div>
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 sm:p-5 shadow-sm space-y-3">
+                    <div className="border-b border-slate-100 pb-1">
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Keterbatasan Fisik</span>
+                      <Label className="text-sm font-bold text-slate-800 block mt-0.5">
+                        5. Apakah Anda memiliki kondisi kesehatan atau keterbatasan fisik yang perlu diketahui sekolah? *
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-6 pt-1">
+                      <label className={cn(
+                        "flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        healthForm.physical_limitation ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      )}>
+                        <input
+                          type="radio"
+                          name="physical_limitation"
+                          checked={healthForm.physical_limitation}
+                          onChange={() => setHealthForm(prev => ({ ...prev, physical_limitation: true }))}
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                        />
+                        <span>Ya</span>
+                      </label>
+                      <label className={cn(
+                        "flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        !healthForm.physical_limitation ? "border-slate-400 bg-slate-100 text-slate-900 font-semibold" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      )}>
+                        <input
+                          type="radio"
+                          name="physical_limitation"
+                          checked={!healthForm.physical_limitation}
+                          onChange={() => setHealthForm(prev => ({ ...prev, physical_limitation: false, physical_limitation_description: '' }))}
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                        />
+                        <span>Tidak</span>
+                      </label>
                     </div>
                     {healthForm.physical_limitation && (
                       <div className="pt-2 border-t border-slate-100 space-y-1.5 animate-in fade-in duration-200">
                         <Label htmlFor="physical_lim_desc" className="text-xs font-semibold text-slate-700">
-                          Jelaskan kondisi atau keterbatasan fisik tersebut *
+                          Jika Ya: *
                         </Label>
                         <Textarea
                           id="physical_lim_desc"
                           required
                           rows={2}
-                          placeholder="Jelaskan keterbatasan fisik yang perlu diketahui sekolah..."
+                          placeholder="Jelaskan kondisi atau keterbatasan fisik yang perlu diketahui sekolah..."
                           value={healthForm.physical_limitation_description}
                           onChange={(e) => setHealthForm(prev => ({ ...prev, physical_limitation_description: e.target.value }))}
                         />
@@ -981,46 +1008,52 @@ export default function RegisterPage() {
                     )}
                   </div>
 
-                  {/* 6. Rawat Inap / Operasi */}
-                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div>
-                        <Label className="text-sm font-bold text-slate-800">6. Riwayat Rawat Inap / Operasi *</Label>
-                        <p className="text-xs text-slate-500">
-                          Apakah calon peserta didik pernah menjalani rawat inap atau operasi dalam 2 tahun terakhir?
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={healthForm.hospitalization_history ? 'default' : 'outline'}
-                          className={cn(healthForm.hospitalization_history && "bg-emerald-600 hover:bg-emerald-700")}
-                          onClick={() => setHealthForm(prev => ({ ...prev, hospitalization_history: true }))}
-                        >
-                          Ya
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={!healthForm.hospitalization_history ? 'default' : 'outline'}
-                          className={cn(!healthForm.hospitalization_history && "bg-slate-700 hover:bg-slate-800")}
-                          onClick={() => setHealthForm(prev => ({ ...prev, hospitalization_history: false, hospitalization_history_description: '' }))}
-                        >
-                          Tidak
-                        </Button>
-                      </div>
+                  {/* 6. Riwayat Rawat Inap */}
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 sm:p-5 shadow-sm space-y-3">
+                    <div className="border-b border-slate-100 pb-1">
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Riwayat Rawat Inap</span>
+                      <Label className="text-sm font-bold text-slate-800 block mt-0.5">
+                        6. Apakah Anda pernah menjalani rawat inap atau operasi dalam 2 tahun terakhir? *
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-6 pt-1">
+                      <label className={cn(
+                        "flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        healthForm.hospitalization_history ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      )}>
+                        <input
+                          type="radio"
+                          name="hospitalization_history"
+                          checked={healthForm.hospitalization_history}
+                          onChange={() => setHealthForm(prev => ({ ...prev, hospitalization_history: true }))}
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                        />
+                        <span>Ya</span>
+                      </label>
+                      <label className={cn(
+                        "flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        !healthForm.hospitalization_history ? "border-slate-400 bg-slate-100 text-slate-900 font-semibold" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      )}>
+                        <input
+                          type="radio"
+                          name="hospitalization_history"
+                          checked={!healthForm.hospitalization_history}
+                          onChange={() => setHealthForm(prev => ({ ...prev, hospitalization_history: false, hospitalization_history_description: '' }))}
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                        />
+                        <span>Tidak</span>
+                      </label>
                     </div>
                     {healthForm.hospitalization_history && (
                       <div className="pt-2 border-t border-slate-100 space-y-1.5 animate-in fade-in duration-200">
                         <Label htmlFor="hosp_desc" className="text-xs font-semibold text-slate-700">
-                          Jelaskan riwayat rawat inap atau operasi dalam 2 tahun terakhir *
+                          Jika Ya: *
                         </Label>
                         <Textarea
                           id="hosp_desc"
                           required
                           rows={2}
-                          placeholder="Contoh: Operasi usus buntu bulan Januari 2023..."
+                          placeholder="Jelaskan alasan rawat inap atau operasi dalam 2 tahun terakhir..."
                           value={healthForm.hospitalization_history_description}
                           onChange={(e) => setHealthForm(prev => ({ ...prev, hospitalization_history_description: e.target.value }))}
                         />
@@ -1029,39 +1062,45 @@ export default function RegisterPage() {
                   </div>
 
                   {/* 7. Kebutuhan Khusus */}
-                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div>
-                        <Label className="text-sm font-bold text-slate-800">7. Kebutuhan Khusus Saat Belajar *</Label>
-                        <p className="text-xs text-slate-500">
-                          Apakah calon peserta didik memiliki kebutuhan khusus terkait kesehatan selama mengikuti kegiatan belajar?
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={healthForm.special_needs ? 'default' : 'outline'}
-                          className={cn(healthForm.special_needs && "bg-emerald-600 hover:bg-emerald-700")}
-                          onClick={() => setHealthForm(prev => ({ ...prev, special_needs: true }))}
-                        >
-                          Ya
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={!healthForm.special_needs ? 'default' : 'outline'}
-                          className={cn(!healthForm.special_needs && "bg-slate-700 hover:bg-slate-800")}
-                          onClick={() => setHealthForm(prev => ({ ...prev, special_needs: false, special_needs_description: '' }))}
-                        >
-                          Tidak
-                        </Button>
-                      </div>
+                  <div className="rounded-xl border border-slate-200 bg-white/70 p-4 sm:p-5 shadow-sm space-y-3">
+                    <div className="border-b border-slate-100 pb-1">
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Kebutuhan Khusus</span>
+                      <Label className="text-sm font-bold text-slate-800 block mt-0.5">
+                        7. Apakah Anda memiliki kebutuhan khusus terkait kesehatan selama mengikuti kegiatan belajar? *
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-6 pt-1">
+                      <label className={cn(
+                        "flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        healthForm.special_needs ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      )}>
+                        <input
+                          type="radio"
+                          name="special_needs"
+                          checked={healthForm.special_needs}
+                          onChange={() => setHealthForm(prev => ({ ...prev, special_needs: true }))}
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                        />
+                        <span>Ya</span>
+                      </label>
+                      <label className={cn(
+                        "flex items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        !healthForm.special_needs ? "border-slate-400 bg-slate-100 text-slate-900 font-semibold" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      )}>
+                        <input
+                          type="radio"
+                          name="special_needs"
+                          checked={!healthForm.special_needs}
+                          onChange={() => setHealthForm(prev => ({ ...prev, special_needs: false, special_needs_description: '' }))}
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                        />
+                        <span>Tidak</span>
+                      </label>
                     </div>
                     {healthForm.special_needs && (
                       <div className="pt-2 border-t border-slate-100 space-y-1.5 animate-in fade-in duration-200">
                         <Label htmlFor="special_needs_desc" className="text-xs font-semibold text-slate-700">
-                          Jelaskan kebutuhan khusus terkait kesehatan tersebut *
+                          Jika Ya: *
                         </Label>
                         <Textarea
                           id="special_needs_desc"
@@ -1076,21 +1115,21 @@ export default function RegisterPage() {
                   </div>
 
                   {/* 8, 9, 10. Kontak Darurat */}
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-5 shadow-sm space-y-4">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-4 sm:p-5 shadow-sm space-y-4">
                     <div className="flex items-center gap-2 border-b border-emerald-200 pb-2">
                       <Phone className="h-4 w-4 text-emerald-700" />
-                      <h4 className="font-bold text-sm text-slate-800">Kontak Darurat Medis (Pertanyaan 8 - 10)</h4>
+                      <h4 className="font-bold text-sm text-slate-800">Kontak Darurat</h4>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
                         <Label htmlFor="emg_name" className="text-xs font-semibold text-slate-700">
-                          8. Nama Kontak Darurat *
+                          8. Nama kontak darurat *
                         </Label>
                         <Input
                           id="emg_name"
                           required
                           maxLength={150}
-                          placeholder="Nama lengkap kontak..."
+                          placeholder="Nama lengkap kontak darurat..."
                           value={healthForm.emergency_contact_name}
                           onChange={(e) => setHealthForm(prev => ({ ...prev, emergency_contact_name: e.target.value }))}
                         />
@@ -1098,13 +1137,13 @@ export default function RegisterPage() {
 
                       <div className="space-y-1.5">
                         <Label htmlFor="emg_rel" className="text-xs font-semibold text-slate-700">
-                          9. Hubungan dengan Calon Siswa *
+                          9. Hubungan dengan calon peserta didik *
                         </Label>
                         <Input
                           id="emg_rel"
                           required
                           maxLength={100}
-                          placeholder="Contoh: Ayah / Ibu / Wali / Paman..."
+                          placeholder="Contoh: Orang Tua (Ayah/Ibu), Wali, Paman..."
                           value={healthForm.emergency_contact_relation}
                           onChange={(e) => setHealthForm(prev => ({ ...prev, emergency_contact_relation: e.target.value }))}
                         />
@@ -1112,7 +1151,7 @@ export default function RegisterPage() {
 
                       <div className="space-y-1.5">
                         <Label htmlFor="emg_phone" className="text-xs font-semibold text-slate-700">
-                          10. No. Telepon Darurat *
+                          10. Nomor telepon darurat *
                         </Label>
                         <Input
                           id="emg_phone"
@@ -1120,7 +1159,7 @@ export default function RegisterPage() {
                           inputMode="numeric"
                           minLength={9}
                           maxLength={16}
-                          placeholder="08xxxxxxxxxx (9-16 digit)"
+                          placeholder="08xxxxxxxxxx (9-16 digit angka)"
                           value={healthForm.emergency_contact_phone}
                           onChange={(e) => setHealthForm(prev => ({ ...prev, emergency_contact_phone: e.target.value.replace(/\D/g, '') }))}
                         />
@@ -1128,13 +1167,16 @@ export default function RegisterPage() {
                     </div>
                   </div>
 
-                  {/* Pernyataan Wajib */}
+                  {/* Pernyataan */}
                   <div className={cn(
                     "rounded-xl border p-4 sm:p-5 transition-all",
                     healthForm.health_declaration_confirmed
                       ? "border-emerald-500 bg-emerald-50/50 shadow-sm"
                       : "border-slate-300 bg-slate-50"
                   )}>
+                    <div className="mb-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">Pernyataan</span>
+                    </div>
                     <label className="flex items-start gap-3 cursor-pointer select-none">
                       <Checkbox
                         id="health_declaration"
@@ -1143,10 +1185,7 @@ export default function RegisterPage() {
                         className="mt-1"
                       />
                       <div className="space-y-1">
-                        <p className="text-xs sm:text-sm font-semibold text-slate-900 leading-snug">
-                          Pernyataan Kebenaran Data Kesehatan *
-                        </p>
-                        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed italic">
+                        <p className="text-xs sm:text-sm text-slate-700 leading-relaxed italic">
                           "Saya menyatakan bahwa informasi kesehatan yang saya berikan adalah benar dan dapat dipertanggungjawabkan. Apabila terdapat perubahan kondisi kesehatan, saya bersedia memberitahukan pihak sekolah."
                         </p>
                       </div>

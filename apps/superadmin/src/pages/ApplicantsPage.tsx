@@ -38,6 +38,7 @@ import ApplicantForm, {
   APPLICANT_STATUSES,
   PAYMENT_STATUSES,
 } from '../components/applicants/ApplicantForm'
+import { HealthIdentificationViewer } from '../components/applicants/HealthIdentificationViewer'
 
 const ALL = '__all__'
 const perPage = 20
@@ -363,7 +364,7 @@ export default function ApplicantsPage() {
                 <TableHead>Nama Pendaftar</TableHead>
                 <TableHead>Email / No. WA</TableHead>
                 <TableHead>Periode / Gelombang</TableHead>
-                <TableHead>Jalur / Jenjang</TableHead>
+                <TableHead>Jalur Pendaftaran</TableHead>
                 <TableHead>Pembayaran</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Aksi</TableHead>
@@ -415,9 +416,8 @@ export default function ApplicantsPage() {
                           {scope.muted}
                         </span>
                       </TableCell>
-                      <TableCell className="text-sm capitalize">
-                        {a.registration_path || '-'} <br />
-                        <span className="font-medium">{a.registration_level}</span>
+                      <TableCell className="text-sm capitalize font-medium">
+                        {a.registration_path || '-'}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -595,10 +595,6 @@ export default function ApplicantsPage() {
                   {detail.registration_path || '-'}
                 </p>
               </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Jenjang Tujuan</p>
-                <p className="font-medium">{detail.registration_level || '-'}</p>
-              </div>
 
               <div>
                 <p className="text-muted-foreground text-xs">Tempat, Tgl Lahir</p>
@@ -668,12 +664,10 @@ export default function ApplicantsPage() {
                   <p className="font-medium">{detail.address || '-'}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-muted-foreground text-xs">
-                    Riwayat Penyakit / Alergi
+                  <p className="text-muted-foreground text-xs mb-1.5 font-semibold">
+                    Profil Identifikasi Kesehatan (Pengganti Medcheck)
                   </p>
-                  <p className="font-medium whitespace-pre-line">
-                    {detail.disease_history || '-'}
-                  </p>
+                  <HealthIdentificationViewer data={detail.disease_history} />
                 </div>
               </div>
             </div>

@@ -73,8 +73,7 @@ export default function DocumentSettingsPage() {
     mutationFn: (file: File) => {
       const form = new FormData()
       form.append('file', file)
-      return apiFetch<{ skd_background_url: string
-  whatsapp_group_link?: string }>('/ppdb/document-settings/skd-background', {
+      return apiFetch<{ skd_background_url: string; whatsapp_group_link?: string }>('/ppdb/document-settings/skd-background', {
         method: 'POST', body: form,
       })
     },

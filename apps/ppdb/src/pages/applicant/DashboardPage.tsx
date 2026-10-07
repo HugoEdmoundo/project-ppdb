@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from "@/components/ui"
 import { ConfirmDialog } from "@/components/ui"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui"
 import {
   CheckCircle, ChevronDown, ChevronUp, Lock, Wallet, FileUp, ClipboardCheck, Trophy, AlertCircle,
   type LucideIcon,
@@ -13,7 +12,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/Toast'
 import TopBar from '@/components/shared/TopBar'
 import ApplicantProfileModal from '@/components/shared/ApplicantProfileModal'
-import SignaturePad from './components/SignaturePad'
 import SupportFab from './components/SupportFab'
 import PaymentStep from './components/PaymentStep'
 import DocumentUploadStep from './components/DocumentUploadStep'
@@ -54,7 +52,6 @@ export default function ApplicantDashboardPage() {
   const [prevStatus, setPrevStatus] = useState<string | null>(null)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
-  const [showSignModal, setShowSignModal] = useState(false)
   const [showChangePath, setShowChangePath] = useState(false)
 
   const transactionQuery = useQuery({
@@ -74,7 +71,7 @@ export default function ApplicantDashboardPage() {
   const status = applicant?.status
   const loading = transactionQuery.isLoading || documentsQuery.isLoading
 
-  const inSelection = ['selection', 'passed', 'failed'].includes(status)
+  const inSelection = ['document_approved', 'selection', 'passed', 'failed'].includes(status)
   const inResult = ['passed', 'failed'].includes(status)
 
   const selectionQuery = useQuery({
@@ -86,18 +83,17 @@ export default function ApplicantDashboardPage() {
       ])
       return {
         result: resultRes || null,
-        session: sessionRes.session || null,
-        availableSessions: sessionRes.available_sessions || [],
+        sessionData: sessionRes || null,
       }
     },
     enabled: inSelection,
   })
 
-  const mouQuery = useQuery({
-    queryKey: ['my-mou'],
+  const loaQuery = useQuery({
+    queryKey: ['my-loa'],
     queryFn: async () => {
-      const res = await apiFetch<any>('/ppdb/applicants/me/mou').catch(() => ({ mou: null }))
-      return res?.mou || null
+      const res = await apiFetch<any>('/ppdb/applicants/me/loa').catch(() => ({ loa: null }))
+      return res?.loa || null
     },
     enabled: inResult,
   })
@@ -128,7 +124,7 @@ export default function ApplicantDashboardPage() {
     queryClient.invalidateQueries({ queryKey: ['my-transaction'] })
     queryClient.invalidateQueries({ queryKey: ['my-documents'] })
     queryClient.invalidateQueries({ queryKey: ['my-selection'] })
-    queryClient.invalidateQueries({ queryKey: ['my-mou'] })
+    queryClient.invalidateQueries({ queryKey: ['my-loa'] })
     queryClient.invalidateQueries({ queryKey: ['my-stage2-bills'] })
   }
 
@@ -154,18 +150,6 @@ export default function ApplicantDashboardPage() {
     onSettled: () => setShowSubmitConfirm(false),
   })
 
-  const signMouMutation = useMutation({
-    mutationFn: (signatureData: string) => apiFetch('/ppdb/applicants/me/mou/sign', {
-      method: 'POST',
-      body: JSON.stringify({ signature_data: signatureData }),
-    }),
-    onSuccess: () => {
-      toast('success', 'MOU berhasil ditandatangani!')
-      setShowSignModal(false)
-      refreshAll()
-    },
-    onError: (e: any) => toast('error', e.message || 'Gagal menandatangani MOU'),
-  })
 
   const uploadProofMutation = useMutation({
     mutationFn: ({ billId, file }: { billId: string, file: File }) => {
@@ -190,7 +174,6 @@ export default function ApplicantDashboardPage() {
     submitDocsMutation.mutate()
   }
 
-  const handleSignMou = (signatureData: string) => signMouMutation.mutate(signatureData)
 
   const handleBookSession = (sessionId: string) => {
     if (!window.confirm('Anda yakin ingin memilih jadwal ini?')) return
@@ -242,12 +225,11 @@ export default function ApplicantDashboardPage() {
       title: 'Seleksi & Ujian',
       description: 'Mengikuti tahapan tes tertulis atau wawancara.',
       status: ['passed', 'failed'].includes(applicant?.status) ? 'completed' :
-              applicant?.status === 'selection' ? 'active' : 'locked',
+              ['document_approved', 'selection'].includes(applicant?.status) ? 'active' : 'locked',
       content: (
         <SelectionStep
           applicant={applicant}
-          selectionSession={selectionQuery.data?.session ?? null}
-          availableSessions={selectionQuery.data?.availableSessions ?? []}
+          sessionData={selectionQuery.data?.sessionData ?? null}
           selectionResult={selectionQuery.data?.result ?? null}
           booking={bookMutation.isPending}
           onBookSession={handleBookSession}
@@ -263,9 +245,8 @@ export default function ApplicantDashboardPage() {
         <ResultStep
           applicant={applicant}
           selectionResult={selectionQuery.data?.result ?? null}
-          mou={mouQuery.data}
+          loa={loaQuery.data}
           stage2Bills={stage2Query.data || []}
-          onSignMou={() => setShowSignModal(true)}
           onUploadProof={handleUploadProof}
         />
       )
@@ -348,8 +329,8 @@ export default function ApplicantDashboardPage() {
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/25 capitalize">
                   Jalur: {applicant?.registration_path || '-'}
                 </span>
-                {['pending_payment', 'document_uploaded_pending', 'document_rejected'].includes(status) && (
-                  <button 
+                {documents.length === 0 && !['passed', 'failed'].includes(status) && (
+                  <button
                     onClick={() => setShowChangePath(true)}
                     className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700/50 hover:bg-emerald-700/80 px-3 py-1 text-xs font-semibold text-white ring-1 ring-emerald-400/50 transition-colors cursor-pointer"
                   >
@@ -527,15 +508,7 @@ export default function ApplicantDashboardPage() {
           confirmLabel="Ya, Kirim"
         />
 
-        {/* MOU Sign Modal */}
-        <Dialog open={showSignModal} onOpenChange={setShowSignModal}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Tanda Tangan Digital MOU</DialogTitle>
-            </DialogHeader>
-            <SignaturePad onSign={handleSignMou} signing={signMouMutation.isPending} />
-          </DialogContent>
-        </Dialog>
+
       </div>
 
       {/* Profile Modal */}
@@ -557,10 +530,10 @@ export default function ApplicantDashboardPage() {
       )}
 
       {showChangePath && (
-        <ChangePathModal 
-          open={showChangePath} 
-          onOpenChange={setShowChangePath} 
-          currentPath={applicant?.registration_path || ''} 
+        <ChangePathModal
+          open={showChangePath}
+          onOpenChange={setShowChangePath}
+          currentPath={applicant?.registration_path || ''}
         />
       )}
     </div>

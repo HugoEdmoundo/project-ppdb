@@ -40,9 +40,11 @@ class PPDBWave(Base):
     )
     wave_number: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    # Scope gelombang: nilai dipisah koma, contoh "reguler,pindahan" / "SMP,SMK"
-    allowed_paths: Mapped[str] = mapped_column(String(50), default="reguler,pindahan")
-    allowed_levels: Mapped[str] = mapped_column(String(100), default="SMP,SMK")
+    # Scope gelombang: nilai dipisah koma
+    allowed_paths: Mapped[str] = mapped_column(
+        String(50), default="reguler,prestasi,tahfidz,rapot"
+    )
+    allowed_levels: Mapped[str] = mapped_column(String(100), default="SMK")
     start_date: Mapped[date | None] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date)
     registration_start_date: Mapped[date | None] = mapped_column(Date)
@@ -74,22 +76,31 @@ class PPDBApplicant(Base):
     email: Mapped[str] = mapped_column(String(100), nullable=False)
     phone: Mapped[str] = mapped_column(String(20), nullable=False)
     registration_path: Mapped[str] = mapped_column(String(50), nullable=False)
-    registration_level: Mapped[str] = mapped_column(String(50), nullable=False)
     birth_place: Mapped[str | None] = mapped_column(String(100))
     birth_date: Mapped[date | None] = mapped_column(Date)
     gender: Mapped[str | None] = mapped_column(String(10))
     nisn: Mapped[str | None] = mapped_column(String(50))
     nik: Mapped[str | None] = mapped_column(String(50))
     parent_name: Mapped[str | None] = mapped_column(String(255))
+    father_name: Mapped[str | None] = mapped_column(String(150))
+    father_job: Mapped[str | None] = mapped_column(String(100))
+    father_phone: Mapped[str | None] = mapped_column(String(20))
+    mother_name: Mapped[str | None] = mapped_column(String(150))
+    mother_job: Mapped[str | None] = mapped_column(String(100))
+    mother_phone: Mapped[str | None] = mapped_column(String(20))
+    guardian_name: Mapped[str | None] = mapped_column(String(150))
+    guardian_job: Mapped[str | None] = mapped_column(String(100))
+    parent_phone: Mapped[str | None] = mapped_column(String(20))
+    parent_income: Mapped[str | None] = mapped_column(String(100))
+    parent_email: Mapped[str | None] = mapped_column(String(100))
     previous_school: Mapped[str | None] = mapped_column(String(255))
-    major_choice: Mapped[str | None] = mapped_column(String(100))
     province: Mapped[str | None] = mapped_column(String(100))
     city: Mapped[str | None] = mapped_column(String(100))
     district: Mapped[str | None] = mapped_column(String(100))
     village: Mapped[str | None] = mapped_column(String(100))
     postal_code: Mapped[str | None] = mapped_column(String(20))
     address: Mapped[str | None] = mapped_column(Text)
-    disease_history: Mapped[str | None] = mapped_column(String(255))
+    disease_history: Mapped[str | None] = mapped_column(Text)
     # status alur pendaftaran: pending_payment | paid | document_uploaded |
     #   document_approved | document_rejected | selection | passed | failed | expired
     status: Mapped[str] = mapped_column(String(50), default="pending_payment")
@@ -427,6 +438,10 @@ class PPDBTIUAttempt(Base):
     __tablename__ = "ppdb_tiu_attempts"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    applicant_id: Mapped[str] = mapped_column(String(64), ForeignKey("ppdb_applicants.id", ondelete="CASCADE"))
-    token: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
+    applicant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("ppdb_applicants.id", ondelete="CASCADE")
+    )
+    token: Mapped[str] = mapped_column(
+        String(100), unique=True, index=True, nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

@@ -14,7 +14,7 @@ from src.modules.selection.schemas import SessionCreate
 def _wave_payload(**overrides):
     return {
         "name": "Gelombang 1",
-        "allowed_paths": "reguler,pindahan",
+        "allowed_paths": "reguler,rapot",
         "allowed_levels": "SMP,SMK",
         "registration_start_date": date(2026, 1, 1),
         "registration_end_date": date(2026, 1, 31),

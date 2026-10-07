@@ -21,7 +21,7 @@ Aplikasi ini melayani para pendaftar (calon siswa/orang tua) untuk:
 
 ## 🛠️ Stack Teknologi
 
-- **Framework:** React 18, Vite
+- **Framework:** React 19, Vite 8, React Router v7
 - **Bahasa:** TypeScript
 - **Styling:** Tailwind CSS
 - **State/Data Fetching:** React Query / SWR

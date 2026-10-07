@@ -17,16 +17,18 @@ export default function ChangePathModal({ open, onOpenChange, currentPath }: Cha
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { isActive, allowedPaths, isLoading } = useActiveWave()
-  
+
   const [selectedPath, setSelectedPath] = useState<string>('')
 
   const paths = [
     { id: 'reguler', name: 'Reguler' },
-    { id: 'pindahan', name: 'Pindahan' }
+    { id: 'prestasi', name: 'Prestasi' },
+    { id: 'tahfidz', name: 'Tahfidz' },
+    { id: 'rapot', name: 'Rapot' }
   ]
 
-  const availablePaths = isActive 
-    ? paths.filter(p => !allowedPaths || allowedPaths.includes(p.id)) 
+  const availablePaths = isActive
+    ? paths.filter(p => !allowedPaths || allowedPaths.length === 0 || allowedPaths.includes(p.id))
     : []
 
   const changeMutation = useMutation({
@@ -62,7 +64,7 @@ export default function ChangePathModal({ open, onOpenChange, currentPath }: Cha
               {currentPath || '-'}
             </div>
           </div>
-          
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Jalur Baru</label>
             <Select value={selectedPath} onValueChange={setSelectedPath} disabled={isLoading || availablePaths.length === 0}>
@@ -85,8 +87,8 @@ export default function ChangePathModal({ open, onOpenChange, currentPath }: Cha
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Batal</Button>
-          <Button 
-            disabled={!selectedPath || changeMutation.isPending} 
+          <Button
+            disabled={!selectedPath || changeMutation.isPending}
             onClick={() => changeMutation.mutate(selectedPath)}
             className="bg-emerald-primary hover:bg-emerald-dark"
           >

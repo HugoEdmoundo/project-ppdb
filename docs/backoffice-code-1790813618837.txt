@@ -22,6 +22,7 @@
 Gelombang siap jika periode induk aktif, tanggal pendaftaran berlaku, dan kuota pembayaran formulir belum penuh. Template LoA bukan syarat pendaftaran dibuka.
 
 ATURAN GELOMBANG & KUOTA
+- Konfigurasi gelombang TIDAK memuat jenjang pendidikan; scope gelombang hanya berisi jalur pendaftaran yang dipilih pendaftar.
 - Jumlah gelombang per periode fleksibel; maksimal satu gelombang aktif per periode.
 - Pendaftar otomatis masuk ke gelombang aktif di periode aktif, bukan memilih gelombang sendiri.
 - Kuota dan diskon untuk X pendaftar pertama dihitung berdasarkan pembayaran formulir yang berhasil.

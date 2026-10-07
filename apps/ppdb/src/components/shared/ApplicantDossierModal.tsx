@@ -1,3 +1,4 @@
+import { HealthIdentificationViewer } from './HealthIdentificationViewer'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch, apiFetchBlob } from '@/api/client'
@@ -207,9 +208,9 @@ export default function ApplicantDossierModal({
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground block">Jalur & Jenjang</span>
+                  <span className="text-muted-foreground block">Jalur Pendaftaran</span>
                   <span className="font-medium text-slate-700 capitalize">
-                    {applicant.registration_path} ({applicant.registration_level?.toUpperCase()})
+                    {applicant.registration_path || '-'}
                   </span>
                 </div>
                 <div>
@@ -329,6 +330,10 @@ export default function ApplicantDossierModal({
                         <span className="text-xs text-muted-foreground block">Asal Sekolah</span>
                         <span className="font-medium text-slate-800">{applicant.previous_school || '-'}</span>
                       </div>
+                      <div className="sm:col-span-2 md:col-span-3">
+                        <span className="text-xs text-muted-foreground block mb-1">Riwayat Kesehatan</span>
+                        <HealthIdentificationViewer data={applicant.disease_history} />
+                      </div>
                     </div>
                   </div>
 
@@ -366,11 +371,11 @@ export default function ApplicantDossierModal({
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                       <div>
-                        <span className="text-xs text-muted-foreground block">Nama Ayah / Wali</span>
+                        <span className="text-xs text-muted-foreground block">Nama Ayah</span>
                         <span className="font-medium text-slate-800">{applicant.father_name || applicant.parent_name || '-'}</span>
                       </div>
                       <div>
-                        <span className="text-xs text-muted-foreground block">No. WhatsApp Ayah / Wali</span>
+                        <span className="text-xs text-muted-foreground block">No. WhatsApp Ayah</span>
                         <span className="font-medium text-slate-800">{applicant.father_phone || applicant.parent_phone || '-'}</span>
                       </div>
                       <div>
@@ -388,6 +393,22 @@ export default function ApplicantDossierModal({
                       <div>
                         <span className="text-xs text-muted-foreground block">Pekerjaan Ibu</span>
                         <span className="font-medium text-slate-800">{applicant.mother_job || '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Nama Wali</span>
+                        <span className="font-medium text-slate-800">{applicant.guardian_name || '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Pekerjaan Wali</span>
+                        <span className="font-medium text-slate-800">{applicant.guardian_job || '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Penghasilan Per Bulan</span>
+                        <span className="font-medium text-slate-800">{applicant.parent_income || '-'}</span>
+                      </div>
+                      <div className="sm:col-span-2 md:col-span-3">
+                        <span className="text-xs text-muted-foreground block">Email Orang Tua/Wali</span>
+                        <span className="font-medium text-slate-800">{applicant.parent_email || '-'}</span>
                       </div>
                     </div>
                   </div>
@@ -628,15 +649,18 @@ export default function ApplicantDossierModal({
                               <TableCell>
                                 <Badge
                                   variant={
-                                    p.status === 'paid'
+                                    p.status === 'paid' || p.status === 'success'
                                       ? 'success'
-                                      : p.status === 'expired'
+                                      : p.status === 'expired' || p.status === 'cancelled' || p.status === 'failed'
                                       ? 'destructive'
-                                      : 'warning'
+                                      : p.status === 'exception'
+                                      ? 'warning'
+                                      : 'outline'
                                   }
                                   className="text-[10px] uppercase font-bold"
+                                  title={p.notes || undefined}
                                 >
-                                  {p.status}
+                                  {p.status === 'exception' ? 'Pengecualian' : p.status}
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-xs uppercase text-slate-600">
@@ -778,7 +802,7 @@ export default function ApplicantDossierModal({
                         Cetak SKD
                       </Button>
                     </div>
-                    
+
                     <div className="bg-slate-50 p-4 rounded-lg border text-xs space-y-3 font-mono">
                       <p className="text-slate-600">Background URL: {skd?.background_url || "Belum ada"}</p>
                       <p className="text-slate-600">Grup WA: {skd?.whatsapp_group_link || "Belum ada"}</p>

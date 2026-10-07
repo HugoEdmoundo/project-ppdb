@@ -27,7 +27,7 @@ def upgrade():
                 "allowed_paths",
                 sa.String(length=50),
                 nullable=False,
-                server_default="reguler,pindahan",
+                server_default="reguler,prestasi,tahfidz,rapot",
             ),
         )
     if "allowed_levels" not in cols:
@@ -37,7 +37,7 @@ def upgrade():
                 "allowed_levels",
                 sa.String(length=100),
                 nullable=False,
-                server_default="SMP,SMK",
+                server_default="SMK",
             ),
         )
 

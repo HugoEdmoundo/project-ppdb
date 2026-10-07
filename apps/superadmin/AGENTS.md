@@ -46,6 +46,10 @@ The application is a Single Page Application (SPA) with the following routes:
 - Access levels (`ACCESS_LEVELS`) include: `none` < `dashboard` < `read` < `crud`.
 - Page-level permissions can be directly assigned to users via the `/users/:id/page-permissions` endpoint, managing specific UI capabilities per user based on assigned module roles.
 
+## Product Rules (from root AGENTS.md + docs/REQUIREMENTS.md)
+- **No education-level selection.** This system has no list of jenjang (`SMP`, `SMK`, ...) and no jenjang picker anywhere: wave config, applicant form, and public pages are all level-free. Existing code such as the `ALLOWED_LEVELS` whitelist, the wave `allowed_levels` scope column, or an applicant level field is **leftover from the old flow** — do not treat it as truth and do not build new UI/endpoints on top of it. Removing the column needs its own decision.
+- **Health form replaces Medcheck.** Applicants self-fill the health/disease identification form during registration (10 questions + an attestation statement, see `docs/REQUIREMENTS.md`). It is stored as applicant health profile data and shown on the applicant detail/dossier page only — never in general lists/tables. Treat it as sensitive: special permission, audit trail, already included in the Arsip dossier/ZIP export. Details on open questions (post-registration updates, required-ness, read access, retention) are undecided; ask before implementing.
+
 ## Development & Build Commands
 - `npm run dev`: Start Vite development server on port 5173.
 - `npm run build`: Compile TypeScript and build (`tsc -b && vite build`).

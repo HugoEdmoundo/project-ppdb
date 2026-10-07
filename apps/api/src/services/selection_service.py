@@ -166,7 +166,10 @@ class SelectionService:
         if _is_tiu_category_name(body.name):
             raise HTTPException(
                 status_code=400,
-                detail="Nilai TIU masuk otomatis dan tidak menggunakan kategori input manual.",
+                detail=(
+                    "Nilai TIU masuk otomatis dan tidak menggunakan kategori "
+                    "input manual."
+                ),
             )
         cid = str(uuid4())
         cat = SelectionCategory(
@@ -262,7 +265,7 @@ class SelectionService:
                 "email": app.email,
                 "phone": app.phone,
                 "registration_path": app.registration_path,
-                "registration_level": app.registration_level,
+                "registration_level": "SMK",
                 "applicant_status": app.status,
                 "session_name": s_ses.name if s_ses else None,
                 "session_date": s_ses.session_date if s_ses else None,
@@ -450,27 +453,59 @@ class SelectionService:
             raise HTTPException(status_code=404, detail="Bukan pendaftar")
 
         s_res = self.repo.get_selection_result_by_applicant(app.id)
-        my_session = None
-        if s_res and s_res.session_id:
-            s_row = self.repo.get_session_by_id(s_res.session_id)
-            if s_row:
-                my_session = s_row.__dict__.copy()
-                my_session.pop("_sa_instance_state", None)
+        tahfidz_session = None
+        interview_session = None
+        if s_res:
+            if s_res.session_id:
+                s_row = self.repo.get_session_by_id(s_res.session_id)
+                if s_row:
+                    tahfidz_session = s_row.__dict__.copy()
+                    tahfidz_session.pop("_sa_instance_state", None)
+            if hasattr(s_res, "interview_session_id") and s_res.interview_session_id:
+                i_row = self.repo.get_session_by_id(s_res.interview_session_id)
+                if i_row:
+                    interview_session = i_row.__dict__.copy()
+                    interview_session.pop("_sa_instance_state", None)
 
         scores = self.repo.get_applicant_scores_with_details(app.id)
-        has_tahfidz = any("tahfidz" in (row[2] or "").lower() for row in scores)
+        has_tahfidz = any(
+            "tahfidz" in (row[2] or "").lower() or "tahfidz" in (row[1] or "").lower()
+            for row in scores
+        )
+        has_interview = any(
+            "wawancara" in (row[2] or "").lower()
+            or "wawancara" in (row[1] or "").lower()
+            or "interview" in (row[2] or "").lower()
+            for row in scores
+        )
 
         av_rows = self.repo.get_sessions(app.wave_id)
+        available_tahfidz = []
+        available_interview = []
         available = []
         for s, _, booked_count in av_rows:
-            if (s.session_type or "").lower() == "wawancara" and not has_tahfidz:
-                continue
             sd = s.__dict__.copy()
             sd.pop("_sa_instance_state", None)
             sd["booked_count"] = booked_count or 0
-            available.append(sd)
+            stype = (s.session_type or "").lower()
+            if "wawancara" in stype or "interview" in stype:
+                if has_tahfidz:
+                    available_interview.append(sd)
+                    available.append(sd)
+            else:
+                available_tahfidz.append(sd)
+                available.append(sd)
 
-        return {"session": my_session, "available_sessions": available}
+        return {
+            "session": tahfidz_session or interview_session,
+            "tahfidz_session": tahfidz_session,
+            "interview_session": interview_session,
+            "available_sessions": available,
+            "available_tahfidz_sessions": available_tahfidz,
+            "available_interview_sessions": available_interview,
+            "has_tahfidz_score": has_tahfidz,
+            "has_interview_score": has_interview,
+        }
 
     def applicant_book_session(self, user_id: str, session_id: str) -> dict[str, Any]:
         now = _now_wib()
@@ -491,15 +526,41 @@ class SelectionService:
         if session.quota > 0 and booked_count >= session.quota:
             raise HTTPException(status_code=400, detail="Kuota sesi ini sudah penuh")
 
-        if (session.session_type or "").lower() == "wawancara":
+        stype = (session.session_type or "").lower()
+        if "wawancara" in stype or "interview" in stype:
             scores = self.repo.get_applicant_scores_with_details(app.id)
-            has_tahfidz = any("tahfidz" in (row[2] or "").lower() for row in scores)
+            has_tahfidz = any(
+                "tahfidz" in (row[2] or "").lower()
+                or "tahfidz" in (row[1] or "").lower()
+                for row in scores
+            )
             if not has_tahfidz:
                 raise HTTPException(
-                    status_code=400, detail="Anda harus memiliki nilai ujian Tahfidz sebelum memilih jadwal wawancara."
+                    status_code=400,
+                    detail=(
+                        "Anda harus memiliki nilai ujian Tahfidz sebelum memilih "
+                        "jadwal wawancara."
+                    ),
                 )
+            self.repo.update_selection_result_session(
+                app.id, session_id, now, session_type="wawancara"
+            )
+        else:
+            reg_path = (app.registration_path or "").lower()
+            if any(k in reg_path for k in ["reguler", "tiu", "tes"]):
+                tiu = self.repo.get_tiu_result_by_applicant(app.id)
+                if not tiu or tiu.score is None:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            "Pendaftar jalur TIU wajib menyelesaikan ujian TIU "
+                            "terlebih dahulu sebelum memilih jadwal sesi Tahfidz."
+                        ),
+                    )
+            self.repo.update_selection_result_session(
+                app.id, session_id, now, session_type="tahfidz"
+            )
 
-        self.repo.update_selection_result_session(app.id, session_id, now)
         self.repo.db.commit()
 
         # Notifikasi jadwal terkonfirmasi (Fase 3 spec)

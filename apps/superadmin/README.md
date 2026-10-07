@@ -24,7 +24,7 @@ Sesuai dengan aturan bisnis yang termodularisasi, backoffice ini berfokus pada k
 
 ## 🛠️ Stack Teknologi
 
-- **Framework:** React 18, Vite
+- **Framework:** React 19, Vite 8, React Router v7
 - **Bahasa:** TypeScript
 - **Styling:** Tailwind CSS
 - **Koneksi API:** Berkomunikasi intensif dengan [`apps/api`](../api/README.md) (FastAPI)

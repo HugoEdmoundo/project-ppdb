@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import random
@@ -41,32 +42,216 @@ WIB = ZoneInfo("Asia/Jakarta")
 
 logger = logging.getLogger("ptdarrahman.ppdb")
 
-# Nama dokumen wajib (disinkronkan dengan REQUIRED_DOCUMENTS di frontend).
-TIU_DOCUMENTS = [
-    "NISN",
-    "Kartu Keluarga (KK)",
-    "Akta Kelahiran",
-    "Pas Foto",
+BASE_DOCUMENTS = [
+    {
+        "name": "NISN",
+        "description": "Kartu atau bukti cetak NISN resmi.",
+        "required": True,
+        "category": "wajib",
+    },
+    {
+        "name": "Kartu Keluarga (KK)",
+        "description": "Bukti susunan keluarga dan NIK.",
+        "required": True,
+        "category": "wajib",
+    },
+    {
+        "name": "Akta Kelahiran",
+        "description": "Bukti kelahiran calon santri/siswa.",
+        "required": True,
+        "category": "wajib",
+    },
+    {
+        "name": "Pas Foto",
+        "description": "Pas foto terbaru calon siswa (3x4 atau 4x6).",
+        "required": True,
+        "category": "wajib",
+    },
 ]
 
-NON_TIU_DOCUMENTS = [
-    "Ijazah atau SKL",
-    "Akta Kelahiran",
-    "Kartu Keluarga (KK)",
-    "KTP Orang Tua/Wali",
-    "Rapor (Semester 3 dari 4 Terakhir)",
-    "Rapor (Semester 4 dari 4 Terakhir)",
-    "Rapor (Semester 5 dari 4 Terakhir)",
-    "Rapor (Semester 6 dari 4 Terakhir)",
-    "Pas Foto",
-    "Surat Pernyataan Orang Tua",
-    "Medical Checkup",
-]
+TIU_DOCUMENTS = [d["name"] for d in BASE_DOCUMENTS]
+
+NON_TIU_DOCUMENTS = TIU_DOCUMENTS + ["Dokumen Pendukung Jalur"]
+
+
+def is_tiu_path(path: str | None) -> bool:
+    p = (path or "").strip().lower()
+    return "tiu" in p or p in ("reguler", "tes")
+
+
+def get_path_document_specs(path: str | None) -> list[dict[str, Any]]:
+    p = (path or "").strip().lower()
+    docs = [dict(d) for d in BASE_DOCUMENTS]
+    if is_tiu_path(p):
+        return docs
+    elif "prestasi" in p:
+        # Minimal 3 sertifikat prestasi, maksimal 10
+        docs.extend(
+            [
+                {
+                    "name": "Sertifikat Prestasi 1",
+                    "description": (
+                        "Sertifikat / Piagam Kejuaraan / Prestasi (Wajib ke-1)."
+                    ),
+                    "required": True,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Sertifikat Prestasi 2",
+                    "description": (
+                        "Sertifikat / Piagam Kejuaraan / Prestasi (Wajib ke-2)."
+                    ),
+                    "required": True,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Sertifikat Prestasi 3",
+                    "description": (
+                        "Sertifikat / Piagam Kejuaraan / Prestasi "
+                        "(Wajib ke-3, syarat minimal 3 sertifikat)."
+                    ),
+                    "required": True,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Sertifikat Prestasi 4",
+                    "description": "Sertifikat / Piagam Kejuaraan tambahan (Opsional).",
+                    "required": False,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Sertifikat Prestasi 5",
+                    "description": "Sertifikat / Piagam Kejuaraan tambahan (Opsional).",
+                    "required": False,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Sertifikat Prestasi 6",
+                    "description": "Sertifikat / Piagam Kejuaraan tambahan (Opsional).",
+                    "required": False,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Sertifikat Prestasi 7",
+                    "description": "Sertifikat / Piagam Kejuaraan tambahan (Opsional).",
+                    "required": False,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Sertifikat Prestasi 8",
+                    "description": "Sertifikat / Piagam Kejuaraan tambahan (Opsional).",
+                    "required": False,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Sertifikat Prestasi 9",
+                    "description": "Sertifikat / Piagam Kejuaraan tambahan (Opsional).",
+                    "required": False,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Sertifikat Prestasi 10",
+                    "description": "Sertifikat / Piagam Kejuaraan tambahan (Opsional).",
+                    "required": False,
+                    "category": "tambahan",
+                },
+            ]
+        )
+    elif "rapot" in p or "rapor" in p or "pindahan" in p:
+        # 4 rapor semester terakhir
+        docs.extend(
+            [
+                {
+                    "name": "Rapor Semester 1",
+                    "description": (
+                        "Scan/foto rapor semester ke-1 dari 4 semester terakhir."
+                    ),
+                    "required": True,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Rapor Semester 2",
+                    "description": (
+                        "Scan/foto rapor semester ke-2 dari 4 semester terakhir."
+                    ),
+                    "required": True,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Rapor Semester 3",
+                    "description": (
+                        "Scan/foto rapor semester ke-3 dari 4 semester terakhir."
+                    ),
+                    "required": True,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Rapor Semester 4",
+                    "description": (
+                        "Scan/foto rapor semester ke-4 dari 4 semester terakhir."
+                    ),
+                    "required": True,
+                    "category": "tambahan",
+                },
+            ]
+        )
+    elif "tahfidz" in p:
+        # Maksimal 3 bukti hafalan, utamakan surat pengakuan hafalan
+        # bukan dokumentasi/video
+        docs.extend(
+            [
+                {
+                    "name": "Surat Pengakuan Hafalan 1",
+                    "description": (
+                        "Surat Keterangan / Piagam Pengakuan Hafalan resmi dari "
+                        "lembaga/orang tua (Wajib minimal 1). Utamakan surat "
+                        "pengakuan hafalan, bukan file video."
+                    ),
+                    "required": True,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Surat Pengakuan Hafalan 2",
+                    "description": (
+                        "Surat Keterangan / Piagam Pengakuan Hafalan tambahan "
+                        "(Opsional, max 3)."
+                    ),
+                    "required": False,
+                    "category": "tambahan",
+                },
+                {
+                    "name": "Surat Pengakuan Hafalan 3",
+                    "description": (
+                        "Surat Keterangan / Piagam Pengakuan Hafalan tambahan "
+                        "(Opsional, max 3)."
+                    ),
+                    "required": False,
+                    "category": "tambahan",
+                },
+            ]
+        )
+    else:
+        docs.append(
+            {
+                "name": "Dokumen Pendukung Jalur",
+                "description": "Dokumen pendukung sesuai jalur yang dipilih.",
+                "required": True,
+                "category": "tambahan",
+            }
+        )
+    return docs
+
 
 def get_required_documents(path: str) -> list[str]:
-    if "tiu" in (path or "").lower():
-        return TIU_DOCUMENTS
-    return NON_TIU_DOCUMENTS
+    """Mengembalikan daftar nama dokumen yang WAJIB untuk jalur tersebut."""
+    return [d["name"] for d in get_path_document_specs(path) if d.get("required", True)]
+
+
+def get_all_allowed_documents(path: str) -> list[str]:
+    """Mengembalikan semua dokumen (wajib + opsional) yang diizinkan
+    untuk jalur tersebut."""
+    return [d["name"] for d in get_path_document_specs(path)]
+
 
 # Status tempat pendaftar boleh mengunggah/kirim dokumen.
 _DOCUMENT_UPLOAD_STATUSES = {"document_uploaded_pending", "document_rejected"}
@@ -236,11 +421,6 @@ class PPDBService:
             "allowed_paths": [
                 p.strip() for p in (wave.allowed_paths or "").split(",") if p.strip()
             ],
-            "allowed_levels": [
-                lvl.strip()
-                for lvl in (wave.allowed_levels or "").split(",")
-                if lvl.strip()
-            ],
         }
 
     def get_wave_by_id(self, wave_id: str) -> dict[str, Any]:
@@ -263,7 +443,6 @@ class PPDBService:
             wave_number=wave_number,
             name=body.name,
             allowed_paths=body.allowed_paths,
-            allowed_levels=body.allowed_levels,
             registration_start_date=body.registration_start_date,
             registration_end_date=body.registration_end_date,
             document_upload_end_date=body.document_upload_end_date,
@@ -363,7 +542,6 @@ class PPDBService:
         for field in (
             "name",
             "allowed_paths",
-            "allowed_levels",
             "registration_start_date",
             "registration_end_date",
             "document_upload_end_date",
@@ -518,6 +696,46 @@ class PPDBService:
             random.choice(string.ascii_letters + string.digits) for _ in range(length)
         )
 
+    def _serialize_health_history(self, body: ApplicantRegister) -> str | None:
+        health_form = getattr(body, "health_form", None)
+        if health_form is not None:
+            return str(json.dumps(health_form.model_dump(), ensure_ascii=False))
+        if getattr(body, "disease_history", None):
+            return str(body.disease_history)
+        items = body.disease_history_items or []
+        notes = body.disease_history_notes
+        if not items and not notes:
+            return None
+        parts: list[str] = []
+        for item in items:
+            text = f"{item.question}: {item.answer}"
+            if item.notes:
+                text += f" ({item.notes})"
+            parts.append(text)
+        if notes:
+            parts.append(f"Catatan tambahan: {notes}")
+        return "; ".join(parts)
+
+    def _serialize_health_history_admin(self, body: Any) -> str | None:
+        health_form = getattr(body, "health_form", None)
+        if health_form is not None:
+            return str(json.dumps(health_form.model_dump(), ensure_ascii=False))
+        if getattr(body, "disease_history", None):
+            return str(body.disease_history)
+        items = getattr(body, "disease_history_items", None) or []
+        notes = getattr(body, "disease_history_notes", None)
+        if not items and not notes:
+            return None
+        parts: list[str] = []
+        for item in items:
+            text = f"{item.question}: {item.answer}"
+            if getattr(item, "notes", None):
+                text += f" ({item.notes})"
+            parts.append(text)
+        if notes:
+            parts.append(f"Catatan tambahan: {notes}")
+        return "; ".join(parts)
+
     def generate_unique_username(self, full_name: str) -> str:
         base = (
             "".join(c for c in full_name.split(" ")[0].lower() if c.isalnum()) or "user"
@@ -531,6 +749,14 @@ class PPDBService:
         return f"{base}{uuid.uuid4().hex[:8]}"
 
     def register_applicant(self, body: ApplicantRegister) -> dict[str, Any]:
+        # Formulir Identifikasi Kesehatan (pengganti Medcheck) wajib diisi
+        # pendaftar dan divalidasi ulang di server (lihat HealthIdentificationForm).
+        if body.health_form is None:
+            raise HTTPException(
+                status_code=422,
+                detail="Formulir Identifikasi Kesehatan wajib diisi sebelum mendaftar.",
+            )
+
         wave = self.repository.get_active_wave()
         if not wave:
             raise HTTPException(
@@ -571,22 +797,12 @@ class PPDBService:
         allowed_paths = [
             p.strip() for p in (wave.allowed_paths or "").split(",") if p.strip()
         ]
-        allowed_levels = [
-            lvl.strip() for lvl in (wave.allowed_levels or "").split(",") if lvl.strip()
-        ]
 
         if body.registration_path not in allowed_paths:
             raise HTTPException(
                 status_code=400,
                 detail=f"Jalur pendaftaran '{body.registration_path}' "
                 "tidak dibuka pada gelombang ini.",
-            )
-
-        level_key = body.registration_level.split(" ")[0]
-        if level_key not in allowed_levels:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Jenjang '{level_key}' tidak dibuka pada gelombang ini.",
             )
 
         if self.repository.get_applicant_by_email_active(body.email):
@@ -607,10 +823,31 @@ class PPDBService:
         role_id = self.repository.get_role_id_by_name("Pendaftar")
 
         now = datetime.now(WIB)
-        payment_deadline_wib = datetime.now(ZoneInfo("Asia/Jakarta")) + timedelta(
-            days=7
-        )
-        payment_deadline = payment_deadline_wib.replace(tzinfo=None)
+        # Sesuai aturan bisnis PPDB: Batas akhir pembayaran formulir adalah
+        # penutupan pendaftaran gelombang
+        if wave.registration_end_date:
+            payment_deadline = datetime(
+                wave.registration_end_date.year,
+                wave.registration_end_date.month,
+                wave.registration_end_date.day,
+                23,
+                59,
+                59,
+            )
+        elif wave.end_date:
+            payment_deadline = datetime(
+                wave.end_date.year,
+                wave.end_date.month,
+                wave.end_date.day,
+                23,
+                59,
+                59,
+            )
+        else:
+            payment_deadline_wib = datetime.now(ZoneInfo("Asia/Jakarta")) + timedelta(
+                days=7
+            )
+            payment_deadline = payment_deadline_wib.replace(tzinfo=None)
 
         user = User(
             id=str(uuid.uuid4()),
@@ -632,7 +869,6 @@ class PPDBService:
             email=body.email,
             phone=body.phone,
             registration_path=body.registration_path,
-            registration_level=body.registration_level,
             address=body.address,
             province=body.province,
             city=body.city,
@@ -644,9 +880,25 @@ class PPDBService:
             birth_date=body.birth_date,
             nisn=body.nisn,
             nik=body.nik,
-            parent_name=body.parent_name,
+            parent_name=(
+                body.parent_name
+                or body.father_name
+                or body.guardian_name
+                or body.mother_name
+            ),
+            father_name=body.father_name,
+            father_job=body.father_job,
+            father_phone=body.father_phone,
+            mother_name=body.mother_name,
+            mother_job=body.mother_job,
+            mother_phone=body.mother_phone,
+            guardian_name=body.guardian_name,
+            guardian_job=body.guardian_job,
+            parent_phone=body.parent_phone or body.father_phone or body.mother_phone,
+            parent_income=body.parent_income,
+            parent_email=body.parent_email,
             previous_school=body.previous_school,
-            major_choice=body.major_choice,
+            disease_history=self._serialize_health_history(body),
             status="pending_payment",
             payment_status="pending",
             payment_deadline=payment_deadline,
@@ -657,7 +909,7 @@ class PPDBService:
         transaction = PPDBPaymentTransaction(
             id=f"pay-{uuid.uuid4()}",
             applicant_id=applicant.id,
-            method="offline",
+            method="qris",
             amount=wave.registration_fee or 0,
             status="pending",
             created_at=now,
@@ -808,9 +1060,28 @@ class PPDBService:
         role_id = self.repository.get_role_id_by_name("Pendaftar")
 
         now = datetime.now(WIB)
-        payment_deadline = datetime.now(ZoneInfo("Asia/Jakarta")).replace(
-            tzinfo=None
-        ) + timedelta(days=7)
+        if wave.registration_end_date:
+            payment_deadline = datetime(
+                wave.registration_end_date.year,
+                wave.registration_end_date.month,
+                wave.registration_end_date.day,
+                23,
+                59,
+                59,
+            )
+        elif wave.end_date:
+            payment_deadline = datetime(
+                wave.end_date.year,
+                wave.end_date.month,
+                wave.end_date.day,
+                23,
+                59,
+                59,
+            )
+        else:
+            payment_deadline = datetime.now(ZoneInfo("Asia/Jakarta")).replace(
+                tzinfo=None
+            ) + timedelta(days=7)
 
         user = User(
             id=str(uuid.uuid4()),
@@ -832,7 +1103,6 @@ class PPDBService:
             email=body.email,
             phone=body.phone,
             registration_path=body.registration_path,
-            registration_level=body.registration_level,
             address=body.address,
             province=body.province,
             city=body.city,
@@ -844,9 +1114,25 @@ class PPDBService:
             birth_date=body.birth_date,
             nisn=body.nisn,
             nik=body.nik,
-            parent_name=body.parent_name,
+            parent_name=(
+                body.parent_name
+                or body.father_name
+                or body.guardian_name
+                or body.mother_name
+            ),
+            father_name=body.father_name,
+            father_job=body.father_job,
+            father_phone=body.father_phone,
+            mother_name=body.mother_name,
+            mother_job=body.mother_job,
+            mother_phone=body.mother_phone,
+            guardian_name=body.guardian_name,
+            guardian_job=body.guardian_job,
+            parent_phone=body.parent_phone or body.father_phone or body.mother_phone,
+            parent_income=body.parent_income,
+            parent_email=body.parent_email,
             previous_school=body.previous_school,
-            major_choice=body.major_choice,
+            disease_history=self._serialize_health_history_admin(body),
             status="pending_payment",
             payment_status="pending",
             payment_deadline=payment_deadline,
@@ -857,7 +1143,7 @@ class PPDBService:
         transaction = PPDBPaymentTransaction(
             id=f"pay-{uuid.uuid4()}",
             applicant_id=applicant.id,
-            method="offline",
+            method="qris",
             amount=wave.registration_fee or 0,
             status="pending",
             created_at=now,
@@ -977,7 +1263,9 @@ class PPDBService:
         )
         return {
             "success": True,
-            "message": f"Pendaftar {full_name} beserta seluruh datanya dihapus permanen.",
+            "message": (
+                f"Pendaftar {full_name} beserta seluruh datanya dihapus permanen."
+            ),
         }
 
     def _notify_credentials(
@@ -1107,20 +1395,46 @@ class PPDBService:
     def change_my_path(self, user_id: str, new_path: str) -> dict[str, Any]:
         applicant = self.repository.get_applicant_by_user_id(user_id)
         if not applicant:
-            raise HTTPException(status_code=404, detail="Data pendaftaran tidak ditemukan")
-        
-        allowed_statuses = {"pending_payment", "document_uploaded_pending", "document_rejected"}
+            raise HTTPException(
+                status_code=404, detail="Data pendaftaran tidak ditemukan"
+            )
+
+        # Aturan pendaftar-code: Fitur Ganti Jalur hanya terbuka SEBELUM
+        # pendaftar melakukan Upload Dokumen
+        existing_docs = self.repository.get_applicant_documents(applicant.id)
+        if existing_docs and len(existing_docs) > 0:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Fitur ganti jalur hanya terbuka sebelum Anda mengunggah dokumen."
+                ),
+            )
+
+        allowed_statuses = {
+            "pending_payment",
+            "document_uploaded_pending",
+            "document_rejected",
+        }
         if applicant.status not in allowed_statuses:
             raise HTTPException(
-                status_code=400, 
-                detail="Tidak dapat mengganti jalur pada status saat ini"
+                status_code=400,
+                detail="Tidak dapat mengganti jalur pada status saat ini",
             )
-            
-        applicant.registration_path = new_path
+
+        new_path_clean = (new_path or "").strip().lower()
+        if new_path_clean == "pindahan":
+            new_path_clean = "rapot"
+        if new_path_clean not in ("reguler", "prestasi", "tahfidz", "rapot"):
+            raise HTTPException(status_code=400, detail="Jalur pendaftaran tidak valid")
+
+        applicant.registration_path = new_path_clean
         applicant.updated_at = datetime.now(WIB)
         self.repository.update_applicant(applicant)
-        
-        return {"message": "Jalur pendaftaran berhasil diubah", "registration_path": new_path}
+
+        return {
+            "message": "Jalur pendaftaran berhasil diubah",
+            "registration_path": new_path_clean,
+        }
 
     def get_my_documents(self, user_id: str) -> dict[str, Any]:
         applicant = self.repository.get_applicant_by_user_id(user_id)
@@ -1128,7 +1442,11 @@ class PPDBService:
             raise HTTPException(
                 status_code=404, detail="Data pendaftaran tidak ditemukan"
             )
-        return {"data": self.repository.get_applicant_documents(applicant.id)}
+        specs = get_path_document_specs(applicant.registration_path)
+        return {
+            "data": self.repository.get_applicant_documents(applicant.id),
+            "required_documents": specs,
+        }
 
     async def upload_document(
         self, user: dict[str, Any], doc_type: str, file: UploadFile
@@ -1145,8 +1463,15 @@ class PPDBService:
             )
 
         doc_type = (doc_type or "").strip()
-        if doc_type not in get_required_documents(applicant.registration_path):
-            raise HTTPException(status_code=400, detail="Jenis dokumen tidak dikenal")
+        allowed = get_all_allowed_documents(applicant.registration_path)
+        if doc_type not in allowed:
+            reg_path = applicant.registration_path
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Jenis dokumen '{doc_type}' tidak sesuai untuk jalur {reg_path}"
+                ),
+            )
 
         file_id = str(uuid.uuid4())
         upload = await upload_file(file, file_id)
@@ -1175,11 +1500,17 @@ class PPDBService:
 
         docs = self.repository.get_applicant_documents(applicant.id)
         uploaded_types = {d["doc_type"] for d in docs}
-        missing = [name for name in get_required_documents(applicant.registration_path) if name not in uploaded_types]
+        mandatory = get_required_documents(applicant.registration_path)
+        missing = [name for name in mandatory if name not in uploaded_types]
         if missing:
+            reg_path = applicant.registration_path
+            missing_list = ", ".join(missing)
             raise HTTPException(
                 status_code=400,
-                detail=f"Lengkapi semua dokumen dahulu. Kurang: {len(missing)} dokumen",
+                detail=(
+                    f"Lengkapi seluruh dokumen wajib untuk jalur {reg_path}. "
+                    f"Dokumen belum diunggah: {missing_list}"
+                ),
             )
 
         applicant.status = "document_uploaded"
@@ -1211,7 +1542,7 @@ class PPDBService:
         if status == "document_rejected" and not (rejection_reason or "").strip():
             raise HTTPException(status_code=400, detail="Alasan penolakan wajib diisi")
 
-        applicant.status = status
+        applicant.status = "selection" if status == "document_approved" else status
         applicant.rejection_reason = (
             rejection_reason.strip() if rejection_reason else None
         )
@@ -1230,17 +1561,16 @@ class PPDBService:
                     },
                 )
             elif status == "document_approved":
-                # Cek jalur pendaftaran: TIU Ã¢â€ â€™ instruksi SEB, lainnya Ã¢â€ â€™ pilih jadwal Tahfidz
-                is_tiu = (
-                    getattr(applicant, "registration_path", "") or ""
-                ).lower() == "tiu"
+                is_tiu = is_tiu_path(getattr(applicant, "registration_path", ""))
                 if is_tiu:
                     send_notification(
                         "tiu_exam_instructions",
                         applicant.user_id,
                         {
                             "link_aplikasi": f"{settings.ppdb_frontend_url}/dashboard",
-                            "link_panduan_seb": f"{settings.ppdb_frontend_url}/panduan-seb",
+                            "link_panduan_seb": (
+                                f"{settings.ppdb_frontend_url}/panduan-seb"
+                            ),
                         },
                     )
                 else:
@@ -1351,7 +1681,8 @@ class PPDBService:
     def run_reminders(self) -> dict[str, Any]:
         """
         Cron harian Ã¢â‚¬â€ digantikan oleh endpoint-endpoint baru:
-          - payment_reminder_monday  Ã¢â€ â€™ POST /notifications/cron/payment-reminder-monday
+          - payment_reminder_monday  Ã¢â€ â€™ POST
+            /notifications/cron/payment-reminder-monday
           - reminder_upload_docs_h3  Ã¢â€ â€™ belum ada cron khusus, TODO
           - reminder_exam_1hour      Ã¢â€ â€™ belum ada cron khusus, TODO
           - selection_reminder_*     Ã¢â€ â€™ dihapus, tidak ada padanan di spec baru
@@ -1429,24 +1760,30 @@ class PPDBService:
         if not applicant:
             raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
 
-        from src.models.selection import SelectionCategory, SelectionCriteria, SelectionResult, SelectionScore
         from sqlalchemy import select
 
-        scores_rows = (
-            self.repository.db.execute(
-                select(
-                    SelectionScore.score,
-                    SelectionCriteria.name.label("criteria_name"),
-                    SelectionCriteria.weight,
-                    SelectionCategory.name.label("category_name"),
-                    SelectionCategory.id.label("category_id"),
-                )
-                .join(SelectionCriteria, SelectionScore.criteria_id == SelectionCriteria.id)
-                .join(SelectionCategory, SelectionCriteria.category_id == SelectionCategory.id)
-                .where(SelectionScore.applicant_id == applicant_id)
-                .order_by(SelectionCategory.name.asc(), SelectionCriteria.name.asc())
-            ).all()
+        from src.models.selection import (
+            SelectionCategory,
+            SelectionCriteria,
+            SelectionResult,
+            SelectionScore,
         )
+
+        scores_rows = self.repository.db.execute(
+            select(
+                SelectionScore.score,
+                SelectionCriteria.name.label("criteria_name"),
+                SelectionCriteria.weight,
+                SelectionCategory.name.label("category_name"),
+                SelectionCategory.id.label("category_id"),
+            )
+            .join(SelectionCriteria, SelectionScore.criteria_id == SelectionCriteria.id)
+            .join(
+                SelectionCategory, SelectionCriteria.category_id == SelectionCategory.id
+            )
+            .where(SelectionScore.applicant_id == applicant_id)
+            .order_by(SelectionCategory.name.asc(), SelectionCriteria.name.asc())
+        ).all()
 
         categories_map: dict[str, dict[str, Any]] = {}
         for row in scores_rows:
@@ -1456,23 +1793,32 @@ class PPDBService:
                     "category_name": cat_name,
                     "criteria": [],
                 }
-            categories_map[cat_name]["criteria"].append({
-                "criteria_name": row.criteria_name,
-                "weight": row.weight,
-                "score": row.score,
-            })
+            categories_map[cat_name]["criteria"].append(
+                {
+                    "criteria_name": row.criteria_name,
+                    "weight": row.weight,
+                    "score": row.score,
+                }
+            )
 
         sel_res = (
             self.repository.db.execute(
-                select(SelectionResult).where(SelectionResult.applicant_id == applicant_id)
-            ).scalars().first()
+                select(SelectionResult).where(
+                    SelectionResult.applicant_id == applicant_id
+                )
+            )
+            .scalars()
+            .first()
         )
 
         tiu_completed = applicant.get("tiu_completed_at")
+        tiu_isoformat = getattr(tiu_completed, "isoformat", None)
         tiu_completed_str = (
-            tiu_completed.isoformat()
-            if hasattr(tiu_completed, "isoformat")
-            else str(tiu_completed) if tiu_completed else None
+            str(tiu_isoformat())
+            if callable(tiu_isoformat)
+            else str(tiu_completed)
+            if tiu_completed
+            else None
         )
 
         return {
@@ -1481,7 +1827,9 @@ class PPDBService:
             "tiu_completed_at": tiu_completed_str,
             "categories": list(categories_map.values()),
             "evaluator_notes": sel_res.notes if sel_res else None,
-            "graduation_status": sel_res.graduation_status if sel_res else applicant.get("status"),
+            "graduation_status": sel_res.graduation_status
+            if sel_res
+            else applicant.get("status"),
             "issued_at": datetime.now(WIB).isoformat(),
         }
 
@@ -1490,34 +1838,37 @@ class PPDBService:
         if not applicant:
             raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
 
-        from src.models.content import SiteSetting
         from sqlalchemy import select
 
-        tpl_row = (
-            self.repository.db.execute(
-                select(SiteSetting.value).where(SiteSetting.key == "ppdb_loa_template")
-            ).scalar_one_or_none()
-        )
+        from src.models.content import SiteSetting
+
+        tpl_row = self.repository.db.execute(
+            select(SiteSetting.value).where(SiteSetting.key == "ppdb_loa_template")
+        ).scalar_one_or_none()
 
         template_text = tpl_row or (
             "SURAT PENERIMAAN SANTRI BARU (LETTER OF ACCEPTANCE)\n\n"
             "Dengan hormat,\n"
-            "Berdasarkan hasil evaluasi seleksi Penerimaan Peserta Didik Baru (PPDB), kami menyatakan bahwa:\n\n"
+            "Berdasarkan hasil evaluasi seleksi Penerimaan Peserta Didik "
+            "Baru (PPDB), kami menyatakan bahwa:\n\n"
             "Nama Lengkap: {{nama}}\n"
             "Nomor Induk / NISN: {{nisn}}\n"
             "Jalur Pendaftaran: {{jalur}}\n"
             "Jenjang Pendidikan: {{jenjang}}\n"
             "Gelombang: {{gelombang}}\n\n"
-            "Dinyatakan DITERIMA / LULUS sebagai santri baru di Pesantren Tahfidz Ar-Rahman.\n\n"
-            "Harap segera menyelesaikan tahapan administrasi dan pembayaran Tahap 2 sesuai jadwal yang ditentukan."
+            "Dinyatakan DITERIMA / LULUS sebagai santri baru di "
+            "Pesantren Tahfidz Ar-Rahman.\n\n"
+            "Harap segera menyelesaikan tahapan administrasi dan "
+            "pembayaran Tahap 2 sesuai jadwal yang ditentukan."
         )
 
         replacements = {
             "{{nama}}": applicant.get("full_name") or "",
             "{{nisn}}": applicant.get("nisn") or applicant.get("nik") or "-",
-            "{{no_registrasi}}": applicant.get("nisn") or str(applicant.get("id", ""))[:8].upper(),
+            "{{no_registrasi}}": applicant.get("nisn")
+            or str(applicant.get("id", ""))[:8].upper(),
             "{{jalur}}": str(applicant.get("registration_path") or "").capitalize(),
-            "{{jenjang}}": str(applicant.get("registration_level") or "").upper(),
+            "{{jenjang}}": "SMK",
             "{{gelombang}}": str(applicant.get("wave_name") or "-"),
             "{{tanggal}}": datetime.now(WIB).strftime("%d %B %Y"),
         }
@@ -1526,10 +1877,13 @@ class PPDBService:
         for placeholder, val in replacements.items():
             rendered = rendered.replace(placeholder, val)
 
-        FIXED_LOA_CLAUSE = "Seluruh dana yang telah dibayarkan tidak dapat dikembalikan."
+        FIXED_LOA_CLAUSE = (
+            "Seluruh dana yang telah dibayarkan tidak dapat dikembalikan."
+        )
 
+        applicant_ref = str(applicant.get("id", ""))[:8].upper()
         return {
-            "letter_number": f"LoA/PPDB/{datetime.now(WIB).year}/{str(applicant.get('id', ''))[:8].upper()}",
+            "letter_number": f"LoA/PPDB/{datetime.now(WIB).year}/{applicant_ref}",
             "applicant": applicant,
             "content": rendered,
             "fixed_clause": FIXED_LOA_CLAUSE,
@@ -1542,21 +1896,29 @@ class PPDBService:
         if not applicant:
             raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
         if applicant.get("status") != "passed":
-            raise HTTPException(status_code=400, detail="Pendaftar belum dinyatakan lulus")
+            raise HTTPException(
+                status_code=400, detail="Pendaftar belum dinyatakan lulus"
+            )
 
-        from src.models.content import SiteSetting
         from sqlalchemy import select
 
+        from src.models.content import SiteSetting
+
         bg_row = self.repository.db.execute(
-            select(SiteSetting.value).where(SiteSetting.key == "ppdb_skd_background_url")
-        ).scalar_one_or_none()
-        
-        wa_link_row = self.repository.db.execute(
-            select(SiteSetting.value).where(SiteSetting.key == "ppdb_whatsapp_group_link")
+            select(SiteSetting.value).where(
+                SiteSetting.key == "ppdb_skd_background_url"
+            )
         ).scalar_one_or_none()
 
+        wa_link_row = self.repository.db.execute(
+            select(SiteSetting.value).where(
+                SiteSetting.key == "ppdb_whatsapp_group_link"
+            )
+        ).scalar_one_or_none()
+
+        applicant_ref = str(applicant.get("id", ""))[:8].upper()
         return {
-            "letter_number": f"SKD/PPDB/{datetime.now(WIB).year}/{str(applicant.get('id', ''))[:8].upper()}",
+            "letter_number": f"SKD/PPDB/{datetime.now(WIB).year}/{applicant_ref}",
             "applicant": applicant,
             "background_url": bg_row or "",
             "whatsapp_group_link": wa_link_row or "",
@@ -1573,14 +1935,14 @@ class PPDBService:
         per_page: int,
     ) -> dict[str, Any]:
         """Pencarian lintas periode dan gelombang khusus arsip."""
-        rows, total = self.repository.get_applicants(
+        rows, total = self.repository.get_applicants_paginated(
             wave_id=wave_id,
-            period_id=period_id,
-            search=search,
+            search=search or "",
             status=status,
-            payment_status=None,
             page=page,
             per_page=per_page,
+            period_id=period_id,
+            payment_status=None,
         )
         return {
             "data": rows,
@@ -1622,6 +1984,7 @@ class PPDBService:
 
         from src.models.auth import AuditLog
 
+        dossier_full_name = applicant.get("full_name")
         audit = AuditLog(
             id=str(uuid.uuid4()),
             user_id=admin_user.get("id"),
@@ -1629,12 +1992,21 @@ class PPDBService:
             action="view_dossier",
             entity_type="ppdb_dossier",
             entity_id=applicant_id,
-            changes=f"Melihat dossier pendaftar {applicant.get('full_name')} ({applicant_id})",
+            changes=(f"Melihat dossier pendaftar {dossier_full_name} ({applicant_id})"),
             ip_address=ip_address,
             created_at=datetime.now(WIB),
         )
         self.repository.db.add(audit)
         self.repository.db.commit()
+
+        raw_health = applicant.get("disease_history") or ""
+        if raw_health.startswith("{"):
+            try:
+                applicant["health_profile"] = json.loads(raw_health)
+            except Exception:
+                applicant["health_profile"] = None
+        else:
+            applicant["health_profile"] = None
 
         return {
             "applicant": applicant,
@@ -1661,7 +2033,9 @@ class PPDBService:
                         "amount": b.amount,
                         "status": b.status,
                         "due_date": b.due_date.isoformat() if b.due_date else None,
-                        "confirmed_at": b.confirmed_at.isoformat() if b.confirmed_at else None,
+                        "confirmed_at": b.confirmed_at.isoformat()
+                        if b.confirmed_at
+                        else None,
                     }
                     for b in stage2_bills
                 ],
@@ -1687,6 +2061,105 @@ class PPDBService:
             summary_json = json.dumps(dossier, indent=2, default=str)
             zf.writestr("ringkasan_dossier.json", summary_json)
 
+            raw_health = applicant.get("disease_history") or ""
+            health_lines = [
+                "FORMULIR IDENTIFIKASI KESEHATAN (PENGGANTI MEDCHECK)",
+                "Pesantren Tahfidz Ar-Rahman",
+                "----------------------------------------",
+                f"Nama Pendaftar: {applicant.get('full_name')}",
+                f"NISN: {applicant.get('nisn') or '-'}",
+                f"Waktu Pendaftaran: {applicant.get('created_at') or '-'}",
+                "----------------------------------------",
+            ]
+            if raw_health.startswith("{"):
+                try:
+                    hdata = json.loads(raw_health)
+                    chronic_txt = "Tidak"
+                    if hdata.get("chronic_disease"):
+                        chronic_desc = hdata.get("chronic_disease_description") or ""
+                        chronic_txt = f"Ya ({chronic_desc})"
+                    health_lines.append(f"1. Riwayat Penyakit Kronis: {chronic_txt}")
+                    conds = ", ".join(hdata.get("diagnosed_conditions") or [])
+                    if hdata.get("diagnosed_conditions_other"):
+                        conds += (
+                            f" (Lainnya: {hdata.get('diagnosed_conditions_other')})"
+                        )
+                    if hdata.get("diagnosed_conditions_description"):
+                        cond_desc = hdata.get("diagnosed_conditions_description")
+                        conds += f" - Keterangan: {cond_desc}"
+                    health_lines.append(
+                        f"2. Kondisi yang Pernah Didiagnosis: {conds or 'Tidak ada'}"
+                    )
+
+                    allergies_txt = "Tidak"
+                    if hdata.get("allergies"):
+                        atypes = ", ".join(hdata.get("allergy_types") or [])
+                        if hdata.get("allergy_other"):
+                            atypes += f" (Lainnya: {hdata.get('allergy_other')})"
+                        if hdata.get("allergy_description"):
+                            atypes += (
+                                f" - Keterangan: {hdata.get('allergy_description')}"
+                            )
+                        allergies_txt = f"Ya ({atypes})"
+                    health_lines.append(f"3. Alergi: {allergies_txt}")
+
+                    med_txt = "Tidak"
+                    if hdata.get("regular_medication"):
+                        med_desc = hdata.get("regular_medication_description") or ""
+                        med_txt = f"Ya ({med_desc})"
+                    health_lines.append(
+                        f"4. Sedang Menjalani Pengobatan Rutin: {med_txt}"
+                    )
+                    physical_txt = "Tidak"
+                    if hdata.get("physical_limitation"):
+                        limit_desc = hdata.get("physical_limitation_description") or ""
+                        physical_txt = f"Ya ({limit_desc})"
+                    health_lines.append(
+                        f"5. Kondisi Kesehatan / Keterbatasan Fisik: {physical_txt}"
+                    )
+                    hosp_txt = "Tidak"
+                    if hdata.get("hospitalization_history"):
+                        hosp_desc = (
+                            hdata.get("hospitalization_history_description") or ""
+                        )
+                        hosp_txt = f"Ya ({hosp_desc})"
+                    health_lines.append(
+                        f"6. Rawat Inap / Operasi (2 Tahun Terakhir): {hosp_txt}"
+                    )
+                    special_txt = "Tidak"
+                    if hdata.get("special_needs"):
+                        special_desc = hdata.get("special_needs_description") or ""
+                        special_txt = f"Ya ({special_desc})"
+                    health_lines.append(
+                        f"7. Kebutuhan Khusus Saat Belajar: {special_txt}"
+                    )
+                    health_lines.append("----------------------------------------")
+                    health_lines.append("KONTAK DARURAT:")
+                    health_lines.append(
+                        f"Nama: {hdata.get('emergency_contact_name') or '-'}"
+                    )
+                    health_lines.append(
+                        f"Hubungan: {hdata.get('emergency_contact_relation') or '-'}"
+                    )
+                    health_lines.append(
+                        f"Nomor Telepon: {hdata.get('emergency_contact_phone') or '-'}"
+                    )
+                    health_lines.append("----------------------------------------")
+                    declaration_txt = "Belum Disetujui"
+                    if hdata.get("health_declaration_confirmed"):
+                        declaration_txt = "Telah Disetujui"
+                    health_lines.append(f"Pernyataan Kebenaran Data: {declaration_txt}")
+                except Exception:
+                    health_lines.append(f"Catatan Riwayat Kesehatan: {raw_health}")
+            else:
+                health_lines.append(
+                    f"Catatan Riwayat Penyakit / Kesehatan: {raw_health or '-'}"
+                )
+            zf.writestr(
+                "formulir_identifikasi_kesehatan.txt", "\n".join(health_lines) + "\n"
+            )
+
+            evaluator_notes = dossier["transcript"].get("evaluator_notes", "-")
             transcript_txt = (
                 f"TRANSKRIP HASIL SELEKSI PPDB\n"
                 f"Pesantren Tahfidz Ar-Rahman\n"
@@ -1694,12 +2167,11 @@ class PPDBService:
                 f"Nama: {applicant.get('full_name')}\n"
                 f"NISN: {applicant.get('nisn') or '-'}\n"
                 f"Jalur: {applicant.get('registration_path')}\n"
-                f"Jenjang: {applicant.get('registration_level')}\n"
                 f"Gelombang: {applicant.get('wave_name')}\n"
                 f"Periode: {applicant.get('period_name')}\n"
                 f"Status: {applicant.get('status')}\n\n"
                 f"Skor TIU: {dossier['transcript'].get('tiu_score', '-')}\n"
-                f"Catatan Evaluator: {dossier['transcript'].get('evaluator_notes', '-')}\n"
+                f"Catatan Evaluator: {evaluator_notes}\n"
             )
             zf.writestr("transkrip_nilai.txt", transcript_txt)
 
@@ -1710,17 +2182,21 @@ class PPDBService:
             zf.writestr("surat_penerimaan_loa.txt", loa_txt)
 
             if dossier.get("skd"):
+                skd_bg = dossier["skd"].get("background_url") or "-"
+                skd_link = dossier["skd"].get("whatsapp_group_link") or "-"
                 skd_txt = (
                     f"SURAT KETERANGAN DITERIMA (SKD)\n"
                     f"Nomor: {dossier['skd'].get('letter_number')}\n\n"
-                    f"Background Latar SKD: {dossier['skd'].get('background_url') or '-'}\n"
-                    f"Link Grup WhatsApp: {dossier['skd'].get('whatsapp_group_link') or '-'}\n"
+                    f"Background Latar SKD: {skd_bg}\n"
+                    f"Link Grup WhatsApp: {skd_link}\n"
                 )
                 zf.writestr("surat_keterangan_diterima_skd.txt", skd_txt)
 
             docs = self.repository.get_documents_by_applicant(applicant_id)
             for d in docs:
-                ext = d.original_name.split(".")[-1] if "." in d.original_name else "dat"
+                ext = (
+                    d.original_name.split(".")[-1] if "." in d.original_name else "dat"
+                )
                 filename = f"dokumen_asli/{d.doc_type}_{d.id[:8]}.{ext}"
                 if d.data:
                     zf.writestr(filename, d.data)
@@ -1732,6 +2208,7 @@ class PPDBService:
 
         from src.models.auth import AuditLog
 
+        zip_full_name = applicant.get("full_name")
         audit = AuditLog(
             id=str(uuid.uuid4()),
             user_id=admin_user.get("id"),
@@ -1739,7 +2216,9 @@ class PPDBService:
             action="download_dossier_zip",
             entity_type="ppdb_dossier",
             entity_id=applicant_id,
-            changes=f"Mengunduh ZIP dossier pendaftar {applicant.get('full_name')} ({applicant_id})",
+            changes=(
+                f"Mengunduh ZIP dossier pendaftar {zip_full_name} ({applicant_id})"
+            ),
             ip_address=ip_address,
             created_at=datetime.now(WIB),
         )
@@ -1747,7 +2226,6 @@ class PPDBService:
         self.repository.db.commit()
 
         buffer.seek(0)
-        zip_filename = f"dossier_{applicant.get('full_name', 'pendaftar').replace(' ', '_')}_{applicant_id[:8]}.zip"
+        zip_name = applicant.get("full_name", "pendaftar").replace(" ", "_")
+        zip_filename = f"dossier_{zip_name}_{applicant_id[:8]}.zip"
         return buffer.getvalue(), zip_filename
-
-

@@ -2,8 +2,12 @@
        │
        ▼
 [2. ISI FORMULIR PENDAFTARAN AWAL]
-- Pilih Jalur Pendaftaran langsung di dalam Form.
-- Isi Form Identifikasi Penyakit (Riwayat sakit menular/tidak, dll - Pengganti Medcheck).
+- Pilih Jalur Pendaftaran langsung di dalam Form. TIDAK ada pemilihan jenjang pendidikan.
+- Isi Formulir Identifikasi Kesehatan (Pengganti Medcheck): riwayat penyakit kronis,
+  diagnosis (asma/diabetes/epilepsi/jantung/hipertensi/TBC/lainnya), alergi,
+  pengobatan rutin, keterbatasan fisik, rawat inap/operasi 2 tahun terakhir,
+  kebutuhan khusus, kontak darurat (nama, hubungan, nomor telepon), lalu setujui
+  Pernyataan. Rincian pertanyaan ada di REQUIREMENTS.md.
 - Sistem otomatis menautkan pendaftar ke satu-satunya gelombang aktif di periode aktif.
        │
        ▼
@@ -27,7 +31,7 @@
        ▼                                                 ▼
 (JALUR TIU)                                        (JALUR SELAIN TIU)
 Hanya Upload Dokumen Wajib                         Upload Dokumen Wajib + Dokumen Tambahan
-                                                   Sesuai Jalurnya (Sertifikat/Raport/Bukti Hafalan)
+                                                   Sesuai Jalurnya (Sertifikat (minimal 3 sertifikat, max 10)/Raport (4 rapot terakhir)/Bukti Hafalan (bukti hafalan max 3, UTAMAKAN PENGAKUAN HAFALAN BUKAN DOKUMENTASI HAFALAN))
        │                                                 │
        └────────────────────────┬────────────────────────┘
                                 ▼
@@ -40,7 +44,7 @@ Hanya Upload Dokumen Wajib                         Upload Dokumen Wajib + Dokume
        ▼ (Jalur Tes/TIU)                                 ▼ (Jalur Non-TIU)
 [10a. UJIAN TIU DI APLIKASI PPDB]                 [10b. LANGSUNG BISA TAKE SESSION]
 (Pendaftar klik Mulai; tes berjalan                (Bisa Take Session Tahfidz
-di Safe Exam Browser dengan timer server.          setelah Dokumen Valid)
+di Safe Exam Browser dengan timer server.          setelah Dokumen Valid, kecuali Jalur TIU dia harus menyelesaikan TIU baru bisa take Session Tahfidz)
 Waktu habis → auto-submit & auto-nilai;
 hasil langsung tampil, tanpa input admin.)
 TIU wajib dari komputer desktop/laptop Windows atau macOS dengan Safe Exam Browser; ponsel/tablet tidak didukung. Panduan instalasi dan penggunaan disediakan sebelum hari ujian. Setiap pendaftar hanya mendapat satu attempt; tidak ada retake setelah selesai atau waktu habis. Jawaban disimpan otomatis selama ujian.

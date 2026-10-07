@@ -10,6 +10,14 @@ Saat kuota tercapai, tagihan formulir pending dibatalkan dan pendaftar diberi in
           │                                        [APPROVE SEMUA]   [REJECT DOKUMEN SPESIFIK] -> [AUTO NOTIF WA]
           │                                                  │
           │                                                  ▼
+          │                                        [1b. BACA FORMULIR KESEHATAN PENDAFTAR]
+          │                                        (Data kesehatan pendaftar pengganti Medcheck: riwayat penyakit,
+          │                                         diagnosis, alergi, pengobatan rutin, keterbatasan fisik,
+          │                                         rawat inap, kebutuhan khusus, kontak darurat, pernyataan.
+          │                                         Data sensitif — akses dibatasi dan dapat diaudit.
+          │                                         Rincian: REQUIREMENTS.md.)
+          │                                                  │
+          │                                                  ▼
           │                                        [2. MONITOR HASIL TIU OTOMATIS]
           │                                        (Soal disinkronkan dari Google Form melalui
           │                                         Apps Script tanpa publish manual; hasil nilai masuk

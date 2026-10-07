@@ -96,9 +96,9 @@ export default function ApplicantSKDModal({
                     <span>{applicant.nisn || applicant.nik || '-'}</span>
                   </div>
                   <div className="grid grid-cols-[140px_10px_1fr]">
-                    <span>Jenjang Tujuan</span>
+                    <span>Jalur Pendaftaran</span>
                     <span>:</span>
-                    <span>{applicant.registration_level.toUpperCase()}</span>
+                    <span>{(applicant.path_name || applicant.registration_path || "-").toUpperCase()}</span>
                   </div>
                 </div>
                 <p>

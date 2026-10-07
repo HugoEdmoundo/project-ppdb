@@ -11,7 +11,7 @@ Saat kuota tercapai, tagihan formulir pending dibatalkan dan pendaftar diberi in
           │                                                  │
           │                                                  ▼
           │                                        [1b. BACA FORMULIR KESEHATAN PENDAFTAR]
-          │                                        (Data kesehatan pendaftar pengganti Medcheck: riwayat penyakit,
+          │                                        (Data kesehatan pendaftar: riwayat penyakit,
           │                                         diagnosis, alergi, pengobatan rutin, keterbatasan fisik,
           │                                         rawat inap, kebutuhan khusus, kontak darurat, pernyataan.
           │                                         Data sensitif — akses dibatasi dan dapat diaudit.

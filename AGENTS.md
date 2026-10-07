@@ -47,7 +47,7 @@ Pendaftaran publik dibuka ketika ada gelombang aktif di periode aktif, jadwal pe
 - Bila jenjang masih perlu dicantumkan pada dokumen (LoA, SKD, transkrip), perlakukan sebagai atribut tetap institusi dari satu konfigurasi tingkat sekolah, bukan input pengguna. Butuh keputusan sebelum menambah setting baru.
 - Implementasi lama yang masih menyimpan field/kolom jenjang (misalnya whitelist `ALLOWED_LEVELS`, kolom scope gelombang, atau field jenjang pada pendaftar) adalah sisa flow lama. Perlakukan sebagai artefak tidak aktif: jangan jadikan sumber kebenaran dan jangan tambah UI/endpoint baru yang bergantung padanya. Penghapusan kolom perlu keputusan tersendiri.
 
-### Formulir Identifikasi Kesehatan (Pengganti Medcheck)
+### Formulir Identifikasi Kesehatan
 
 - Formulir ini **menggantikan Medcheck**. Diisi sendiri oleh pendaftar pada formulir pendaftaran, bukan oleh petugas medis, dan disimpan sebagai data profil kesehatan pendaftar yang dapat dibuka admin pada detail/dossier pendaftar.
 - Rincian lengkap pertanyaan, urutan, dan caption ada di `docs/REQUIREMENTS.md` bagian "Formulir Identifikasi Kesehatan". Ringkasnya: (1) riwayat penyakit kronis, (2) kondisi yang pernah didiagnosis — checkbox Asma/Diabetes/Epilepsi/Penyakit jantung/Hipertensi/TBC/Lainnya, (3) alergi — checkbox Makanan/Obat/Debu/Lainnya, (4) pengobatan rutin, (5) keterbatasan fisik, (6) rawat inap atau operasi 2 tahun terakhir, (7) kebutuhan khusus terkait kesehatan saat belajar, (8) nama kontak darurat, (9) hubungan kontak darurat dengan calon peserta didik, (10) nomor telepon darurat, lalu Pernyataan yang wajib disetujui pendaftar.

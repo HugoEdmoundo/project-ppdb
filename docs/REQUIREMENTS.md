@@ -34,7 +34,21 @@ Implikasi:
 - Halaman publik hanya menampilkan informasi umum, bukan pilihan jenjang.
 - Field/kolom jenjang yang sudah ada di implementasi lama adalah sisa flow lama: perlakukan sebagai artefak yang tidak dipakai, jangan jadikan sumber kebenaran, dan jangan tambahkan UI atau endpoint baru yang bergantung padanya. Perubahan model data (misalnya penghapusan kolom) perlu keputusan tersendiri.
 
-## Formulir Identifikasi Kesehatan (Pengganti Medcheck)
+## Struktur Formulir Pendaftaran Publik
+
+Sistem menggunakan formulir pendaftaran bertahap (wizard) dengan 7 bagian (section) utama untuk memudahkan pendaftar:
+
+1. **Pilih Jalur**: Pilihan jalur pendaftaran aktif berdasarkan gelombang. Opsi ditampilkan bersih tanpa embel-embel seperti `(Non-TIU)` atau `(Tes TIU)`.
+2. **Identitas Calon Murid**: Data pribadi siswa, termasuk asal sekolah.
+3. **Data Orang Tua/Wali**: Data lengkap meliputi Nama, Pekerjaan, dan Nomor WA untuk Ayah dan Ibu. Data Wali bersifat opsional. Terdapat juga input Email Orang Tua/Wali dan Penghasilan Per Bulan.
+4. **Kontak**: Email dan Nomor WA pendaftar. Sistem wajib meminta pengguna memverifikasi data ini kembali karena akan digunakan untuk pengiriman kredensial.
+5. **Domisili**: Alamat lengkap, Provinsi, Kabupaten/Kota, Kecamatan, Kelurahan/Desa, dan Kode Pos.
+6. **Identifikasi Kesehatan**: Kuesioner riwayat kesehatan yang menggantikan fungsi medcheck (ditampilkan secara internal, namun di UI publik cukup berlabel "Identifikasi Kesehatan").
+7. **Pernyataan & Persetujuan**: Konfirmasi akhir (review) dengan 4 persetujuan (checkbox) yang wajib dicentang sebelum tombol *submit* aktif.
+
+Data orang tua/wali yang terkumpul pada langkah ini wajib disinkronisasi tampilannya di seluruh *dashboard* operasional (Admin, Superadmin, dan profil Pendaftar) secara lengkap, bukan hanya direduksi menjadi satu baris `parent_name`.
+
+## Formulir Identifikasi Kesehatan
 
 Formulir ini menggantikan Medcheck. Diisi sendiri oleh pendaftar pada formulir pendaftaran (bukan oleh petugas medis), dan hasilnya disimpan sebagai data profil kesehatan pendaftar yang dapat dibuka admin pada halaman detail/dossier pendaftar.
 

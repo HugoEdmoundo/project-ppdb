@@ -2,12 +2,14 @@
        │
        ▼
 [2. ISI FORMULIR PENDAFTARAN AWAL]
-- Pilih Jalur Pendaftaran langsung di dalam Form. TIDAK ada pemilihan jenjang pendidikan.
-- Isi Formulir Identifikasi Kesehatan (Pengganti Medcheck): riwayat penyakit kronis,
-  diagnosis (asma/diabetes/epilepsi/jantung/hipertensi/TBC/lainnya), alergi,
-  pengobatan rutin, keterbatasan fisik, rawat inap/operasi 2 tahun terakhir,
-  kebutuhan khusus, kontak darurat (nama, hubungan, nomor telepon), lalu setujui
-  Pernyataan. Rincian pertanyaan ada di REQUIREMENTS.md.
+Pendaftar mengisi form pendaftaran berseri (wizard) dengan 7 tahapan:
+- Pilih Jalur (tanpa pemilihan jenjang pendidikan).
+- Identitas Calon Murid (Data pribadi dan asal sekolah).
+- Data Orang Tua/Wali (Nama, Pekerjaan, No WA Ayah dan Ibu; Wali opsional; serta Email dan Penghasilan).
+- Kontak (Verifikasi email dan nomor WA pendaftar).
+- Domisili (Alamat lengkap).
+- Identifikasi Kesehatan (Riwayat kesehatan, alergi, operasi, kebutuhan khusus, darurat, dll).
+- Pernyataan & Persetujuan (Wajib menyetujui seluruh klausul dengan mencentang 4 kotak sebelum submit).
 - Sistem otomatis menautkan pendaftar ke satu-satunya gelombang aktif di periode aktif.
        │
        ▼

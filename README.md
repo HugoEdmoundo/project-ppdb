@@ -35,7 +35,7 @@ Klik pada masing-masing aplikasi untuk melihat detail teknisnya:
 
 Kami memisahkan aturan bisnis dari dokumen teknis agar lebih rapi (modular). Untuk mempelajari bagaimana alur pendaftaran, sistem gelombang, dan aturan ujian berjalan, silakan baca:
 
-- 📑 [**Aturan Bisnis & Requirement (REQUIREMENTS.md)**](docs/REQUIREMENTS.md) — Baca ini untuk memahami konsep Periode, Kuota, LoA, aturan penilaian, aturan tanpa jenjang pendidikan, dan Formulir Identifikasi Kesehatan (pengganti Medcheck).
+- 📑 [**Aturan Bisnis & Requirement (REQUIREMENTS.md)**](docs/REQUIREMENTS.md) — Baca ini untuk memahami konsep Periode, Kuota, LoA, aturan penilaian, aturan tanpa jenjang pendidikan, dan Formulir Identifikasi Kesehatan.
 - 🐳 [**Setup Docker (DOCKER_SETUP.md)**](docs/DOCKER_SETUP.md) — Panduan wajib untuk deployment lokal menggunakan WSL2 dan Docker.
 - 🤖 [**Panduan AI Agents (AGENTS.md)**](AGENTS.md) — Tata cara kerja dan aturan *coding* untuk AI/Developer.
 

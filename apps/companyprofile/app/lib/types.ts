@@ -27,6 +27,8 @@ export interface StaffContent {
   position?: string
   bio?: string
   expertise?: string[]
+  parentId?: string
+  order?: number
 }
 
 export interface AchievementContent {

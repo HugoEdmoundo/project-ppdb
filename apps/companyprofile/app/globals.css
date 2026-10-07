@@ -264,6 +264,60 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-muted);
 }
 
+/* ── Organization chart tree ── */
+.org-tree ul {
+  display: flex;
+  gap: 1rem;
+  padding-top: 1.5rem;
+  position: relative;
+  justify-content: center;
+}
+.org-tree > ul { padding-top: 0; }
+.org-tree li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding-top: 1.5rem;
+}
+.org-tree li::before,
+.org-tree li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: 1.5rem;
+  border-top: 2px solid var(--border-strong);
+}
+.org-tree li::after {
+  right: auto;
+  left: 50%;
+  border-left: 2px solid var(--border-strong);
+}
+.org-tree li:only-child::before,
+.org-tree li:only-child::after { display: none; }
+.org-tree li:only-child { padding-top: 0; }
+.org-tree li:first-child::before,
+.org-tree li:last-child::after { border: 0 none; }
+.org-tree li:last-child::before { border-right: 2px solid var(--border-strong); }
+.org-tree li:first-child::after { border-radius: 6px 0 0 0; }
+.org-tree li:last-child::before { border-radius: 0 6px 0 0; }
+.org-tree ul ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: 1.5rem;
+  border-left: 2px solid var(--border-strong);
+}
+@media (max-width: 640px) {
+  .org-tree li::before,
+  .org-tree li::after,
+  .org-tree ul ul::before { border-color: transparent; }
+}
+
 /* ── Arabic Quote Style ── */
 .arabic-quote {
   font-family: var(--font-arabic), serif;

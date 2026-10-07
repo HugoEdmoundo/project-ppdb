@@ -21,10 +21,10 @@ export default function ChangePathModal({ open, onOpenChange, currentPath }: Cha
   const [selectedPath, setSelectedPath] = useState<string>('')
 
   const paths = [
-    { id: 'reguler', name: 'Reguler (Tes TIU)' },
-    { id: 'prestasi', name: 'Prestasi (Non-TIU)' },
-    { id: 'tahfidz', name: 'Tahfidz (Non-TIU)' },
-    { id: 'rapot', name: 'Rapot (Non-TIU)' }
+    { id: 'reguler', name: 'Reguler' },
+    { id: 'prestasi', name: 'Prestasi' },
+    { id: 'tahfidz', name: 'Tahfidz' },
+    { id: 'rapot', name: 'Rapot' }
   ]
 
   const availablePaths = isActive

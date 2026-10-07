@@ -880,7 +880,23 @@ class PPDBService:
             birth_date=body.birth_date,
             nisn=body.nisn,
             nik=body.nik,
-            parent_name=body.parent_name,
+            parent_name=(
+                body.parent_name
+                or body.father_name
+                or body.guardian_name
+                or body.mother_name
+            ),
+            father_name=body.father_name,
+            father_job=body.father_job,
+            father_phone=body.father_phone,
+            mother_name=body.mother_name,
+            mother_job=body.mother_job,
+            mother_phone=body.mother_phone,
+            guardian_name=body.guardian_name,
+            guardian_job=body.guardian_job,
+            parent_phone=body.parent_phone or body.father_phone or body.mother_phone,
+            parent_income=body.parent_income,
+            parent_email=body.parent_email,
             previous_school=body.previous_school,
             disease_history=self._serialize_health_history(body),
             status="pending_payment",
@@ -1098,7 +1114,23 @@ class PPDBService:
             birth_date=body.birth_date,
             nisn=body.nisn,
             nik=body.nik,
-            parent_name=body.parent_name,
+            parent_name=(
+                body.parent_name
+                or body.father_name
+                or body.guardian_name
+                or body.mother_name
+            ),
+            father_name=body.father_name,
+            father_job=body.father_job,
+            father_phone=body.father_phone,
+            mother_name=body.mother_name,
+            mother_job=body.mother_job,
+            mother_phone=body.mother_phone,
+            guardian_name=body.guardian_name,
+            guardian_job=body.guardian_job,
+            parent_phone=body.parent_phone or body.father_phone or body.mother_phone,
+            parent_income=body.parent_income,
+            parent_email=body.parent_email,
             previous_school=body.previous_school,
             disease_history=self._serialize_health_history_admin(body),
             status="pending_payment",

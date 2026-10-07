@@ -331,7 +331,7 @@ export default function ApplicantDossierModal({
                         <span className="font-medium text-slate-800">{applicant.previous_school || '-'}</span>
                       </div>
                       <div className="sm:col-span-2 md:col-span-3">
-                        <span className="text-xs text-muted-foreground block mb-1">Riwayat Kesehatan (Pengganti Medcheck)</span>
+                        <span className="text-xs text-muted-foreground block mb-1">Riwayat Kesehatan</span>
                         <HealthIdentificationViewer data={applicant.disease_history} />
                       </div>
                     </div>
@@ -371,11 +371,11 @@ export default function ApplicantDossierModal({
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                       <div>
-                        <span className="text-xs text-muted-foreground block">Nama Ayah / Wali</span>
+                        <span className="text-xs text-muted-foreground block">Nama Ayah</span>
                         <span className="font-medium text-slate-800">{applicant.father_name || applicant.parent_name || '-'}</span>
                       </div>
                       <div>
-                        <span className="text-xs text-muted-foreground block">No. WhatsApp Ayah / Wali</span>
+                        <span className="text-xs text-muted-foreground block">No. WhatsApp Ayah</span>
                         <span className="font-medium text-slate-800">{applicant.father_phone || applicant.parent_phone || '-'}</span>
                       </div>
                       <div>
@@ -393,6 +393,22 @@ export default function ApplicantDossierModal({
                       <div>
                         <span className="text-xs text-muted-foreground block">Pekerjaan Ibu</span>
                         <span className="font-medium text-slate-800">{applicant.mother_job || '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Nama Wali</span>
+                        <span className="font-medium text-slate-800">{applicant.guardian_name || '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Pekerjaan Wali</span>
+                        <span className="font-medium text-slate-800">{applicant.guardian_job || '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Penghasilan Per Bulan</span>
+                        <span className="font-medium text-slate-800">{applicant.parent_income || '-'}</span>
+                      </div>
+                      <div className="sm:col-span-2 md:col-span-3">
+                        <span className="text-xs text-muted-foreground block">Email Orang Tua/Wali</span>
+                        <span className="font-medium text-slate-800">{applicant.parent_email || '-'}</span>
                       </div>
                     </div>
                   </div>

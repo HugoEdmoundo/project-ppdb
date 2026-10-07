@@ -108,17 +108,63 @@ export default function ApplicantProfileModal({ open, onOpenChange, applicant, t
                 </div>
               </div>
 
-              <div>
-                <p className="text-muted-foreground text-xs">Nama Orang Tua/Wali</p>
-                <p className="font-medium">{applicant.parent_name || '-'}</p>
+              <div className="col-span-1 sm:col-span-2">
+                <p className="text-muted-foreground text-xs mb-2">Data Orang Tua/Wali</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                  <div>
+                    <p className="text-muted-foreground text-[11px]">Nama Ayah</p>
+                    <p className="text-sm font-medium">{applicant.father_name || applicant.parent_name || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-[11px]">No. WA Ayah</p>
+                    <p className="text-sm font-medium">{applicant.father_phone || applicant.parent_phone || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-[11px]">Pekerjaan Ayah</p>
+                    <p className="text-sm font-medium">{applicant.father_job || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-[11px]">Nama Ibu</p>
+                    <p className="text-sm font-medium">{applicant.mother_name || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-[11px]">No. WA Ibu</p>
+                    <p className="text-sm font-medium">{applicant.mother_phone || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-[11px]">Pekerjaan Ibu</p>
+                    <p className="text-sm font-medium">{applicant.mother_job || '-'}</p>
+                  </div>
+                  {applicant.guardian_name && (
+                    <>
+                      <div>
+                        <p className="text-muted-foreground text-[11px]">Nama Wali</p>
+                        <p className="text-sm font-medium">{applicant.guardian_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground text-[11px]">Pekerjaan Wali</p>
+                        <p className="text-sm font-medium">{applicant.guardian_job || '-'}</p>
+                      </div>
+                    </>
+                  )}
+                  <div>
+                    <p className="text-muted-foreground text-[11px]">Email Orang Tua/Wali</p>
+                    <p className="text-sm font-medium">{applicant.parent_email || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-[11px]">Penghasilan Per Bulan</p>
+                    <p className="text-sm font-medium">{applicant.parent_income || '-'}</p>
+                  </div>
+                </div>
               </div>
-              <div>
+
+              <div className="col-span-1 sm:col-span-2">
                 <p className="text-muted-foreground text-xs">Asal Sekolah</p>
                 <p className="font-medium">{applicant.previous_school || '-'}</p>
               </div>
 
               <div className="col-span-1 sm:col-span-2">
-                <p className="text-muted-foreground text-xs mb-1">Riwayat Kesehatan (Pengganti Medcheck)</p>
+                <p className="text-muted-foreground text-xs mb-1">Riwayat Kesehatan</p>
                 <HealthIdentificationViewer data={applicant.disease_history} />
               </div>
 

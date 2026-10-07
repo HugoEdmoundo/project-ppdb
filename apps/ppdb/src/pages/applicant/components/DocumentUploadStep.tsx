@@ -81,7 +81,7 @@ export default function DocumentUploadStep({ applicant, documents, requiredDocum
     if (regPath.includes('prestasi')) {
       return {
         icon: Award,
-        title: 'Jalur Prestasi (Non-TIU)',
+        title: 'Jalur Prestasi',
         desc: 'Wajib mengunggah 4 dokumen utama + minimal 3 sertifikat prestasi kejuaraan/akademik (maksimal 10). Sertifikat ke-4 dan seterusnya bersifat opsional sebagai nilai tambah.',
         bg: 'bg-blue-50 border-blue-200 text-blue-900',
         iconColor: 'text-blue-600'
@@ -90,7 +90,7 @@ export default function DocumentUploadStep({ applicant, documents, requiredDocum
     if (regPath.includes('rapot') || regPath.includes('rapor') || regPath.includes('pindahan')) {
       return {
         icon: GraduationCap,
-        title: 'Jalur Rapot (Non-TIU)',
+        title: 'Jalur Rapot',
         desc: 'Wajib mengunggah 4 dokumen utama + 4 rapor semester terakhir calon siswa.',
         bg: 'bg-amber-50 border-amber-200 text-amber-900',
         iconColor: 'text-amber-600'
@@ -99,7 +99,7 @@ export default function DocumentUploadStep({ applicant, documents, requiredDocum
     if (regPath.includes('tahfidz')) {
       return {
         icon: BookOpen,
-        title: 'Jalur Tahfidz (Non-TIU)',
+        title: 'Jalur Tahfidz',
         desc: 'Wajib mengunggah 4 dokumen utama + minimal 1 surat keterangan/pengakuan hafalan (maksimal 3). Utamakan surat pernyataan/keterangan pengakuan hafalan resmi, bukan file rekaman video.',
         bg: 'bg-teal-50 border-teal-200 text-teal-900',
         iconColor: 'text-teal-600'
@@ -107,7 +107,7 @@ export default function DocumentUploadStep({ applicant, documents, requiredDocum
     }
     return {
       icon: Info,
-      title: 'Jalur Reguler (Tes TIU)',
+      title: 'Jalur Reguler',
       desc: 'Hanya perlu mengunggah 4 dokumen wajib utama. Seleksi kemampuan akademik akan dilakukan melalui Ujian TIU (Safe Exam Browser).',
       bg: 'bg-emerald-50 border-emerald-200 text-emerald-900',
       iconColor: 'text-emerald-600'

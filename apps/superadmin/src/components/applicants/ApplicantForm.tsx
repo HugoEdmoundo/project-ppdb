@@ -4,9 +4,9 @@ import { Input, Label, SelectField, Textarea } from '@/components/ui'
 import type { ApplicantWave } from '../../api/client'
 
 export const REGISTRATION_PATHS = [
-  { value: 'reguler', label: 'Reguler (Tes TIU)' },
-  { value: 'prestasi', label: 'Prestasi (Non-TIU)' },
-  { value: 'tahfidz', label: 'Tahfidz (Non-TIU)' },
+  { value: 'reguler', label: 'Reguler' },
+  { value: 'prestasi', label: 'Prestasi' },
+  { value: 'tahfidz', label: 'Tahfidz' },
   { value: 'rapot', label: 'Rapot' },
 ]
 
@@ -46,6 +46,17 @@ const EMPTY_FORM: Record<string, string> = {
   nisn: '',
   nik: '',
   parent_name: '',
+  father_name: '',
+  father_job: '',
+  father_phone: '',
+  mother_name: '',
+  mother_job: '',
+  mother_phone: '',
+  guardian_name: '',
+  guardian_job: '',
+  parent_phone: '',
+  parent_income: '',
+  parent_email: '',
   previous_school: '',
   province: '',
   city: '',
@@ -307,12 +318,6 @@ export default function ApplicantForm({
             type="date"
           />
           <Field
-            label="Nama Orang Tua/Wali"
-            name="parent_name"
-            value={form.parent_name}
-            onChange={set}
-          />
-          <Field
             label="Asal Sekolah"
             name="previous_school"
             value={form.previous_school}
@@ -324,6 +329,22 @@ export default function ApplicantForm({
             value={form.major_choice}
             onChange={set}
           />
+        </div>
+      </section>
+
+      <section className="space-y-4 border-t pt-4">
+        <h4 className="text-sm font-semibold">Data Orang Tua / Wali</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Nama Ayah" name="father_name" value={form.father_name} onChange={set} />
+          <Field label="Pekerjaan Ayah" name="father_job" value={form.father_job} onChange={set} />
+          <Field label="No. WA Ayah" name="father_phone" value={form.father_phone} onChange={set} inputMode="numeric" />
+          <Field label="Nama Ibu" name="mother_name" value={form.mother_name} onChange={set} />
+          <Field label="Pekerjaan Ibu" name="mother_job" value={form.mother_job} onChange={set} />
+          <Field label="No. WA Ibu" name="mother_phone" value={form.mother_phone} onChange={set} inputMode="numeric" />
+          <Field label="Nama Wali (Opsional)" name="guardian_name" value={form.guardian_name} onChange={set} />
+          <Field label="Pekerjaan Wali" name="guardian_job" value={form.guardian_job} onChange={set} />
+          <Field label="Email Orang Tua/Wali" name="parent_email" value={form.parent_email} onChange={set} type="email" />
+          <Field label="Penghasilan Per Bulan" name="parent_income" value={form.parent_income} onChange={set} />
         </div>
       </section>
 

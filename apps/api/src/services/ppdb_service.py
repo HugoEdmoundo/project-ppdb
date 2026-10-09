@@ -15,7 +15,6 @@ from src.core.notif_service import send_notification, send_notifications
 from src.core.security import hash_password
 from src.models.auth import User
 from src.models.ppdb import (
-    PPDBBMOU,
     PPDBApplicant,
     PPDBPaymentTransaction,
     PPDBPeriod,
@@ -27,13 +26,11 @@ from src.modules.ppdb.schemas import (
     ApplicantAdminCreate,
     ApplicantAdminUpdate,
     ApplicantRegister,
-    MouSignRequest,
     PeriodCreate,
     PeriodUpdate,
     WaveCreate,
     WaveFeeItemCreate,
     WaveFeeItemUpdate,
-    WaveMouTemplateUpdate,
     WaveUpdate,
 )
 from src.repositories.ppdb_repository import PPDBRepository
@@ -300,6 +297,7 @@ class PPDBService:
             name=body.name,
             academic_year=body.academic_year,
             description=body.description,
+            wa_group_link=body.wa_group_link,
             status="inactive",
             created_at=datetime.now(WIB),
             updated_at=datetime.now(WIB),
@@ -321,6 +319,8 @@ class PPDBService:
             period.academic_year = provided["academic_year"]
         if "description" in provided:
             period.description = provided["description"]
+        if "wa_group_link" in provided:
+            period.wa_group_link = provided["wa_group_link"]
         period.updated_at = datetime.now(WIB)
 
         self.repository.update_period(period)
@@ -416,8 +416,6 @@ class PPDBService:
             "paid_count": paid_count,
             "registration_start_date": wave.registration_start_date,
             "registration_end_date": wave.registration_end_date,
-            "document_upload_end_date": wave.document_upload_end_date,
-            "selection_date": wave.selection_date,
             "allowed_paths": [
                 p.strip() for p in (wave.allowed_paths or "").split(",") if p.strip()
             ],
@@ -445,8 +443,6 @@ class PPDBService:
             allowed_paths=body.allowed_paths,
             registration_start_date=body.registration_start_date,
             registration_end_date=body.registration_end_date,
-            document_upload_end_date=body.document_upload_end_date,
-            selection_date=body.selection_date,
             quota=body.quota,
             early_discount_quota=body.early_discount_quota,
             registration_fee=body.registration_fee,
@@ -491,13 +487,6 @@ class PPDBService:
             "registration_end_date": _as_date(
                 provided.get("registration_end_date"), wave.registration_end_date
             ),
-            "document_upload_end_date": _as_date(
-                provided.get("document_upload_end_date"),
-                wave.document_upload_end_date,
-            ),
-            "selection_date": _as_date(
-                provided.get("selection_date"), wave.selection_date
-            ),
         }
         if (
             effective["registration_end_date"] is not None
@@ -508,25 +497,6 @@ class PPDBService:
             raise HTTPException(
                 status_code=400,
                 detail="Tanggal akhir pendaftaran tidak boleh sebelum tanggal mulai",
-            )
-        if (
-            effective["document_upload_end_date"] is not None
-            and effective["registration_end_date"] is not None
-            and effective["document_upload_end_date"]
-            < effective["registration_end_date"]
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="Batas upload dokumen tidak boleh sebelum akhir pendaftaran",
-            )
-        if (
-            effective["selection_date"] is not None
-            and effective["document_upload_end_date"] is not None
-            and effective["selection_date"] < effective["document_upload_end_date"]
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="Jadwal seleksi tidak boleh sebelum batas upload dokumen",
             )
 
         effective_quota = provided.get("quota", wave.quota)
@@ -544,8 +514,6 @@ class PPDBService:
             "allowed_paths",
             "registration_start_date",
             "registration_end_date",
-            "document_upload_end_date",
-            "selection_date",
             "quota",
             "early_discount_quota",
             "registration_fee",
@@ -676,17 +644,6 @@ class PPDBService:
             )
         self.repository.delete_fee_item(item)
         return {"success": True}
-
-    def update_wave_mou_template(
-        self, wave_id: str, body: WaveMouTemplateUpdate
-    ) -> dict[str, Any]:
-        wave = self.repository.get_wave_by_id(wave_id)
-        if not wave:
-            raise HTTPException(status_code=404, detail="Gelombang tidak ditemukan")
-        wave.mou_template = body.mou_template
-        wave.updated_at = datetime.now(WIB)
-        self.repository.update_wave(wave)
-        return {c.name: getattr(wave, c.name) for c in wave.__table__.columns}
 
     # -------------------------------------------------------------------------
     # Registration
@@ -1697,64 +1654,6 @@ class PPDBService:
             "message": "Reminder system migrated to new endpoints",
         }
 
-    # -------------------------------------------------------------------------
-    # MOU
-    # -------------------------------------------------------------------------
-    def get_applicant_mou(self, applicant_id: str) -> dict[str, Any]:
-        applicant = self.repository.get_applicant_by_id(applicant_id)
-        if not applicant:
-            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
-
-        mou = self.repository.get_mou_by_applicant(applicant_id)
-        if not mou:
-            return {"mou": None}
-
-        return {"mou": self._mou_to_dict(mou)}
-
-    @staticmethod
-    def _mou_to_dict(mou: PPDBBMOU) -> dict[str, Any]:
-        return {
-            "id": mou.id,
-            "applicant_id": mou.applicant_id,
-            "draft_content": mou.draft_content,
-            "signature_data": mou.signature_data,
-            "status": mou.status,
-            "signed_at": mou.signed_at.isoformat() if mou.signed_at else None,
-            "created_at": mou.created_at.isoformat() if mou.created_at else None,
-            "updated_at": mou.updated_at.isoformat() if mou.updated_at else None,
-        }
-
-    def get_my_mou(self, user_id: str) -> dict[str, Any]:
-        applicant = self.repository.get_applicant_by_user_id(user_id)
-        if not applicant:
-            raise HTTPException(
-                status_code=404, detail="Data pendaftaran tidak ditemukan"
-            )
-        mou = self.repository.get_mou_by_applicant(applicant.id)
-        if not mou:
-            return {"mou": None}
-        return {"mou": self._mou_to_dict(mou)}
-
-    def sign_my_mou(self, user_id: str, body: MouSignRequest) -> dict[str, Any]:
-        applicant = self.repository.get_applicant_by_user_id(user_id)
-        if not applicant:
-            raise HTTPException(
-                status_code=404, detail="Data pendaftaran tidak ditemukan"
-            )
-        mou = self.repository.get_mou_by_applicant(applicant.id)
-        if not mou:
-            raise HTTPException(status_code=404, detail="MOU belum tersedia")
-        if mou.status == "signed":
-            return {"success": True, "message": "MOU sudah ditandatangani"}
-        if not body.signature_data or not body.signature_data.strip():
-            raise HTTPException(status_code=400, detail="Data tanda tangan wajib diisi")
-        mou.signature_data = body.signature_data
-        mou.status = "signed"
-        mou.signed_at = datetime.now(WIB)
-        mou.updated_at = datetime.now(WIB)
-        self.repository.update_mou(mou)
-        return {"success": True, "message": "MOU berhasil ditandatangani"}
-
     def get_applicant_transcript(self, applicant_id: str) -> dict[str, Any]:
         applicant = self.repository.get_applicant_detail(applicant_id)
         if not applicant:
@@ -1838,15 +1737,8 @@ class PPDBService:
         if not applicant:
             raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
 
-        from sqlalchemy import select
-
-        from src.models.content import SiteSetting
-
-        tpl_row = self.repository.db.execute(
-            select(SiteSetting.value).where(SiteSetting.key == "ppdb_loa_template")
-        ).scalar_one_or_none()
-
-        template_text = tpl_row or (
+        # LoA dibuat otomatis oleh sistem — tidak ada template yang bisa diedit admin
+        template_text = (
             "SURAT PENERIMAAN SANTRI BARU (LETTER OF ACCEPTANCE)\n\n"
             "Dengan hormat,\n"
             "Berdasarkan hasil evaluasi seleksi Penerimaan Peserta Didik "
@@ -1854,7 +1746,6 @@ class PPDBService:
             "Nama Lengkap: {{nama}}\n"
             "Nomor Induk / NISN: {{nisn}}\n"
             "Jalur Pendaftaran: {{jalur}}\n"
-            "Jenjang Pendidikan: {{jenjang}}\n"
             "Gelombang: {{gelombang}}\n\n"
             "Dinyatakan DITERIMA / LULUS sebagai santri baru di "
             "Pesantren Tahfidz Ar-Rahman.\n\n"
@@ -1899,29 +1790,18 @@ class PPDBService:
             raise HTTPException(
                 status_code=400, detail="Pendaftar belum dinyatakan lulus"
             )
+        from src.models.ppdb import PPDBPeriod
 
-        from sqlalchemy import select
-
-        from src.models.content import SiteSetting
-
-        bg_row = self.repository.db.execute(
-            select(SiteSetting.value).where(
-                SiteSetting.key == "ppdb_skd_background_url"
-            )
-        ).scalar_one_or_none()
-
-        wa_link_row = self.repository.db.execute(
-            select(SiteSetting.value).where(
-                SiteSetting.key == "ppdb_whatsapp_group_link"
-            )
-        ).scalar_one_or_none()
+        period_id = applicant.get("period_id")
+        period = self.repository.db.get(PPDBPeriod, period_id) if period_id else None
+        wa_link = period.wa_group_link if period and period.wa_group_link else ""
 
         applicant_ref = str(applicant.get("id", ""))[:8].upper()
         return {
             "letter_number": f"SKD/PPDB/{datetime.now(WIB).year}/{applicant_ref}",
             "applicant": applicant,
-            "background_url": bg_row or "",
-            "whatsapp_group_link": wa_link_row or "",
+            "background_url": "",
+            "whatsapp_group_link": wa_link or "",
             "issued_at": datetime.now(WIB).isoformat(),
         }
 

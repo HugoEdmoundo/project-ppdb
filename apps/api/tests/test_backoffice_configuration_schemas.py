@@ -15,7 +15,6 @@ def _wave_payload(**overrides):
     return {
         "name": "Gelombang 1",
         "allowed_paths": "reguler,rapot",
-        "allowed_levels": "SMP,SMK",
         "registration_start_date": date(2026, 1, 1),
         "registration_end_date": date(2026, 1, 31),
         "document_upload_end_date": date(2026, 2, 5),

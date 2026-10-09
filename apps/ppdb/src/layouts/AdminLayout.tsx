@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth, useFilteredNav } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, ChevronDown, ChevronLeft, Menu, CalendarDays, CreditCard, Bell, Users, FileCheck2, FileText, Timer, Archive
+  LayoutDashboard, ChevronDown, ChevronLeft, Menu, CalendarDays, CreditCard, Bell, Users, Archive, Settings, ClipboardCheck, Award
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -12,29 +12,31 @@ import TopBar from '@/components/shared/TopBar'
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/admin/dashboard', module: 'ppdb' },
   { label: 'Data Pendaftar', icon: Users, href: '/admin/data-pendaftar', module: 'ppdb', minLevel: 'read' },
-  { label: 'Arsip Pendaftar', icon: Archive, href: '/admin/arsip', module: 'ppdb', minLevel: 'read' },
-  {
-    label: 'Persyaratan Seleksi',
-    icon: FileCheck2,
-    module: 'ppdb',
-    minLevel: 'read',
-    children: [
-      { label: 'Seleksi', href: '/admin/selection' },
-      { label: 'Review MOU', href: '/admin/mou' },
-    ]
-  },
+  { label: 'Verifikasi Dokumen', icon: ClipboardCheck, href: '/admin/verifikasi-dokumen', module: 'ppdb', minLevel: 'read' },
   {
     label: 'Pembayaran',
     icon: CreditCard,
     module: 'ppdb',
     minLevel: 'read',
     children: [
-      { label: 'Diskonasi', href: '/admin/diskonasi' },
+      { label: 'Pembayaran Formulir', href: '/admin/pembayaran-formulir' },
+      { label: 'Pembayaran Tahap 2', href: '/admin/pembayaran-tahap2' },
     ]
   },
+  { label: 'Hasil Pendaftaran', icon: Award, href: '/admin/penilaian', module: 'ppdb', minLevel: 'read' },
   { label: 'Periode PPDB', icon: CalendarDays, href: '/admin/periods', module: 'ppdb', minLevel: 'read' },
-  { label: 'Template & Dokumen', icon: FileText, href: '/admin/document-settings', module: 'ppdb', minLevel: 'read' },
-  { label: 'Pengaturan TIU', icon: Timer, href: '/admin/tiu-settings', module: 'ppdb', minLevel: 'read' },
+  {
+    label: 'Konfigurasi',
+    icon: Settings,
+    module: 'ppdb',
+    minLevel: 'read',
+    children: [
+      { label: 'Preview LoA & SKD', href: '/admin/pengumuman' },
+      { label: 'Rubrik', href: '/admin/rubrik' },
+      { label: 'Pengaturan TIU', href: '/admin/tiu-settings' },
+    ]
+  },
+  { label: 'Arsip Pendaftar', icon: Archive, href: '/admin/arsip', module: 'ppdb', minLevel: 'read' },
   { label: 'Notifikasi', icon: Bell, href: '/admin/notifications', module: 'ppdb', minLevel: 'read' },
 ]
 

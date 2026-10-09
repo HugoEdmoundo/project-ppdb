@@ -60,11 +60,13 @@ class CategoryCreate(BaseModel):
 
 class CriteriaCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=1000)
     weight: float = Field(gt=0, le=100)
 
 
 class CriteriaUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=1000)
     weight: float = Field(gt=0, le=100)
 
 

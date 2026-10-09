@@ -7,12 +7,14 @@ class PeriodCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     academic_year: str = Field(min_length=1, max_length=20)
     description: str | None = None
+    wa_group_link: str | None = None
 
 
 class PeriodUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     academic_year: str | None = Field(default=None, min_length=1, max_length=20)
     description: str | None = None
+    wa_group_link: str | None = None
 
 
 class TIUSettingsUpdate(BaseModel):
@@ -114,8 +116,6 @@ class WaveBase(BaseModel):
     allowed_paths: str
     registration_start_date: date
     registration_end_date: date
-    document_upload_end_date: date
-    selection_date: date
     quota: int = Field(ge=1)
     early_discount_quota: int = Field(default=0, ge=0)
     registration_fee: int = Field(default=0, ge=0)
@@ -135,12 +135,6 @@ class WaveBase(BaseModel):
                 "Tanggal akhir pendaftaran tidak boleh sebelum "
                 "tanggal mulai pendaftaran"
             )
-        if self.document_upload_end_date < self.registration_end_date:
-            raise ValueError(
-                "Batas upload dokumen tidak boleh sebelum tanggal akhir pendaftaran"
-            )
-        if self.selection_date < self.document_upload_end_date:
-            raise ValueError("Jadwal seleksi tidak boleh sebelum batas upload dokumen")
         if self.early_discount_quota > self.quota:
             raise ValueError("Jumlah diskon pendaftar awal tidak boleh melebihi kuota")
         return self
@@ -157,8 +151,6 @@ class WaveUpdate(BaseModel):
     allowed_paths: str | None = None
     registration_start_date: date | None = None
     registration_end_date: date | None = None
-    document_upload_end_date: date | None = None
-    selection_date: date | None = None
     quota: int | None = Field(default=None, ge=1)
     early_discount_quota: int | None = Field(default=None, ge=0)
     registration_fee: int | None = Field(default=None, ge=0)
@@ -652,14 +644,6 @@ class WaveFeeItemCreate(BaseModel):
 
 class WaveFeeItemUpdate(WaveFeeItemCreate):
     pass
-
-
-class WaveMouTemplateUpdate(BaseModel):
-    mou_template: str
-
-
-class MouSignRequest(BaseModel):
-    signature_data: str
 
 
 class DocumentVerify(BaseModel):

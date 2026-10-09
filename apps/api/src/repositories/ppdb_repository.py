@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from src.models.auth import User
 from src.models.ppdb import (
-    PPDBBMOU,
     FileUpload,
     PPDBApplicant,
     PPDBApplicantDiscount,
@@ -255,11 +254,6 @@ class PPDBRepository:
             ),
         )
 
-    def update_mou(self, mou: PPDBBMOU) -> PPDBBMOU:
-        self.db.commit()
-        self.db.refresh(mou)
-        return mou
-
     # -------------------------------------------------------------------------
     # Registration & Applicants
     # -------------------------------------------------------------------------
@@ -458,9 +452,6 @@ class PPDBRepository:
         self.db.query(PPDBStage2Bill).filter(
             PPDBStage2Bill.applicant_id == applicant.id
         ).delete(synchronize_session=False)
-        self.db.query(PPDBBMOU).filter(PPDBBMOU.applicant_id == applicant.id).delete(
-            synchronize_session=False
-        )
 
         # 3. Hasil & nilai seleksi. TIDAK punya FK ke ppdb_applicants, jadi tanpa
         #    baris di sini akan jadi data yatim yang tetap muncul di daftar hasil.
@@ -767,40 +758,8 @@ class PPDBRepository:
             .all(),
         )
 
-    def get_applicants_for_document_reminder(
-        self,
-    ) -> list[tuple[PPDBApplicant, PPDBWave]]:
-        return cast(
-            list[tuple[PPDBApplicant, PPDBWave]],
-            self.db.query(PPDBApplicant, PPDBWave)
-            .join(PPDBWave, PPDBApplicant.wave_id == PPDBWave.id)
-            .filter(
-                PPDBApplicant.status.in_(
-                    ["document_uploaded_pending", "document_rejected"]
-                ),
-                PPDBWave.document_upload_end_date.is_not(None),
-                PPDBApplicant.deleted_at.is_(None),
-            )
-            .all(),
-        )
-
-    def get_applicants_for_selection_reminder(
-        self,
-    ) -> list[tuple[PPDBApplicant, PPDBWave]]:
-        return cast(
-            list[tuple[PPDBApplicant, PPDBWave]],
-            self.db.query(PPDBApplicant, PPDBWave)
-            .join(PPDBWave, PPDBApplicant.wave_id == PPDBWave.id)
-            .filter(
-                PPDBApplicant.status == "selection",
-                PPDBWave.selection_date.is_not(None),
-                PPDBApplicant.deleted_at.is_(None),
-            )
-            .all(),
-        )
-
     # -------------------------------------------------------------------------
-    # Documents & MOU
+    # Documents
     # -------------------------------------------------------------------------
     def get_documents_by_applicant(self, applicant_id: str) -> list[FileUpload]:
         return cast(
@@ -812,12 +771,4 @@ class PPDBRepository:
             )
             .order_by(FileUpload.created_at.desc())
             .all(),
-        )
-
-    def get_mou_by_applicant(self, applicant_id: str) -> PPDBBMOU | None:
-        return cast(
-            PPDBBMOU | None,
-            self.db.query(PPDBBMOU)
-            .filter(PPDBBMOU.applicant_id == applicant_id)
-            .first(),
         )

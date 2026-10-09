@@ -56,8 +56,9 @@ export function getRateLimitDelay(): number {
 /**
  * BullMQ backoff strategy yang kompatibel dengan job.opts.backoff.
  * Digunakan sebagai custom backoff di Queue options.
+ * Internal helper — gunakan langsung di messageWorker.ts jika dibutuhkan.
  */
-export function bullMQBackoffStrategy(
+function bullMQBackoffStrategy(
   attemptsMade: number,
   _type: string,
   _err: Error,

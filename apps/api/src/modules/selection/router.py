@@ -127,11 +127,8 @@ def get_categories(
     user: dict = Depends(require_ppdb_read),
     svc: SelectionService = Depends(get_selection_service),
 ):
-    active_wave = svc.repo.get_active_wave_info()
-    if not active_wave:
-        return {"data": [], "total": 0, "active_wave": None}
     data = svc.get_categories()
-    return {"data": data, "total": len(data), "active_wave": active_wave}
+    return {"data": data, "total": len(data)}
 
 
 @router.post("/categories")

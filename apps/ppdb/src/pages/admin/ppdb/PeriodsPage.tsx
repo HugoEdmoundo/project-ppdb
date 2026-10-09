@@ -21,6 +21,7 @@ const periodSchema = z.object({
   name: z.string().min(1, 'Nama periode wajib diisi'),
   academic_year: z.string().min(1, 'Tahun ajaran wajib diisi'),
   description: z.string().optional(),
+  wa_group_link: z.string().optional(),
 })
 
 type PeriodFormData = z.infer<typeof periodSchema>
@@ -49,7 +50,7 @@ export default function PeriodsPage() {
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<PeriodFormData>({
     resolver: zodResolver(periodSchema),
-    defaultValues: { name: '', academic_year: '', description: '' }
+    defaultValues: { name: '', academic_year: '', description: '', wa_group_link: '' }
   })
 
   // Aktivasi/deaktivasi periode menonaktifkan wave global → semua data
@@ -117,13 +118,18 @@ export default function PeriodsPage() {
 
   const openCreate = () => {
     setEditingPeriod(null)
-    reset({ name: '', academic_year: '', description: '' })
+    reset({ name: '', academic_year: '', description: '', wa_group_link: '' })
     setShowForm(true)
   }
 
   const openEdit = (p: any) => {
     setEditingPeriod(p)
-    reset({ name: p.name, academic_year: p.academic_year || '', description: p.description || '' })
+    reset({
+      name: p.name,
+      academic_year: p.academic_year || '',
+      description: p.description || '',
+      wa_group_link: p.wa_group_link || ''
+    })
     setShowForm(true)
   }
 
@@ -249,6 +255,15 @@ export default function PeriodsPage() {
               <Label>Deskripsi (Opsional)</Label>
               <Input {...register('description')} placeholder="Keterangan singkat" disabled={!canCrud || isSubmitting} />
               {errors.description && <p className="text-xs text-red-500">{errors.description.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>Link Grup WhatsApp (Opsional)</Label>
+              <Input
+                {...register('wa_group_link')}
+                placeholder="https://chat.whatsapp.com/..."
+                disabled={!canCrud || isSubmitting}
+              />
+              {errors.wa_group_link && <p className="text-xs text-red-500">{errors.wa_group_link.message}</p>}
             </div>
             {canCrud && (
               <DialogFooter>

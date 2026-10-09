@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Activity, ListTree } from 'lucide-react'
 import { Button } from "@/components/ui"
+import { ArrowRight, Activity, CreditCard } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/api/client'
-import SelectionCategories from './components/SelectionCategories'
+import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
 import PageHeaderCard from '@/components/shared/PageHeaderCard'
+import Stage2BillsMonitoring from './components/Stage2BillsMonitoring'
 
-export default function SelectionPage() {
+export default function PembayaranTahap2Page() {
   const activeWaveQuery = useQuery({
     queryKey: ['waves-active'],
     queryFn: async () => {
@@ -21,8 +22,8 @@ export default function SelectionPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeaderCard
-        title="Rubrik Penilaian"
-        description="Konfigurasi kriteria, bobot, dan deskripsi penilaian evaluator Tahfidz dan Wawancara. Rubrik bersifat global institusi — berlaku di semua gelombang."
+        title="Pembayaran Tahap 2"
+        description="Monitoring tagihan DP dan cicilan biaya pendidikan santri. Status terverifikasi otomatis via webhook payment gateway."
         loading={wavesLoading}
         action={
           <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
@@ -33,12 +34,16 @@ export default function SelectionPage() {
         }
         blocks={[
           { icon: Activity, label: 'Gelombang Aktif', value: activeWave?.name || 'Tidak ada', active: !!activeWave, pulse: !!activeWave },
-          { icon: ListTree, label: 'Kategori Rubrik', value: 'Tahfidz & Wawancara', active: true },
+          { icon: CreditCard, label: 'Sistem Pembayaran', value: 'Monitoring Otomatis', active: true },
         ]}
       />
 
-      {/* Struktur Rubrik Penilaian — selalu tampil, tidak perlu gelombang aktif */}
-      <SelectionCategories />
+      {!wavesLoading && !activeWave && (
+        <NoActiveWaveBanner message="Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk memantau pembayaran tahap 2." />
+      )}
+
+      {/* Murni Monitoring Tagihan & Cicilan */}
+      <Stage2BillsMonitoring />
     </div>
   )
 }

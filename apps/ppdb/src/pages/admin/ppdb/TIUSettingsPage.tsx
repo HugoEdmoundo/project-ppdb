@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { KeyRound, Save, Timer, Link as LinkIcon, Info } from 'lucide-react'
+import {
+  KeyRound, Save, Timer, Link as LinkIcon, Info,
+  CheckCircle2, AlertCircle, Eye, EyeOff, Copy, Check, Webhook,
+} from 'lucide-react'
 import { apiFetch } from '@/api/client'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
-import { Button, Card, CardContent, Input, Label } from '@/components/ui'
+import { Button, Card, CardContent, Input, Label, Badge } from '@/components/ui'
 import PageHeaderCard from '@/components/shared/PageHeaderCard'
 
 type TIUSettings = {
@@ -20,6 +23,8 @@ export default function TIUSettingsPage() {
   const [formUrl, setFormUrl] = useState('')
   const [duration, setDuration] = useState('')
   const [webhookSecret, setWebhookSecret] = useState('')
+  const [showSecret, setShowSecret] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const settingsQuery = useQuery({
     queryKey: ['ppdb-tiu-settings'],
@@ -51,29 +56,27 @@ export default function TIUSettingsPage() {
   })
 
   const appsScriptCode = `function onSubmit(e) {
-  // Pastikan Anda mengaktifkan trigger onSubmit untuk form ini
   var formResponses = e.response.getItemResponses();
   var token = "";
-  
-  // Asumsi Pertanyaan 1 adalah Token
+
+  // Cari jawaban dengan judul mengandung kata "Token"
   for (var i = 0; i < formResponses.length; i++) {
-    var itemResponse = formResponses[i];
-    if (itemResponse.getItem().getTitle().toLowerCase().indexOf("token") !== -1) {
-      token = itemResponse.getResponse();
+    var item = formResponses[i];
+    if (item.getItem().getTitle().toLowerCase().indexOf("token") !== -1) {
+      token = item.getResponse();
       break;
     }
   }
 
-  // Hitung Skor (Pastikan fitur Kuis Google Form menyala)
+  // Hitung skor dari soal Kuis (fitur Kuis Google Form harus aktif)
   var score = 0;
-  var gradableItems = formResponses.filter(function(r) { return r.getItem().getType() !== FormApp.ItemType.TEXT; });
-  gradableItems.forEach(function(r) {
+  formResponses.forEach(function(r) {
     if (r.getScore) { score += r.getScore() || 0; }
   });
 
-  var webhookUrl = "${window.location.origin}/api/ppdb/webhook/tiu";
-  var secret = "MASUKKAN_SECRET_ANDA_DI_SINI";
-  
+  var webhookUrl = "https://DOMAIN_ANDA/api/ppdb/webhook/tiu";
+  var secret    = "MASUKKAN_SECRET_ANDA_DI_SINI";
+
   UrlFetchApp.fetch(webhookUrl, {
     method: "post",
     contentType: "application/json",
@@ -82,104 +85,281 @@ export default function TIUSettingsPage() {
   });
 }`
 
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(appsScriptCode).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  const isFormValid =
+    formUrl.trim() &&
+    duration &&
+    Number.isInteger(Number(duration)) &&
+    Number(duration) >= 1 &&
+    Number(duration) <= 1440 &&
+    (!webhookSecret.trim() || webhookSecret.trim().length >= 16)
+
+  const secretConfigured = settingsQuery.data?.webhook_secret_configured
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <PageHeaderCard
-        title="Pengaturan TIU (Integrasi Google Form via SEB)"
-        description="Pengaturan global Ujian TIU. Sistem PPDB akan membungkus Google Form ke dalam file Safe Exam Browser (.seb) dengan menyuntikkan token pendaftar secara otomatis (Pre-filled)."
+        title="Pengaturan TIU"
+        description="Konfigurasi global integrasi Ujian Tes Inteligensi Umum (TIU) menggunakan Google Form + Safe Exam Browser (SEB)."
+        loading={settingsQuery.isLoading}
+        blocks={[
+          {
+            icon: Webhook,
+            label: 'Webhook Secret',
+            value: secretConfigured ? 'Terkonfigurasi' : 'Belum diset',
+            active: !!secretConfigured,
+            pulse: !!secretConfigured,
+          },
+          {
+            icon: Timer,
+            label: 'Durasi Ujian',
+            value: settingsQuery.data?.duration_minutes
+              ? `${settingsQuery.data.duration_minutes} menit`
+              : '—',
+            active: true,
+          },
+        ]}
       />
 
-      {settingsQuery.isError && <Card><CardContent className="p-5 text-sm text-red-600">Pengaturan TIU gagal dimuat. Coba muat ulang halaman.</CardContent></Card>}
+      {settingsQuery.isError && (
+        <div className="flex items-center gap-3 p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <span>Pengaturan TIU gagal dimuat. Coba muat ulang halaman.</span>
+        </div>
+      )}
 
-      <Card>
-        <CardContent className="space-y-6 p-5">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2"><LinkIcon className="h-5 w-5 text-primary" /><Label htmlFor="tiu-form-url" className="text-base font-semibold">Pre-filled URL Google Form (Dengan Token Placeholder)</Label></div>
-            <Input
-              id="tiu-form-url"
-              type="url"
-              value={formUrl}
-              onChange={event => setFormUrl(event.target.value)}
-              placeholder="https://docs.google.com/forms/d/e/.../viewform?usp=pp_url&entry.12345={token}"
-              disabled={!canCrud || settingsQuery.isLoading || saveSettings.isPending}
-            />
-            <p className="text-xs text-muted-foreground">Isi bagian nilai jawaban token di URL tersebut dengan teks <strong>&#123;token&#125;</strong>. Sistem akan menggantinya dengan kode peserta secara otomatis.</p>
-          </div>
+      {/* ── SPLIT LAYOUT: Form (kiri, fleksibel) + Panduan (kanan, sticky scroll) ── */}
+      <div className="flex gap-6 items-start">
 
-          <div className="space-y-2">
-            <div className="flex items-center gap-2"><Timer className="h-5 w-5 text-primary" /><Label htmlFor="tiu-duration" className="text-base font-semibold">Durasi ujian</Label></div>
-            <div className="flex max-w-xs items-center gap-2">
-              <Input
-                id="tiu-duration"
-                type="number"
-                min={1}
-                max={1440}
-                value={duration}
-                onChange={event => setDuration(event.target.value)}
-                disabled={!canCrud || settingsQuery.isLoading || saveSettings.isPending}
-              />
-              <span className="text-sm text-muted-foreground">menit</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Nilai yang dikirim Google Form <strong>setelah batas durasi ini habis</strong> akan otomatis ditolak oleh sistem.</p>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2"><KeyRound className="h-5 w-5 text-primary" /><Label htmlFor="tiu-secret" className="text-base font-semibold">Webhook Secret Apps Script</Label></div>
-            <Input
-              id="tiu-secret"
-              type="password"
-              autoComplete="new-password"
-              value={webhookSecret}
-              onChange={event => setWebhookSecret(event.target.value)}
-              placeholder={settingsQuery.data?.webhook_secret_configured ? 'Secret sudah tersimpan; isi untuk menggantinya' : 'Masukkan secret minimal 16 karakter'}
-              disabled={!canCrud || settingsQuery.isLoading || saveSettings.isPending}
-            />
-            <p className="text-xs text-muted-foreground">
-              {settingsQuery.data?.webhook_secret_configured
-                ? 'Secret aktif tersimpan. Isi kolom ini hanya saat ingin menggantinya.'
-                : 'Minimal 16 karakter. Gunakan nilai yang sama pada Apps Script Google Form.'}
-            </p>
-          </div>
-
-          <Button
-            onClick={() => saveSettings.mutate()}
-            disabled={!canCrud || settingsQuery.isLoading || saveSettings.isPending || !formUrl.trim() || !duration || !Number.isInteger(Number(duration)) || Number(duration) < 1 || Number(duration) > 1440 || (!!webhookSecret.trim() && webhookSecret.trim().length < 16)}
-          >
-            <Save className="mr-2 h-4 w-4" />{saveSettings.isPending ? 'Menyimpan...' : 'Simpan Pengaturan'}
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="space-y-4 p-6">
-          <div className="flex items-center gap-2 text-blue-700">
-            <Info className="h-5 w-5" />
-            <h3 className="font-semibold text-lg">Panduan Integrasi Google Form</h3>
-          </div>
-          
-          <div className="space-y-4 text-sm text-slate-700">
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-1">1. Buat Pertanyaan Token</h4>
-              <p>Tambahkan 1 pertanyaan "Short Answer" (Jawaban Singkat) di Google Form Anda. Beri judul pertanyaan yang mengandung kata <strong>Token</strong> (contoh: "Token Ujian"). Setel sebagai "Required/Wajib Isi".</p>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-1">2. Dapatkan Pre-filled URL</h4>
-              <p>Klik menu (titik tiga) di kanan atas Google Form, pilih <strong>Get pre-filled link</strong>. Isi sembarang teks (misal: "X") pada kolom Token tadi, lalu klik "Get Link".</p>
-              <p>Di halaman Pengaturan TIU ini (kolom atas), *paste* link tersebut. Ganti teks "X" dengan <code>&#123;token&#125;</code>. Contoh jadinya: <code>...&entry.234567=&#123;token&#125;</code>.</p>
+        {/* ── KIRI: Form konfigurasi — fokus utama ── */}
+        <div className="flex-1 min-w-0">
+          <Card className="shadow-sm border-slate-200/80">
+            <div className="px-6 py-4 border-b bg-slate-50/70 flex items-center gap-3 rounded-t-xl">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <LinkIcon className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-sm text-slate-800">Konfigurasi Pengaturan TIU</h2>
+                <p className="text-xs text-muted-foreground">Berlaku secara global untuk semua gelombang.</p>
+              </div>
             </div>
 
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-1">3. Pasang Google Apps Script Webhook</h4>
-              <p>Buka <strong>Script editor</strong> di Google Form. Paste kode di bawah ini, sesuaikan Secret-nya, simpan, dan jangan lupa buat <strong>Trigger</strong> untuk function <code>onSubmit</code> dengan event "On form submit".</p>
-              <pre className="bg-slate-900 text-slate-50 p-4 rounded-md mt-2 overflow-x-auto text-xs font-mono">
-                {appsScriptCode}
-              </pre>
+            <CardContent className="p-6 space-y-6">
+              {/* URL Google Form */}
+              <div className="space-y-2">
+                <Label htmlFor="tiu-form-url" className="text-sm font-semibold flex items-center gap-1.5">
+                  <LinkIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  URL Pre-filled Google Form
+                  <span className="text-rose-500 ml-0.5">*</span>
+                </Label>
+                <Input
+                  id="tiu-form-url"
+                  type="url"
+                  value={formUrl}
+                  onChange={e => setFormUrl(e.target.value)}
+                  placeholder="https://docs.google.com/forms/d/e/.../viewform?entry.12345={token}"
+                  disabled={!canCrud || settingsQuery.isLoading || saveSettings.isPending}
+                  className="font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Ganti nilai kolom token di URL dengan placeholder{' '}
+                  <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono">{'{token}'}</code>.
+                  Sistem akan mengisinya otomatis saat file{' '}
+                  <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700 font-mono">.seb</code> di-generate.
+                </p>
+              </div>
+
+              {/* Durasi + Webhook Secret */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Durasi */}
+                <div className="space-y-2">
+                  <Label htmlFor="tiu-duration" className="text-sm font-semibold flex items-center gap-1.5">
+                    <Timer className="h-3.5 w-3.5 text-muted-foreground" />
+                    Durasi Ujian
+                    <span className="text-rose-500 ml-0.5">*</span>
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="tiu-duration"
+                      type="number"
+                      min={1}
+                      max={1440}
+                      value={duration}
+                      onChange={e => setDuration(e.target.value)}
+                      disabled={!canCrud || settingsQuery.isLoading || saveSettings.isPending}
+                      className="max-w-[100px] text-center font-semibold"
+                    />
+                    <span className="text-sm text-muted-foreground font-medium">menit</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Jawaban melewati batas waktu ini otomatis ditolak sistem.
+                  </p>
+                </div>
+
+                {/* Webhook Secret */}
+                <div className="space-y-2">
+                  <Label htmlFor="tiu-secret" className="text-sm font-semibold flex items-center gap-1.5">
+                    <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+                    Webhook Secret
+                    {secretConfigured ? (
+                      <Badge variant="success" className="text-[10px] ml-1 gap-1 px-1.5 py-0.5">
+                        <CheckCircle2 className="h-3 w-3" /> Aktif
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-[10px] ml-1 px-1.5 py-0.5">
+                        Belum diset
+                      </Badge>
+                    )}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="tiu-secret"
+                      type={showSecret ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      value={webhookSecret}
+                      onChange={e => setWebhookSecret(e.target.value)}
+                      placeholder={secretConfigured ? 'Isi untuk mengganti' : 'Min. 16 karakter'}
+                      disabled={!canCrud || settingsQuery.isLoading || saveSettings.isPending}
+                      className="pr-10 font-mono text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSecret(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {secretConfigured
+                      ? 'Isi hanya untuk mengganti secret aktif.'
+                      : 'Gunakan nilai yang sama di Apps Script.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Simpan */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-4">
+                <p className="text-xs text-muted-foreground">
+                  Perubahan langsung berlaku untuk semua gelombang.
+                </p>
+                <Button
+                  onClick={() => saveSettings.mutate()}
+                  disabled={
+                    !canCrud ||
+                    settingsQuery.isLoading ||
+                    saveSettings.isPending ||
+                    !isFormValid
+                  }
+                  className="gap-2 h-9 px-5 shrink-0"
+                >
+                  <Save className="h-4 w-4" />
+                  {saveSettings.isPending ? 'Menyimpan...' : 'Simpan Pengaturan'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ── KANAN: Panduan — sticky, scroll sendiri, tidak ganggu halaman ── */}
+        <div className="w-[320px] shrink-0 sticky top-6 max-h-[calc(100vh-9rem)] flex flex-col">
+          <Card className="shadow-sm border-slate-200/80 flex flex-col h-full overflow-hidden">
+            {/* Header panduan */}
+            <div className="px-4 py-3 border-b bg-blue-50/70 flex items-center gap-2.5 shrink-0 rounded-t-xl">
+              <div className="p-1.5 rounded-lg bg-blue-100 text-blue-700">
+                <Info className="h-3.5 w-3.5" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-xs text-slate-800">Panduan Integrasi</h2>
+                <p className="text-[10px] text-muted-foreground">Google Form + Apps Script</p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+
+            {/* Scroll hanya di dalam panel ini */}
+            <div className="overflow-y-auto flex-1 p-4 space-y-4">
+
+              {/* Step 1 */}
+              <div className="flex gap-3">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center mt-0.5">
+                  1
+                </div>
+                <div>
+                  <p className="font-semibold text-[11px] text-slate-800 mb-1">Buat Pertanyaan Token</p>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Tambahkan pertanyaan <strong>Jawaban Singkat</strong> bertajuk kata{' '}
+                    <strong>Token</strong> (cth: <em>"Token Ujian"</em>), atur{' '}
+                    <strong>Wajib Isi</strong>, dan aktifkan mode <strong>Kuis</strong> di
+                    pengaturan form.
+                  </p>
+                </div>
+              </div>
+
+              <div className="h-px bg-slate-100" />
+
+              {/* Step 2 */}
+              <div className="flex gap-3">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center mt-0.5">
+                  2
+                </div>
+                <div>
+                  <p className="font-semibold text-[11px] text-slate-800 mb-1">Dapatkan Pre-filled URL</p>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Klik <strong>⋮ → Get pre-filled link</strong>, isi kolom Token dengan{' '}
+                    <code className="bg-slate-100 px-1 rounded font-mono text-[10px]">X</code>, klik Get Link.
+                    Paste URL di kolom kiri dan ganti{' '}
+                    <code className="bg-slate-100 px-1 rounded font-mono text-[10px]">X</code> dengan{' '}
+                    <code className="bg-slate-100 px-1 rounded font-mono text-[10px]">{'{token}'}</code>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="h-px bg-slate-100" />
+
+              {/* Step 3 */}
+              <div className="flex gap-3">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center mt-0.5">
+                  3
+                </div>
+                <div className="space-y-2 min-w-0">
+                  <p className="font-semibold text-[11px] text-slate-800">Pasang Apps Script Webhook</p>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Buka <strong>Extensions → Apps Script</strong>. Paste kode berikut, ganti{' '}
+                    <code className="bg-slate-100 px-1 rounded font-mono text-[10px]">DOMAIN</code> &amp;{' '}
+                    <code className="bg-slate-100 px-1 rounded font-mono text-[10px]">SECRET</code>, buat{' '}
+                    <strong>Trigger onSubmit → On form submit</strong>.
+                  </p>
+                  <div className="rounded-lg overflow-hidden border border-slate-700">
+                    <div className="flex items-center justify-between px-3 py-2 bg-slate-800 text-slate-300 text-[10px]">
+                      <span className="font-mono">Apps Script</span>
+                      <button
+                        onClick={handleCopyCode}
+                        className="flex items-center gap-1 hover:text-white transition-colors"
+                      >
+                        {copied
+                          ? <><Check className="h-3 w-3 text-emerald-400" /> Tersalin!</>
+                          : <><Copy className="h-3 w-3" /> Salin Kode</>
+                        }
+                      </button>
+                    </div>
+                    <pre className="bg-slate-900 text-slate-100 p-3 overflow-x-auto text-[10px] font-mono leading-relaxed whitespace-pre">
+                      {appsScriptCode}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </Card>
+        </div>
+
+      </div>
     </div>
   )
 }
-

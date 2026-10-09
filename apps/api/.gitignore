@@ -37,3 +37,9 @@ test_seed.py
 del_site_name.py
 list_tables.py
 router_new.py
+
+# Loose root-level debug/test scripts (never commit these)
+test.py
+test_db.py
+test_send.py
+test_script.py

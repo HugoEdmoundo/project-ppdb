@@ -147,10 +147,42 @@ class SelectionService:
         return {"message": f"Notifikasi berhasil dikirim ke {len(applicants)} peserta."}
 
     def get_categories(self) -> list[dict[str, Any]]:
-        wave_id = self._get_active_wave_id_or_400()
-        categories = self.repo.get_categories(wave_id)
+        now = _now_wib()
+        required_cats = ["Tahfidz", "Wawancara"]
+
+        # Kategori bersifat global (tidak terikat gelombang aktif)
+        existing = (
+            self.repo.db.query(SelectionCategory)
+            .filter(SelectionCategory.wave_id == "global")
+            .all()
+        )
+        existing_names = {c.name for c in existing}
+
+        for name in required_cats:
+            if name not in existing_names:
+                new_cat = SelectionCategory(
+                    id=str(uuid4()),
+                    wave_id="global",
+                    name=name,
+                    created_at=now,
+                    updated_at=now,
+                )
+                self.repo.db.add(new_cat)
+
+        if len(existing_names) < len(required_cats):
+            self.repo.db.commit()
+            existing = (
+                self.repo.db.query(SelectionCategory)
+                .filter(SelectionCategory.wave_id == "global")
+                .all()
+            )
+
+        valid_categories = [c for c in existing if c.name in required_cats]
+        # Urutkan Tahfidz pertama, Wawancara kedua
+        valid_categories.sort(key=lambda c: 0 if c.name == "Tahfidz" else 1)
+
         result = []
-        for c in categories:
+        for c in valid_categories:
             c_dict = c.__dict__.copy()
             c_dict.pop("_sa_instance_state", None)
             crits = self.repo.get_criteria_by_category(c.id)
@@ -162,7 +194,6 @@ class SelectionService:
 
     def create_category(self, body: CategoryCreate) -> dict[str, Any]:
         now = _now_wib()
-        wave_id = self._get_active_wave_id_or_400()
         if _is_tiu_category_name(body.name):
             raise HTTPException(
                 status_code=400,
@@ -173,7 +204,7 @@ class SelectionService:
             )
         cid = str(uuid4())
         cat = SelectionCategory(
-            id=cid, wave_id=wave_id, name=body.name, created_at=now, updated_at=now
+            id=cid, wave_id="global", name=body.name, created_at=now, updated_at=now
         )
         self.repo.create_category(cat)
         self.repo.db.commit()
@@ -181,9 +212,8 @@ class SelectionService:
 
     def create_criteria(self, category_id: str, body: CriteriaCreate) -> dict[str, Any]:
         now = _now_wib()
-        wave_id = self._get_active_wave_id_or_400()
         category = self.repo.get_category_by_id(category_id)
-        if not category or category.wave_id != wave_id:
+        if not category:
             raise HTTPException(status_code=404, detail="Kategori tidak ditemukan")
         current_weight = sum(
             float(item.weight or 0)
@@ -198,6 +228,7 @@ class SelectionService:
             id=crid,
             category_id=category_id,
             name=body.name,
+            description=body.description,
             weight=body.weight,
             created_at=now,
             updated_at=now,
@@ -208,13 +239,12 @@ class SelectionService:
 
     def update_criteria(self, criteria_id: str, body: CriteriaUpdate) -> dict[str, Any]:
         now = _now_wib()
-        wave_id = self._get_active_wave_id_or_400()
         criteria = self.repo.get_criteria_by_id(criteria_id)
         if not criteria:
             raise HTTPException(status_code=404, detail="Kriteria tidak ditemukan")
         category = self.repo.get_category_by_id(criteria.category_id)
-        if not category or category.wave_id != wave_id:
-            raise HTTPException(status_code=404, detail="Kriteria tidak ditemukan")
+        if not category:
+            raise HTTPException(status_code=404, detail="Kategori tidak ditemukan")
         other_weight = sum(
             float(item.weight or 0)
             for item in self.repo.get_criteria_by_category(category.id)
@@ -225,27 +255,23 @@ class SelectionService:
                 status_code=400, detail="Total bobot kriteria tidak boleh melebihi 100%"
             )
         criteria.name = body.name
+        criteria.description = body.description
         criteria.weight = body.weight
         criteria.updated_at = now
         self.repo.db.commit()
         return {"message": "Kriteria berhasil diperbarui"}
 
     def delete_category(self, id: str) -> dict[str, Any]:
-        wave_id = self._get_active_wave_id_or_400()
         category = self.repo.get_category_by_id(id)
-        if not category or category.wave_id != wave_id:
+        if not category:
             raise HTTPException(status_code=404, detail="Kategori tidak ditemukan")
         self.repo.delete_category(id)
         self.repo.db.commit()
         return {"message": "Kategori dihapus"}
 
     def delete_criteria(self, id: str) -> dict[str, Any]:
-        wave_id = self._get_active_wave_id_or_400()
         criteria = self.repo.get_criteria_by_id(id)
         if not criteria:
-            raise HTTPException(status_code=404, detail="Kriteria tidak ditemukan")
-        category = self.repo.get_category_by_id(criteria.category_id)
-        if not category or category.wave_id != wave_id:
             raise HTTPException(status_code=404, detail="Kriteria tidak ditemukan")
         self.repo.delete_criteria(id)
         self.repo.db.commit()
@@ -265,7 +291,6 @@ class SelectionService:
                 "email": app.email,
                 "phone": app.phone,
                 "registration_path": app.registration_path,
-                "registration_level": "SMK",
                 "applicant_status": app.status,
                 "session_name": s_ses.name if s_ses else None,
                 "session_date": s_ses.session_date if s_ses else None,
@@ -322,9 +347,12 @@ class SelectionService:
             if not criteria:
                 raise HTTPException(status_code=400, detail="Kriteria tidak ditemukan")
             category = self.repo.get_category_by_id(criteria.category_id)
-            if not category or category.wave_id != wave_id:
+            # Kategori global (wave_id="global") valid untuk semua gelombang
+            if not category or (
+                category.wave_id != "global" and category.wave_id != wave_id
+            ):
                 raise HTTPException(
-                    status_code=400, detail="Kriteria tidak termasuk gelombang aktif"
+                    status_code=400, detail="Kriteria tidak ditemukan atau tidak valid"
                 )
             if _is_tiu_category_name(category.name):
                 raise HTTPException(

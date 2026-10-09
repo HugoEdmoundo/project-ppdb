@@ -11,7 +11,7 @@ export default function CrossTabSync() {
     const handler = (e: StorageEvent) => {
       if (e.key === USER_KEY && !e.newValue) {
         localStorage.removeItem(USER_KEY)
-        router.push('/admin/login')
+        router.push('/auth/login')
       }
       if (e.key === USER_KEY && e.oldValue !== e.newValue) {
         window.location.reload()

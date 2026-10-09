@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/api/client'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui'
 import { Button } from '@/components/ui'
-import { Printer, Image as ImageIcon } from 'lucide-react'
+import { Printer, Award, Building2, QrCode } from 'lucide-react'
 
 interface ApplicantSKDModalProps {
   open: boolean
@@ -31,91 +31,166 @@ export default function ApplicantSKDModal({
   }
 
   const applicant = data?.applicant
-  const backgroundUrl = data?.background_url
-  const letterNumber = data?.letter_number
+  const letterNumber = data?.letter_number || `SKD/PPDB/${new Date().getFullYear()}/${strLimit(applicantId, 8).toUpperCase()}`
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader className="print:hidden">
+      <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto p-4 sm:p-6 bg-slate-900 border-slate-800">
+        <DialogHeader className="print:hidden pb-2 border-b border-slate-800">
           <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2 text-base text-emerald-800">
-              <ImageIcon className="h-5 w-5 text-emerald-700" />
-              <span>Surat Keterangan Diterima (SKD)</span>
+            <DialogTitle className="flex items-center gap-2 text-base text-amber-400">
+              <Award className="h-5 w-5 text-amber-400" />
+              <span>Surat Keterangan Diterima (SKD) - Format Sertifikat</span>
             </DialogTitle>
-            <Button onClick={handlePrint} size="sm" variant="outline" className="gap-1.5 h-8 text-xs">
+            <Button
+              onClick={handlePrint}
+              size="sm"
+              variant="outline"
+              className="gap-1.5 h-8 text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border-amber-500/30"
+            >
               <Printer className="h-3.5 w-3.5" /> Cetak / Print SKD
             </Button>
           </div>
         </DialogHeader>
 
         {isLoading ? (
-          <div className="py-16 text-center text-sm text-muted-foreground">
-            Menyiapkan dokumen SKD...
+          <div className="py-20 text-center text-sm text-slate-400">
+            Menyiapkan dokumen SKD resmi...
           </div>
         ) : !applicant ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
+          <div className="py-12 text-center text-sm text-slate-400">
             Data SKD tidak ditemukan.
           </div>
         ) : (
-          <div
-            ref={printRef}
-            className="relative w-full aspect-[1/1.414] bg-white print:p-0 overflow-hidden text-slate-900 border rounded-lg print:border-none"
-          >
-            {backgroundUrl && (
-              <img
-                src={backgroundUrl}
-                alt="SKD Background"
-                className="absolute inset-0 w-full h-full object-cover z-0"
+          <div className="flex justify-center py-2 overflow-x-auto">
+            {/* Pure CSS Certificate View (Landscape A4 ratio 1.414) */}
+            <div
+              ref={printRef}
+              className="relative w-[840px] aspect-[1.414] bg-gradient-to-br from-emerald-950 via-slate-950 to-emerald-900 text-white shadow-2xl border-4 border-slate-950 overflow-hidden flex flex-col justify-between p-8 select-none print:shadow-none print:border-none print:w-full print:m-0"
+            >
+              {/* Subtle Islamic Geometric Pattern Watermark in Background */}
+              <div
+                className="absolute inset-0 opacity-10 bg-[radial-gradient(#f59e0b_1px,transparent_1px)]"
+                style={{ backgroundSize: '24px 24px' }}
               />
-            )}
-            <div className="relative z-10 w-full h-full flex flex-col pt-[30%] px-[15%] pb-[10%]">
-              <div className="text-center font-serif space-y-1 mb-8">
-                <h2 className="text-xl font-bold tracking-widest text-slate-800">SURAT KETERANGAN DITERIMA</h2>
-                <p className="text-xs text-slate-600 font-medium">Nomor: {letterNumber}</p>
-              </div>
 
-              <div className="text-sm font-serif leading-relaxed space-y-4">
-                <p>
-                  Berdasarkan hasil Keputusan Panitia Penerimaan Peserta Didik Baru (PPDB), menerangkan bahwa:
-                </p>
-                <div className="pl-4 space-y-2 font-medium">
-                  <div className="grid grid-cols-[140px_10px_1fr]">
-                    <span>Nama Lengkap</span>
-                    <span>:</span>
-                    <span className="uppercase">{applicant.full_name}</span>
+              {/* Inner Golden Double Border Frame */}
+              <div className="absolute inset-3 border-2 border-amber-500/70 rounded-md pointer-events-none" />
+              <div className="absolute inset-5 border border-amber-400/40 rounded-sm pointer-events-none" />
+
+              {/* Four Corner Decorative Flourishes */}
+              <div className="absolute top-4 left-4 w-7 h-7 border-t-2 border-l-2 border-amber-400 pointer-events-none" />
+              <div className="absolute top-4 right-4 w-7 h-7 border-t-2 border-r-2 border-amber-400 pointer-events-none" />
+              <div className="absolute bottom-4 left-4 w-7 h-7 border-b-2 border-l-2 border-amber-400 pointer-events-none" />
+              <div className="absolute bottom-4 right-4 w-7 h-7 border-b-2 border-r-2 border-amber-400 pointer-events-none" />
+
+              {/* Radial Center Glow */}
+              <div className="absolute inset-0 bg-radial from-amber-400/5 via-transparent to-black/40 pointer-events-none" />
+
+              {/* Certificate Content */}
+              <div className="relative z-10 flex-1 flex flex-col justify-between text-center px-6 py-2">
+                {/* Header */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <Building2 className="h-5 w-5 text-amber-400" />
+                    <span className="text-[11px] font-semibold tracking-widest uppercase text-amber-200/90 font-serif">
+                      YAYASAN & PESANTREN TAHFIDZ QUR&apos;AN DAN DIGITAL AR-RAHMAN
+                    </span>
                   </div>
-                  <div className="grid grid-cols-[140px_10px_1fr]">
-                    <span>No. Pendaftaran</span>
-                    <span>:</span>
-                    <span>{strLimit(applicant.id, 8).toUpperCase()}</span>
-                  </div>
-                  <div className="grid grid-cols-[140px_10px_1fr]">
-                    <span>NISN/NIK</span>
-                    <span>:</span>
-                    <span>{applicant.nisn || applicant.nik || '-'}</span>
-                  </div>
-                  <div className="grid grid-cols-[140px_10px_1fr]">
-                    <span>Jalur Pendaftaran</span>
-                    <span>:</span>
-                    <span>{(applicant.path_name || applicant.registration_path || "-").toUpperCase()}</span>
+
+                  <h1 className="text-2xl sm:text-3xl font-serif font-black tracking-widest uppercase text-amber-300">
+                    SURAT KETERANGAN DITERIMA
+                  </h1>
+                  <p className="text-[11px] font-serif italic tracking-widest uppercase text-amber-200/70">
+                    Certificate of Acceptance
+                  </p>
+
+                  <div className="flex items-center justify-center gap-3 pt-0.5">
+                    <div className="h-[1px] w-14 bg-amber-400/60" />
+                    <span className="text-[10px] font-mono tracking-wider text-amber-300">
+                      {letterNumber}
+                    </span>
+                    <div className="h-[1px] w-14 bg-amber-400/60" />
                   </div>
                 </div>
-                <p>
-                  Dinyatakan <strong>DITERIMA</strong> dan berhak untuk mengikuti pendidikan di Pesantren Tahfidz Ar-Rahman tahun ajaran yang sedang berjalan.
-                </p>
-                <p>
-                  Demikian surat keterangan ini dibuat untuk dipergunakan sebagaimana mestinya.
-                </p>
-              </div>
 
-              <div className="mt-auto pt-8 grid grid-cols-2 text-center text-xs font-serif">
-                <div />
-                <div>
-                  <p>Bogor, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                  <p className="font-semibold mb-16">Panitia PPDB</p>
-                  <p className="font-bold underline text-sm">Ust. H. Muhammad Ar-Rahman, Lc., M.Ag</p>
-                  <p>Ketua Panitia</p>
+                {/* Body / Awarded To */}
+                <div className="space-y-1.5 my-auto py-2">
+                  <p className="text-xs italic text-slate-300">
+                    Diberikan kepada / This is proudly presented to:
+                  </p>
+
+                  <h2 className="text-3xl font-serif font-bold tracking-wide uppercase text-white">
+                    {applicant.full_name}
+                  </h2>
+
+                  <div className="flex items-center justify-center gap-4 text-xs font-medium">
+                    <span className="text-amber-200/90">
+                      NISN: <strong>{applicant.nisn || applicant.nik || '-'}</strong>
+                    </span>
+                    <span className="text-slate-500">•</span>
+                    <span className="text-amber-200/90">
+                      No. Pendaftaran: <strong>{strLimit(applicant.id, 8).toUpperCase()}</strong>
+                    </span>
+                    <span className="text-slate-500">•</span>
+                    <span className="text-amber-200/90">
+                      Jalur: <strong>{(applicant.path_name || applicant.registration_path || 'Reguler').toUpperCase()}</strong>
+                    </span>
+                  </div>
+
+                  <div className="max-w-2xl mx-auto text-xs leading-relaxed text-center pt-2 text-slate-200/90">
+                    Berdasarkan Keputusan Panitia Seleksi PPDB, yang bersangkutan telah memenuhi seluruh kriteria
+                    kelayakan dan secara resmi dinyatakan <strong className="text-amber-300">LULUS</strong> serta{' '}
+                    <strong className="text-amber-300">DITERIMA</strong> sebagai Santri Baru pada{' '}
+                    <strong>Pesantren Tahfidz Qur&apos;an dan Digital Ar-Rahman</strong>.
+                  </div>
+                </div>
+
+                {/* Footer: QR Code, Gold Seal Badge, Signature */}
+                <div className="grid grid-cols-3 items-end pt-2 border-t border-amber-500/30">
+                  {/* Left: QR Code Verification */}
+                  <div className="text-left flex items-center gap-2.5">
+                    <div className="p-1 rounded bg-white/10 border border-amber-400/40 text-amber-300">
+                      <QrCode className="h-8 w-8" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] font-bold block text-white">
+                        VALIDASI DIGITAL
+                      </span>
+                      <span className="text-[8px] block text-slate-400">
+                        Dokumen sah diterbitkan sistem PPDB
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Center: Gold Seal Emblem */}
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="w-12 h-12 rounded-full border-2 border-amber-400 bg-gradient-to-br from-amber-300 via-amber-500 to-amber-700 text-slate-950 flex flex-col items-center justify-center shadow-lg">
+                      <Award className="h-4 w-4" />
+                      <span className="text-[6px] font-extrabold uppercase tracking-tighter">OFFICIAL</span>
+                    </div>
+                    <span className="text-[8px] font-semibold mt-0.5 tracking-wider text-amber-300">
+                      PPDB AR-RAHMAN {new Date().getFullYear()}
+                    </span>
+                  </div>
+
+                  {/* Right: Signature */}
+                  <div className="text-right space-y-0.5">
+                    <p className="text-[9px] text-slate-300">
+                      {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                    <div className="h-8 flex items-center justify-end pr-2">
+                      <span className="font-serif italic text-emerald-300 text-xs font-semibold opacity-90">
+                        Dr. H. Abdurrahman, M.A.
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold underline text-white">
+                      Ust. Dr. H. Abdurrahman, M.A.
+                    </p>
+                    <p className="text-[9px] text-amber-200/80">
+                      Pengasuh / Direktur Pesantren
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -127,6 +202,6 @@ export default function ApplicantSKDModal({
 }
 
 function strLimit(str: string, limit: number) {
-  if (!str) return '';
-  return str.substring(0, limit);
+  if (!str) return ''
+  return str.substring(0, limit)
 }

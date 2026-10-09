@@ -1,6 +1,5 @@
 import hmac
 import logging
-import uuid
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -28,9 +27,7 @@ from src.core.dependencies import (
     require_ppdb_read,
 )
 from src.core.rate_limit import rate_limit_dependency
-from src.core.uploads import delete_upload, upload_file
 from src.models.content import SiteSetting
-from src.models.ppdb import FileUpload
 from src.modules.ppdb.schemas import (
     ApplicantAdminCreate,
     ApplicantAdminUpdate,
@@ -38,14 +35,12 @@ from src.modules.ppdb.schemas import (
     ApplicantPasswordReset,
     ApplicantRegister,
     DocumentVerify,
-    MouSignRequest,
     PeriodCreate,
     PeriodUpdate,
     TIUSettingsUpdate,
     WaveCreate,
     WaveFeeItemCreate,
     WaveFeeItemUpdate,
-    WaveMouTemplateUpdate,
     WaveUpdate,
 )
 from src.repositories.ppdb_repository import PPDBRepository
@@ -277,183 +272,6 @@ def tiu_webhook(
         pass
 
     return {"status": "success", "score": payload.score}
-
-
-@router.get("/document-settings")
-def get_document_settings(
-    user: dict = Depends(require_ppdb_read), db: Session = Depends(get_db)
-):
-    keys = (
-        "ppdb_loa_template",
-        "ppdb_loa_template_draft",
-        "ppdb_loa_template_published_at",
-        "ppdb_skd_background_url",
-        "ppdb_whatsapp_group_link",
-    )
-    rows = db.query(SiteSetting).filter(SiteSetting.key.in_(keys)).all()
-    values = {row.key: row.value or "" for row in rows}
-    return {
-        "loa_template": values.get("ppdb_loa_template", ""),
-        "loa_draft_template": values.get("ppdb_loa_template_draft")
-        or values.get("ppdb_loa_template", ""),
-        "loa_is_published": bool(values.get("ppdb_loa_template", "").strip()),
-        "loa_published_at": values.get("ppdb_loa_template_published_at", ""),
-        "skd_background_url": values.get("ppdb_skd_background_url", ""),
-        "whatsapp_group_link": values.get("ppdb_whatsapp_group_link", ""),
-    }
-
-
-@router.put("/document-settings/whatsapp-link")
-def update_whatsapp_link(
-    body: dict[str, str],
-    user: dict = Depends(require_ppdb_admin),
-    db: Session = Depends(get_db),
-):
-    link = body.get("whatsapp_group_link", "")
-    now = datetime.now(WIB).replace(tzinfo=None)
-    setting = db.get(SiteSetting, "ppdb_whatsapp_group_link")
-    if setting:
-        setting.value = link
-        setting.updated_at = now
-    else:
-        db.add(
-            SiteSetting(
-                key="ppdb_whatsapp_group_link",
-                value=link,
-                created_at=now,
-                updated_at=now,
-            )
-        )
-    db.commit()
-    return {"success": True}
-
-
-@router.put("/document-settings/loa-template")
-def update_loa_template(
-    body: dict[str, str],
-    user: dict = Depends(require_ppdb_admin),
-    db: Session = Depends(get_db),
-):
-    template = body.get("loa_template")
-    if not isinstance(template, str) or len(template) > 30000:
-        raise HTTPException(
-            status_code=400,
-            detail="Template LoA tidak valid (maksimal 30.000 karakter)",
-        )
-    now = datetime.now(WIB).replace(tzinfo=None)
-    setting = db.get(SiteSetting, "ppdb_loa_template_draft")
-    if setting:
-        setting.value = template
-        setting.updated_at = now
-    else:
-        db.add(
-            SiteSetting(
-                key="ppdb_loa_template_draft",
-                value=template,
-                created_at=now,
-                updated_at=now,
-            )
-        )
-    db.commit()
-    return {"loa_draft_template": template}
-
-
-@router.post("/document-settings/loa-template/publish")
-def publish_loa_template(
-    user: dict = Depends(require_ppdb_admin),
-    db: Session = Depends(get_db),
-):
-    draft = db.get(SiteSetting, "ppdb_loa_template_draft")
-    if not draft or not draft.value or not draft.value.strip():
-        raise HTTPException(
-            status_code=400, detail="Simpan template LoA sebelum dipublikasikan"
-        )
-    now = datetime.now(WIB).replace(tzinfo=None)
-    published = db.get(SiteSetting, "ppdb_loa_template")
-    if published:
-        published.value = draft.value
-        published.updated_at = now
-    else:
-        db.add(
-            SiteSetting(
-                key="ppdb_loa_template",
-                value=draft.value,
-                created_at=now,
-                updated_at=now,
-            )
-        )
-    _upsert_site_setting(
-        db,
-        "ppdb_loa_template_published_at",
-        now.isoformat(timespec="seconds"),
-        now,
-    )
-    db.commit()
-    return {
-        "loa_template": draft.value,
-        "published_at": now.isoformat(timespec="seconds"),
-    }
-
-
-@router.post("/document-settings/skd-background")
-async def upload_skd_background(
-    file: UploadFile = File(...),
-    user: dict = Depends(require_ppdb_admin),
-    db: Session = Depends(get_db),
-):
-    file_id = str(uuid.uuid4())
-    uploaded = await upload_file(file, file_id)
-    if not uploaded.mime_type.startswith("image/"):
-        delete_upload(uploaded.storage_path)
-        raise HTTPException(
-            status_code=400, detail="Background SKD harus berupa gambar"
-        )
-
-    now = datetime.now(WIB).replace(tzinfo=None)
-    setting = db.get(SiteSetting, "ppdb_skd_background_url")
-    previous_url = setting.value if setting else None
-    if setting:
-        setting.value = uploaded.public_url
-        setting.updated_at = now
-    else:
-        db.add(
-            SiteSetting(
-                key="ppdb_skd_background_url",
-                value=uploaded.public_url,
-                created_at=now,
-                updated_at=now,
-            )
-        )
-    db.add(
-        FileUpload(
-            id=file_id,
-            uploaded_by=user["id"],
-            original_name=uploaded.original_name,
-            stored_name=uploaded.storage_path.rsplit("/", 1)[-1],
-            mime_type=uploaded.mime_type,
-            size_bytes=uploaded.size_bytes,
-            storage_path=uploaded.storage_path,
-            public_url=uploaded.public_url,
-            entity_type="ppdb_configuration",
-            entity_id="skd_background",
-            data=uploaded.data,
-            created_at=now,
-        )
-    )
-    db.commit()
-
-    if previous_url and previous_url.startswith("/uploads/"):
-        previous_id = previous_url.rsplit("/", 1)[-1]
-        previous = db.get(FileUpload, previous_id)
-        if (
-            previous
-            and previous.entity_type == "ppdb_configuration"
-            and previous.entity_id == "skd_background"
-        ):
-            db.delete(previous)
-            db.commit()
-            delete_upload(previous.storage_path)
-    return {"skd_background_url": uploaded.public_url}
 
 
 def get_ppdb_service(db: Session = Depends(get_db)) -> PPDBService:
@@ -692,16 +510,6 @@ def update_wave_fee_item(
     return service.update_wave_fee_item(id, item_id, body)
 
 
-@router.put("/waves/{id}/mou-template")
-def update_wave_mou_template(
-    id: str,
-    body: WaveMouTemplateUpdate,
-    user: dict = Depends(require_ppdb_admin),
-    service: PPDBService = Depends(get_ppdb_service),
-):
-    return service.update_wave_mou_template(id, body)
-
-
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
@@ -929,14 +737,6 @@ def download_applicant_dossier_zip(
 
 # Rute /applicants/me/* didaftarkan SEBELUM /applicants/{id} agar "me"
 # tidak ditangkap sebagai id.
-@router.get("/applicants/me/mou")
-def get_my_mou(
-    user: dict[str, Any] = Depends(get_current_user),
-    service: PPDBService = Depends(get_ppdb_service),
-):
-    return service.get_my_mou(user["id"])
-
-
 @router.get("/applicants/me/loa")
 def get_my_loa(
     user: dict[str, Any] = Depends(get_current_user),
@@ -950,24 +750,6 @@ def get_my_loa(
 
         raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
     return service.get_applicant_loa(applicant.id)
-
-
-@router.post("/applicants/me/mou/sign")
-def sign_my_mou(
-    body: MouSignRequest,
-    user: dict[str, Any] = Depends(get_current_user),
-    service: PPDBService = Depends(get_ppdb_service),
-):
-    return service.sign_my_mou(user["id"], body)
-
-
-@router.get("/applicants/{id}/mou")
-def get_applicant_mou(
-    id: str,
-    user: dict = Depends(require_ppdb_read),
-    service: PPDBService = Depends(get_ppdb_service),
-):
-    return service.get_applicant_mou(id)
 
 
 @router.get("/dashboard/stats")

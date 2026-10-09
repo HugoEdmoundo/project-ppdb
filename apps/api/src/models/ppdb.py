@@ -26,6 +26,7 @@ class PPDBPeriod(Base):
     end_date: Mapped[date | None] = mapped_column(Date)
     academic_year: Mapped[str | None] = mapped_column(String(20))
     description: Mapped[str | None] = mapped_column(Text)
+    wa_group_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="inactive")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -44,13 +45,10 @@ class PPDBWave(Base):
     allowed_paths: Mapped[str] = mapped_column(
         String(50), default="reguler,prestasi,tahfidz,rapot"
     )
-    allowed_levels: Mapped[str] = mapped_column(String(100), default="SMK")
     start_date: Mapped[date | None] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date)
     registration_start_date: Mapped[date | None] = mapped_column(Date)
     registration_end_date: Mapped[date | None] = mapped_column(Date)
-    document_upload_end_date: Mapped[date | None] = mapped_column(Date)
-    selection_date: Mapped[date | None] = mapped_column(Date)
     quota: Mapped[int] = mapped_column(Integer, default=0)
     early_discount_quota: Mapped[int] = mapped_column(
         Integer, default=0, nullable=False
@@ -58,7 +56,6 @@ class PPDBWave(Base):
     registration_fee: Mapped[int] = mapped_column(BigInteger, default=0)
     second_stage_fee: Mapped[int] = mapped_column(BigInteger, default=0)
     minimum_dp: Mapped[int] = mapped_column(BigInteger, default=0)
-    mou_template: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="inactive")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -408,28 +405,6 @@ class PPDBStage2Bill(Base):
     confirmed_by: Mapped[str | None] = mapped_column(String(36))
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime)
     notes: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-
-
-class PPDBBMOU(Base):
-    """MOU per peserta yang lulus seleksi.
-
-    status: draft | signed
-    draft_content: HTML/markdown template MOU (diisi dari wave.mou_template +
-    data peserta)
-    signature_data: base64 image tanda tangan canvas
-    """
-
-    __tablename__ = "ppdb_mou"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    applicant_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("ppdb_applicants.id", ondelete="CASCADE"), unique=True
-    )
-    draft_content: Mapped[str | None] = mapped_column(Text)
-    signature_data: Mapped[str | None] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(20), default="draft")
-    signed_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 

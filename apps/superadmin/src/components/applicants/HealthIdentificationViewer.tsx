@@ -1,4 +1,3 @@
-import React from 'react'
 import { Phone, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui'
 

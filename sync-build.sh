@@ -21,7 +21,7 @@ if [ ! -d "$DST" ]; then
   exit 1
 fi
 
-echo "[1/4] Sync Windows -> WSL ($SRC -> $DST) ..."
+echo "[1/5] Sync Windows -> WSL ($SRC -> $DST) ..."
 rsync -a --delete \
   --exclude='.git' \
   --exclude='.env' \
@@ -52,7 +52,7 @@ echo "   Sync selesai."
 
 # Copy Windows menyimpan file dengan CRLF. Shell script / Dockerfile / compose
 # yang CRLF akan menggagalkan build & start container (sh: \r: command not found).
-echo "[2/4] Normalisasi line ending CRLF -> LF (script, Dockerfile, compose) ..."
+echo "[2/5] Normalisasi line ending CRLF -> LF (script, Dockerfile, compose) ..."
 find "$DST" \
   -path "$DST/node_modules" -prune -o \
   -path "$DST/.git" -prune -o \
@@ -64,7 +64,7 @@ find "$DST" \
 | xargs -0 -r -n 20 sed -i 's/\r$//'
 echo "   Line ending dinormalkan."
 
-echo "[3/4] Pastikan Docker jalan ..."
+echo "[3/5] Pastikan Docker jalan ..."
 if ! docker info >/dev/null 2>&1; then
   echo "   Docker mati, nyalakan manual (aturan #10) ..."
   sudo systemctl start docker
@@ -76,7 +76,12 @@ fi
 docker info >/dev/null 2>&1 || { echo "ERROR: Docker tidak bisa dinyalakan." >&2; exit 1; }
 echo "   Docker OK."
 
-echo "[4/4] Build + start (docker compose up -d --build) ..."
+echo "[4/5] Bersihkan cache Docker (prune) agar WSL tidak berat ..."
+docker system prune -f
+docker builder prune -f
+echo "   Cache Docker dibersihkan."
+
+echo "[5/5] Build + start (docker compose up -d --build) ..."
 cd "$DST"
 docker compose up -d --build
 

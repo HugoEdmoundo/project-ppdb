@@ -19,11 +19,13 @@ import NotificationsPage from './pages/admin/notifications/NotificationsPage'
 import DataPendaftarPage from './pages/admin/ppdb/DataPendaftarPage'
 import AdminProfilePage from './pages/admin/ProfilePage'
 import SelectionPage from './pages/admin/ppdb/SelectionPage'
-import MouPage from './pages/admin/ppdb/MouPage'
-import DiskonasiPage from './pages/admin/ppdb/DiskonasiPage'
-import DocumentSettingsPage from './pages/admin/ppdb/DocumentSettingsPage'
+import LoaSkdPage from './pages/admin/ppdb/LoaSkdPage'
 import TIUSettingsPage from './pages/admin/ppdb/TIUSettingsPage'
 import ArsipPendaftarPage from './pages/admin/ppdb/ArsipPendaftarPage'
+import VerifikasiDokumenPage from './pages/admin/ppdb/VerifikasiDokumenPage'
+import PembayaranFormulirPage from './pages/admin/ppdb/PembayaranFormulirPage'
+import PembayaranTahap2Page from './pages/admin/ppdb/PembayaranTahap2Page'
+import PenilaianPage from './pages/admin/ppdb/PenilaianPage'
 import * as api from './api/client'
 
 export default function App() {
@@ -58,14 +60,17 @@ export default function App() {
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="data-pendaftar" element={<DataPendaftarPage />} />
+              <Route path="verifikasi-dokumen" element={<VerifikasiDokumenPage />} />
+              <Route path="pembayaran-formulir" element={<PembayaranFormulirPage />} />
+              <Route path="pembayaran-tahap2" element={<PembayaranTahap2Page />} />
+              <Route path="penilaian" element={<PenilaianPage />} />
               <Route path="arsip" element={<ArsipPendaftarPage />} />
               <Route path="periods" element={<PeriodsPage />} />
-              <Route path="document-settings" element={<DocumentSettingsPage />} />
               <Route path="tiu-settings" element={<TIUSettingsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="selection" element={<SelectionPage />} />
-              <Route path="mou" element={<MouPage />} />
-              <Route path="diskonasi" element={<DiskonasiPage />} />
+              <Route path="rubrik" element={<SelectionPage />} />
+              <Route path="pengumuman" element={<LoaSkdPage />} />
               <Route path="profile" element={<AdminProfilePage />} />
             </Route>
 

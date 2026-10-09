@@ -30,8 +30,6 @@ const waveSchema = z.object({
   allowed_paths: z.array(z.string()).min(1, 'Pilih minimal satu jalur pendaftaran'),
   registration_start_date: z.string().min(1, 'Tanggal mulai pendaftaran wajib diisi'),
   registration_end_date: z.string().min(1, 'Tanggal akhir pendaftaran wajib diisi'),
-  document_upload_end_date: z.string().min(1, 'Batas upload dokumen wajib diisi'),
-  selection_date: z.string().min(1, 'Jadwal seleksi wajib diisi'),
   quota: z.number().min(1, 'Kuota harus diisi minimal 1'),
   early_discount_quota: z.number().min(0, 'Jumlah harus nol atau lebih'),
   registration_fee: z.number().min(0, 'Biaya tidak boleh negatif'),
@@ -40,12 +38,6 @@ const waveSchema = z.object({
 }).refine(data => data.registration_end_date >= data.registration_start_date, {
   message: "Tanggal akhir pendaftaran tidak boleh sebelum tanggal mulai pendaftaran",
   path: ["registration_end_date"],
-}).refine(data => data.document_upload_end_date >= data.registration_end_date, {
-  message: "Batas upload dokumen tidak boleh sebelum tanggal akhir pendaftaran",
-  path: ["document_upload_end_date"],
-}).refine(data => data.selection_date >= data.document_upload_end_date, {
-  message: "Jadwal seleksi tidak boleh sebelum batas upload dokumen",
-  path: ["selection_date"],
 }).refine(data => data.early_discount_quota <= data.quota, {
   message: 'Jumlah diskon pendaftar awal tidak boleh melebihi kuota',
   path: ['early_discount_quota'],
@@ -58,8 +50,6 @@ const emptyWaveForm = (): WaveFormData => ({
   allowed_paths: ['reguler', 'prestasi', 'tahfidz', 'rapot'],
   registration_start_date: '',
   registration_end_date: '',
-  document_upload_end_date: '',
-  selection_date: '',
   quota: 0,
   early_discount_quota: 0,
   registration_fee: 0,
@@ -82,8 +72,6 @@ const todayIso = (): string => localIso(new Date().toString())
 const WAVE_MILESTONES: { step: string; label: string; get: (w: any) => string }[] = [
   { step: 'registration_start_date', label: 'Mulai Daftar', get: (w) => w.registration_start_date },
   { step: 'registration_end_date', label: 'Akhir Daftar', get: (w) => w.registration_end_date },
-  { step: 'document_upload_end_date', label: 'Upload Dok', get: (w) => w.document_upload_end_date },
-  { step: 'selection_date', label: 'Seleksi', get: (w) => w.selection_date },
 ]
 
 export default function WavesSheet({ period, onClose }: { period: any, onClose: () => void }) {
@@ -242,8 +230,6 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
       allowed_paths: parseCsv(w.allowed_paths),
       registration_start_date: (w.registration_start_date || '').split('T')[0],
       registration_end_date: (w.registration_end_date || '').split('T')[0],
-      document_upload_end_date: (w.document_upload_end_date || '').split('T')[0],
-      selection_date: (w.selection_date || '').split('T')[0],
       quota: w.quota ?? 0,
       early_discount_quota: w.early_discount_quota ?? 0,
       registration_fee: w.registration_fee ?? 0,
@@ -592,16 +578,6 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                   <Label htmlFor="wave-end">Tanggal Akhir Pendaftaran *</Label>
                   <Input id="wave-end" type="date" {...register('registration_end_date')} disabled={!canCrud} />
                   {errors.registration_end_date && <p className="text-xs text-red-500">{errors.registration_end_date.message}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wave-upload">Batas Upload Dokumen *</Label>
-                  <Input id="wave-upload" type="date" {...register('document_upload_end_date')} disabled={!canCrud} />
-                  {errors.document_upload_end_date && <p className="text-xs text-red-500">{errors.document_upload_end_date.message}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wave-selection">Jadwal Seleksi *</Label>
-                  <Input id="wave-selection" type="date" {...register('selection_date')} disabled={!canCrud} />
-                  {errors.selection_date && <p className="text-xs text-red-500">{errors.selection_date.message}</p>}
                 </div>
               </div>
             </div>

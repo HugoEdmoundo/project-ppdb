@@ -6,7 +6,6 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 
 from src.models.ppdb import (
-    PPDBBMOU,
     PPDBApplicantDiscount,
     PPDBStage2Bill,
     PPDBWaveFeeItem,
@@ -474,8 +473,6 @@ class PaymentService:
         fee_items = self.repo.get_wave_fee_items_with_discounts(
             applicant.id, applicant.wave_id, early_discount_eligible
         )
-        mou = self.repo.get_mou_by_applicant_id(applicant.id)
-
         return {
             "applicant": {
                 "id": applicant.id,
@@ -486,7 +483,6 @@ class PaymentService:
                 "early_discount_quota": wave.early_discount_quota if wave else 0,
             },
             "fee_items": fee_items,
-            "mou": {"status": mou.status, "signed_at": mou.signed_at} if mou else None,
         }
 
     def save_applicant_discounts(self, applicant_id: str, items: list[dict]) -> dict:
@@ -621,52 +617,7 @@ class PaymentService:
                     self.repo.save_stage2_bill(bill)
                     generated += 1
 
-        # Auto-generate MOU
-        self._auto_generate_mou(applicant)
-
         return {"success": True, "discounts_saved": saved, "bills_generated": generated}
-
-    def _auto_generate_mou(self, applicant):
-        wave = self.repo.get_wave_by_id(applicant.wave_id)
-        if not wave or not hasattr(wave, "mou_template") or not wave.mou_template:
-            return
-
-        template = str(wave.mou_template)
-        now_wib = datetime.now(WIB)
-        replacements = {
-            "{nama_peserta}": applicant.full_name or "",
-            "{nisn}": applicant.nisn or "",
-            "{nik}": applicant.nik or "",
-            "{asal_sekolah}": applicant.previous_school or "",
-            "{alamat}": applicant.address or "",
-            "{nama_ortu}": applicant.parent_name or "",
-            "{email}": applicant.email or "",
-            "{nomor_wa}": applicant.phone or "",
-            "{jalur}": applicant.registration_path or "",
-            "{jenjang}": "SMK",
-            "{tanggal}": now_wib.strftime("%d %B %Y"),
-        }
-        for k, v in replacements.items():
-            template = template.replace(k, v)
-
-        existing_mou = self.repo.get_mou_by_applicant_id(applicant.id)
-        if existing_mou:
-            # Jangan timpa MOU yang sudah ditandatangani.
-            if existing_mou.status == "signed":
-                return
-            existing_mou.draft_content = template
-            existing_mou.updated_at = now_wib
-            self.repo.save_mou(existing_mou)
-        else:
-            new_mou = PPDBBMOU(
-                id=str(uuid.uuid4()),
-                applicant_id=applicant.id,
-                draft_content=template,
-                status="draft",
-                created_at=now_wib,
-                updated_at=now_wib,
-            )
-            self.repo.save_mou(new_mou)
 
     def get_stage2_bills(
         self, applicant_id: str | None, status: str | None, page: int, per_page: int
@@ -732,12 +683,8 @@ class PaymentService:
             except Exception:
                 pass
 
-        mou = self.repo.get_mou_by_applicant_id(applicant.id)
-        mou_signed = mou.status == "signed" if mou else False
-
         return {
             "bills": bills,
-            "mou_signed": mou_signed,
             "minimum_dp": wave.minimum_dp if wave else 0,
             "second_stage_fee": wave.second_stage_fee if wave else 0,
         }
@@ -762,16 +709,23 @@ class PaymentService:
         try:
             from src.core.config import settings
             from src.core.notif_service import send_notification
-            from src.models.content import SiteSetting
+            from src.models.ppdb import PPDBPeriod, PPDBWave
 
             applicant = self.repo.get_applicant_by_id(bill.applicant_id)
             if applicant:
-                wa_link_setting = self.repo.db.get(
-                    SiteSetting, "ppdb_whatsapp_group_link"
+                wave = (
+                    self.repo.db.get(PPDBWave, applicant.wave_id)
+                    if applicant.wave_id
+                    else None
+                )
+                period = (
+                    self.repo.db.get(PPDBPeriod, wave.period_id)
+                    if wave and wave.period_id
+                    else None
                 )
                 wa_link = (
-                    wa_link_setting.value
-                    if wa_link_setting and wa_link_setting.value
+                    period.wa_group_link
+                    if period and period.wa_group_link
                     else f"{settings.ppdb_frontend_url}/dashboard"
                 )
 

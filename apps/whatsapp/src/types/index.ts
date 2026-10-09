@@ -28,10 +28,7 @@ export interface WASessionInfo {
 
 // ─── Message Queue ──────────────────────────────────────────────────────────
 
-export type NotificationChannel = "whatsapp" | "email" | "both";
-
 export type MessagePriority = "high" | "normal" | "low";
-
 export interface SendMessageJobData {
   /** Unique job ID (digenerate sebelum enqueue untuk idempotency) */
   jobId: string;
@@ -121,41 +118,4 @@ export interface WebhookPayload {
   event: "message.sent" | "message.failed" | "session.ready" | "session.disconnected";
   timestamp: string;
   data: Record<string, unknown>;
-}
-
-// ─── API Request/Response ───────────────────────────────────────────────────
-
-export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  perPage: number;
-  totalPages: number;
-}
-
-export interface SendNotificationRequest {
-  to: string;
-  message: string;
-  eventKey?: string;
-  recipientUserId?: string;
-  templateId?: string;
-  priority?: MessagePriority;
-}
-
-export interface BulkSendRequest {
-  recipients: Array<{
-    to: string;
-    message: string;
-    recipientUserId?: string;
-  }>;
-  eventKey?: string;
-  templateId?: string;
-  priority?: MessagePriority;
 }

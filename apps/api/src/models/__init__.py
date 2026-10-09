@@ -21,7 +21,6 @@ from src.models.content import (
     Testimonial,
 )
 from src.models.ppdb import (
-    PPDBBMOU,
     FileUpload,
     NotificationLog,
     NotificationTemplate,
@@ -71,7 +70,6 @@ __all__ = [
     "PPDBWaveFeeItem",
     "PPDBApplicantDiscount",
     "PPDBStage2Bill",
-    "PPDBBMOU",
     "PPDBPaymentTransaction",
     "NotificationLog",
     "NotificationTemplate",

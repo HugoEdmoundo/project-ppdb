@@ -1,8 +1,7 @@
 import { HealthIdentificationViewer } from './HealthIdentificationViewer'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, Tabs, TabsList, TabsTrigger, TabsContent, Badge } from '@/components/ui'
 import { ShieldCheck } from 'lucide-react'
-import ApplicantDocumentsAdmin from './ApplicantDocumentsAdmin'
-import ApplicantSelectionAdmin from './ApplicantSelectionAdmin'
+
 
 interface ApplicantProfileModalProps {
   open: boolean
@@ -23,10 +22,8 @@ export default function ApplicantProfileModal({ open, onOpenChange, applicant, t
         </DialogHeader>
 
         <Tabs defaultValue="biodata" className="w-full mt-2">
-          <TabsList className="w-full grid grid-cols-3">
+          <TabsList className="w-full grid grid-cols-1">
             <TabsTrigger value="biodata">Biodata</TabsTrigger>
-            <TabsTrigger value="dokumen">Dokumen</TabsTrigger>
-            <TabsTrigger value="seleksi">Seleksi & Nilai</TabsTrigger>
           </TabsList>
 
           <TabsContent value="biodata" className="space-y-6 pt-4">
@@ -188,18 +185,7 @@ export default function ApplicantProfileModal({ open, onOpenChange, applicant, t
             )}
           </TabsContent>
 
-          <TabsContent value="dokumen" className="pt-4">
-            <ApplicantDocumentsAdmin applicantId={applicant.id} currentStatus={applicant.status} onVerified={() => onOpenChange(false)} />
-          </TabsContent>
 
-          <TabsContent value="seleksi" className="pt-4">
-            <ApplicantSelectionAdmin
-              applicantId={applicant.id}
-              registrationPath={applicant.registration_path}
-              applicantStatus={applicant.status}
-              onSaved={() => onOpenChange(false)}
-            />
-          </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>

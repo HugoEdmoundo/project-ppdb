@@ -6,7 +6,6 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from src.models.ppdb import (
-    PPDBBMOU,
     PPDBApplicant,
     PPDBApplicantDiscount,
     PPDBPaymentTransaction,
@@ -204,13 +203,7 @@ class PaymentRepository:
         for b in bill_rows:
             bills_by_applicant.setdefault(b.applicant_id, []).append(b)
 
-        # Bulk-load MOU statuses
-        mou_rows = self.db.execute(
-            select(PPDBBMOU.applicant_id, PPDBBMOU.status).where(
-                PPDBBMOU.applicant_id.in_(applicant_ids)
-            )
-        ).all()
-        mou_by_applicant: dict[str, str] = {r.applicant_id: r.status for r in mou_rows}
+        mou_by_applicant: dict[str, str] = {}
 
         results = []
         for app in applicants:
@@ -221,7 +214,6 @@ class PaymentRepository:
                 "nisn": app.nisn,
                 "email": app.email,
                 "phone": app.phone,
-                "registration_level": "SMK",
                 "registration_path": app.registration_path,
                 "discount_configured": app.id in has_discount_set,
                 "bills_generated": len(bills) > 0,
@@ -329,10 +321,6 @@ class PaymentRepository:
         )
         return int(self.db.scalar(rank_stmt) or 0)
 
-    def get_mou_by_applicant_id(self, applicant_id: str) -> PPDBBMOU | None:
-        stmt = select(PPDBBMOU).where(PPDBBMOU.applicant_id == applicant_id)
-        return cast(PPDBBMOU | None, self.db.scalars(stmt).first())
-
     def get_fee_item_by_id(self, fee_item_id: str) -> PPDBWaveFeeItem | None:
         stmt = select(PPDBWaveFeeItem).where(PPDBWaveFeeItem.id == fee_item_id)
         return cast(PPDBWaveFeeItem | None, self.db.scalars(stmt).first())
@@ -376,11 +364,6 @@ class PaymentRepository:
     def get_wave_by_id(self, wave_id: str) -> PPDBWave | None:
         stmt = select(PPDBWave).where(PPDBWave.id == wave_id)
         return cast(PPDBWave | None, self.db.scalars(stmt).first())
-
-    def save_mou(self, mou: PPDBBMOU):
-        self.db.add(mou)
-        self.db.flush()
-        self.db.commit()
 
     def get_stage2_bills(
         self,

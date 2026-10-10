@@ -34,10 +34,11 @@ import {
 } from 'lucide-react'
 import PageHero from '../components/PageHero'
 import { generateSecurePassword } from '../lib/password'
-import ApplicantForm, {
+import ApplicantForm from '../components/applicants/ApplicantForm'
+import {
   APPLICANT_STATUSES,
   PAYMENT_STATUSES,
-} from '../components/applicants/ApplicantForm'
+} from '../lib/applicantOptions'
 import { HealthIdentificationViewer } from '../components/applicants/HealthIdentificationViewer'
 
 const ALL = '__all__'
@@ -133,7 +134,6 @@ export default function ApplicantsPage() {
 
   useEffect(() => {
     // Muat pilihan filter sekali di awal.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     ;(async () => {
       try {
         const [p, w] = await Promise.all([api.getPeriods(), api.getWaves()])
@@ -143,7 +143,6 @@ export default function ApplicantsPage() {
         // Filter bersifat opsional — abaikan kegagalan.
       }
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -162,7 +161,6 @@ export default function ApplicantsPage() {
   const handleSearch = (e: FormEvent) => {
     e.preventDefault()
     setPage(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchApplicants(1)
   }
 
@@ -201,7 +199,6 @@ export default function ApplicantsPage() {
         setFormOpen(false)
         setSelected(null)
         setDetail(null)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         fetchApplicants(1)
       } else {
         await api.updateApplicant(editing.id, payload)
@@ -209,7 +206,6 @@ export default function ApplicantsPage() {
         setFormOpen(false)
         setSelected(null)
         setDetail(null)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         fetchApplicants()
       }
     } catch (err: any) {
@@ -229,7 +225,6 @@ export default function ApplicantsPage() {
       setSelected(null)
       setDetail(null)
       if (applicants.length === 1 && page > 1) setPage(page - 1)
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       fetchApplicants()
     } catch (err: any) {
       toast('error', err.message || 'Gagal menghapus pendaftar')

@@ -391,7 +391,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     // Opsi filter periode & gelombang.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     ;(async () => {
       try {
         const [p, w] = await Promise.all([api.getPeriods(), api.getWaves()])
@@ -401,11 +400,9 @@ export default function DashboardPage() {
         // Filter bersifat opsional.
       }
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load(periodFilter, waveFilter)
   }, [load, periodFilter, waveFilter])

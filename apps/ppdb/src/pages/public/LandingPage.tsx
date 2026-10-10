@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, SectionGlobe, type GlobeStop } from '@/components/ui'
+import { Button, ShapeDivider, Meteors } from '@/components/ui'
 import { apiFetch, API_BASE } from '@/api/client'
 import { useBrand } from '@repo/ui'
 import gsap from 'gsap'
@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { prefersReducedMotion } from '@/lib/motion'
-import { ArabesquePattern, MihrabArch } from '@/components/landing/HeroDecorations'
+import PortalReveal from '@/components/landing/PortalReveal'
 import Footer from '@/components/layout/Footer'
 
 interface ActiveWave {
@@ -31,41 +31,15 @@ const PATH_LABEL: Record<string, string> = {
   rapot: 'Rapot',
 }
 
-// Hoisted di luar component: array-nya stateless, jadi tidak perlu dibuat ulang
-// tiap render (kalau tidak, `useMemo` di dalam hook ikut recompute terus).
-// Di desktop bola kecil di luar tepi kanan kolom "Alur", lalu membesar di tengah
-// kolom "Mengapa Ar-Rahman?". Di mobile diturunkan ke pojok kanan bawah biar
-// tidak menutupi kartu.
-//
-// `leftPx` diukur dari titik tengah kolom konten (`hero-column`, 896px):
-//   - alur   : +560px. Tepi kanan kolom ada di +448px, jadi bola ini berada
-//              112px di luar kolom. Jari-jarinya 250 x 0.55 = 137px (setengah
-//              69px), jadi masih ada 43px jarak bersih dari tepi kolom.
-//   - mengapa : 0, tepat di sumbu kolom supaya simetris terhadap heading.
-//
-// Section CTA tidak punya globe lagi, jadi sengaja tidak ada stop di sini —
-// follower fade out sebelum sampai sana.
-const GLOBE_STOPS: GlobeStop[] = [
-  { id: 'alur', top: '16%', left: '50%', leftPx: 560, scale: 0.55, opacity: 0.8 },
-  { id: 'mengapa', top: '48%', left: '50%', leftPx: 0, scale: 1.8, opacity: 0.28 },
-]
-
-// Mobile: pojok memakai persen viewport, bukan `leftPx` — di layar 375px kolom hanya
-// 345px sehingga jarak tetap 560px akan mendorong bola keluar layar.
-const GLOBE_STOPS_MOBILE: GlobeStop[] = [
-  { id: 'alur', top: '86%', left: '84%', scale: 0.4, opacity: 0.55 },
-  { id: 'mengapa', top: '88%', left: '86%', scale: 0.45, opacity: 0.45 },
-]
-
 export default function LandingPage() {
   const navigate = useNavigate()
   const [wave, setWave] = useState<ActiveWave | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const parallaxRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLElement>(null)
   const lenisRef = useRef<Lenis | null>(null)
   const progressRef = useRef<HTMLDivElement>(null)
-  const { logoUrl, faviconUrl } = useBrand(API_BASE)
+  const { logoUrl } = useBrand(API_BASE)
 
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger)
@@ -92,39 +66,10 @@ export default function LandingPage() {
       }
     }
 
-    const ctx = gsap.context(() => {
-      const triggerElement = parallaxRef.current?.querySelector('[data-parallax-layers]')
-
-      if (triggerElement) {
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: triggerElement,
-            start: "top top",
-            end: "bottom top",
-            scrub: 0
-          }
-        });
-
-        const layers = [
-          { layer: "1", yPercent: 70 },
-          { layer: "2", yPercent: 55 },
-          { layer: "3", yPercent: 40 },
-          { layer: "4", yPercent: 10 }
-        ];
-
-        layers.forEach((layerObj, idx) => {
-          tl.to(
-            triggerElement.querySelectorAll(`[data-parallax-layer="${layerObj.layer}"]`),
-            {
-              yPercent: layerObj.yPercent,
-              ease: "none"
-            },
-            idx === 0 ? undefined : "<"
-          );
-        });
-      }
-    }, parallaxRef)
-
+    // Parallax vertikal sudah digantikan PortalReveal (panel terbelah +
+    // zoom-out latar), jadi blok GSAP timeline di sini dihapus. Yang tersisa
+    // cuma Lenis untuk smooth scroll dan sinkronisasinya ke ScrollTrigger,
+    // yang tetap dipakai oleh komponen anak.
     const lenis = new Lenis()
     lenisRef.current = lenis
     lenis.on('scroll', ScrollTrigger.update)
@@ -168,11 +113,47 @@ export default function LandingPage() {
     applyNavScrolled()
 
     return () => {
-      ctx.revert()
       gsap.ticker.remove(tick)
       lenis.destroy()
       if (lenisRef.current === lenis) lenisRef.current = null
     }
+  }, [])
+
+  // Navbar mengikuti progress portal: hilang saat panel masih menutup, muncul
+  // begitu panel mulai membelah, lalu tetap di atas portal sampai portal keluar
+  // dari layar.
+  //
+  // Kenapa tidak cukup dengan z-index: z-index hanya menyembunyikan navbar
+  // sampai portal keluar viewport — itu 120vh scroll, jauh lebih lama dari
+  // durasi panel membelah. Akibatnya bagian atas layar kosong terlalu lama.
+  useEffect(() => {
+    const header = headerRef.current
+    const portal = document.querySelector('[data-portal-section]')
+    if (!header || !portal) return
+    // Reduced motion: PortalReveal tidak dirender sama sekali, jadi tidak ada
+    // yang perlu dianimasikan — navbar dibiarkan apa adanya.
+    if (prefersReducedMotion()) return
+
+    gsap.registerPlugin(ScrollTrigger)
+
+    const ctx = gsap.context(() => {
+      gsap
+        .timeline({
+          scrollTrigger: {
+            trigger: portal,
+            start: 'top top',
+            end: 'bottom bottom',
+            scrub: true,
+          },
+        })
+        // 0 - 0.15: panel masih menutup rapat, navbar harus tetap hilang.
+        .to(header, { opacity: 0, duration: 0.15 })
+        // 0.15 - 0.45: navbar fade in. Di titik ini panel sudah terbuka ~70%
+        // (power2.inOut), jadi tidak muncul di atas layar yang masih gelap.
+        .to(header, { opacity: 1, duration: 0.3 }, 0.15)
+    })
+
+    return () => ctx.revert()
   }, [])
 
   useEffect(() => {
@@ -232,9 +213,15 @@ export default function LandingPage() {
           snap ke kotak di frame terakhir. Itu yang bikin transisinya terasa
           "nge-lag"/kurang halus. Nilai px yang realistis (setengah tinggi bar)
           bikin interpolasinya linear, dan secara visual tetap persis pill. */}
-      <header className={cn(
-        'fixed z-50 ease-brand-pill',
-        'transition-[left,right,top,max-width,border-radius,background-color,box-shadow,border-color]',
+      <header
+        ref={headerRef}
+        className={cn(
+          // z-[70] di atas PortalReveal (z-[60]) supaya navbar bisa muncul
+          // Vaulted di panel yang sedang membuka. Default PortalReveal z-60
+          // sudah cukup untuk menyembunyikannya; angka 70 hanya diperlukan
+          // karena navbar sekarang ikut difade-in.
+          'fixed z-[70] ease-brand-pill',
+          'transition-[left,right,top,max-width,border-radius,background-color,box-shadow,border-color]',
         scrolled
           ? cn('left-2 right-2 top-2 mx-auto max-w-6xl border border-slate-200/80 bg-white/95 shadow-[0_8px_30px_rgb(0,0,0,0.08)] backdrop-blur-2xl md:left-8 md:right-8 md:top-4', PILL_RADIUS)
           : cn('left-0 right-0 top-0 mx-auto max-w-[100vw] border border-transparent bg-white/85 shadow-sm backdrop-blur-2xl', PILL_RADIUS_OFF)
@@ -303,45 +290,15 @@ export default function LandingPage() {
           )}
       </header>
 
-      {/* ── Hero (Parallax) ── */}
-      <section
-        ref={parallaxRef}
-        className="relative h-[100svh] w-full overflow-hidden bg-gradient-to-b from-ivory via-white to-[#F0EDE4]"
-      >
-        <div className="absolute inset-0 h-full w-full">
-          <div data-parallax-layers className="relative h-[100svh] w-full">
-            {/* Layer 1 - Colour fields outside the content column + ambient glows */}
-            <div data-parallax-layer="1" className="pointer-events-none absolute inset-0 z-0">
-              <div className="hero-wash-left absolute inset-y-0 left-0 hidden lg:block" />
-              <div className="hero-wash-right absolute inset-y-0 right-0 hidden lg:block" />
-              <div className="absolute -top-40 left-1/2 h-[46rem] w-[46rem] -translate-x-[calc(50%+28rem)] rounded-full bg-emerald-primary/10 blur-3xl" />
-              <div className="absolute -bottom-32 left-1/2 h-[34rem] w-[34rem] -translate-x-[calc(50%-24rem)] rounded-full bg-gold-accent/15 blur-3xl" />
-            </div>
-
-            {/* Layer 2 - Arabesque texture. Density rises away from the text:
-                faint band behind the column (a), full strength outside it (b). */}
-            <div
-              data-parallax-layer="2"
-              className="pointer-events-none absolute inset-0 z-0 flex justify-center"
-            >
-              <div className="hero-texture-outside absolute inset-0 hidden text-emerald-primary/[0.13] lg:block">
-                <ArabesquePattern />
-              </div>
-              <div className="hero-column relative text-emerald-primary/[0.07]">
-                <div className="absolute inset-0 [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_82%,transparent)]">
-                  <ArabesquePattern />
-                </div>
-              </div>
-            </div>
-
-            {/* Layer 3 - Foreground Content. Tanpa padding horizontal: `--hero-col-width`
-                sudah menyisakan 4vw di tiap sisi, jadi `px-4` di sini cuma
-                menambah 2px limpahan pada layar 375px. */}
-            <div data-parallax-layer="3" className="absolute inset-0 z-20 flex items-center justify-center pt-20">
-              <div className="hero-column relative flex flex-col items-center text-center">
+      {/* ── Portal Reveal (efek pembuka) ── */}
+      {/* Isi hero jadi children PortalReveal, bukan section terpisah: panelnya
+          membelah untuk MEMBUKA konten ini. Kalau konten diletakkan setelah
+          portal, yang terlihat hanya gradien kosong selama 220vh. */}
+      <PortalReveal>
+        <div className="hero-column relative flex flex-col items-center text-center">
                 {/* Status pill (PPDB specific) */}
                 {wave && (
-                  <div className="mb-8 flex flex-col items-center gap-2 animate-fade-in sm:mb-12">
+                  <div className="mb-5 flex flex-col items-center gap-2 animate-fade-in sm:mb-12">
                     <div className="inline-flex items-center gap-2.5 rounded-full border border-emerald-primary/20 bg-white/70 px-4 py-1.5 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-md">
                       {isOpen ? (
                         <>
@@ -377,17 +334,17 @@ export default function LandingPage() {
                 {/* 2 baris, bukan 3. Sebelumnya "Pesantren" (9) / "Tahfidz" (7) /
                     "& Digital Arrahman" (17) — baris ketiga hampir dua kali
                     lebar baris pertama, jadi rag-nya rusak. Sekarang 17/17. */}
-                <h1 className="mt-8 text-center font-brand text-[2.25rem] font-bold leading-[1.06] tracking-[-0.015em] text-obsidian sm:mt-10 sm:text-5xl sm:leading-[1.02] md:text-6xl lg:text-7xl lg:leading-[0.98] xl:text-[5.5rem]">
+                <h1 className="mt-5 text-center font-brand text-[2.25rem] font-bold leading-[1.06] tracking-[-0.015em] text-obsidian sm:mt-10 sm:text-5xl sm:leading-[1.02] md:text-6xl lg:text-7xl lg:leading-[0.98] xl:text-[5.5rem]">
                   Pesantren Tahfidz
                   <br />
                   <span className="text-emerald-primary">&amp; Digital Arrahman</span>
                 </h1>
 
-                <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-600 sm:mt-6 sm:text-lg md:text-xl">
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600 sm:mt-6 sm:text-base sm:text-lg md:text-xl">
                   {"Mencetak penghafal Al-Qur'an yang khatam sekaligus melek teknologi digital — dua hal yang berjalan beriringan."}
                 </p>
 
-                <div className="mt-8 flex flex-wrap justify-center gap-3 sm:mt-10 sm:gap-5">
+                <div className="mt-5 flex flex-wrap justify-center gap-3 sm:mt-10 sm:gap-5">
                   <Button
                     onClick={() => navigate('/register')}
                     disabled={!isOpen}
@@ -407,37 +364,20 @@ export default function LandingPage() {
                     className="h-auto gap-2 rounded-full border-emerald-primary/45 bg-white/60 px-6 py-3 text-sm font-bold text-emerald-primary backdrop-blur-md transition-all hover:border-emerald-primary hover:bg-emerald-primary/10 sm:px-8 sm:py-4 sm:text-base"
                   >
                     Lihat Alur Pendaftaran
-                  </Button>
+</Button>
                 </div>
-              </div>
-            </div>
-
-            {/* Layer 4 - Foreground Decorations.
-                Sengaja di BAWAH konten (z-10, bukan z-30): lebar H1 baris ketiga
-                ("& Digital Arrahman") jauh lebih besar dari kotak lengkung, jadi
-                kalau lengkungnya di depan, garis emasnya memotong glif H1 dan
-                terbaca sebagai cacat, bukan hiasan. */}
-            <div data-parallax-layer="4" className="pointer-events-none absolute inset-0 z-10">
-              {/* Lebar 440px = setengah lebar kolom konten (896/2). Rasio 5:7 mengikuti
-                  viewBox MihrabArch (200x280) supaya tidak teregang, dan mx-auto
-                  menengahkan secara horizontal tanpa translate yang bisa ketimpa GSAP. */}
-              <MihrabArch className="absolute inset-x-0 top-1/2 mx-auto aspect-[5/7] w-[min(440px,88vw)] -translate-y-1/2 text-gold-dark/20" />
-            </div>
-          </div>
-
-          {/* Bottom fade — warna akhir disamakan persis dengan stop terakhir
-              gradient hero (`#F0EDE4`), bukan `background`, supaya tidak ada
-              garis sambungan tipis di bawah layar. */}
-          <div className="pointer-events-none absolute bottom-0 left-0 z-40 h-48 w-full bg-gradient-to-t from-[#F0EDE4] to-transparent" />
         </div>
-      </section>
+      </PortalReveal>
 
       {/* ── Alur Pendaftaran ── */}
-      <section id="alur" className="scroll-mt-16 border-t border-slate-100 bg-white py-16 md:py-20">
-        <div className="container mx-auto max-w-6xl px-4">
+      {/* pt-40 menutupi wave 137px di atas section ini. `border-t` lama
+          dihapus karena garis 1px itu akan memotong tepi gelombang. */}
+      <section id="alur" className="relative scroll-mt-16 overflow-hidden bg-white pb-16 pt-40 md:pb-20 md:pt-44">
+        <ShapeDivider fill="#F0EDE4" />
+        <div className="container relative z-10 mx-auto max-w-6xl px-4">
           <div className="mx-auto mb-10 max-w-2xl text-center">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold-dark">Alur Pendaftaran</p>
-            <h2 className="mt-2 font-heading text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl">
+            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl">
               Empat Langkah Menuju Ar-Rahman
             </h2>
             <p className="mt-3 text-slate-500">
@@ -459,7 +399,7 @@ export default function LandingPage() {
                     </span>
                     <span className="font-heading text-sm font-bold text-gold-dark">Langkah {i + 1}</span>
                   </div>
-                  <h3 className="font-heading text-lg font-bold text-slate-900">{step.title}</h3>
+                  <h3 className="text-lg font-bold text-slate-900">{step.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-slate-600">{step.desc}</p>
                 </div>
               )
@@ -469,12 +409,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── Keunggulan ── */}
-      <section id="mengapa" className="bg-background py-16 md:py-20">
-        <div className="container mx-auto max-w-6xl px-4">
-          {/* z-10: teks sengaja di belakang globe (SectionGlobe z-20) */}
+      <section id="mengapa" className="relative overflow-hidden bg-background pb-16 pt-40 md:pb-20 md:pt-44">
+        <ShapeDivider fill="#FFFFFF" />
+        <div className="container relative z-10 mx-auto max-w-6xl px-4">
+          {/* z-10 + z-30 di bawah dipertahankan darizai ketika globe masih ada;
+              globe-nya sudah dihapus, tapi nilainya tidak merusak apa pun. */}
           <div className="relative z-10 mx-auto mb-10 max-w-2xl text-center">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold-dark">Mengapa Ar-Rahman?</p>
-            <h2 className="mt-2 font-heading text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl">
+            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl">
               Sistem Pendaftaran Modern &amp; Terpercaya
             </h2>
           </div>
@@ -488,7 +430,7 @@ export default function LandingPage() {
                   <div className={cn('mb-4 flex h-11 w-11 items-center justify-center rounded-xl', f.tint)}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="font-heading text-lg font-bold text-slate-900">{f.title}</h3>
+                  <h3 className="text-lg font-bold text-slate-900">{f.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-slate-600">{f.desc}</p>
                 </div>
               )
@@ -497,20 +439,21 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Globe z-20: di belakang kartu (z-30), di depan teks heading (z-10) */}
-      <SectionGlobe stops={GLOBE_STOPS} mobileStops={GLOBE_STOPS_MOBILE} markUrl={faviconUrl || logoUrl} />
-
       {/* ── CTA Band ── */}
       <section className="bg-background pb-16 md:pb-20">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-obsidian via-emerald-dark to-emerald-primary px-6 py-14 text-center shadow-2xl shadow-emerald-dark/30 md:py-16">
+            {/* Meteor hanya di sini: kartu ini satu-satunya bidang gelap di
+                halaman, jadi satu-satunya tempat meta tail-nya terlihat.
+                Span-nya absolute jadi butuh container overflow-hidden — kartu ini. */}
+            <Meteors number={18} />
             <div className="pointer-events-none absolute -left-10 -top-16 h-56 w-56 rounded-full bg-emerald-bright/10 blur-2xl" />
             <div className="pointer-events-none absolute -bottom-20 -right-6 select-none font-heading text-[12rem] font-bold leading-none text-white/[0.06]">
               ار
             </div>
             <div className="relative mx-auto max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-[0.25em] text-gold-accent">PPDB {year === 2026 ? '2026' : year}</p>
-              <h2 className="mt-3 font-heading text-3xl font-extrabold tracking-tight text-white md:text-4xl">
+              <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white md:text-4xl">
                 Siap Membangun Generasi Qur'ani?
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-white/85">

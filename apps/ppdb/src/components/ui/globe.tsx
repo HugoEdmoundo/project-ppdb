@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -21,7 +22,8 @@ const EMERALD = '26, 107, 71'
 const GOLD = '184, 143, 61'
 
 export interface GlobeLogoProps {
-  /** Key setting `favicon` — mark/bentuk perseginya. Kalau kosong, tampilkan fallback 'A'. */
+  /** Key setting `favicon` — mark/bentuk perseginya. Kalau kosong atau gagal dimuat,
+   *  tampilkan fallback `ار` yang sama dengan dipakai di Footer & LandingPage. */
   markUrl?: string
   /** Key setting `logo` — wordmark lebar, diletakkan di samping bola. */
   wordmarkUrl?: string
@@ -30,7 +32,51 @@ export interface GlobeLogoProps {
   className?: string
 }
 
+/**
+ * Mark cadangan saat API settings belum selesai, gagal, atau URL-nya rusak.
+ *
+ * Sebelumnya di sini ada huruf latin "A" — itu placeholder generik yang tidak
+ * ada kaitannya dengan logo Ar-Rahman, dan karena `useBrand` mengosongkan
+ * `logoUrl`/`faviconUrl` di state awal, huruf itu muncul sebagai flash di
+ * setiap load dan tetap menetap selamanya kalau endpoint settings kosong.
+ * Sekarang memakai `ار`, mark yang sama dengan Footer, navbar, dan watermark
+ * CTA, jadi tidak ada lagi bentuk berbeda dari brand yang sama.
+ */
+function FallbackMark() {
+  return (
+    <span
+      className="arabic-quote grid h-[44%] w-[44%] place-items-center rounded-2xl bg-emerald-primary text-3xl font-bold leading-none text-white shadow-lg shadow-emerald-primary/25"
+      aria-hidden="true"
+    >
+      ار
+    </span>
+  )
+}
+
 function GlobeLogo({ markUrl, wordmarkUrl, wordmarkSide = 'left', className }: GlobeLogoProps) {
+  const [markBroken, setMarkBroken] = useState(false)
+  const [wordmarkBroken, setWordmarkBroken] = useState(false)
+
+  // Brand bisa berubah lewat SSE /companyprofile/events. Status "rusak" harus
+  // dibersihkan saat URL berubah supaya gambar baru sempat dicoba lagi, bukan
+  // langsung menampilkan fallback.
+  //
+  // Direset saat render, bukan di useEffect: di dalam effect itu setState
+  // sinkron (men memicu render kedua yang sia-sia) dan di-flag eslint
+  // react-hooks/set-state-in-effect. Pola "adjust state when props change"
+  // dari React-lah yang dipakai di sini.
+  const [seenMarkUrl, setSeenMarkUrl] = useState(markUrl)
+  if (markUrl !== seenMarkUrl) {
+    setSeenMarkUrl(markUrl)
+    setMarkBroken(false)
+  }
+
+  const [seenWordmarkUrl, setSeenWordmarkUrl] = useState(wordmarkUrl)
+  if (wordmarkUrl !== seenWordmarkUrl) {
+    setSeenWordmarkUrl(wordmarkUrl)
+    setWordmarkBroken(false)
+  }
+
   return (
     <div aria-hidden="true" className={cn('relative size-[250px] shrink-0', className)}>
       {/* Ambient glow */}
@@ -93,25 +139,25 @@ function GlobeLogo({ markUrl, wordmarkUrl, wordmarkSide = 'left', className }: G
 
       {/* Mark logo di dalam bola */}
       <div className="absolute inset-0 grid place-items-center">
-        {markUrl ? (
+        {markUrl && !markBroken ? (
           <img
             src={markUrl}
             alt=""
+            onError={() => setMarkBroken(true)}
             className="h-[44%] w-auto max-w-[62%] object-contain drop-shadow-[0_2px_10px_rgba(24,144,144,0.45)]"
           />
         ) : (
-          <span className="grid h-[44%] w-[44%] place-items-center rounded-2xl bg-emerald-primary font-serif text-3xl font-bold text-white shadow-lg shadow-emerald-primary/25">
-            A
-          </span>
+          <FallbackMark />
         )}
       </div>
 
       {/* Wordmark — disembunyikan di layar kecil supaya tidak berdesakan dengan konten */}
-      {wordmarkUrl && (
+      {wordmarkUrl && !wordmarkBroken && (
         <img
           src={wordmarkUrl}
           alt=""
           aria-hidden="true"
+          onError={() => setWordmarkBroken(true)}
           className={cn(
             'absolute top-1/2 hidden h-8 w-auto max-w-44 -translate-y-1/2 object-contain opacity-90 sm:block',
             wordmarkSide === 'left' ? 'right-[calc(100%+30px)]' : 'left-[calc(100%+30px)]',

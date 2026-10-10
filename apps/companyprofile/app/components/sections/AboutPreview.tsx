@@ -16,13 +16,22 @@ const coreValues = [
   { icon: Heart, idn: 'Berbasis Karakter' },
 ]
 
-export default function AboutPreview() {
-  const images = [
+export default function AboutPreview({ settings = {} }: { settings?: Record<string, string> }) {
+  const defaultImages = [
     'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop',
     'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?q=80&w=2070&auto=format&fit=crop',
     'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=2070&auto=format&fit=crop',
     'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?q=80&w=2075&auto=format&fit=crop',
   ]
+
+  const images = [
+    settings.about_img_1 || defaultImages[0],
+    settings.about_img_2 || defaultImages[1],
+    settings.about_img_3 || defaultImages[2],
+    settings.about_img_4 || defaultImages[3],
+  ]
+
+  const aboutText = settings.about_text || 'Sejak 2021, Ar-Rahman telah menjadi pelopor model pendidikan unik yang mengintegrasikan kebijaksanaan abadi Al-Quran dengan teknologi digital mutakhir. Kami tidak hanya mengajar — kami menginspirasi generasi pemimpin yang kokoh secara spiritual dan kompetitif secara global.'
 
   return (
     <ScrollExpand className="bg-[var(--bg-secondary)]">
@@ -61,7 +70,7 @@ export default function AboutPreview() {
                     {'Lima Tahun Melahirkan Generasi Unggul'}
                   </h2>
                   <p className="text-[var(--text-secondary)] leading-relaxed mb-6 sm:mb-8 text-sm sm:text-base md:text-lg">
-                    {'Sejak 2021, Ar-Rahman telah menjadi pelopor model pendidikan unik yang mengintegrasikan kebijaksanaan abadi Al-Quran dengan teknologi digital mutakhir. Kami tidak hanya mengajar — kami menginspirasi generasi pemimpin yang kokoh secara spiritual dan kompetitif secara global.'}
+                    {aboutText}
                   </p>
 
                   <div className="flex flex-wrap gap-4 sm:gap-6 mb-6 sm:mb-8">

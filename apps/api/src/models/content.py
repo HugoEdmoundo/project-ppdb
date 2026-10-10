@@ -120,5 +120,6 @@ class ContactInfo(Base):
     email_primary: Mapped[str | None] = mapped_column(String(255))
     email_admission: Mapped[str | None] = mapped_column(String(255))
     office_hours: Mapped[str | None] = mapped_column(String(255))
+    maps_embed: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

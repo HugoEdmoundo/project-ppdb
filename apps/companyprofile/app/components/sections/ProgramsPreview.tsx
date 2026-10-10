@@ -3,12 +3,18 @@
 import { useRef, useEffect } from 'react'
 import Link from 'next/link'
 
-import { ArrowRight, BookOpen, Cpu, Globe, Award } from 'lucide-react'
+import { ArrowRight, BookOpen, Cpu, Globe, Award, Sparkles } from 'lucide-react'
 import { useScrollReveal } from '../../hooks/useScrollAnimations'
 import { useProgramLinks } from '../../hooks/useProgramLinks'
 import { gsap, ScrollTrigger } from '@/app/lib/gsap'
 import { onLayoutReady, prefersReducedMotion } from '@/app/lib/motion'
 import TiltCard from '../ui/TiltCard'
+
+import type { Program } from '@/app/lib/types'
+
+const iconMap: Record<string, React.ElementType> = {
+  BookOpen, Cpu, Globe, Award
+}
 
 const programData = [
   {
@@ -41,7 +47,16 @@ const programData = [
   },
 ]
 
-export default function ProgramsPreview() {
+export default function ProgramsPreview({ programs = [] }: { programs?: Program[] }) {
+  const displayPrograms = programs.length > 0 
+    ? programs.slice(0, 4).map(p => ({
+        id: p.slug || p.id,
+        icon: iconMap[p.icon] || Sparkles,
+        title: p.content?.title || '',
+        desc: p.content?.desc || '',
+        features: p.content?.highlights || [],
+      }))
+    : programData;
   const sectionRef = useRef<HTMLElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
   const pinWrapRef = useRef<HTMLDivElement>(null)
@@ -95,7 +110,8 @@ export default function ProgramsPreview() {
   }, [])
 
   return (
-    <section ref={sectionRef} className="min-h-[100vh] relative overflow-hidden z-10 bg-[var(--bg-secondary)]">
+    <section ref={sectionRef} className="min-h-[100vh] relative overflow-hidden z-10 bg-[var(--bg-secondary)] pt-[80px]">
+      
       <div ref={pinContainerRef} className="pt-16 md:pt-24 pb-16 md:pb-24 min-h-[100vh] flex flex-col relative w-full h-full">
         <div className="absolute inset-0 bg-pattern-dots-gold opacity-[0.04]" />
 
@@ -116,8 +132,8 @@ export default function ProgramsPreview() {
 
       <div className="relative z-10 w-full flex-1 flex items-start pt-2 sm:pt-4">
         <div ref={pinWrapRef} className="horiz-gallery-strip flex gap-4 sm:gap-6 px-4 sm:px-6 md:px-12 w-max">
-          {programData.map((prog) => {
-            const Icon = prog.icon
+          {displayPrograms.map((prog) => {
+            const Icon = prog.icon as any
             return (
               <TiltCard key={prog.id} className="group shrink-0 w-[85vw] sm:w-[380px] md:w-[400px]">
                 <Link

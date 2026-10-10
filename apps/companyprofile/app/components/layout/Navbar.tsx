@@ -11,9 +11,6 @@ import MagneticButton from '../ui/MagneticButton'
 import { useProgramLinks } from '@/app/hooks/useProgramLinks'
 import { useBrand } from '@repo/ui'
 
-const PORTAL_URL =
-  process.env.NEXT_PUBLIC_PORTAL_URL || 'http://localhost:5174'
-
 interface NavChild {
   href: string
   label: string
@@ -215,18 +212,16 @@ export default function Navbar() {
 
           <div className="flex items-center gap-3">
             <MagneticButton strength={0.25}>
-            <a
-              href={PORTAL_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/ppdb"
               className={`hidden md:inline-flex items-center px-5 py-2.5 text-xs font-bold rounded-full whitespace-nowrap transition-all ${
                 isTransparent
                   ? 'bg-white/20 text-white hover:bg-white/30'
                   : 'bg-[var(--accent)] text-white hover:bg-[#15803D] hover:shadow-md'
               }`}
             >
-              Student&apos;s
-            </a>
+              Pendaftaran
+            </Link>
             </MagneticButton>
 
             <button
@@ -298,14 +293,13 @@ export default function Navbar() {
               )}
             </div>
           ))}
-          <a
-            href={PORTAL_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/ppdb"
+            onClick={() => setMobileOpen(false)}
             className="mt-8 px-10 py-3.5 bg-[var(--accent)] text-white text-sm font-bold rounded-full whitespace-nowrap hover:bg-[#15803D] transition-all"
           >
-            Student&apos;s
-          </a>
+            Pendaftaran
+          </Link>
         </div>
       </div>
     </>

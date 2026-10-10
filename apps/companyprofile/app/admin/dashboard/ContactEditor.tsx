@@ -27,6 +27,7 @@ const CONTACT_FIELDS = [
   { key: 'email_admission', label: 'Email Penerimaan (PPDB)', type: 'text' },
   { key: 'office_hours', label: 'Jam Operasional Kantor', type: 'text' },
   { key: 'address', label: 'Alamat Lengkap', type: 'textarea' },
+  { key: 'maps_embed', label: 'Kode Embed Google Maps (iframe/URL)', type: 'textarea' },
 ] as const
 
 export function ContactEditor({ contactInfo, canCrud, onSave }: Props) {
@@ -38,6 +39,7 @@ export function ContactEditor({ contactInfo, canCrud, onSave }: Props) {
     email_admission: contactInfo?.email_admission || '',
     address: contactInfo?.address || '',
     office_hours: contactInfo?.office_hours || '',
+    maps_embed: contactInfo?.maps_embed || '',
   }))
   const [saving, setSaving] = useState(false)
 
@@ -53,6 +55,7 @@ export function ContactEditor({ contactInfo, canCrud, onSave }: Props) {
       email_admission: contactInfo?.email_admission || '',
       address: contactInfo?.address || '',
       office_hours: contactInfo?.office_hours || '',
+      maps_embed: contactInfo?.maps_embed || '',
     })
   }
 

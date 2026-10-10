@@ -8,7 +8,9 @@ import { ArrowRight } from 'lucide-react'
 import { useScrollReveal } from '../../hooks/useScrollAnimations'
 import TiltCard from '../ui/TiltCard'
 
-const facilities = [
+import type { Facility } from '@/app/lib/types'
+
+const fallbackFacilities = [
   {
     image: 'https://images.unsplash.com/photo-1564769662533-4f00a87b4056?q=80&w=2070&auto=format&fit=crop',
     name: 'Masjid Raya',
@@ -35,12 +37,20 @@ const facilities = [
   },
 ]
 
-export default function FacilitiesPreview() {
+export default function FacilitiesPreview({ facilities = [] }: { facilities?: Facility[] }) {
+  const displayFacilities = facilities.length > 0 
+    ? facilities.slice(0, 5).map(f => ({
+        image: f.image || fallbackFacilities[0].image,
+        name: f.content?.name || '',
+        desc: f.content?.desc || '',
+      }))
+    : fallbackFacilities;
+
   const sectionRef = useRef<HTMLElement>(null)
 
   useScrollReveal(sectionRef, { start: 'top 80%', stagger: 0.08 })
 
-  const [first, ...rest] = facilities
+  const [first, ...rest] = displayFacilities
 
   return (
     <section ref={sectionRef} className="py-16 md:py-32 bg-[var(--bg)]">

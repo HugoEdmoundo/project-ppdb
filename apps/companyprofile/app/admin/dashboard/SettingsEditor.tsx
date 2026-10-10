@@ -24,12 +24,30 @@ const SETTING_FIELDS: {
     { key: 'favicon', label: 'Favicon', type: 'url', description: 'URL gambar favicon (32x32 atau 16x16 px).', image: true },
     { key: 'to_email', label: 'Email Tujuan', type: 'email', description: 'Alamat email yang menerima pesan dari form kontak.' },
     { key: 'whatsapp_message', label: 'Pesan WhatsApp', type: 'textarea', description: 'Pesan default untuk tombol chat WhatsApp.' },
+    { key: 'about_text', label: 'Teks Siapa Kami (Beranda)', type: 'textarea', description: 'Teks pengantar di bagian Siapa Kami (About) pada landing page.' },
+    { key: 'about_img_1', label: 'Gambar About 1', type: 'url', description: 'Foto kiri atas (3:4) pada bagian Siapa Kami.', image: true },
+    { key: 'about_img_2', label: 'Gambar About 2', type: 'url', description: 'Foto kiri bawah (4:3) pada bagian Siapa Kami.', image: true },
+    { key: 'about_img_3', label: 'Gambar About 3', type: 'url', description: 'Foto kanan atas (4:3) pada bagian Siapa Kami.', image: true },
+    { key: 'about_img_4', label: 'Gambar About 4', type: 'url', description: 'Foto kanan bawah (3:4) pada bagian Siapa Kami.', image: true },
+    { key: 'stat_students', label: 'Jumlah Santri (Statistik)', type: 'text', description: 'Target angka santri aktif.' },
+    { key: 'stat_staff', label: 'Jumlah Guru (Statistik)', type: 'text', description: 'Target angka guru dan staff.' },
+    { key: 'stat_juz', label: 'Target Juz (Statistik)', type: 'text', description: 'Target angka hafalan juz.' },
+    { key: 'stat_extracurricular', label: 'Jumlah Ekstrakurikuler', type: 'text', description: 'Target angka ekstrakurikuler.' },
   ]
 
 const DEFAULT_SETTING_VALUES: Record<string, string> = {
   site_description: 'Pesantren premium yang menggabungkan hafalan Al-Quran dengan pendidikan teknologi digital mutakhir.',
   to_email: 'ptdarrahmanm9@gmail.com',
   whatsapp_message: "Assalamu'alaikum, Saya ingin tahu lebih lanjut tentang Pesantren Ar-Rahman.",
+  about_text: 'Sejak 2021, Ar-Rahman telah menjadi pelopor model pendidikan unik yang mengintegrasikan kebijaksanaan abadi Al-Quran dengan teknologi digital mutakhir. Kami tidak hanya mengajar — kami menginspirasi generasi pemimpin yang kokoh secara spiritual dan kompetitif secara global.',
+  about_img_1: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop',
+  about_img_2: 'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?q=80&w=2070&auto=format&fit=crop',
+  about_img_3: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=2070&auto=format&fit=crop',
+  about_img_4: 'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?q=80&w=2075&auto=format&fit=crop',
+  stat_students: '350',
+  stat_staff: '40',
+  stat_juz: '30',
+  stat_extracurricular: '15',
 }
 
 interface Props {

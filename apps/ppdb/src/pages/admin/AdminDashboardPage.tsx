@@ -125,7 +125,7 @@ export default function AdminDashboardPage() {
       icon: FileText,
       chip: 'bg-amber-500',
       iconText: 'text-white',
-      to: '/admin/applicants?status=document_uploaded',
+      to: '/admin/verifikasi-dokumen?status=document_uploaded',
       actionable: true,
     },
     {
@@ -134,7 +134,7 @@ export default function AdminDashboardPage() {
       icon: CreditCard,
       chip: 'bg-indigo-500',
       iconText: 'text-white',
-      to: '/admin/payments?tab=pending',
+      to: '/admin/pembayaran-formulir?status=pending',
       actionable: true,
     },
     {
@@ -148,9 +148,9 @@ export default function AdminDashboardPage() {
   ]
 
   const attentionItems: AttentionItem[] = [
-    { label: 'Pembayaran menunggu verifikasi', value: data?.payments.pending ?? 0, icon: CreditCard, tone: 'amber', href: '/admin/payments?tab=pending' },
-    { label: 'Dokumen perlu review', value: data?.applicants.document_uploaded ?? 0, icon: FileText, tone: 'blue', href: '/admin/applicants?status=document_uploaded' },
-    { label: 'Dokumen ditolak', value: data?.applicants.document_rejected ?? 0, icon: XCircle, tone: 'red', href: '/admin/applicants?status=document_rejected' },
+    { label: 'Pembayaran menunggu verifikasi', value: data?.payments.pending ?? 0, icon: CreditCard, tone: 'amber', href: '/admin/pembayaran-formulir?status=pending' },
+    { label: 'Dokumen perlu review', value: data?.applicants.document_uploaded ?? 0, icon: FileText, tone: 'blue', href: '/admin/verifikasi-dokumen?status=document_uploaded' },
+    { label: 'Dokumen ditolak', value: data?.applicants.document_rejected ?? 0, icon: XCircle, tone: 'red', href: '/admin/verifikasi-dokumen?status=document_rejected' },
     { label: 'Pendaftar expired', value: data?.applicants.expired ?? 0, icon: AlertTriangle, tone: 'red', href: '/admin/data-pendaftar?status=expired' },
   ]
   const hasAttention = attentionItems.some((item) => item.value > 0)

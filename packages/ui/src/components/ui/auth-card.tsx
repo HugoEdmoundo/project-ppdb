@@ -4,7 +4,9 @@ import { Button } from "./button"
 import { Label } from "./label"
 import { cn } from "../../lib/utils"
 
-const GOLD = "#D4A853"
+const GOLD = "var(--color-gold-accent, #D4A853)"
+const GOLD_FAINT = "color-mix(in srgb, var(--color-gold-accent, #D4A853) 55%, transparent)"
+const EMERALD = "var(--color-emerald-primary, #1A6B47)"
 
 // Font judul dipaksa lewat inline style agar identik di ketiga app — beberapa app
 // men-override h1 dengan font display (serif) di stylesheet globalnya.
@@ -46,7 +48,7 @@ export function AuthCard({
     <section className="relative z-10 mx-auto w-full max-w-[22rem] overflow-hidden rounded-2xl border border-border bg-card px-7 py-9 shadow-xl sm:px-8 sm:py-10">
       <div
         className="absolute inset-x-0 top-0 h-1"
-        style={{ background: `linear-gradient(90deg, var(--color-emerald-primary, #146C43), ${GOLD})` }}
+        style={{ background: `linear-gradient(90deg, ${EMERALD}, ${GOLD})` }}
       />
       <div className="mb-6 flex flex-col items-center text-center">
         {logoUrl ? <img src={logoUrl} alt="Logo" className="mb-4 h-16 max-w-48 object-contain" /> : null}
@@ -54,7 +56,7 @@ export function AuthCard({
         {subtitle ? <p className="mt-1 text-sm text-muted-foreground" style={{ fontFamily: HEADING_FONT }}>{subtitle}</p> : null}
         {badgeText ? (
           <div className="mt-4 flex w-full items-center gap-3">
-            <span className="h-px flex-1" style={{ backgroundColor: `${GOLD}55` }} />
+            <span className="h-px flex-1" style={{ backgroundColor: GOLD_FAINT }} />
             <span
               className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]"
               style={{ color: GOLD }}
@@ -62,7 +64,7 @@ export function AuthCard({
               {badgeIcon ?? <ShieldCheck className="h-3.5 w-3.5" />}
               {badgeText}
             </span>
-            <span className="h-px flex-1" style={{ backgroundColor: `${GOLD}55` }} />
+            <span className="h-px flex-1" style={{ backgroundColor: GOLD_FAINT }} />
           </div>
         ) : null}
       </div>

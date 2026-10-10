@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from 'react'
 import PageHeader from '@/app/components/layout/PageHeader'
 import { useScrollReveal } from '@/app/hooks/useScrollAnimations'
-import { MapPin, Phone, Mail, Clock, Send, ChevronDown, MessageCircle } from 'lucide-react'
+import { MapPin, Phone, Mail, Clock, ChevronDown, MessageCircle } from 'lucide-react'
 import {
   buildSchedule,
   formatTanggalIndo,
@@ -80,42 +80,21 @@ export default function ContactClient({
   const faqItems = faqs.map((f, i) =>
     i === 0 ? { ...f, answer: buildScheduleAnswer(ppdb) } : f,
   )
+  const address = contactInfo?.address ?? ''
+  const rawEmbed = (contactInfo?.maps_embed ?? '').trim()
+  const isRawIframe = rawEmbed.toLowerCase().startsWith('<iframe')
+  const embedSrcMatch = rawEmbed.match(/src=["']([^"']+)["']/)
+  const embedSrc = embedSrcMatch ? embedSrcMatch[1] : rawEmbed
+  const mapsEmbedUrl = !isRawIframe && embedSrc && /^https?:\/\//.test(embedSrc)
+    ? embedSrc
+    : `https://www.google.com/maps?q=${encodeURIComponent(address || 'Bekasi, Indonesia')}&output=embed`
+  const mapsLinkUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address || 'Bekasi, Indonesia')}`
 
   useEffect(() => {
     document.title = 'Hubungi Kami | PTDARRAHMAN'
   }, [])
 
   useScrollReveal(sectionRef, { start: 'top 80%', stagger: 0.1 })
-
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', subject: '', message: '' })
-  const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
-  const [formError, setFormError] = useState('')
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setFormError('')
-    setSending(true)
-    try {
-      const res = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to send')
-      setSent(true)
-      setFormData({ name: '', email: '', phone: '', subject: '', message: '' })
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Something went wrong')
-    } finally {
-      setSending(false)
-    }
-  }
-
-  const updateField = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData((prev) => ({ ...prev, [field]: e.target.value }))
-  }
 
   const contactItems = [
     { icon: MapPin, label: 'Alamat', value: contactInfo?.address },
@@ -153,75 +132,40 @@ export default function ContactClient({
 
             <div className="lg:col-span-3">
               <div className="glass-card rounded-2xl p-6 sm:p-8 shadow-md">
-                <h3 className="font-[var(--font-display)] text-xl font-bold mb-6">
-                  Kirim Pesan
+                <h3 className="font-[var(--font-display)] text-xl font-bold mb-2">
+                  Lokasi Kami
                 </h3>
-                {sent ? (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 rounded-full bg-[var(--accent-subtle)] flex items-center justify-center mx-auto mb-4">
-                      <Send className="w-6 h-6 text-[var(--accent)]" />
-                    </div>
-                    <h4 className="font-[var(--font-display)] text-xl font-bold mb-2">
-                      Pesan Terkirim!
-                    </h4>
-                    <p className="text-sm text-[var(--text-secondary)]">
-                      Terima kasih telah menghubungi kami. Kami akan segera menghubungi Anda kembali.
-                    </p>
-                    <button onClick={() => setSent(false)} className="btn-ghost mt-6 text-xs">
-                      Kirim Pesan Lain
-                    </button>
-                  </div>
-                ) : (
-                <form className="space-y-4" onSubmit={handleSubmit}>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="contact-name" className="text-[10px] font-bold font-[var(--font-heading)] uppercase tracking-wider text-[var(--text-muted)] mb-1.5 block">
-                        Nama Lengkap *
-                      </label>
-                      <input id="contact-name" type="text" className="input-field" placeholder="Masukkan nama lengkap" required aria-label="Nama Lengkap" value={formData.name} onChange={updateField('name')} />
-                    </div>
-                    <div>
-                      <label htmlFor="contact-email" className="text-[10px] font-bold font-[var(--font-heading)] uppercase tracking-wider text-[var(--text-muted)] mb-1.5 block">
-                        Email *
-                      </label>
-                      <input id="contact-email" type="email" className="input-field" placeholder="Masukkan alamat email" required aria-label="Email" value={formData.email} onChange={updateField('email')} />
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="contact-phone" className="text-[10px] font-bold font-[var(--font-heading)] uppercase tracking-wider text-[var(--text-muted)] mb-1.5 block">
-                      Nomor Telepon
-                    </label>
-                    <input id="contact-phone" type="tel" inputMode="numeric" className="input-field" placeholder="Masukkan nomor telepon" aria-label="Nomor Telepon" value={formData.phone} onChange={e => setFormData(p => ({ ...p, phone: e.target.value.replace(/\D/g, '') }))} />
-                  </div>
-                  <div>
-                    <label htmlFor="contact-subject" className="text-[10px] font-bold font-[var(--font-heading)] uppercase tracking-wider text-[var(--text-muted)] mb-1.5 block">
-                      Subjek *
-                    </label>
-                    <select id="contact-subject" className="input-field" required aria-label="Subjek" value={formData.subject} onChange={updateField('subject')}>
-                      <option value="">Pilih topik...</option>
-                      <option value="enrollment">Pertanyaan Pendaftaran</option>
-                      <option value="info">Informasi Umum</option>
-                      <option value="visit">Kunjungan Pesantren</option>
-                      <option value="other">Lainnya</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label htmlFor="contact-message" className="text-[10px] font-bold font-[var(--font-heading)] uppercase tracking-wider text-[var(--text-muted)] mb-1.5 block">
-                      Pesan *
-                    </label>
-                    <textarea id="contact-message" className="input-field min-h-[140px] resize-none" placeholder="Tulis pesan Anda di sini..." required aria-label="Pesan" value={formData.message} onChange={updateField('message')} />
-                  </div>
-                  {formError && (
-                    <p className="text-red-500 text-sm">{formError}</p>
+                <p className="text-sm text-[var(--text-secondary)] mb-5 leading-relaxed">
+                  {address || 'Alamat belum tersedia. Hubungi kami untuk detail lokasi.'}
+                </p>
+                <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] shadow-sm">
+                  {isRawIframe ? (
+                    <div
+                      className="maps-embed w-full h-[320px] sm:h-[420px]"
+                      dangerouslySetInnerHTML={{ __html: rawEmbed }}
+                    />
+                  ) : (
+                    <iframe
+                      src={mapsEmbedUrl}
+                      title="Lokasi PTDARRAHMAN"
+                      className="w-full h-[320px] sm:h-[420px] block"
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      allowFullScreen
+                    />
                   )}
-                  <button type="submit" disabled={sending} className="btn-primary w-full justify-center disabled:opacity-50">
-                    <Send className="w-4 h-4" />
-                    {sending ? 'Mengirim...' : 'Kirim Pesan'}
-                  </button>
-                </form>
-                )}
+                </div>
+                <a
+                  href={mapsLinkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary w-full justify-center mt-5"
+                >
+                  <MapPin className="w-4 h-4" />
+                  Buka di Google Maps
+                </a>
               </div>
-          </div>
+            </div>
           </div>
 
           <div className="text-center mt-12 sm:mt-16 pt-8 sm:pt-10">

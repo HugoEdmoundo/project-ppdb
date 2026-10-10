@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ErrorBoundary } from 'react-error-boundary'
+import { ErrorState } from '@repo/ui'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './components/Toast'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -40,8 +42,13 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <ToastProvider>
+      <ErrorBoundary
+        fallbackRender={({ error, resetErrorBoundary }) => (
+          <ErrorState status={500} retry={resetErrorBoundary} fullscreen={false} />
+        )}
+      >
+        <AuthProvider>
+          <ToastProvider>
         <Routes>
           {/* Public routes */}
           <Route path="/auth/login" element={<LoginPage />} />
@@ -75,6 +82,7 @@ export default function App() {
         </Routes>
         </ToastProvider>
       </AuthProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }

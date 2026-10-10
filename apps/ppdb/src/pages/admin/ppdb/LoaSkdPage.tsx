@@ -54,6 +54,7 @@ export default function LoaSkdPage() {
       <PageHeaderCard
         title="Pratinjau Dokumen Pengumuman & Kelulusan"
         description="Showcase pratinjau Letter of Acceptance (LoA) 2 halaman dan Surat Keterangan Diterima (SKD) Sertifikat CSS murni yang akan diterima oleh santri yang dinyatakan lulus."
+        docKey="ppdb-loa-skd"
       />
 
       {/* Document Showcase Card */}

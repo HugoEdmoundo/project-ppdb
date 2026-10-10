@@ -1,6 +1,6 @@
 <div align="center">
-  <h1>🛡️ Superadmin & Backoffice</h1>
-  <p><strong>Panel Pengendali Utama Sistem PPDB</strong></p>
+  <h1>🛡️ Superadmin</h1>
+  <p><strong>Panel Manajemen Pengguna & Operasional Platform</strong></p>
 
   [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
   [![Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)](https://vitejs.dev/)
@@ -9,18 +9,22 @@
 
 ---
 
-Ini adalah aplikasi frontend berbasis **Vite + React + TypeScript** yang berfungsi sebagai panel administrasi eksklusif (Backoffice) untuk Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.
+Ini adalah aplikasi frontend berbasis **Vite + React + TypeScript** yang berfungsi sebagai panel administrasi eksklusif untuk **Superadmin** di Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.
 
-Di sinilah **Admin, Evaluator, dan Panitia** mengendalikan seluruh sistem.
+Di sinilah **Superadmin** mengelola pengguna, hak akses, dan operasional platform.
 
-## ✨ Fitur Utama Backoffice
+## ✨ Fitur Utama
 
-Sesuai dengan aturan bisnis yang termodularisasi, backoffice ini berfokus pada kontrol:
-- 📅 **Manajemen Gelombang & Periode:** Aktivasi periode global, penetapan harga pendaftaran, pengaturan kuota, dan diskon.
-- 📄 **Master Data:** Konfigurasi template Surat Kelulusan (LoA), klausul _non-refundable_, dan format Surat Keterangan Diterima (SKD).
-- 🧠 **Pengaturan Ujian TIU:** Pengaturan webhook secret, batasan durasi, integrasi Google Form, dan halaman sinkronisasi otomatis.
-- 🗣️ **Sesi Wawancara & Tahfidz:** Penjadwalan ujian, alokasi penguji, mode ujian (online/offline), dan rubrik penilaian.
-- 🗂️ **Arsip Dossier:** Halaman khusus lintas periode untuk menelusuri data lengkap peserta didik serta mengekspor PDF/ZIP dokumen mereka.
+- 📊 **Dashboard:** Ringkasan statistik pengguna dan role.
+- 🎓 **Pendaftar:** Daftar pendaftar PPDB dan reset kata sandi.
+- 👥 **Users:** CRUD pengguna beserta penetapan role.
+- 🛡️ **Roles & Permissions:** CRUD role dan penugasan izin modul/halaman (`companyprofile` dan `ppdb`).
+- 🕘 **Aktivitas:** Riwayat aktivitas pengguna.
+- 🔔 **Notifikasi:** Melihat log notifikasi dan mengirim notifikasi kustom.
+- 📱 **WhatsApp:** Status koneksi bot WhatsApp dan pemindaian QR.
+- 👤 **Profil:** Memperbarui profil superadmin (avatar, kata sandi).
+
+> **Catatan:** Konfigurasi operasional PPDB (gelombang/periode, verifikasi dokumen, pembayaran, sesi 1:1, penilaian, LoA/SKD, pengaturan TIU, arsip dossier) berada di aplikasi [`apps/ppdb`](../ppdb/README.md), bukan di panel Superadmin ini.
 
 ## 🛠️ Stack Teknologi
 

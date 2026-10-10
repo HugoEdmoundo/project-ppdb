@@ -126,4 +126,4 @@ function onSubmit(e) {
    * Memeriksa header `X-TIU-Secret`.
    * Memvalidasi kepemilikan token attempt.
    * Memeriksa durasi: `waktu_submit <= waktu_mulai + durasi_menit + 5_menit_toleransi`.
-5. **Hasil:** Skor tersimpan ke database, pemicu notifikasi WhatsApp `tiu_result_ready` terkirim ke pendaftar, dan jadwal sesi Tahfidz otomatis terbuka bagi pendaftar jalur TIU.
+5. **Hasil:** Skor tersimpan ke database, pemicu notifikasi WhatsApp `tiu_result_ready` terkirim ke pendaftar, dan jadwal Session 1:1 Tahfidz otomatis terbuka bagi pendaftar jalur TIU.

@@ -167,7 +167,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 # --- Utility routes ---
 @app.get("/health")
-def health():
+async def health():
     return {"status": "gwenchana", "service": "Ehemm President WNI"}
 
 

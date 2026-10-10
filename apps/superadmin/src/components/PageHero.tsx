@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
+import { DocTrigger } from '@repo/ui'
 import { Skeleton } from '@/components/ui'
 
 export interface HeroChip {
@@ -13,6 +14,7 @@ interface PageHeroProps {
   description?: string
   chips?: HeroChip[]
   actions?: ReactNode
+  docKey?: string
   loading?: boolean
 }
 
@@ -26,6 +28,7 @@ export default function PageHero({
   description,
   chips = [],
   actions,
+  docKey,
   loading = false,
 }: PageHeroProps) {
   if (loading) {
@@ -63,8 +66,9 @@ export default function PageHero({
             </div>
           )}
         </div>
-        {actions && (
+        {(actions || docKey) && (
           <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
+            {docKey && <DocTrigger docKey={docKey} variant="dark" />}
             {actions}
           </div>
         )}

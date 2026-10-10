@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarDays, Clock, MapPin, Star, Printer, XCircle, Download, ExternalLink, ShieldCheck, HelpCircle, Lock, CheckCircle } from 'lucide-react'
+import { CalendarDays, Clock, MapPin, Star, XCircle, Download, ExternalLink, ShieldCheck, HelpCircle, Lock, CheckCircle, User, Video, CalendarPlus, Tag } from 'lucide-react'
 import { Badge, Button, Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 
@@ -9,6 +9,29 @@ interface SelectionStepProps {
   selectionResult: any
   booking: boolean
   onBookSession: (sessionId: string) => void
+}
+
+const getGoogleCalendarUrl = (session: any, titlePrefix: string) => {
+  if (!session || !session.session_date) return '#'
+  const dateStr = session.session_date.split('T')[0].replace(/-/g, '')
+  const startTime = session.start_time || '08:00'
+  const startTimeStr = startTime.replace(':', '')
+  const startHour = parseInt(startTime.split(':')[0] || '8', 10)
+  const endHour = String(startHour + 1).padStart(2, '0')
+  const startMinute = startTime.split(':')[1] || '00'
+  const endTimeStr = `${endHour}${startMinute}`
+
+  const dates = `${dateStr}T${startTimeStr}00/${dateStr}T${endTimeStr}00`
+  const text = encodeURIComponent(`${titlePrefix} - PPDB Pesantren Tahfidz Ar-Rahman`)
+  const loc = encodeURIComponent(
+    session.mode === 'online'
+      ? session.meeting_url || 'Online Meeting'
+      : session.location || 'Pesantren Tahfidz Ar-Rahman'
+  )
+  const details = encodeURIComponent(
+    `Jadwal ${titlePrefix} PPDB Pesantren Tahfidz Ar-Rahman.\nPenguji: ${session.officer_name || '-'}\nMode: ${session.mode === 'online' ? 'Online' : 'Offline'}\n${session.mode === 'online' ? `Link: ${session.meeting_url || '-'}` : `Lokasi: ${session.location || '-'}`}`
+  )
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${loc}`
 }
 
 export default function SelectionStep({ applicant, sessionData, selectionResult, booking, onBookSession }: SelectionStepProps) {
@@ -22,6 +45,21 @@ export default function SelectionStep({ applicant, sessionData, selectionResult,
   const availableTahfidz = sessionData?.available_tahfidz_sessions || [];
   const availableInterview = sessionData?.available_interview_sessions || [];
   const hasTahfidzScore = sessionData?.has_tahfidz_score || false;
+  const hasInterviewScore = sessionData?.has_interview_score || false;
+
+  // Cek apakah sesi yang sudah diambil telah lewat lebih dari 1 hari (H+1)
+  const [now] = useState(() => Date.now())
+  const isSessionExpiredForApplicant = (sessionDateStr: string | null) => {
+    if (!sessionDateStr) return false
+    const sessionDate = new Date(sessionDateStr)
+    const expireThreshold = new Date(sessionDate)
+    expireThreshold.setDate(expireThreshold.getDate() + 1)
+    expireThreshold.setHours(23, 59, 59, 999)
+    return now > expireThreshold.getTime()
+  }
+
+  const isTahfidzPastGrace = isSessionExpiredForApplicant(tahfidzSession?.session_date)
+  const isInterviewPastGrace = isSessionExpiredForApplicant(interviewSession?.session_date)
 
   const tiuScore = selectionResult?.scores?.find((s: any) =>
     (s.criteria_name || '').toLowerCase().includes('tiu') ||
@@ -164,38 +202,95 @@ export default function SelectionStep({ applicant, sessionData, selectionResult,
       </Dialog>
 
       {/* Bagian Jadwal Tahfidz */}
-      {tahfidzSession ? (
+      {tahfidzSession && isTahfidzPastGrace ? (
+        !hasTahfidzScore ? (
+          <Card className="border-slate-200 bg-slate-50/70 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-3">
+              <Clock className="w-5 h-5 text-slate-500 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-slate-800">Sesi Seleksi Tahfidz Telah Dilaksanakan</p>
+                <p className="text-[11px] text-muted-foreground">Jadwal seleksi telah terlewat. Saat ini sedang menunggu penginputan hasil evaluasi nilai dari penguji.</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null
+      ) : tahfidzSession ? (
         <Card className="border-blue-200 bg-blue-50/50 shadow-sm">
           <CardContent className="p-5 space-y-4">
-            <h4 className="font-semibold text-blue-900 flex items-center gap-2 text-sm">
-              <CalendarDays className="h-5 w-5 text-blue-600" />
-              Jadwal Seleksi Tahfidz
-            </h4>
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="font-semibold text-blue-900 flex items-center gap-2 text-sm">
+                <CalendarDays className="h-5 w-5 text-blue-600" />
+                Jadwal Seleksi Tahfidz (Session 1:1)
+              </h4>
+              {applicant?.wave_name && (
+                <Badge variant="outline" className="text-[10px] bg-white text-blue-800 border-blue-200 inline-flex items-center gap-1 font-medium">
+                  <Tag className="h-2.5 w-2.5 shrink-0" />
+                  <span>{applicant.wave_name}</span>
+                </Badge>
+              )}
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm bg-white/60 p-4 rounded-lg border border-blue-100">
               <div>
-                <div className="text-muted-foreground text-xs mb-1">Sesi</div>
-                <div className="font-medium">{tahfidzSession.name}</div>
+                <div className="text-muted-foreground text-xs mb-1">Nama Session</div>
+                <div className="font-medium text-slate-900">{tahfidzSession.name}</div>
               </div>
               {tahfidzSession.session_date && (
                 <div>
                   <div className="text-muted-foreground text-xs mb-1">Tanggal</div>
-                  <div className="font-medium">
+                  <div className="font-medium text-slate-900">
                     {new Date(tahfidzSession.session_date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                   </div>
                 </div>
               )}
-              {(tahfidzSession.start_time || tahfidzSession.end_time) && (
+              {tahfidzSession.start_time && (
                 <div>
-                  <div className="text-muted-foreground text-xs mb-1">Waktu</div>
-                  <div className="font-medium">
-                    {tahfidzSession.start_time}{tahfidzSession.end_time ? ` – ${tahfidzSession.end_time}` : ''} WIB
+                  <div className="text-muted-foreground text-xs mb-1">Waktu Pelaksanaan</div>
+                  <div className="font-medium text-slate-900">
+                    {tahfidzSession.start_time} – Selesai WIB
                   </div>
                 </div>
               )}
-              {tahfidzSession.location && (
+              {tahfidzSession.officer_name && (
                 <div>
-                  <div className="text-muted-foreground text-xs mb-1">Lokasi</div>
-                  <div className="font-medium flex items-center gap-1.5">
+                  <div className="text-muted-foreground text-xs mb-1">Penguji Tahfidz</div>
+                  <div className="font-medium text-slate-900 flex items-center gap-1.5">
+                    <User className="h-4 w-4 text-primary shrink-0" />
+                    <span>{tahfidzSession.officer_name}</span>
+                  </div>
+                </div>
+              )}
+              <div>
+                <div className="text-muted-foreground text-xs mb-1">Mode Pelaksanaan</div>
+                <div className="font-medium flex items-center gap-1.5">
+                  {tahfidzSession.mode === 'online' ? (
+                    <Badge className="bg-blue-100 text-blue-800 border-blue-200 gap-1 text-xs">
+                      <Video className="h-3.5 w-3.5" /> Online (Tatap Maya)
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 gap-1 text-xs">
+                      <MapPin className="h-3.5 w-3.5" /> Offline (Tatap Muka)
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              {tahfidzSession.mode === 'online' && tahfidzSession.meeting_url && (
+                <div className="sm:col-span-2">
+                  <div className="text-muted-foreground text-xs mb-1">Tautan / Link Zoom / Meet</div>
+                  <a
+                    href={tahfidzSession.meeting_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary hover:underline font-semibold inline-flex items-center gap-1.5 text-xs bg-white px-3 py-1.5 rounded-md border border-blue-200 break-all"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                    {tahfidzSession.meeting_url}
+                  </a>
+                </div>
+              )}
+              {tahfidzSession.mode !== 'online' && tahfidzSession.location && (
+                <div className="sm:col-span-2">
+                  <div className="text-muted-foreground text-xs mb-1">Lokasi Ruangan / Gedung</div>
+                  <div className="font-medium text-slate-900 flex items-center gap-1.5">
                     <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span>{tahfidzSession.location}</span>
                   </div>
@@ -207,10 +302,13 @@ export default function SelectionStep({ applicant, sessionData, selectionResult,
                 variant="outline"
                 size="sm"
                 className="w-full sm:w-auto gap-2 border-blue-300 bg-white text-blue-700 hover:bg-blue-50 hover:text-blue-800"
-                onClick={() => window.open('/applicant/kartu-ujian', '_blank')}
+                onClick={() => {
+                  const url = getGoogleCalendarUrl(tahfidzSession, 'Seleksi Tahfidz')
+                  window.open(url, '_blank')
+                }}
               >
-                <Printer className="h-4 w-4" />
-                Cetak Kartu Ujian Tahfidz
+                <CalendarPlus className="h-4 w-4" />
+                Tambah ke Google Calendar
               </Button>
             </div>
           </CardContent>
@@ -223,10 +321,10 @@ export default function SelectionStep({ applicant, sessionData, selectionResult,
             </div>
             <div>
               <h4 className="font-semibold text-slate-700 text-sm flex items-center gap-2">
-                Sesi Ujian Tahfidz (Terkunci)
+                Session Ujian Tahfidz (Terkunci)
               </h4>
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Pendaftar jalur Tes/TIU wajib menyelesaikan ujian TIU terlebih dahulu. Setelah nilai TIU disinkronkan ke dalam sistem, jadwal sesi Tahfidz akan otomatis terbuka.
+                Pendaftar jalur Tes/TIU wajib menyelesaikan ujian TIU terlebih dahulu. Setelah nilai TIU disinkronkan ke dalam sistem, jadwal session Tahfidz akan otomatis terbuka.
               </p>
             </div>
           </CardContent>
@@ -237,37 +335,58 @@ export default function SelectionStep({ applicant, sessionData, selectionResult,
             <div>
               <h4 className="font-semibold text-slate-900 flex items-center gap-2">
                 <CalendarDays className="h-5 w-5 text-emerald-600" />
-                Pilih Jadwal Ujian Tahfidz
+                Pilih Jadwal Ujian Tahfidz (Session 1:1)
               </h4>
-              <p className="text-sm text-muted-foreground mt-1">Silakan pilih salah satu jadwal ujian Tahfidz yang tersedia di bawah ini.</p>
+              <p className="text-sm text-muted-foreground mt-1">Silakan pilih salah satu jadwal session 1:1 Tahfidz yang tersedia di bawah ini.</p>
             </div>
 
             {availableTahfidz.length === 0 ? (
               <div className="p-4 bg-muted/20 border border-slate-100 text-center rounded-lg">
-                <p className="text-sm text-muted-foreground">Belum ada jadwal sesi Tahfidz yang dibuka oleh panitia.</p>
+                <p className="text-sm text-muted-foreground">Belum ada jadwal session Tahfidz yang dibuka oleh panitia.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {availableTahfidz.map((s: any) => {
                   const isFull = s.quota > 0 && s.booked_count >= s.quota;
                   return (
-                    <div key={s.id} className={`border rounded-lg p-4 transition-colors ${isFull ? 'bg-slate-50 opacity-60 border-slate-200' : 'bg-white hover:border-emerald-200 hover:shadow-sm'}`}>
-                      <div className="flex justify-between items-start mb-3">
-                        <h5 className="font-medium text-sm text-slate-900">{s.name}</h5>
-                        {s.quota > 0 && (
-                          <Badge variant={isFull ? "destructive" : "secondary"} className="text-[10px]">
-                            {s.booked_count}/{s.quota} terisi
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground space-y-2 mb-4">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-3.5 w-3.5" />
-                          <span>{s.session_date ? new Date(s.session_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-'}, {s.start_time || '-'}</span>
+                    <div key={s.id} className={`border rounded-xl p-4 transition-all ${isFull ? 'bg-slate-50 opacity-60 border-slate-200' : 'bg-white hover:border-emerald-300 hover:shadow-md'}`}>
+                      <div className="flex justify-between items-start mb-2 gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h5 className="font-bold text-sm text-slate-900 truncate">{s.name}</h5>
+                          {s.wave_name && (
+                            <Badge variant="outline" className="text-[9px] py-0 px-1.5 bg-blue-50 text-blue-700 border-blue-200 font-medium mt-0.5 inline-flex items-center gap-1">
+                              <Tag className="h-2.5 w-2.5 shrink-0" />
+                              <span>{s.wave_name}</span>
+                            </Badge>
+                          )}
                         </div>
+                        <Badge variant={isFull ? "destructive" : "secondary"} className="text-[10px] shrink-0 font-medium">
+                          {isFull ? 'Sudah Diambil' : 'Slot 1:1 Tersedia'}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground space-y-1.5 mb-4">
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-3.5 w-3.5" />
-                          <span className="line-clamp-1">{s.location || '-'}</span>
+                          <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span>{s.session_date ? new Date(s.session_date).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' }) : '-'}, {s.start_time || '-'} – Selesai WIB</span>
+                        </div>
+                        {s.officer_name && (
+                          <div className="flex items-center gap-2">
+                            <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <span className="font-medium text-slate-700">Penguji: {s.officer_name}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          {s.mode === 'online' ? (
+                            <>
+                              <Video className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                              <span className="text-blue-700 font-medium">Online (Tatap Maya)</span>
+                            </>
+                          ) : (
+                            <>
+                              <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                              <span className="line-clamp-1">{s.location || 'Offline (Tatap Muka)'}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                       <Button
@@ -277,7 +396,7 @@ export default function SelectionStep({ applicant, sessionData, selectionResult,
                         disabled={isFull || booking}
                         onClick={() => onBookSession(s.id)}
                       >
-                        {isFull ? 'Kapasitas Penuh' : 'Pilih Jadwal Ini'}
+                        {isFull ? 'Slot Sudah Terisi' : 'Pilih Session Ini (1:1)'}
                       </Button>
                     </div>
                   )
@@ -289,38 +408,95 @@ export default function SelectionStep({ applicant, sessionData, selectionResult,
       )}
 
       {/* Bagian Jadwal Wawancara */}
-      {interviewSession ? (
+      {interviewSession && isInterviewPastGrace ? (
+        !hasInterviewScore ? (
+          <Card className="border-slate-200 bg-slate-50/70 shadow-sm mt-4">
+            <CardContent className="p-4 flex items-center gap-3">
+              <Clock className="w-5 h-5 text-slate-500 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-slate-800">Sesi Wawancara Telah Dilaksanakan</p>
+                <p className="text-[11px] text-muted-foreground">Jadwal seleksi telah terlewat. Saat ini sedang menunggu penginputan nilai dan rekapitulasi keputusan panitia.</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null
+      ) : interviewSession ? (
         <Card className="border-blue-200 bg-blue-50/50 shadow-sm mt-4">
           <CardContent className="p-5 space-y-4">
-            <h4 className="font-semibold text-blue-900 flex items-center gap-2 text-sm">
-              <CalendarDays className="h-5 w-5 text-blue-600" />
-              Jadwal Seleksi Wawancara
-            </h4>
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="font-semibold text-blue-900 flex items-center gap-2 text-sm">
+                <CalendarDays className="h-5 w-5 text-blue-600" />
+                Jadwal Seleksi Wawancara (Session 1:1)
+              </h4>
+              {applicant?.wave_name && (
+                <Badge variant="outline" className="text-[10px] bg-white text-blue-800 border-blue-200 inline-flex items-center gap-1 font-medium">
+                  <Tag className="h-2.5 w-2.5 shrink-0" />
+                  <span>{applicant.wave_name}</span>
+                </Badge>
+              )}
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm bg-white/60 p-4 rounded-lg border border-blue-100">
               <div>
-                <div className="text-muted-foreground text-xs mb-1">Sesi</div>
-                <div className="font-medium">{interviewSession.name}</div>
+                <div className="text-muted-foreground text-xs mb-1">Nama Session</div>
+                <div className="font-medium text-slate-900">{interviewSession.name}</div>
               </div>
               {interviewSession.session_date && (
                 <div>
                    <div className="text-muted-foreground text-xs mb-1">Tanggal</div>
-                   <div className="font-medium">
+                   <div className="font-medium text-slate-900">
                      {new Date(interviewSession.session_date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                    </div>
                 </div>
               )}
-              {(interviewSession.start_time || interviewSession.end_time) && (
+              {interviewSession.start_time && (
                 <div>
-                  <div className="text-muted-foreground text-xs mb-1">Waktu</div>
-                  <div className="font-medium">
-                    {interviewSession.start_time}{interviewSession.end_time ? ` – ${interviewSession.end_time}` : ''} WIB
+                  <div className="text-muted-foreground text-xs mb-1">Waktu Pelaksanaan</div>
+                  <div className="font-medium text-slate-900">
+                    {interviewSession.start_time} – Selesai WIB
                   </div>
                 </div>
               )}
-              {interviewSession.location && (
+              {interviewSession.officer_name && (
                 <div>
-                  <div className="text-muted-foreground text-xs mb-1">Lokasi</div>
-                  <div className="font-medium flex items-center gap-1.5">
+                  <div className="text-muted-foreground text-xs mb-1">Pewawancara</div>
+                  <div className="font-medium text-slate-900 flex items-center gap-1.5">
+                    <User className="h-4 w-4 text-primary shrink-0" />
+                    <span>{interviewSession.officer_name}</span>
+                  </div>
+                </div>
+              )}
+              <div>
+                <div className="text-muted-foreground text-xs mb-1">Mode Pelaksanaan</div>
+                <div className="font-medium flex items-center gap-1.5">
+                  {interviewSession.mode === 'online' ? (
+                    <Badge className="bg-blue-100 text-blue-800 border-blue-200 gap-1 text-xs">
+                      <Video className="h-3.5 w-3.5" /> Online (Tatap Maya)
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 gap-1 text-xs">
+                      <MapPin className="h-3.5 w-3.5" /> Offline (Tatap Muka)
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              {interviewSession.mode === 'online' && interviewSession.meeting_url && (
+                <div className="sm:col-span-2">
+                  <div className="text-muted-foreground text-xs mb-1">Tautan / Link Zoom / Meet</div>
+                  <a
+                    href={interviewSession.meeting_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary hover:underline font-semibold inline-flex items-center gap-1.5 text-xs bg-white px-3 py-1.5 rounded-md border border-blue-200 break-all"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                    {interviewSession.meeting_url}
+                  </a>
+                </div>
+              )}
+              {interviewSession.mode !== 'online' && interviewSession.location && (
+                <div className="sm:col-span-2">
+                  <div className="text-muted-foreground text-xs mb-1">Lokasi Ruangan / Gedung</div>
+                  <div className="font-medium text-slate-900 flex items-center gap-1.5">
                     <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span>{interviewSession.location}</span>
                   </div>
@@ -332,10 +508,13 @@ export default function SelectionStep({ applicant, sessionData, selectionResult,
                 variant="outline"
                 size="sm"
                 className="w-full sm:w-auto gap-2 border-blue-300 bg-white text-blue-700 hover:bg-blue-50 hover:text-blue-800"
-                onClick={() => window.open('/applicant/kartu-ujian', '_blank')}
+                onClick={() => {
+                  const url = getGoogleCalendarUrl(interviewSession, 'Wawancara Seleksi')
+                  window.open(url, '_blank')
+                }}
               >
-                <Printer className="h-4 w-4" />
-                Cetak Kartu Wawancara
+                <CalendarPlus className="h-4 w-4" />
+                Tambah ke Google Calendar
               </Button>
             </div>
           </CardContent>
@@ -346,37 +525,58 @@ export default function SelectionStep({ applicant, sessionData, selectionResult,
             <div>
               <h4 className="font-semibold text-slate-900 flex items-center gap-2">
                 <CalendarDays className="h-5 w-5 text-emerald-600" />
-                Pilih Jadwal Wawancara
+                Pilih Jadwal Wawancara (Session 1:1)
               </h4>
-              <p className="text-sm text-muted-foreground mt-1">Nilai Tahfidz Anda sudah keluar. Silakan pilih jadwal sesi Wawancara.</p>
+              <p className="text-sm text-muted-foreground mt-1">Nilai Tahfidz Anda sudah keluar. Silakan pilih jadwal session 1:1 Wawancara.</p>
             </div>
 
             {availableInterview.length === 0 ? (
               <div className="p-4 bg-muted/20 border border-slate-100 text-center rounded-lg">
-                <p className="text-sm text-muted-foreground">Belum ada jadwal sesi Wawancara yang dibuka oleh panitia.</p>
+                <p className="text-sm text-muted-foreground">Belum ada jadwal session Wawancara yang dibuka oleh panitia.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {availableInterview.map((s: any) => {
                   const isFull = s.quota > 0 && s.booked_count >= s.quota;
                   return (
-                    <div key={s.id} className={`border rounded-lg p-4 transition-colors ${isFull ? 'bg-slate-50 opacity-60 border-slate-200' : 'bg-white hover:border-emerald-200 hover:shadow-sm'}`}>
-                      <div className="flex justify-between items-start mb-3">
-                        <h5 className="font-medium text-sm text-slate-900">{s.name}</h5>
-                        {s.quota > 0 && (
-                          <Badge variant={isFull ? "destructive" : "secondary"} className="text-[10px]">
-                            {s.booked_count}/{s.quota} terisi
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground space-y-2 mb-4">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-3.5 w-3.5" />
-                          <span>{s.session_date ? new Date(s.session_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-'}, {s.start_time || '-'}</span>
+                    <div key={s.id} className={`border rounded-xl p-4 transition-all ${isFull ? 'bg-slate-50 opacity-60 border-slate-200' : 'bg-white hover:border-emerald-300 hover:shadow-md'}`}>
+                      <div className="flex justify-between items-start mb-2 gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h5 className="font-bold text-sm text-slate-900 truncate">{s.name}</h5>
+                          {s.wave_name && (
+                            <Badge variant="outline" className="text-[9px] py-0 px-1.5 bg-blue-50 text-blue-700 border-blue-200 font-medium mt-0.5 inline-flex items-center gap-1">
+                              <Tag className="h-2.5 w-2.5 shrink-0" />
+                              <span>{s.wave_name}</span>
+                            </Badge>
+                          )}
                         </div>
+                        <Badge variant={isFull ? "destructive" : "secondary"} className="text-[10px] shrink-0 font-medium">
+                          {isFull ? 'Sudah Diambil' : 'Slot 1:1 Tersedia'}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground space-y-1.5 mb-4">
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-3.5 w-3.5" />
-                          <span className="line-clamp-1">{s.location || '-'}</span>
+                          <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span>{s.session_date ? new Date(s.session_date).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' }) : '-'}, {s.start_time || '-'} – Selesai WIB</span>
+                        </div>
+                        {s.officer_name && (
+                          <div className="flex items-center gap-2">
+                            <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <span className="font-medium text-slate-700">Pewawancara: {s.officer_name}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          {s.mode === 'online' ? (
+                            <>
+                              <Video className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                              <span className="text-blue-700 font-medium">Online (Tatap Maya)</span>
+                            </>
+                          ) : (
+                            <>
+                              <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                              <span className="line-clamp-1">{s.location || 'Offline (Tatap Muka)'}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                       <Button
@@ -386,7 +586,7 @@ export default function SelectionStep({ applicant, sessionData, selectionResult,
                         disabled={isFull || booking}
                         onClick={() => onBookSession(s.id)}
                        >
-                         {isFull ? 'Kapasitas Penuh' : 'Pilih Jadwal Ini'}
+                         {isFull ? 'Slot Sudah Terisi' : 'Pilih Session Ini (1:1)'}
                        </Button>
                      </div>
                    )

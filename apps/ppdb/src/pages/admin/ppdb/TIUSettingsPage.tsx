@@ -8,6 +8,7 @@ import { apiFetch } from '@/api/client'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
 import { Button, Card, CardContent, Input, Label, Badge } from '@/components/ui'
+import { DocTrigger } from '@repo/ui'
 
 type TIUSettings = {
   google_form_url: string
@@ -116,7 +117,8 @@ export default function TIUSettingsPage() {
               Integrasi Ujian Tes Inteligensi Umum (TIU) via Google Form + Safe Exam Browser (SEB).
             </p>
           </div>
-          <div>
+          <div className="flex items-center gap-2">
+            <DocTrigger docKey="ppdb-tiu-settings" variant="light" />
             {secretConfigured ? (
               <Badge variant="success" className="text-xs px-3 py-1 gap-1.5 font-semibold">
                 <CheckCircle2 className="h-3.5 w-3.5" /> Webhook Aktif

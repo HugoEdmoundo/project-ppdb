@@ -181,9 +181,13 @@ export default function ExamCardPage() {
                       </div>
                       <div>
                         <p className="font-bold text-slate-900">
-                          {format(new Date(session.date), 'EEEE, dd MMMM yyyy', { locale: id })}
+                          {session.session_date || session.date
+                            ? format(new Date(session.session_date || session.date), 'EEEE, dd MMMM yyyy', { locale: id })
+                            : '-'}
                         </p>
-                        <p className="text-sm text-slate-600">{session.start_time.slice(0,5)} - {session.end_time.slice(0,5)} WIB</p>
+                        <p className="text-sm text-slate-600">
+                          {session.start_time ? session.start_time.slice(0, 5) : '-'} – Selesai WIB
+                        </p>
                       </div>
                     </div>
 
@@ -192,8 +196,14 @@ export default function ExamCardPage() {
                         <MapPin className="h-4 w-4 text-blue-700 print:text-slate-700" />
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900">{session.location}</p>
-                        <p className="text-sm text-slate-600">Sesi: {session.name}</p>
+                        <p className="font-bold text-slate-900">
+                          {session.mode === 'online'
+                            ? (session.meeting_url ? `Online (Zoom/Meet: ${session.meeting_url})` : 'Online (Tatap Maya)')
+                            : (session.location || 'Gedung Sekolah PPDB Ar-Rahman')}
+                        </p>
+                        <p className="text-sm text-slate-600">
+                          Sesi: {session.name} {session.officer_name ? `• Petugas: ${session.officer_name}` : ''}
+                        </p>
                       </div>
                     </div>
                   </div>

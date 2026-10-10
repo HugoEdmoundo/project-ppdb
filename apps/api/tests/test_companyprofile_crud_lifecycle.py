@@ -73,7 +73,11 @@ ENTITY_CASES: list[dict[str, Any]] = [
             "content": '{"title": "Judul", "content": "isi", "excerpt": "ringkas"}',
         },
         "update": {"category": "Prestasi", "date": "2026-04-01"},
-        "check": {"slug": "lifecycle-news", "category": "Prestasi", "date": "2026-04-01"},
+        "check": {
+            "slug": "lifecycle-news",
+            "category": "Prestasi",
+            "date": "2026-04-01",
+        },
     },
     {
         "entity": "programs",
@@ -154,9 +158,7 @@ CASE_IDS = [str(case["entity"]) for case in ENTITY_CASES]
 
 
 @pytest.mark.parametrize("case", ENTITY_CASES, ids=CASE_IDS)
-def test_entity_full_crud_lifecycle(
-    cp: TestClient, case: dict[str, Any]
-) -> None:
+def test_entity_full_crud_lifecycle(cp: TestClient, case: dict[str, Any]) -> None:
     """Create -> list -> detail -> update -> delete, verified at each step."""
     entity = str(case["entity"])
     base = f"/companyprofile/{entity}"
@@ -179,25 +181,25 @@ def test_entity_full_crud_lifecycle(
         for key, value in case["check"].items():
             if key in case["update"]:
                 continue
-            assert cast(dict[str, Any], detail.json()).get(key) == value, (
-                f"{entity} detail.{key}"
-            )
+            assert (
+                cast(dict[str, Any], detail.json()).get(key) == value
+            ), f"{entity} detail.{key}"
 
         # 3. Update must persist and be reflected in the detail response.
         updated = cp.put(f"{base}/{record_id}", json=case["update"])
         assert updated.status_code == 200, f"{entity} update: {updated.text}"
         for key, value in case["check"].items():
-            assert cast(dict[str, Any], updated.json()).get(key) == value, (
-                f"{entity} update response {key}"
-            )
+            assert (
+                cast(dict[str, Any], updated.json()).get(key) == value
+            ), f"{entity} update response {key}"
 
         # 4. Re-read: the change must be in the database, not just the response.
         reread = cp.get(f"{base}/{record_id}")
         assert reread.status_code == 200, f"{entity} re-read: {reread.text}"
         for key, value in case["check"].items():
-            assert cast(dict[str, Any], reread.json()).get(key) == value, (
-                f"{entity} persisted {key}"
-            )
+            assert (
+                cast(dict[str, Any], reread.json()).get(key) == value
+            ), f"{entity} persisted {key}"
 
         # 5. Delete.
         deleted = cp.delete(f"{base}/{record_id}")
@@ -206,9 +208,9 @@ def test_entity_full_crud_lifecycle(
         cp.delete(f"{base}/{record_id}")
 
     # 6. Gone from detail and from the list.
-    assert cp.get(f"{base}/{record_id}").status_code == 404, (
-        f"{entity} still readable after delete"
-    )
+    assert (
+        cp.get(f"{base}/{record_id}").status_code == 404
+    ), f"{entity} still readable after delete"
     ids = [i["id"] for i in cast(list[dict[str, Any]], cp.get(base).json())]
     assert record_id not in ids, f"{entity} still listed after delete"
 
@@ -240,7 +242,9 @@ def test_entity_rejects_unauthenticated_writes(case: dict[str, Any]) -> None:
     with TestClient(app) as anon:
         assert anon.get(base).status_code == 200, f"{entity} public list"
         assert anon.post(base, json=case["create"]).status_code == 401, entity
-        assert anon.put(f"{base}/apa-saja", json=case["update"]).status_code == 401, entity
+        assert (
+            anon.put(f"{base}/apa-saja", json=case["update"]).status_code == 401
+        ), entity
         assert anon.delete(f"{base}/apa-saja").status_code == 401, entity
 
 
@@ -294,9 +298,7 @@ def test_contact_info_round_trip(cp: TestClient) -> None:
 )
 def test_contact_info_rejects_unknown_field(cp: TestClient) -> None:
     assert (
-        cp.put(
-            "/companyprofile/contact-info", json={"not_a_column": "x"}
-        ).status_code
+        cp.put("/companyprofile/contact-info", json={"not_a_column": "x"}).status_code
         == 422
     )
 
@@ -341,10 +343,16 @@ def test_setting_write_is_rejected_for_admin_only_key_via_public_read(
 ) -> None:
     """An admin-only key is writable but must not leak through public GET."""
     admin_only = "whatsapp_number"
-    assert cp.put(f"/companyprofile/settings/{admin_only}", json={"value": "62811"}).status_code == 200
+    assert (
+        cp.put(
+            f"/companyprofile/settings/{admin_only}", json={"value": "62811"}
+        ).status_code
+        == 200
+    )
     assert cp.get(f"/companyprofile/settings/{admin_only}").status_code == 400
     public_keys = {
-        s["key"] for s in cast(list[dict[str, Any]], cp.get("/companyprofile/settings").json())
+        s["key"]
+        for s in cast(list[dict[str, Any]], cp.get("/companyprofile/settings").json())
     }
     assert admin_only not in public_keys
 
@@ -359,7 +367,8 @@ def test_settings_are_readable_by_crud_admin_via_admin_route(
         )
     }
     public_keys = {
-        s["key"] for s in cast(list[dict[str, Any]], cp.get("/companyprofile/settings").json())
+        s["key"]
+        for s in cast(list[dict[str, Any]], cp.get("/companyprofile/settings").json())
     }
     # Everything the public route exposes must also be readable by the admin,
     # otherwise the dashboard cannot display what it just wrote.

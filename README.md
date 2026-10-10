@@ -23,8 +23,8 @@ Klik pada masing-masing aplikasi untuk melihat detail teknisnya:
 
 | Aplikasi | Path | Tech Stack | Fungsi Utama |
 |----------|------|------------|--------------|
-| 🎓 **PPDB Pendaftar** | [`apps/ppdb`](apps/ppdb/README.md) | React, Vite | Portal bagi calon siswa untuk mendaftar, upload berkas, dan ujian TIU. |
-| 🛡️ **Superadmin** | [`apps/superadmin`](apps/superadmin/README.md) | React, Vite | Backoffice bagi admin untuk mengatur gelombang, verifikasi, dan arsip pendaftar. |
+| 🎓 **PPDB (Pendaftar + Backoffice Admin)** | [`apps/ppdb`](apps/ppdb/README.md) | React, Vite | Portal calon siswa (daftar, unggah berkas, ujian TIU) sekaligus dashboard pendaftar dan backoffice admin PPDB (gelombang/periode, verifikasi dokumen, pembayaran, sesi 1:1, penilaian, arsip dossier). |
+| 🛡️ **Superadmin** | [`apps/superadmin`](apps/superadmin/README.md) | React, Vite | Panel platform: manajemen pengguna & role, aktivitas, notifikasi, dan koneksi WhatsApp. |
 | 🌐 **Company Profile** | [`apps/companyprofile`](apps/companyprofile/README.md) | Next.js, Tailwind | Website publik pesantren dan pusat informasi. |
 | ⚙️ **Core API** | [`apps/api`](apps/api/README.md) | FastAPI, MySQL | Backend utama yang memproses seluruh logika sistem dan sinkronisasi ujian. |
 | 📱 **WA Gateway** | [`apps/whatsapp`](apps/whatsapp/README.md) | Node.js, BullMQ | Service mandiri untuk notifikasi realtime via bot WhatsApp. |

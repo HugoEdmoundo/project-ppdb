@@ -27,7 +27,7 @@ Endpoint coverage:
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -69,14 +69,24 @@ def get_selection_service(db: Session = Depends(get_db)) -> SelectionService:
 
 @router.get("/sessions")
 def get_sessions(
+    session_type: str | None = Query(None, alias="type"),
     user: dict = Depends(require_ppdb_read),
     svc: SelectionService = Depends(get_selection_service),
 ):
     active_wave = svc.repo.get_active_wave_info()
     if not active_wave:
         return {"data": [], "total": 0, "active_wave": None}
-    data = svc.get_sessions()
+    data = svc.get_sessions(session_type=session_type)
     return {"data": data, "total": len(data), "active_wave": active_wave}
+
+
+@router.get("/sessions/{session_id}/evaluation")
+def get_session_evaluation_detail(
+    session_id: str,
+    user: dict = Depends(require_ppdb_read),
+    svc: SelectionService = Depends(get_selection_service),
+):
+    return svc.get_session_evaluation_detail(session_id)
 
 
 @router.post("/sessions", status_code=201)
@@ -85,7 +95,7 @@ def create_session(
     user: dict = Depends(require_ppdb_admin),
     svc: SelectionService = Depends(get_selection_service),
 ):
-    return svc.create_session(body)
+    return svc.create_session(body, creator_user_id=user.get("id"))
 
 
 @router.put("/sessions/{session_id}")

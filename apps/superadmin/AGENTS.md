@@ -12,13 +12,15 @@ This document provides a technical overview of the Superadmin panel for the Pesa
 ## Routing (`src/App.tsx`)
 The application is a Single Page Application (SPA) with the following routes:
 - **Public Routes:**
-  - `/login`: Superadmin login page.
+  - `/auth/login`: Superadmin login page.
 - **Protected Routes** (Requires Superadmin access):
-  - `/`: Dashboard summary page showing user and role statistics.
+  - `/` and `/dashboard`: Dashboard summary page showing user and role statistics.
   - `/users`, `/users/new`, `/users/:id`: User management CRUD operations.
   - `/roles`, `/roles/new`, `/roles/:id`: Role management CRUD. Includes assigning module and page permissions (`companyprofile` and `ppdb`).
   - `/applicants`: PPDB Applicants management.
+  - `/activities`: User activity history log.
   - `/notifications`: View notification logs and send custom notifications.
+  - `/whatsapp`: WhatsApp connection status and QR scanning.
   - `/profile`: Update current superadmin profile (including avatar, password).
   - `*`: 404 Not Found page.
 

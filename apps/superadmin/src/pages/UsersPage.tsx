@@ -142,6 +142,7 @@ export default function UsersPage() {
         eyebrow="Manajemen Akses"
         title="Users"
         description="Kelola admin dan pengguna sistem"
+        docKey="superadmin-users"
         chips={[
           { icon: Users, label: `${totalUsers} Pengguna Terdaftar` },
           { icon: UserRound, label: `Halaman ${page} dari ${totalPages}` },

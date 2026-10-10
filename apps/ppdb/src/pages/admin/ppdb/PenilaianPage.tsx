@@ -6,7 +6,7 @@ import { Button } from "@/components/ui"
 import { Badge } from "@/components/ui"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui"
 import { Textarea } from "@/components/ui"
-import { ArrowRight, Activity, Award, CheckCircle2, XCircle, Clock, Eye, Brain, BookOpen, MessageSquare, Printer, Info, UserCheck, ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react'
+import { ArrowRight, Activity, Award, CheckCircle2, XCircle, Clock, Brain, BookOpen, MessageSquare, Printer, Info, UserCheck, ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Applicant } from '@/types/ppdb'
 import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
@@ -62,7 +62,7 @@ function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: Sc
   const { toast } = useToast()
   const { canCrud } = useCan('ppdb', 'crud')
   const queryClient = useQueryClient()
-  const [verdictMode, setVerdictMode] = useState<'passed' | 'failed' | null>(null)
+  const [verdictMode, setVerdictMode] = useState<'passed' | 'failed' | 'selection' | null>(null)
   const [verdictReason, setVerdictReason] = useState('')
 
   const { data, isLoading } = useQuery({
@@ -552,6 +552,7 @@ export default function PenilaianPage() {
         title="Hasil Pendaftaran"
         description="Rekapitulasi hasil seleksi calon santri — nilai TIU (otomatis via webhook), Tahfidz, dan Wawancara. Admin dapat memvalidasi kelulusan di sini."
         loading={loading}
+        docKey="ppdb-penilaian"
         action={
           <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
             <Link to="/admin/periods" className="gap-1.5">

@@ -24,6 +24,7 @@ export default function SelectionPage() {
         title="Rubrik Penilaian"
         description="Konfigurasi kriteria, bobot, dan deskripsi penilaian evaluator Tahfidz dan Wawancara. Rubrik bersifat global institusi — berlaku di semua gelombang."
         loading={wavesLoading}
+        docKey="ppdb-rubrik"
         action={
           <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
             <Link to="/admin/periods" className="gap-1.5">

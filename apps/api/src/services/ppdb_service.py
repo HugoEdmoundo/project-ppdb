@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -580,7 +581,9 @@ class PPDBService:
         wave = self.repository.get_wave_by_id(wave_id)
         if not wave:
             raise HTTPException(status_code=404, detail="Gelombang tidak ditemukan")
-        if body.discount_scope == "first_x" and not wave.early_discount_quota:
+        if (
+            body.discount_scope == "first_x" or body.early_discount_type
+        ) and not wave.early_discount_quota:
             raise HTTPException(
                 status_code=400,
                 detail="Kuota diskon pendaftar awal belum diatur pada gelombang ini",
@@ -590,10 +593,13 @@ class PPDBService:
             wave_id=wave_id,
             name=body.name,
             nominal=body.nominal,
+            description=body.description,
             order_index=body.order_index,
             discount_type=body.discount_type,
             discount_value=body.discount_value,
             discount_scope=body.discount_scope,
+            early_discount_type=body.early_discount_type,
+            early_discount_value=body.early_discount_value,
             created_at=datetime.now(WIB),
             updated_at=datetime.now(WIB),
         )
@@ -604,7 +610,9 @@ class PPDBService:
         wave = self.repository.get_wave_by_id(wave_id)
         if not wave:
             raise HTTPException(status_code=404, detail="Gelombang tidak ditemukan")
-        if body.discount_scope == "first_x" and not wave.early_discount_quota:
+        if (
+            body.discount_scope == "first_x" or body.early_discount_type
+        ) and not wave.early_discount_quota:
             raise HTTPException(
                 status_code=400,
                 detail="Kuota diskon pendaftar awal belum diatur pada gelombang ini",
@@ -619,10 +627,13 @@ class PPDBService:
             )
         item.name = body.name
         item.nominal = body.nominal
+        item.description = body.description
         item.order_index = body.order_index
         item.discount_type = body.discount_type
         item.discount_value = body.discount_value
         item.discount_scope = body.discount_scope
+        item.early_discount_type = body.early_discount_type
+        item.early_discount_value = body.early_discount_value
         item.updated_at = datetime.now(WIB)
         self.repository.update_fee_item(item)
         return {c.name: getattr(item, c.name) for c in item.__table__.columns}
@@ -1412,7 +1423,7 @@ class PPDBService:
 
         from src.core.uploads import delete_upload, upload_file
 
-        applicant = self._get_current_applicant(user)
+        applicant = await asyncio.to_thread(self._get_current_applicant, user)
         if applicant.status not in _DOCUMENT_UPLOAD_STATUSES:
             raise HTTPException(
                 status_code=400,
@@ -1432,7 +1443,8 @@ class PPDBService:
 
         file_id = str(uuid.uuid4())
         upload = await upload_file(file, file_id)
-        old_paths = self.repository.replace_applicant_document(
+        old_paths = await asyncio.to_thread(
+            self.repository.replace_applicant_document,
             applicant_id=applicant.id,
             doc_type=doc_type,
             upload=upload,
@@ -1441,9 +1453,11 @@ class PPDBService:
             now=datetime.now(WIB),
         )
         for path in old_paths:
-            delete_upload(path)
+            await asyncio.to_thread(delete_upload, path)
 
-        docs = self.repository.get_applicant_documents(applicant.id)
+        docs = await asyncio.to_thread(
+            self.repository.get_applicant_documents, applicant.id
+        )
         document = next((d for d in docs if d["doc_type"] == doc_type), None)
         return {"message": "Dokumen berhasil diunggah", "document": document}
 

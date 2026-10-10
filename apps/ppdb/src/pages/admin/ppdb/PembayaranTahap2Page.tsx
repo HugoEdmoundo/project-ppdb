@@ -23,8 +23,9 @@ export default function PembayaranTahap2Page() {
     <div className="space-y-6 animate-fade-in">
       <PageHeaderCard
         title="Pembayaran Tahap 2"
-        description="Monitoring tagihan DP dan cicilan biaya pendidikan santri. Status terverifikasi otomatis via webhook payment gateway."
+        description="Monitoring tagihan DP dan cicilan biaya pendidikan. Status terverifikasi otomatis via webhook."
         loading={wavesLoading}
+        docKey="ppdb-pembayaran-tahap2"
         action={
           <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
             <Link to="/admin/periods" className="gap-1.5">

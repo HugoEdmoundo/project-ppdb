@@ -30,6 +30,7 @@ class SelectionSession(Base):
     meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     quota: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 

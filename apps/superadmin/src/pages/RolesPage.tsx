@@ -97,6 +97,7 @@ export default function RolesPage() {
         eyebrow="Manajemen Akses"
         title="Roles"
         description="Kelola role dan hak akses pengguna"
+        docKey="superadmin-roles"
         loading={loading}
         chips={[
           { icon: ShieldCheck, label: `${roles.length} Total Role` },

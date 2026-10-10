@@ -116,7 +116,7 @@ export default function ApplicantSelectionAdmin({
   const saveMutation = useMutation({
     mutationFn: async () => {
       const scoreList = Object.entries(scores)
-        .filter(([_, score]) => typeof score === 'number' && !isNaN(score))
+        .filter(([, score]) => typeof score === 'number' && !isNaN(score))
         .map(([criteria_id, score]) => ({
           criteria_id,
           score: Number(score),

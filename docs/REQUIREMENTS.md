@@ -7,8 +7,8 @@ Admin menyiapkan komponen berikut dari dashboard backoffice:
 1. **Gelombang pendaftaran** — tanggal buka/tutup, harga formulir, kuota pendaftar, diskon DP3/gedung/SPP, diskon untuk X pendaftar pertama, dan minimal DP.
 2. **Template dan LoA** — generate/preview LoA sebelum publish, klausul dana tidak dapat dikembalikan, dan latar SKD.
 3. **Rubrik penilaian** — kriteria, bobot, dan formulir evaluator untuk Tahfidz dan wawancara. Nilai TIU berasal otomatis dari ujian pilihan ganda dan webhook, tanpa input manual admin.
-4. **Sesi Tahfidz** — jadwal, penguji, mode online/offline, serta tautan Zoom atau lokasi.
-5. **Sesi wawancara** — jadwal, pewawancara, mode online/offline, serta tautan Zoom atau lokasi.
+4. **Session 1:1 Tahfidz** — jadwal, penguji, mode online/offline, serta tautan Zoom atau lokasi.
+5. **Session 1:1 Wawancara** — jadwal, pewawancara, mode online/offline, serta tautan Zoom atau lokasi.
 6. **Pengaturan TIU global** — Google Form sebagai sumber soal, webhook secret, durasi tes, dan Apps Script untuk menyinkronkan soal ke aplikasi PPDB. Pengaturan ini tidak dibuat per gelombang.
 
 Pendaftaran publik dibuka ketika ada gelombang aktif di periode aktif, jadwal pendaftaran sudah masuk, dan kuota pembayaran formulir belum penuh. Template LoA bukan prasyarat pendaftaran.
@@ -77,9 +77,9 @@ Perilaku formulir:
 ## Arsip dan Pencarian Dossier Pendaftar
 Pencarian lintas periode dan gelombang berada di **halaman khusus Arsip/Cari Pendaftar**. Jangan menambahkan filter periode/gelombang ini ke semua halaman admin. Halaman khusus ini dapat mencari semua pendaftar lintas periode/gelombang dan membuka dossier lengkap dalam satu tindakan.
 
-Dossier yang tampil dari satu tindakan mencakup biodata, seluruh dokumen yang pernah diunggah dan riwayat verifikasinya, hasil TIU, sesi serta nilai Tahfidz/wawancara, keputusan kelulusan, LoA, pembayaran dan cicilan, serta SKD/nomor registrasi jika sudah tersedia. Sediakan unduhan per berkas dan paket ZIP satu klik yang berisi ringkasan PDF serta dokumen asli dalam folder terstruktur. Status periode aktif mengatur pendaftaran yang sedang berjalan, bukan visibilitas arsip. Batasi halaman dossier dengan izin khusus karena berisi data pribadi dan pembayaran.
+Dossier yang tampil dari satu tindakan mencakup biodata, seluruh dokumen yang pernah diunggah dan riwayat verifikasinya, hasil TIU, sesi serta nilai Session 1:1 Tahfidz/Wawancara, keputusan kelulusan, LoA, pembayaran dan cicilan, serta SKD/nomor registrasi jika sudah tersedia. Sediakan unduhan per berkas dan paket ZIP satu klik yang berisi ringkasan PDF serta dokumen asli dalam folder terstruktur. Status periode aktif mengatur pendaftaran yang sedang berjalan, bukan visibilitas arsip. Batasi halaman dossier dengan izin khusus karena berisi data pribadi dan pembayaran.
 
-Data pendaftar dan turunannya harus bisa dirunut ke periode/gelombang melalui relasi pendaftar: dokumen/verifikasi, tagihan/pembayaran/cicilan, hasil TIU, sesi/nilai Tahfidz dan wawancara, keputusan, LoA, serta SKD/nomor registrasi. Data tersebut menjadi sumber pencarian dossier dan tidak menambah filter global di halaman lain.
+Data pendaftar dan turunannya harus bisa dirunut ke periode/gelombang melalui relasi pendaftar: dokumen/verifikasi, tagihan/pembayaran/cicilan, hasil TIU, sesi/nilai Session 1:1 Tahfidz/Wawancara, keputusan, LoA, serta SKD/nomor registrasi. Data tersebut menjadi sumber pencarian dossier dan tidak menambah filter global di halaman lain.
 
 Konfigurasi biaya, kuota, tanggal, dan diskon melekat ke gelombang. Jadwal/rubrik harus dapat direkonstruksi sesuai yang dipakai saat ujian, dan dokumen LoA/SKD yang sudah digenerate disimpan sebagai artefak tetap.
 
@@ -97,12 +97,12 @@ Backend PPDB memvalidasi:
 2. Token attempt harus valid dan terdaftar pada pendaftar yang bersangkutan.
 3. Waktu penerimaan webhook tidak boleh melebihi batas durasi (waktu submit <= waktu mulai attempt + durasi ujian + 5 menit toleransi jaringan).
 
-Setelah validasi berhasil, nilai disimpan ke kriteria ujian TIU pendaftar secara idempoten (mencegah duplikasi), dan backend memicu notifikasi WhatsApp hasil TIU (`tiu_result_ready`) ke nomor peserta. Nilai TIU masuk murni dari webhook; admin tidak menginput nilai TIU secara manual di backoffice. Bagi pendaftar jalur Tes/TIU, kelulusan/terselesaikannya ujian TIU menjadi prasyarat sebelum sesi ujian Tahfidz dapat dipilih.
+Setelah validasi berhasil, nilai disimpan ke kriteria ujian TIU pendaftar secara idempoten (mencegah duplikasi), dan backend memicu notifikasi WhatsApp hasil TIU (`tiu_result_ready`) ke nomor peserta. Nilai TIU masuk murni dari webhook; admin tidak menginput nilai TIU secara manual di backoffice. Bagi pendaftar jalur Tes/TIU, kelulusan/terselesaikannya ujian TIU menjadi prasyarat sebelum Session 1:1 Tahfidz dapat dipilih.
 
 Jika terjadi kendala koneksi atau perangkat restart di tengah ujian, peserta dapat membuka kembali file `.seb` selama batas durasi server belum habis (Google Form menyediakan penyimpanan draft/autosave saat peserta login). Timer server tetap berjalan dan tidak di-reset.
 
 ## Validasi dan Pengecualian Wajib
-- **Konfigurasi/publikasi:** cegah pembukaan pendaftaran jika tidak ada periode aktif, gelombang aktif, template siap, tanggal tidak valid, atau kuota habis. Tampilkan alasan dan tindakan berikutnya dengan bahasa nonteknis.
+- **Konfigurasi/publikasi:** cegah pembukaan pendaftaran jika tidak ada periode aktif, gelombang aktif, tanggal tidak valid, atau kuota habis. Tampilkan alasan dan tindakan berikutnya dengan bahasa nonteknis.
 - **Pendaftaran/pembayaran:** validasi ulang status periode, gelombang, tanggal, dan kuota di server saat pendaftaran dan pembayaran. Catat pembayaran secara idempoten agar webhook duplikat tidak menambah hitungan kuota dua kali; reservasi slot dan hitung pembayaran harus atomik saat banyak pembayaran masuk bersamaan.
 - **Kuota tercapai:** tutup gelombang dan pendaftaran satu kali, batalkan seluruh tagihan formulir pending, kirim notifikasi, dan hentikan pengingat Senin. Jika webhook sukses datang setelah tagihan dibatalkan, tandai sebagai pengecualian untuk pemeriksaan admin—jangan otomatis memindahkan pendaftar ke gelombang lain atau menghilangkan pembayaran.
 - **TIU/SEB:** tolak pengunduhan SEB jika pendaftar sudah memiliki nilai TIU atau durasi attempt telah habis. Validasi webhook secret `X-TIU-Secret`, kecocokan token attempt, dan batas toleransi durasi ujian. Proses webhook secara idempoten sehingga submit ulang tidak menggandakan hasil atau notifikasi.
@@ -112,8 +112,6 @@ Jika terjadi kendala koneksi atau perangkat restart di tengah ujian, peserta dap
 ## Keputusan yang Masih Terbuka
 - Apakah jadwal/rubrik/LoA/SKD memakai konfigurasi per gelombang atau versi snapshot? Rekomendasi: jadwal/rubrik dapat direkonstruksi sesuai attempt dan LoA/SKD yang sudah dibuat dibekukan.
 - Bagaimana menangani webhook pembayaran ganda atau pembayaran terlambat setelah tagihan dibatalkan karena kuota penuh?
-- TIU didukung pada komputer desktop/laptop Windows dan macOS. Perangkat seluler tidak didukung.
-- Kebijakan TIU diputuskan: satu attempt per pendaftar, tanpa retake. Waktu timer server berjalan sejak unduh SEB; nilai dikirim via webhook Apps Script onFormSubmit.
 - Siapa yang memiliki izin melihat/mengunduh dossier lengkap?
 - Apakah kedudukan jenjang pada dokumen (LoA/SKD/transkrip) perlu setting tersendiri di backoffice, atau cukup satu konfigurasi tingkat sekolah yang tetap?
 - Apakah formulir kesehatan boleh diperbarui pendaftar setelah pendaftaran (misalnya lewat dashboard), dan sampai kapan?

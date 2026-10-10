@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
+import { DocTrigger } from '@repo/ui'
 import { cn } from '@/lib/utils'
 
 export interface HeaderBlock {
@@ -14,11 +15,12 @@ interface PageHeaderCardProps {
   title: string
   description?: ReactNode
   action?: ReactNode
+  docKey?: string
   blocks?: HeaderBlock[]
   loading?: boolean
 }
 
-export default function PageHeaderCard({ title, description, action, blocks, loading }: PageHeaderCardProps) {
+export default function PageHeaderCard({ title, description, action, docKey, blocks, loading }: PageHeaderCardProps) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
       <div className="relative flex flex-col gap-4 px-5 py-5 md:flex-row md:items-center md:justify-between">
@@ -27,7 +29,12 @@ export default function PageHeaderCard({ title, description, action, blocks, loa
           <h1 className="font-heading text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">{title}</h1>
           {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
         </div>
-        {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
+        {(action || docKey) && (
+          <div className="flex shrink-0 items-center gap-2">
+            {docKey && <DocTrigger docKey={docKey} variant="light" />}
+            {action}
+          </div>
+        )}
       </div>
 
       {blocks && !loading && (

@@ -71,7 +71,8 @@ def _applicant_scope_clause(
 
     if period_id:
         clauses.append(
-            "`wave_id` IN (SELECT `id` FROM `ppdb_waves` WHERE `period_id` = :period_id)"
+            "`wave_id` IN (SELECT `id` FROM `ppdb_waves` "
+            "WHERE `period_id` = :period_id)"
         )
         params["period_id"] = period_id
 
@@ -196,7 +197,7 @@ def _parse_changes(value: Any) -> Any:
 
 
 @router.get("/dashboard")
-async def get_dashboard(
+def get_dashboard(
     period_id: str | None = Query(None),
     wave_id: str | None = Query(None),
     user: dict[str, Any] = Depends(require_superadmin),
@@ -227,9 +228,7 @@ async def get_dashboard(
         f"1=1{scope_clause}",
         scope_params,
     )
-    trend, delta = _build_trend_with_delta(
-        wave_id=wave_id, period_id=period_id
-    )
+    trend, delta = _build_trend_with_delta(wave_id=wave_id, period_id=period_id)
 
     month_start = (datetime.now(WIB) - timedelta(days=29)).strftime("%Y-%m-%d")
 
@@ -293,7 +292,7 @@ async def get_dashboard(
 
 
 @router.get("/periods")
-async def list_periods(user: dict[str, Any] = Depends(require_superadmin)):
+def list_periods(user: dict[str, Any] = Depends(require_superadmin)):
     """Daftar periode ringkas untuk filter dashboard Superadmin."""
     rows = (
         execute_raw(
@@ -316,7 +315,7 @@ async def list_periods(user: dict[str, Any] = Depends(require_superadmin)):
 
 
 @router.get("/waves")
-async def list_waves(
+def list_waves(
     period_id: str | None = Query(None),
     user: dict[str, Any] = Depends(require_superadmin),
 ):
@@ -325,7 +324,7 @@ async def list_waves(
 
 
 @router.get("/whatsapp-contacts")
-async def list_whatsapp_contacts(
+def list_whatsapp_contacts(
     search: str = Query(""),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -372,11 +371,11 @@ async def list_whatsapp_contacts(
     )
 
     user_rows = execute_raw(
-        "SELECT `id`, `full_name` AS `name`, `phone`, `email`, `username`, `created_at` "
+        "SELECT `id`, `full_name` AS `name`, `phone`, `email`, `username`, "
+        "`created_at` "
         "FROM `users`"
         f"{user_filter} "
-        "ORDER BY `created_at` DESC",
-        params,
+        "ORDER BY `created_at` DESC LIMIT 200"
     )
 
     contacts: list[dict[str, Any]] = [
@@ -422,7 +421,7 @@ async def list_whatsapp_contacts(
 
 
 @router.get("/audit-logs")
-async def list_audit_logs(
+def list_audit_logs(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=200),
     search: str = Query(""),

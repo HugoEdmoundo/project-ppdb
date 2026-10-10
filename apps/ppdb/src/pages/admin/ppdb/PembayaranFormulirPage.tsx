@@ -64,6 +64,7 @@ export default function PembayaranFormulirPage() {
         title="Pembayaran Formulir"
         description="Monitoring transaksi pembayaran formulir pendaftaran calon santri pada gelombang aktif."
         loading={loading}
+        docKey="ppdb-pembayaran-formulir"
         action={
           <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
             <Link to="/admin/periods" className="gap-1.5">

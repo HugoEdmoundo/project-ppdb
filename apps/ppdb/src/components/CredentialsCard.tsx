@@ -41,7 +41,7 @@ export function CredentialsCard({ username, password, title = 'Akun Anda' }: Cre
       {/* Decorative ticket cutouts */}
       <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full border-r border-emerald-primary/30" />
       <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full border-l border-emerald-primary/30" />
-      
+
       {/* Dashed line */}
       <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 border-t border-dashed border-white/20" />
 

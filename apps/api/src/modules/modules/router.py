@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 @router.get("/")
-async def list_modules(user: dict[str, Any] = Depends(get_current_user)):
+def list_modules(user: dict[str, Any] = Depends(get_current_user)):
     mod_rows = execute_raw("SELECT id, `key`, name FROM modules ORDER BY name")
     page_rows = execute_raw(
         "SELECT id, module_id, `key`, label, icon, sort_order "

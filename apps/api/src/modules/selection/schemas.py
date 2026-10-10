@@ -9,7 +9,7 @@ class SessionFields(BaseModel):
     session_type: Literal["tahfidz", "interview"]
     session_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     start_time: str = Field(pattern=r"^\d{2}:\d{2}$")
-    end_time: str = Field(pattern=r"^\d{2}:\d{2}$")
+    end_time: str | None = Field(default=None)
     mode: Literal["online", "offline"]
     officer_name: str = Field(min_length=1, max_length=150)
     location: str | None = Field(None, max_length=200)
@@ -19,10 +19,11 @@ class SessionFields(BaseModel):
 
     @model_validator(mode="after")
     def validate_delivery_details(self):
-        start = datetime.strptime(self.start_time, "%H:%M").time()
-        end = datetime.strptime(self.end_time, "%H:%M").time()
-        if end <= start:
-            raise ValueError("Jam selesai harus setelah jam mulai")
+        if self.end_time:
+            start = datetime.strptime(self.start_time, "%H:%M").time()
+            end = datetime.strptime(self.end_time, "%H:%M").time()
+            if end <= start:
+                raise ValueError("Jam selesai harus setelah jam mulai")
         if self.mode == "online" and not self.meeting_url:
             raise ValueError("Tautan Zoom wajib diisi untuk sesi online")
         if self.mode == "offline" and not (self.location and self.location.strip()):

@@ -103,6 +103,7 @@ export default function ActivitiesPage() {
         eyebrow="Superadmin"
         title="Riwayat Aktivitas"
         description="Kelola dan telusuri jejak aktivitas seluruh pengguna sistem — siapa melakukan apa, kapan, dan terhadap data apa."
+        docKey="superadmin-activities"
         loading={loading && logs.length === 0}
         chips={[
           { icon: Activity, label: `${total} Aktivitas` },

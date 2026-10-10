@@ -203,6 +203,7 @@ export default function ArsipPendaftarPage() {
         title="Arsip & Cari Pendaftar"
         description="Pusat pencarian lintas periode dan gelombang historis. Telusuri dossier lengkap, riwayat nilai, pembayaran, dan berkas asli calon santri."
         loading={isLoading}
+        docKey="ppdb-arsip"
         blocks={[
           {
             icon: Archive,

@@ -58,17 +58,11 @@ class SelectionService:
             )
         return wave_id
 
-    def get_sessions(self) -> list[dict[str, Any]]:
+    def get_sessions(self, session_type: str | None = None) -> list[dict[str, Any]]:
         wave_id = self._get_active_wave_id_or_400()
-        rows = self.repo.get_sessions(wave_id)
-        result = []
-        for session, wave_name, booked_count in rows:
-            d = session.__dict__.copy()
-            d.pop("_sa_instance_state", None)
-            d["wave_name"] = wave_name
-            d["booked_count"] = booked_count or 0
-            result.append(d)
-        return result
+        return self.repo.get_sessions_with_booking_details(
+            wave_id, session_type=session_type
+        )
 
     def _require_active_wave_session(self, session_id: str):
         """Ambil sesi dan pastikan milik gelombang aktif (404 jika tidak)."""
@@ -78,16 +72,20 @@ class SelectionService:
             raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
         return session
 
-    def create_session(self, body: SessionCreate) -> dict[str, Any]:
+    def create_session(
+        self, body: SessionCreate, creator_user_id: str | None = None
+    ) -> dict[str, Any]:
         now = _now_wib()
+        sess_date = _parse_session_date(body.session_date)
         wave_id = self._get_active_wave_id_or_400()
         sid = str(uuid4())
+        quota = body.quota if body.quota > 0 else 1  # 1 Slot = 1 Pendaftar (Sesi 1:1)
         session = SelectionSession(
             id=sid,
             wave_id=wave_id,
             name=body.name,
             session_type=body.session_type,
-            session_date=_parse_session_date(body.session_date),
+            session_date=sess_date,
             start_time=body.start_time,
             end_time=body.end_time,
             mode=body.mode,
@@ -95,13 +93,148 @@ class SelectionService:
             location=body.location,
             meeting_url=str(body.meeting_url) if body.meeting_url else None,
             description=body.description,
-            quota=body.quota,
+            quota=quota,
+            created_by=creator_user_id,
             created_at=now,
             updated_at=now,
         )
         self.repo.create_session(session)
         self.repo.db.commit()
-        return {"id": sid, "message": "Sesi seleksi berhasil dibuat"}
+        return {"id": sid, "message": "Sesi 1:1 berhasil dibuat"}
+
+    def get_session_evaluation_detail(self, session_id: str) -> dict[str, Any]:
+        from sqlalchemy import or_
+
+        from src.models.selection import SelectionResult
+        from src.repositories.ppdb_repository import PPDBRepository
+
+        session = self.repo.get_session_by_id(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
+
+        # Cari pendaftar yang mengambil sesi ini
+        s_res = (
+            self.repo.db.query(SelectionResult)
+            .filter(
+                or_(
+                    SelectionResult.session_id == session_id,
+                    SelectionResult.interview_session_id == session_id,
+                )
+            )
+            .first()
+        )
+        if not s_res or not s_res.applicant_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Sesi ini belum diambil oleh pendaftar (status masih merah).",
+            )
+
+        ppdb_repo = PPDBRepository(self.repo.db)
+        applicant_detail = ppdb_repo.get_applicant_detail(s_res.applicant_id)
+        if not applicant_detail:
+            raise HTTPException(
+                status_code=404, detail="Data pendaftar tidak ditemukan."
+            )
+
+        # Dokumen pendaftar
+        applicant_detail["documents"] = ppdb_repo.get_applicant_documents(
+            s_res.applicant_id
+        )
+
+        # Nilai TIU jika ada
+        tiu_res = self.repo.get_tiu_result_by_applicant(s_res.applicant_id)
+        tiu_score = tiu_res.score if tiu_res else None
+
+        # Nilai Tahfidz yang sudah ada
+        tahfidz_scores = []
+        scores_rows = self.repo.get_applicant_scores_with_details(s_res.applicant_id)
+        for sc, c_name, cat_name in scores_rows:
+            if "tahfidz" in (cat_name or "").lower():
+                tahfidz_scores.append(
+                    {
+                        "score": sc,
+                        "criteria_name": c_name,
+                        "category_name": cat_name,
+                    }
+                )
+
+        # Ambil rubrik sesuai jenis sesi (Tahfidz atau Wawancara)
+        stype = (session.session_type or "tahfidz").lower()
+        target_keyword = (
+            "wawancara" if ("wawancara" in stype or "interview" in stype) else "tahfidz"
+        )
+
+        all_categories = list(self.repo.get_categories("global")) + list(
+            self.repo.get_categories(session.wave_id)
+        )
+        seen_cat_ids = set()
+        matched_categories = []
+
+        for cat in all_categories:
+            if cat.id in seen_cat_ids:
+                continue
+            seen_cat_ids.add(cat.id)
+            if target_keyword in (cat.name or "").lower():
+                crit_list = self.repo.get_criteria_by_category(cat.id)
+                matched_categories.append(
+                    {
+                        "id": cat.id,
+                        "name": cat.name,
+                        "criteria": [
+                            {
+                                "id": cr.id,
+                                "name": cr.name,
+                                "description": cr.description,
+                                "weight": cr.weight,
+                            }
+                            for cr in crit_list
+                        ],
+                    }
+                )
+
+        if not matched_categories:
+            for cat in all_categories:
+                if cat.id in seen_cat_ids:
+                    continue
+                seen_cat_ids.add(cat.id)
+                if not _is_tiu_category_name(cat.name):
+                    crit_list = self.repo.get_criteria_by_category(cat.id)
+                    matched_categories.append(
+                        {
+                            "id": cat.id,
+                            "name": cat.name,
+                            "criteria": [
+                                {
+                                    "id": cr.id,
+                                    "name": cr.name,
+                                    "description": cr.description,
+                                    "weight": cr.weight,
+                                }
+                                for cr in crit_list
+                            ],
+                        }
+                    )
+
+        existing_scores = {}
+        for sc, c_name, cat_name in scores_rows:
+            for m_cat in matched_categories:
+                for cr in m_cat["criteria"]:
+                    if cr["name"] == c_name and m_cat["name"] == cat_name:
+                        existing_scores[cr["id"]] = sc
+
+        sess_dict = session.__dict__.copy()
+        sess_dict.pop("_sa_instance_state", None)
+
+        return {
+            "session": sess_dict,
+            "applicant": applicant_detail,
+            "categories": matched_categories,
+            "existing_scores": existing_scores,
+            "evaluator_notes": s_res.notes or "",
+            "tiu_score": tiu_score,
+            "tahfidz_scores": tahfidz_scores,
+            "graduation_status": s_res.graduation_status,
+        }
 
     def update_session(self, session_id: str, body: SessionUpdate) -> dict[str, Any]:
         now = _now_wib()
@@ -378,34 +511,42 @@ class SelectionService:
         self.repo.db.commit()
 
         # Notifikasi berdasarkan tipe sesi yang diassign ke pendaftar (Fase 3 spec).
-        # Ambil sesi yang sedang aktif untuk applicant ini — jika ada.
         try:
             from src.core.config import settings
 
-            s_res = self.repo.get_selection_result_by_applicant(body.applicant_id)
-            if s_res and s_res.session_id:
-                booked_session = self.repo.get_session_by_id(s_res.session_id)
-                if booked_session:
-                    stype = (booked_session.session_type or "").lower()
-                    if "tahfidz" in stype:
-                        send_notifications(
-                            [
-                                (
-                                    "tahfidz_score_recorded",
-                                    {
-                                        "link_aplikasi": (
-                                            f"{settings.ppdb_frontend_url}/dashboard"
-                                        ),
-                                    },
-                                )
-                            ],
-                            app.user_id,
-                        )
-                    elif "wawancara" in stype or "interview" in stype:
-                        send_notifications(
-                            [("interview_completed", {})],
-                            app.user_id,
-                        )
+            app = self.repo.get_applicant_by_id(body.applicant_id)
+            if app:
+                first_crit = (
+                    self.repo.get_criteria_by_id(body.scores[0].criteria_id)
+                    if body.scores
+                    else None
+                )
+                cat = (
+                    self.repo.get_category_by_id(first_crit.category_id)
+                    if first_crit
+                    else None
+                )
+                cat_name = (cat.name or "").lower() if cat else ""
+
+                if "tahfidz" in cat_name:
+                    send_notifications(
+                        [
+                            (
+                                "tahfidz_score_recorded",
+                                {
+                                    "link_aplikasi": (
+                                        f"{settings.ppdb_frontend_url}/dashboard"
+                                    ),
+                                },
+                            )
+                        ],
+                        app.user_id,
+                    )
+                elif "wawancara" in cat_name or "interview" in cat_name:
+                    send_notifications(
+                        [("interview_completed", {})],
+                        app.user_id,
+                    )
         except Exception:
             import logging
 
@@ -591,7 +732,7 @@ class SelectionService:
 
         self.repo.db.commit()
 
-        # Notifikasi jadwal terkonfirmasi (Fase 3 spec)
+        # Notifikasi ke pendaftar: jadwal terkonfirmasi (Fase 3 spec)
         try:
             from src.core.config import settings
 
@@ -620,6 +761,44 @@ class SelectionService:
             logging.getLogger("ptdarrahman.selection").exception(
                 "session_confirmed notification failed; continuing"
             )
+
+        # Notifikasi ke pembuat sesi (Admin / Evaluator)
+        if session.created_by:
+            try:
+                creator_user = self.repo.get_user_by_id(session.created_by)
+                if creator_user:
+                    stype_label = (
+                        "Ujian Tahfidz"
+                        if "tahfidz" in (session.session_type or "").lower()
+                        else "Wawancara"
+                    )
+                    send_notifications(
+                        [
+                            (
+                                "officer_session_booked",
+                                {
+                                    "nama_petugas": creator_user.full_name
+                                    or session.officer_name,
+                                    "nama_sesi": session.name,
+                                    "jenis_sesi": stype_label,
+                                    "nama_pendaftar": app.full_name,
+                                    "tanggal": str(session.session_date)
+                                    if session.session_date
+                                    else "-",
+                                    "jam_mulai": session.start_time or "-",
+                                    "jam_selesai": session.end_time or "selesai",
+                                    "lokasi_atau_link": location_or_link,
+                                },
+                            )
+                        ],
+                        creator_user.id,
+                    )
+            except Exception:
+                import logging
+
+                logging.getLogger("ptdarrahman.selection").exception(
+                    "officer_session_booked notification failed; continuing"
+                )
 
         return {"message": f"Berhasil memilih {session.name}"}
 

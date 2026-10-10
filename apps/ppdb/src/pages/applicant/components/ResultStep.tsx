@@ -17,7 +17,7 @@ interface ResultStepProps {
   onUploadProof: (billId: string, e: React.ChangeEvent<HTMLInputElement>) => void
 }
 
-export default function ResultStep({ applicant, selectionResult, loa: _loa, stage2Bills, onUploadProof }: ResultStepProps) {
+export default function ResultStep({ applicant, selectionResult, stage2Bills, onUploadProof }: ResultStepProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [showSkdModal, setShowSkdModal] = useState(false)

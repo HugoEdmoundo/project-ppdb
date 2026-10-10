@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from "@/components/ui"
 import { ConfirmDialog } from "@/components/ui"
+import { DocTrigger } from '@repo/ui'
 import {
   CheckCircle, ChevronDown, ChevronUp, Lock, Wallet, FileUp, ClipboardCheck, Trophy, AlertCircle,
   type LucideIcon,
@@ -339,11 +340,14 @@ export default function ApplicantDashboardPage() {
                 )}
               </div>
             </div>
-            <div className="shrink-0 sm:text-right">
-              <p className="text-xs font-medium text-emerald-100">Progres Pendaftaran</p>
-              <p className="mt-0.5 font-heading text-xl font-bold">{doneSteps}<span className="text-emerald-100/70">/{steps.length}</span></p>
-              <div className="mt-2 h-1.5 w-28 overflow-hidden rounded-full bg-white/20">
-                <div className="h-full rounded-full bg-gold-accent transition-all" style={{ width: `${(doneSteps / steps.length) * 100}%` }} />
+            <div className="shrink-0 flex items-center sm:flex-col sm:items-end justify-between gap-3">
+              <DocTrigger docKey="applicant-dashboard" variant="dark" />
+              <div className="sm:text-right">
+                <p className="text-xs font-medium text-emerald-100">Progres Pendaftaran</p>
+                <p className="mt-0.5 font-heading text-xl font-bold">{doneSteps}<span className="text-emerald-100/70">/{steps.length}</span></p>
+                <div className="mt-2 h-1.5 w-28 overflow-hidden rounded-full bg-white/20">
+                  <div className="h-full rounded-full bg-gold-accent transition-all" style={{ width: `${(doneSteps / steps.length) * 100}%` }} />
+                </div>
               </div>
             </div>
           </div>

@@ -62,8 +62,8 @@ export default function WiggleMagneticButton({
     const btn = childRef.current
     if (!btn) return
 
-    gsap.to(btn, { 
-      x: 0, 
+    gsap.to(btn, {
+      x: 0,
       y: 0,
       duration: 0.7,
       ease: "elastic.out(1, 0.4)",
@@ -76,7 +76,7 @@ export default function WiggleMagneticButton({
       ref={containerRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      style={{ display: 'inline-block', padding: '1.5rem', margin: '-1.5rem' }} 
+      style={{ display: 'inline-block', padding: '1.5rem', margin: '-1.5rem' }}
       // added padding to increase the magnetic "zone" without affecting layout
     >
       <div ref={childRef} style={{ display: 'inline-block' }}>

@@ -25,20 +25,32 @@ Aplikasi frontend Penerimaan Peserta Didik Baru (PPDB) untuk Pesantren Tahfidz Q
 - `/` (`LandingPage`): Entry point for PPDB.
 - `/register` (`RegisterPage`): New student registration.
   - **Pattern:** Sukses → render inline success state + kredensial login via `SuccessState`/`CredentialsCard` (bukan route terpisah). Gagal → alert validasi inline di form.
+- `/globe` (`GlobeDemoPage`): Halaman demo globe.
 - `/auth/login` (`LoginPage`): Shared login page for applicants and admins.
+- `/applicant/login`: Redirect ke `/auth/login`.
 
 ### Applicant (Protected, `role="applicant"`)
 - `/checkout` (`CheckoutPage`): Payment paywall. Restricts users here if `payment_status != paid`.
 - `/applicant` (`DashboardPage`): Main dashboard for applicants. Requires the payment status to be paid (`requirePaid={true}`).
+- `/applicant/kartu-ujian` (`ExamCardPage`): Download kartu/konfigurasi ujian TIU (SEB). Requires `requirePaid={true}`.
 
 ### Admin (Protected, `role="admin"`)
 Wrapped in `AdminLayout` (`src/layouts/AdminLayout.tsx`):
 - `/admin/dashboard` (`AdminDashboardPage`): General stats and overview.
 - `/admin/data-pendaftar` (`DataPendaftarPage`): Applicant data overview.
-- `/admin/applicants` (`ApplicantsPage`): Document reviews and detailed applicant data.
+- `/admin/verifikasi-dokumen` (`VerifikasiDokumenPage`): Document reviews and detailed applicant data.
+- `/admin/pembayaran-formulir` (`PembayaranFormulirPage`): Form payment invoices and verifications.
+- `/admin/pembayaran-tahap2` (`PembayaranTahap2Page`): Stage-2 (DP) payments and installments.
+- `/admin/sessions/tahfidz` (`Sessions1on1Page`): Session 1:1 Tahfidz scheduling and penguji.
+- `/admin/sessions/wawancara` (`Sessions1on1Page`, `forcedType="interview"`): Session 1:1 Wawancara scheduling and pewawancara.
+- `/admin/sessions/:sessionType/evaluasi/:sessionId` (`SessionEvaluationPage`): Evaluator scoring form.
+- `/admin/penilaian` (`PenilaianPage`): Recapitulation of results / passing decisions.
 - `/admin/periods` (`PeriodsPage`): PPDB periods and waves management.
-- `/admin/payments` (`PaymentsPage`): Invoices and transaction verifications.
+- `/admin/tiu-settings` (`TIUSettingsPage`): Global TIU settings (Google Form URL, webhook secret, duration).
 - `/admin/notifications` (`NotificationsPage`): Notification history/templates.
+- `/admin/selection` and `/admin/rubrik` (`SelectionPage`): Scoring rubric configuration.
+- `/admin/pengumuman` (`LoaSkdPage`): Preview/generate LoA & SKD.
+- `/admin/arsip` (`ArsipPendaftarPage`): Cross-period dossier search and export.
 - `/admin/profile` (`AdminProfilePage`): Admin profile settings.
 
 ### Errors
@@ -53,12 +65,12 @@ Fokus produk yang disepakati adalah konfigurasi backoffice sebelum pendaftaran d
 - Gelombang: waktu buka/tutup, biaya formulir, kuota pendaftar, diskon DP3/gedung/SPP, diskon untuk X pendaftar pertama, dan minimal DP.
 - Template/LoA: generate dan preview LoA sebelum publish, klausul non-refundable yang pada diagram ditandai hardcoded, dan latar SKD.
 - Rubrik: kriteria, bobot, dan formulir evaluator Tahfidz serta wawancara. Nilai TIU masuk otomatis; admin tidak menginput nilainya.
-- Sesi Tahfidz dan wawancara: jadwal, petugas, mode online/offline, dan tautan/lokasi.
+- Session 1:1 Tahfidz dan Session 1:1 Wawancara: jadwal, petugas, mode online/offline, dan tautan/lokasi.
 - Pengaturan TIU global: URL Google Form sumber soal, webhook secret, durasi tes, dan Apps Script untuk menyinkronkan soal ke aplikasi; tidak ada konfigurasi TIU per gelombang.
 
 Hanya satu periode aktif secara global. Mengaktifkan periode menonaktifkan periode lain dan gelombang di luarnya; menonaktifkan periode menonaktifkan gelombang di dalamnya. Gelombang hanya bisa aktif jika periode induknya aktif, dan hanya satu gelombang boleh aktif dalam satu periode. Pendaftar otomatis terkait ke satu-satunya gelombang aktif pada periode aktif. Kuota dan diskon X pendaftar awal dihitung dari pembayaran formulir sukses; saat kuota tercapai, pendaftaran dan gelombang ditutup otomatis serta tagihan yang belum dibayar dibatalkan. Kirim pengingat pembayaran setiap Senin bagi pendaftar yang belum bayar sampai gelombang ditutup. Data lintas periode/gelombang dicari dari halaman Arsip/Cari Pendaftar khusus; jangan menambahkan filter periode/gelombang ke semua halaman.
 
-Pendaftaran publik dibuka ketika ada gelombang aktif di periode aktif, jadwal pendaftaran sudah masuk, dan kuota pembayaran formulir belum penuh. Template LoA bukan prasyarat pendaftaran. Halaman Arsip/Cari Pendaftar menampilkan dossier lengkap satu pendaftar, termasuk biodata, dokumen beserta riwayat verifikasi, TIU, sesi/nilai Tahfidz dan wawancara, keputusan, LoA, pembayaran/cicilan, dan SKD/nomor registrasi. Sediakan unduhan per berkas dan ZIP lengkap berisi ringkasan PDF serta berkas asli terstruktur.
+Pendaftaran publik dibuka ketika ada gelombang aktif di periode aktif, jadwal pendaftaran sudah masuk, dan kuota pembayaran formulir belum penuh. Template LoA bukan prasyarat pendaftaran. Halaman Arsip/Cari Pendaftar menampilkan dossier lengkap satu pendaftar, termasuk biodata, dokumen beserta riwayat verifikasi, TIU, sesi/nilai Session 1:1 Tahfidz/Wawancara, keputusan, LoA, pembayaran/cicilan, dan SKD/nomor registrasi. Sediakan unduhan per berkas dan ZIP lengkap berisi ringkasan PDF serta berkas asli terstruktur.
 
 TIU menggunakan metode Pre-filled Google Form yang dibungkus Safe Exam Browser (SEB). URL Form (beserta placeholder `{token}`), webhook secret, dan durasi disetel global. Pendaftar mengunduh konfigurasi `.seb` dari dashboard (endpoint `/selection/applicants/me/tiu-seb`), di mana timer server mulai berjalan saat file digenerate. SEB membuka Google Form dengan token pendaftar terisi otomatis dan layar terkunci (hanya desktop/laptop Windows/macOS; ponsel tidak didukung). Saat peserta submit form, trigger `onSubmit` Apps Script mengirim nilai kuis secara real-time ke `POST /ppdb/webhook/tiu`. Backend memvalidasi token dan batas durasi (submit <= start + duration + 5 menit toleransi), menyimpan nilai secara idempoten, lalu memicu notifikasi WhatsApp hasil TIU. Setiap pendaftar hanya mendapat satu attempt tanpa retake. Ikuti `docs/PANDUAN_UJIAN_TIU_SEB.md` dan `docs/INTEGRASI_TIU_APPS_SCRIPT.md`.
 

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 import uuid
 from typing import Any
 
@@ -489,11 +490,51 @@ def cp_delete_upload(filename: str, user: dict[str, Any] = Depends(require_cp_cr
 # Settings & contact info
 # ---------------------------------------------------------------------------
 
+# Public settings (logo/favicon/site_description) dibaca pada SETIAP page load
+# oleh semua frontend via GET /settings/{key}. MySQL remote (Hostinger) lambat
+# dan bervariasi (SELECT 1 bisa 0.4–5s, pernah 18s), jadi responsnya di-cache
+# in-process dengan TTL pendek. Cache di-invalidate saat PUT /settings/{key},
+# dan karena API berjalan sebagai worker tunggal, update branding dari proses
+# yang sama terlihat instan lewat SSE (klien lain maksimal selambat TTL).
+_SETTINGS_CACHE_TTL = 300  # detik
+_SETTINGS_CACHE: dict[str, tuple[float, Any]] = {}
+_MISSING = object()
+
+
+def _settings_cache_get(cache_key: str, loader: Any) -> Any:
+    """Serve *cache_key* from the in-process cache or via *loader*.
+
+    A `None` result (row tidak ada) di-negative-cache supaya 404 tidak
+    berulang kali memburu DB.
+    """
+    now = time.monotonic()
+    hit = _SETTINGS_CACHE.get(cache_key)
+    if hit is not None and hit[0] > now:
+        value = hit[1]
+        if value is _MISSING:
+            raise HTTPException(status_code=404, detail="Not found")
+        return value
+    value = loader()
+    if value is None:
+        _SETTINGS_CACHE[cache_key] = (now + _SETTINGS_CACHE_TTL, _MISSING)
+        raise HTTPException(status_code=404, detail="Not found")
+    _SETTINGS_CACHE[cache_key] = (now + _SETTINGS_CACHE_TTL, value)
+    return value
+
+
+def _settings_cache_invalidate(key: str | None = None) -> None:
+    _SETTINGS_CACHE.pop("list", None)
+    if key:
+        _SETTINGS_CACHE.pop(key, None)
+
 
 @router.get("/settings")
 def cp_settings_list():
-    all_settings = list_all("site_settings")
-    return [s for s in all_settings if s["key"] in PUBLIC_SETTINGS_KEYS]
+    def loader():
+        all_settings = list_all("site_settings")
+        return [s for s in all_settings if s["key"] in PUBLIC_SETTINGS_KEYS]
+
+    return _settings_cache_get("list", loader)
 
 
 @router.get("/settings-admin")
@@ -517,10 +558,7 @@ def cp_settings_admin_list(
 def cp_settings_get(key: str):
     if key not in PUBLIC_SETTINGS_KEYS:
         raise HTTPException(status_code=400, detail=f"Unknown key: {key}")
-    setting = get_by_column("site_settings", "key", key)
-    if not setting:
-        raise HTTPException(status_code=404, detail="Not found")
-    return setting
+    return _settings_cache_get(key, lambda: get_by_column("site_settings", "key", key))
 
 
 class SettingUpdateReq(BaseModel):
@@ -538,6 +576,7 @@ def cp_settings_update(
         record = update_record("site_settings", existing["key"], {"value": body.value})
     else:
         record = create_record("site_settings", {"key": key, "value": body.value})
+    _settings_cache_invalidate(key)
     write_audit(user, "update", "settings", key, {"value": body.value})
     broadcast("settings", "update", key)
     return record

@@ -93,6 +93,7 @@ export default function VerifikasiDokumenPage() {
         title="Verifikasi Dokumen"
         description="Pemeriksaan kelengkapan dan keabsahan dokumen persyaratan calon santri."
         loading={loading}
+        docKey="ppdb-verifikasi-dokumen"
         action={
           <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
             <Link to="/admin/periods" className="gap-1.5">

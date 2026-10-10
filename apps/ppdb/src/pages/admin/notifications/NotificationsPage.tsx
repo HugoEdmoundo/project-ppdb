@@ -1250,6 +1250,7 @@ export default function NotificationsPage() {
       <PageHeaderCard
         title="Sistem Notifikasi"
         description="Kelola template pesan WhatsApp, pantau log pengiriman, dan kirim broadcast kustom."
+        docKey="ppdb-notifications"
         blocks={headerBlocks}
         loading={tplLoading}
       />

@@ -1,14 +1,13 @@
 import { useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Users, FileText, CreditCard, Activity, CalendarDays, CheckCircle2,
-  AlertTriangle, ArrowRight, XCircle, Hourglass, ShieldCheck, type LucideIcon,
+  AlertTriangle, ArrowRight, XCircle, Hourglass, ShieldCheck, CalendarCheck, Clock, Tag, type LucideIcon,
 } from 'lucide-react'
-import { Card } from "@/components/ui"
-import { Button } from "@/components/ui"
-import { Skeleton } from "@/components/ui"
+import { Card, Button, Skeleton, Badge } from "@/components/ui"
 import { useQuery } from '@tanstack/react-query'
 import { useToast } from '../../components/Toast'
+import { useAuth } from '@/contexts/AuthContext'
 import { apiFetch } from '@/api/client'
 import RegistrationTrend, { type TrendPoint } from '@/components/shared/RegistrationTrend'
 import PageHeaderCard from '@/components/shared/PageHeaderCard'
@@ -95,11 +94,31 @@ const TONE = {
 
 export default function AdminDashboardPage() {
   const { toast } = useToast()
+  const { user } = useAuth()
+  const navigate = useNavigate()
 
   const { data, isLoading: loading, isError } = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
     queryFn: () => apiFetch<DashboardStats>('/ppdb/dashboard/stats'),
   })
+
+  // Query sessions created by this admin
+  const { data: mySessionsData, isLoading: loadingSessions } = useQuery({
+    queryKey: ['my-admin-sessions', user?.id],
+    queryFn: async () => {
+      const [tahfidzRes, interviewRes] = await Promise.all([
+        apiFetch<any>('/selection/sessions?type=tahfidz').catch(() => ({ data: [] })),
+        apiFetch<any>('/selection/sessions?type=interview').catch(() => ({ data: [] })),
+      ])
+      const all: any[] = [...(tahfidzRes?.data || []), ...(interviewRes?.data || [])]
+      return all.filter((s) => s.created_by && user?.id && s.created_by === user.id)
+    },
+    enabled: !!user?.id,
+    refetchInterval: 15000,
+  })
+
+  const mySessions = mySessionsData || []
+
   useEffect(() => {
     if (isError) {
       toast('error', 'Gagal memuat data dashboard')
@@ -244,6 +263,142 @@ export default function AdminDashboardPage() {
           </div>
         </Card>
       </div>
+
+      {/* ── Widget Session 1:1 Saya ── */}
+      <Card className="rounded-2xl border-slate-100 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="flex items-center gap-2 font-heading text-base font-bold text-slate-900">
+              <CalendarCheck className="h-5 w-5 text-emerald-600" />
+              Session 1:1 Saya
+              {mySessions.length > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono font-semibold">
+                  {mySessions.length}
+                </span>
+              )}
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-400">Jadwal session seleksi yang Anda buat & kelola</p>
+          </div>
+          <Link
+            to="/admin/sessions/tahfidz"
+            className="flex items-center text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+          >
+            Buka Session 1:1 <ArrowRight className="ml-1 h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        {loadingSessions ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-28 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : mySessions.length === 0 ? (
+          <div className="p-5 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            <p className="text-xs text-muted-foreground">
+              Anda belum membuat jadwal Session 1:1 untuk gelombang ini.
+            </p>
+            <Button asChild variant="outline" size="sm" className="mt-2 text-xs gap-1.5 rounded-lg">
+              <Link to="/admin/sessions/tahfidz">
+                <CalendarCheck className="h-3.5 w-3.5" /> Buat Session 1:1 Baru
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {mySessions.map((s: any) => {
+              const isRed = s.status_color === 'red'
+              const isYellow = s.status_color === 'yellow'
+              const isGreen = s.status_color === 'green'
+              const routeType = s.session_type === 'interview' ? 'wawancara' : 'tahfidz'
+
+              return (
+                <div
+                  key={s.id}
+                  className={cn(
+                    "flex flex-col justify-between p-4 rounded-xl border bg-white transition-all shadow-xs",
+                    isRed && "border-slate-200 border-l-4 border-l-red-500",
+                    isYellow && "border-slate-200 border-l-4 border-l-amber-500 hover:border-amber-400 hover:shadow-md cursor-pointer",
+                    isGreen && "border-slate-200 border-l-4 border-l-emerald-500 hover:border-emerald-400 cursor-pointer"
+                  )}
+                  onClick={() => {
+                    if (!isRed) {
+                      navigate(`/admin/sessions/${routeType}/evaluasi/${s.id}`)
+                    }
+                  }}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-1">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-bold text-xs text-slate-900 truncate">
+                          {s.name}
+                        </h4>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] text-muted-foreground">
+                            Session 1:1 ({s.session_type === 'interview' ? 'Wawancara' : 'Tahfidz'})
+                          </span>
+                          {s.wave_name && (
+                            <Badge variant="outline" className="text-[9px] py-0 px-1.5 bg-blue-50 text-blue-700 border-blue-200 font-medium inline-flex items-center gap-1">
+                              <Tag className="h-2.5 w-2.5 shrink-0" />
+                              <span>{s.wave_name}</span>
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      {isRed && (
+                        <Badge variant="destructive" className="text-[9px] py-0 px-1.5 uppercase font-bold shrink-0">
+                          Belum Diambil
+                        </Badge>
+                      )}
+                      {isYellow && (
+                        <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-[9px] py-0 px-1.5 uppercase font-bold shrink-0 animate-pulse">
+                          Siap Diuji
+                        </Badge>
+                      )}
+                      {isGreen && (
+                        <Badge variant="success" className="text-[9px] py-0 px-1.5 uppercase font-bold shrink-0">
+                          Selesai ({s.evaluated_score || 100})
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="text-[11px] text-slate-600 space-y-1 bg-slate-50 p-2 rounded-lg">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarDays className="h-3 w-3 text-slate-400 shrink-0" />
+                        <span>{s.session_date ? new Date(s.session_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-'}</span>
+                        <span>•</span>
+                        <Clock className="h-3 w-3 text-slate-400 shrink-0" />
+                        <span>{s.start_time || '-'} – Selesai WIB</span>
+                      </div>
+                      {s.booked_applicant && (
+                        <div className="font-semibold text-slate-900 truncate border-t border-slate-200/60 pt-1">
+                          Santri: {s.booked_applicant.full_name}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                    <span className="text-slate-500 truncate max-w-[140px]">
+                      {s.mode === 'online' ? 'Online' : (s.location || 'Offline')}
+                    </span>
+                    {isYellow && (
+                      <span className="text-amber-700 font-bold flex items-center gap-0.5">
+                        Input Nilai <ArrowRight className="h-2.5 w-2.5" />
+                      </span>
+                    )}
+                    {isGreen && (
+                      <span className="text-emerald-700 font-bold flex items-center gap-0.5">
+                        Lihat Nilai <ArrowRight className="h-2.5 w-2.5" />
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </Card>
 
       {/* Status Seleksi */}
       {!loading && selectionTotal > 0 && (

@@ -11,8 +11,8 @@ Admin menyiapkan konfigurasi dari dashboard sebelum pendaftaran dibuka:
 1. **Gelombang**: tanggal buka/tutup, harga formulir, kuota pendaftar, diskon komponen DP3/gedung/SPP, diskon untuk X pendaftar pertama, serta minimal DP.
 2. **Template dan LoA**: generate dan preview LoA sebelum publish, latar SKD, dan klausul dana tidak dapat dikembalikan. Dokumen baru menyebut klausul ini hardcoded.
 3. **Rubrik penilaian**: kriteria, bobot, dan formulir evaluator Tahfidz serta wawancara. Nilai TIU berasal otomatis dari paket pilihan ganda dan webhook; admin tidak menginput nilai TIU.
-4. **Sesi Tahfidz**: jadwal, penguji, mode online/offline, tautan Zoom atau lokasi.
-5. **Sesi wawancara**: jadwal, pewawancara, mode online/offline, tautan Zoom atau lokasi.
+4. **Session 1:1 Tahfidz**: jadwal, penguji, mode online/offline, tautan Zoom atau lokasi.
+5. **Session 1:1 Wawancara**: jadwal, pewawancara, mode online/offline, tautan Zoom atau lokasi.
 6. **Pengaturan TIU global**: URL Google Form sumber soal, webhook secret, durasi tes, dan integrasi Apps Script untuk sinkronisasi soal ke aplikasi. Integrasi tidak disetel per gelombang.
 
 Pendaftaran publik dibuka ketika ada gelombang aktif di periode aktif, jadwal pendaftaran gelombang sudah masuk, dan kuota pembayaran formulir belum penuh. Template LoA bukan prasyarat pendaftaran. Dokumen alur pendaftar dan admin memuat tahap lanjutan, tetapi jangan memperluas pekerjaan backoffice ke tahap tersebut tanpa arahan.
@@ -27,9 +27,9 @@ Pendaftaran publik dibuka ketika ada gelombang aktif di periode aktif, jadwal pe
 - Kuota dan diskon untuk X pendaftar awal dihitung dari pembayaran formulir yang berhasil. Saat kuota tercapai, tutup pendaftaran dan gelombang secara otomatis.
 - Saat kuota tercapai, batalkan tagihan formulir yang belum dibayar dan beri tahu pendaftar bahwa mereka boleh mendaftar lagi di gelombang berikutnya. Sebelum kuota tercapai, kirim pengingat pembayaran setiap hari Senin kepada pendaftar yang belum membayar; hentikan saat gelombang ditutup.
 - Filter periode/gelombang untuk pencarian lintas periode hanya ada di **halaman khusus Arsip/Cari Pendaftar**, bukan ditambahkan ke semua halaman atau filter.
-- Halaman Arsip/Cari Pendaftar harus menampilkan dossier lengkap pendaftar dalam satu tindakan: biodata, dokumen yang pernah diunggah, riwayat verifikasi, hasil TIU, sesi dan nilai Tahfidz/wawancara, keputusan, LoA, pembayaran dan cicilan, serta berkas keluaran seperti SKD jika sudah ada. Sediakan unduhan yang rapi dan terstruktur.
+- Halaman Arsip/Cari Pendaftar harus menampilkan dossier lengkap pendaftar dalam satu tindakan: biodata, dokumen yang pernah diunggah, riwayat verifikasi, hasil TIU, sesi dan nilai Session 1:1 Tahfidz/Wawancara, keputusan, LoA, pembayaran dan cicilan, serta berkas keluaran seperti SKD jika sudah ada. Sediakan unduhan yang rapi dan terstruktur.
 - Dossier harus tetap bisa dicari lintas periode dan gelombang tanpa mengubah periode/gelombang aktif operasional; mendukung unduhan per berkas dan ZIP dossier.
-- Data pendaftar dan seluruh data turunannya wajib dapat ditelusuri ke periode dan gelombang yang menaungi pendaftar: pendaftaran, dokumen/verifikasi, pembayaran/tagihan/cicilan, sesi dan nilai TIU/Tahfidz/wawancara, keputusan, LoA, serta SKD/nomor registrasi. Gunakan relasi ke pendaftar sebagai sumber periode/gelombang; jangan menduplikasi ID tanpa kebutuhan query yang jelas.
+- Data pendaftar dan seluruh data turunannya wajib dapat ditelusuri ke periode dan gelombang yang menaungi pendaftar: pendaftaran, dokumen/verifikasi, pembayaran/tagihan/cicilan, sesi dan nilai TIU/Session 1:1 Tahfidz/Wawancara, keputusan, LoA, serta SKD/nomor registrasi. Gunakan relasi ke pendaftar sebagai sumber periode/gelombang; jangan menduplikasi ID tanpa kebutuhan query yang jelas.
 - Halaman arsip adalah tempat khusus untuk pencarian lintas periode/gelombang, dossier lengkap, dan ekspor. Halaman operasional lain tidak mendapat filter arsip global.
 - Halaman arsip mendukung unduhan per berkas dan unduhan dossier lengkap dalam satu ZIP berisi ringkasan PDF serta dokumen asli yang dikelompokkan rapi. Terapkan izin akses khusus karena dossier mencakup dokumen pribadi dan data pembayaran.
 - Rekomendasi histori: konfigurasi gelombang (waktu, biaya, kuota, diskon, minimal DP) tersimpan per gelombang; jadwal dan rubrik yang dipakai suatu pendaftar harus dapat direkonstruksi, melalui scope gelombang atau snapshot/versi. Template dasar institusi dapat dipakai ulang, tetapi hasil LoA/SKD yang sudah dibuat harus disimpan sebagai artefak tetap.
@@ -63,6 +63,10 @@ Pendaftaran publik dibuka ketika ada gelombang aktif di periode aktif, jadwal pe
 - `docs/admin-code-1790812960259.txt` — alur operasional admin lanjutan.
 - `docs/pendaftar-code-1790812852070.txt` — alur pendaftar.
 - `docs/gemini-code-1790824113350.txt` — contoh formulir penilaian wawancara.
+- `docs/notifikasi-code-1790904241894.md` — spesifikasi alur notifikasi WhatsApp PPDB.
+- `docs/PANDUAN_UJIAN_TIU_SEB.md` — panduan ujian TIU di Safe Exam Browser.
+- `docs/INTEGRASI_TIU_APPS_SCRIPT.md` — integrasi webhook Google Apps Script TIU.
+- `docs/DOCKER_SETUP.md` — runbook setup Docker (WSL2) yang harus diikuti verbatim.
 - `README.md` — ringkasan fokus dan keputusan terbuka.
 
 ## Konteks Repository

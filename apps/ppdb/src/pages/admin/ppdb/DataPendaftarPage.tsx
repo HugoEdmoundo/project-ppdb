@@ -56,6 +56,7 @@ export default function DataPendaftarPage() {
         title="Data Pendaftar"
         description="Kelola data biodata lengkap calon santri yang telah mendaftar."
         loading={loading}
+        docKey="ppdb-data-pendaftar"
         action={
           <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
             <Link to="/admin/periods" className="gap-1.5">

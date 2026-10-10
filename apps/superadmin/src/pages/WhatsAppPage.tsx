@@ -207,6 +207,7 @@ export default function WhatsAppPage() {
         eyebrow="Konfigurasi"
         title="WhatsApp"
         description="Kelola sesi WhatsApp untuk notifikasi PPDB"
+        docKey="superadmin-whatsapp"
       />
 
       {/* Konfigurasi backend belum lengkap */}

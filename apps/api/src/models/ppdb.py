@@ -340,11 +340,14 @@ class PPDBWaveFeeItem(Base):
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     nominal: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     discount_type: Mapped[str | None] = mapped_column(String(10))
     discount_value: Mapped[float | None] = mapped_column(Float)
     discount_scope: Mapped[str] = mapped_column(
         String(10), default="all", nullable=False
     )
+    early_discount_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    early_discount_value: Mapped[float | None] = mapped_column(Float, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

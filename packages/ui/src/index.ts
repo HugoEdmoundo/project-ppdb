@@ -34,3 +34,4 @@ export * from "./components/ui/confirm-dialog";
 export * from "./components/ui/auth-card";
 export * from "./components/ui/auth-recovery";
 export * from "./components/ui/page-loader";
+export * from "./components/ui/doc-sheet";

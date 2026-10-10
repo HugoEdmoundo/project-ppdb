@@ -139,6 +139,7 @@ export default function PeriodsPage() {
         title="Periode PPDB"
         description="Kelola data periode dan gelombang pendaftaran."
         loading={loading}
+        docKey="ppdb-periods"
         action={
           canCrud ? (
             <Button onClick={openCreate} className="gap-2">

@@ -63,7 +63,7 @@ export default function Navbar() {
   const { hrefFor } = useProgramLinks()
   const pathname = usePathname()
   const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  
+
   const { scrollYProgress } = useScroll()
 
   const childHref = (child: NavChild) => (child.programKey ? hrefFor(child.programKey) : child.href)

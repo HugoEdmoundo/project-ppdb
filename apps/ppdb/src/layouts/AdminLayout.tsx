@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth, useFilteredNav } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, ChevronDown, ChevronLeft, Menu, CalendarDays, CreditCard, Bell, Users, Archive, Settings, ClipboardCheck, Award
+  LayoutDashboard, ChevronDown, ChevronLeft, Menu, CalendarDays, CreditCard, Bell, Users, Archive, Settings, ClipboardCheck, Award, CalendarCheck
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -21,6 +21,16 @@ const navItems = [
     children: [
       { label: 'Pembayaran Formulir', href: '/admin/pembayaran-formulir' },
       { label: 'Pembayaran Tahap 2', href: '/admin/pembayaran-tahap2' },
+    ]
+  },
+  {
+    label: 'Session 1:1',
+    icon: CalendarCheck,
+    module: 'ppdb',
+    minLevel: 'read',
+    children: [
+      { label: 'Session Tahfidz', href: '/admin/sessions/tahfidz' },
+      { label: 'Session Wawancara', href: '/admin/sessions/wawancara' },
     ]
   },
   { label: 'Hasil Pendaftaran', icon: Award, href: '/admin/penilaian', module: 'ppdb', minLevel: 'read' },

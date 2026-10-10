@@ -8,7 +8,7 @@ interface HealthIdentificationViewerProps {
   className?: string
 }
 
-export function parseHealthData(raw?: string | null): HealthIdentificationData | null {
+function parseHealthData(raw?: string | null): HealthIdentificationData | null {
   if (!raw || typeof raw !== 'string') return null
   const trimmed = raw.trim()
   if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return null

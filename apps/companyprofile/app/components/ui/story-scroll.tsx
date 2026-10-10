@@ -103,7 +103,7 @@ const FlowArt: React.FC<FlowArtProps> = ({
         }
 
         // Each card (except the last) is pinned in place until the container's
-        // bottom hits the bottom of the viewport. This keeps them stacked in 
+        // bottom hits the bottom of the viewport. This keeps them stacked in
         // the background so they reveal correctly when scrolling back up.
         if (i < sections.length - 1) {
           triggers.push(

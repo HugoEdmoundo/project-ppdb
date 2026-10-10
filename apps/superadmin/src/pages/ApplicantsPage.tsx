@@ -278,6 +278,7 @@ export default function ApplicantsPage() {
         eyebrow="PPDB"
         title="Data Pendaftar"
         description="Seluruh pendaftar dari semua periode & gelombang. Filter bersifat opsional; tiap baris membawa label periode dan gelombang asalnya."
+        docKey="superadmin-applicants"
         loading={loading && applicants.length === 0}
         chips={[
           { icon: GraduationCap, label: `${total} Pendaftar` },

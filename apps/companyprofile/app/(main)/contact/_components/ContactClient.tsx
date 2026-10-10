@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react'
 import PageHeader from '@/app/components/layout/PageHeader'
+import ShapeDivider from '@/app/components/ui/ShapeDivider'
 import { useScrollReveal } from '@/app/hooks/useScrollAnimations'
 import { MapPin, Phone, Mail, Clock, ChevronDown, MessageCircle } from 'lucide-react'
 import {
@@ -112,7 +113,9 @@ export default function ContactClient({
         badge="HUBUNGI KAMI"
       />
 
-      <section ref={sectionRef} className="relative py-16 sm:py-20 bg-[var(--bg)]">
+      <section ref={sectionRef} className="relative overflow-hidden pt-40 sm:pt-44 pb-16 sm:pb-20 bg-[var(--bg)]">
+        {/* Wave meneruskan gradien PageHeader ke section kontak berlatar ivory. */}
+        <ShapeDivider fill="var(--bg-secondary)" />
         <div className="absolute inset-0 bg-pattern-dots opacity-[0.04]" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
           <div className="grid lg:grid-cols-5 gap-8 md:gap-10 lg:gap-12">
@@ -183,7 +186,10 @@ export default function ContactClient({
         </div>
       </section>
 
-      <section className="relative py-16 sm:py-20 bg-[var(--bg-secondary)]">
+      <section className="relative overflow-hidden pt-40 sm:pt-44 pb-16 sm:pb-20 bg-[var(--bg-secondary)]">
+        {/* Section FAQ menutup section kontak; warna fill mengikuti section
+            sebelumnya (ivory) supaya transisinya menyatu. */}
+        <ShapeDivider fill="var(--bg)" tintStrength={0.2} />
         <div className="absolute inset-0 bg-pattern-grid opacity-[0.03]" />
         <div className="max-w-3xl mx-auto px-4 sm:px-6 relative z-10">
           <div className="text-center mb-12">

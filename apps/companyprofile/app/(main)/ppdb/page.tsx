@@ -17,6 +17,7 @@ import {
 
 import { useActivePpdbWave } from '@/app/hooks/usePpdbWave'
 import { buildSchedule } from '@/app/lib/ppdb'
+import ShapeDividerDiagonal from '@/app/components/ui/ShapeDividerDiagonal'
 
 // Load Three.js 3D Hero dynamically with SSR disabled to prevent hydration/canvas errors
 const OrbitDeliveryHero = dynamic(
@@ -45,8 +46,14 @@ export default function PPDBPage() {
         <OrbitDeliveryHero theme="auto" academicYear={ppdb.academicYear} />
       </section>
 
+      {/* Tear-off tipis memisahkan hero 3D dari section info. Sengaja tanpa
+          `overflow-hidden` supaya elemen 0-tinggi ini tidak memotong gelombang. */}
+      <div className="relative" aria-hidden>
+        <ShapeDividerDiagonal fill="var(--bg-secondary)" />
+      </div>
+
       {/* Info Section: Jalur & Program PPDB */}
-      <section id="info-section" className="py-20 md:py-28 px-4 sm:px-6 md:px-12 max-w-7xl mx-auto">
+      <section id="info-section" className="pt-28 md:pt-32 pb-20 md:pb-28 px-4 sm:px-6 md:px-12 max-w-7xl mx-auto">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold text-xs tracking-wider uppercase mb-4 border border-emerald-500/20">
             <Sparkles className="w-4 h-4 text-emerald-600" />

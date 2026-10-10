@@ -52,6 +52,13 @@
   --color-emerald: #1A6B47;
   --color-emerald-bright: #22C55E;
   --color-emerald-subtle: rgba(26, 107, 71, 0.08);
+  /* Ramp CTA: satu hue (emerald ~154°), tonal saja. Ramp lama berakhir di
+     #0A0A0F sehingga hue berputar 155° -> 240° dan bagian tengahnya
+     berinterpolasi jadi keruh. Ramp ini drift-nya cuma 2.8°. */
+  --color-emerald-ramp-1: #1F7A52;
+  --color-emerald-ramp-2: #15563A;
+  --color-emerald-ramp-3: #0A2B1E;
+  --color-emerald-ramp-card: #0E3327;
   --color-gold: #D4A853;
   --color-gold-light: #F0C878;
   --color-gold-subtle: rgba(212, 168, 83, 0.12);

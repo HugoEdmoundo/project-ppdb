@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { useScrollReveal } from '../../hooks/useScrollAnimations'
 import TiltCard from '../ui/TiltCard'
+import ShapeDivider from '../ui/ShapeDivider'
 
 import type { Facility } from '@/app/lib/types'
 
@@ -53,8 +54,11 @@ export default function FacilitiesPreview({ facilities = [] }: { facilities?: Fa
   const [first, ...rest] = displayFacilities
 
   return (
-    <section ref={sectionRef} className="py-16 md:py-32 bg-[var(--bg)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+    <section ref={sectionRef} className="relative overflow-hidden pt-40 md:pt-48 pb-16 md:pb-32 bg-[var(--bg)]">
+      {/* Wave setinggi 137px menutupi bagian atas section ivory-dark dari
+          ProgramsPreview, jadi pt harus jauh lebih besar dari py aslinya. */}
+      <ShapeDivider fill="var(--bg-secondary)" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         <div className="text-center mb-10 sm:mb-16">
           <span className="section-badge justify-center">
             {'FASILITAS KELAS DUNIA'}

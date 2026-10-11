@@ -6,7 +6,7 @@ import ApplicantTopBar from '@/components/shared/ApplicantTopBar'
 import ApplicantPageHeader from '@/components/shared/ApplicantPageHeader'
 import OfficialReceiptCard, { type ReceiptData } from '@/components/shared/OfficialReceiptCard'
 import { Button, Skeleton } from '@/components/ui'
-import { Share2, MessageCircle, Copy, Check } from 'lucide-react'
+import { Share2, MessageCircle, Copy, Check, FileText } from 'lucide-react'
 
 export default function ApplicantReceiptPage() {
   const { toast } = useToast()
@@ -21,24 +21,37 @@ export default function ApplicantReceiptPage() {
   const transaction = transactionQuery.data?.transaction
   const isLoading = transactionQuery.isLoading
 
-  const transactionId = transaction?.id || applicant?.id || '00000000'
-  const receiptNo = `KUI-PPDB-${transactionId.slice(0, 8).toUpperCase()}`
-  const shareUrl = `${window.location.origin}/kuitansi/${transactionId}`
+  // Kuitansi hanya boleh dirakit dari transaksi yang benar-benar ada.
+  // Versi lama tetap merakitnya dari data pendaftar saja: nominal dipatok
+  // Rp250.000 (mengabaikan `registration_fee` per gelombang), metode ditebak
+  // "QRIS", status kosong menjadi "paid", dan `is_paid` dipatok `true` —
+  // sehingga OfficialReceiptCard menampilkan badge "LUNAS" untuk pembayaran
+  // yang tidak pernah terjadi, lalu bisa dibagikan ke orang tua lewat WA.
+  const hasPayment = !!transaction
 
-  // Kuitansi terisi dari applicant dan/atau transaction
-  const receiptData: ReceiptData | null = applicant ? {
+  const transactionId = transaction?.id ?? ''
+  // Sama seperti PaymentStep: buang tanda hubung UUID dulu supaya dapat 12
+  // karakter heksadesimal bersih dan konsisten dengan backend.
+  const receiptNo = hasPayment ? `KUI-PPDB-${transactionId.replace(/-/g, '').slice(0, 12).toUpperCase()}` : ''
+  const shareUrl = hasPayment ? `${window.location.origin}/kuitansi/${transactionId}` : ''
+
+  const receiptData: ReceiptData | null = hasPayment ? {
     id: transactionId,
     receipt_no: receiptNo,
     applicant_name: applicant?.full_name || 'Calon Santri',
     registration_path: (applicant?.registration_path || 'Reguler').toUpperCase(),
-    amount: transaction?.amount || 250000,
-    payment_method: (transaction?.method || 'QRIS').toUpperCase(),
-    payment_date: transaction?.updated_at || transaction?.created_at || applicant?.created_at,
-    status: transaction?.status || applicant?.payment_status || 'paid',
-    is_paid: true,
+    amount: transaction.amount,
+    payment_method: (transaction.method || 'TIDAK DIKETAHUI').toUpperCase(),
+    payment_date: transaction.updated_at || transaction.created_at,
+    status: transaction.status,
+    is_paid: ['paid', 'settlement', 'success'].includes(transaction.status),
   } : null
 
   const handleCopyLink = async () => {
+    if (!shareUrl) {
+      toast('error', 'Kuitansi belum tersedia karena belum ada pembayaran tercatat')
+      return
+    }
     try {
       await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
@@ -50,6 +63,10 @@ export default function ApplicantReceiptPage() {
   }
 
   const handleShare = async () => {
+    if (!shareUrl) {
+      toast('error', 'Kuitansi belum tersedia karena belum ada pembayaran tercatat')
+      return
+    }
     if (navigator.share) {
       try {
         await navigator.share({
@@ -66,8 +83,15 @@ export default function ApplicantReceiptPage() {
   }
 
   const handleWhatsApp = () => {
+    if (!shareUrl || !receiptData) {
+      toast('error', 'Kuitansi belum tersedia karena belum ada pembayaran tercatat')
+      return
+    }
+    // Status ikut diambil dari transaksi, bukan ditulis "LUNAS" secara manual:
+    // kuitansi ini bisa dibagikan ke orang tua/wali, jadi tidak boleh
+    // mengklaim lunas padahal statusnya belum terverifikasi.
     const text = encodeURIComponent(
-      `*KUITANSI PEMBAYARAN FORMULIR PPDB AR-RAHMAN*\n\nNama: ${applicant?.full_name || 'Calon Santri'}\nNo. Kuitansi: ${receiptNo}\nStatus: *LUNAS*\n\nBuka kuitansi digital sah di tautan berikut:\n${shareUrl}`
+      `*KUITANSI PEMBAYARAN FORMULIR PPDB AR-RAHMAN*\n\nNama: ${applicant?.full_name || 'Calon Santri'}\nNo. Kuitansi: ${receiptNo}\nStatus: *${receiptData.is_paid ? 'LUNAS' : receiptData.status.toUpperCase()}*\n\nBuka kuitansi digital sah di tautan berikut:\n${shareUrl}`
     )
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
   }
@@ -131,8 +155,12 @@ export default function ApplicantReceiptPage() {
           </div>
         ) : !isLoading ? (
           <div className="max-w-md mx-auto text-center p-8 bg-white rounded-3xl border border-slate-200 space-y-3">
-            <p className="font-semibold text-slate-800">Data pendaftaran sedang dimuat</p>
-            <p className="text-xs text-slate-500">Silakan muat ulang halaman jika kuitansi belum tampil.</p>
+            <FileText className="w-8 h-8 mx-auto text-slate-300" />
+            <p className="font-semibold text-slate-800">Kuitansi belum terbit</p>
+            <p className="text-xs text-slate-500">
+              Belum ada pembayaran yang tercatat atas nama Anda, jadi kuitansi belum bisa
+              ditampilkan. Kuitansi terbit otomatis setelah pembayaran Anda diterima.
+            </p>
           </div>
         ) : null}
       </main>

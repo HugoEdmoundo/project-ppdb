@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   CheckCircle,
+  Clock,
   Share2,
   Copy,
   MessageCircle,
@@ -9,6 +10,7 @@ import {
   Check,
 } from 'lucide-react'
 import { Card, CardContent, Button, Badge } from "@/components/ui"
+import { cn } from '@/lib/utils'
 import { useToast } from '@/components/Toast'
 
 const formatRp = (n: number) => 'Rp ' + (n || 0).toLocaleString('id-ID')
@@ -22,7 +24,19 @@ export default function PaymentStep({ transaction, applicant }: PaymentStepProps
   const { toast } = useToast()
   const [copied, setCopied] = useState(false)
 
-  const receiptNo = `KUI-PPDB-${(transaction?.id || applicant?.id || '00000000').slice(0, 8).toUpperCase()}`
+  // Badge "LUNAS" dan teks "Bukti sah ... LUNAS (TERVERIFIKASI)" sebelumnya
+  // ditulis tanpa syarat: kartu tetap dirender meski tidak ada transaksi sama
+  // sekali, sehingga muncul kuitansi resmi padahal tidak ada pembayaran.
+  // Nominal memang jatuh ke 0, tapi badge dan teks "TERVERIFIKASI" tetap dipatok.
+  const hasPayment = !!transaction
+  const isPaid = hasPayment && ['paid', 'settlement', 'success'].includes(transaction!.status)
+
+  // Tanda hubung UUID dibuang dulu sebelum dipotong, supaya dapat 12 karakter
+  // heksadesimal yang bersih (id[:12] saja menghasilkan "ABCDEF12-345",
+  // 11 hex + tanda hubung) dan nomornya konsisten dengan backend.
+  const receiptNo = hasPayment
+    ? `KUI-PPDB-${transaction!.id.replace(/-/g, '').slice(0, 12).toUpperCase()}`
+    : '-'
   const applicantName = applicant?.full_name || 'Calon Santri'
   const pathName = (applicant?.registration_path || 'Reguler').toUpperCase()
   const amountStr = formatRp(transaction?.amount || 0)
@@ -34,11 +48,17 @@ export default function PaymentStep({ transaction, applicant }: PaymentStepProps
         year: 'numeric',
       })
     : '-'
-  const payMethod = (transaction?.method || 'QRIS').toUpperCase()
+  // Metode yang tidak tercatat ditulis apa adanya, bukan ditebak QRIS.
+  const payMethod = (transaction?.method || 'TIDAK DIKETAHUI').toUpperCase()
+  const statusLabel = isPaid ? 'LUNAS' : (transaction?.status || 'BELUM BAYAR').toUpperCase()
 
-  const shareText = `*KUITANSI PEMBAYARAN FORMULIR PPDB AR-RAHMAN*\n\nNo. Kuitansi: ${receiptNo}\nNama: ${applicantName}\nJalur: ${pathName}\nNominal: ${amountStr}\nMetode: ${payMethod}\nTanggal: ${payDateStr}\nStatus: *LUNAS (TERVERIFIKASI)*\n\nBukti sah pendaftaran PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.`
+  const shareText = `*KUITANSI PEMBAYARAN FORMULIR PPDB AR-RAHMAN*\n\nNo. Kuitansi: ${receiptNo}\nNama: ${applicantName}\nJalur: ${pathName}\nNominal: ${amountStr}\nMetode: ${payMethod}\nTanggal: ${payDateStr}\nStatus: *${statusLabel}*\n\nBukti sah pendaftaran PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.`
 
   const handleCopy = async () => {
+    if (!hasPayment) {
+      toast('error', 'Kuitansi belum tersedia karena belum ada pembayaran tercatat')
+      return
+    }
     try {
       await navigator.clipboard.writeText(shareText)
       setCopied(true)
@@ -50,6 +70,10 @@ export default function PaymentStep({ transaction, applicant }: PaymentStepProps
   }
 
   const handleShare = async () => {
+    if (!hasPayment) {
+      toast('error', 'Kuitansi belum tersedia karena belum ada pembayaran tercatat')
+      return
+    }
     if (navigator.share) {
       try {
         await navigator.share({
@@ -65,6 +89,10 @@ export default function PaymentStep({ transaction, applicant }: PaymentStepProps
   }
 
   const handleWhatsApp = () => {
+    if (!hasPayment) {
+      toast('error', 'Kuitansi belum tersedia karena belum ada pembayaran tercatat')
+      return
+    }
     const encoded = encodeURIComponent(shareText)
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank')
   }
@@ -91,8 +119,16 @@ export default function PaymentStep({ transaction, applicant }: PaymentStepProps
           </div>
 
           <div className="shrink-0 flex items-center sm:flex-col sm:items-end gap-2">
-            <Badge className="bg-emerald-400 text-emerald-950 font-bold px-3 py-1 text-xs gap-1 shadow-sm">
-              <CheckCircle className="h-3.5 w-3.5" /> LUNAS
+            <Badge
+              className={cn(
+                'font-bold px-3 py-1 text-xs gap-1 shadow-sm',
+                isPaid
+                  ? 'bg-emerald-400 text-emerald-950'
+                  : 'bg-amber-300 text-amber-950'
+              )}
+            >
+              {isPaid ? <CheckCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+              {statusLabel}
             </Badge>
             <span className="text-[11px] text-emerald-200 font-mono">
               PPDB {new Date().getFullYear()}

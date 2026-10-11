@@ -26,9 +26,9 @@ export default function TopBar({
   return (
     <header className="sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
       <div className={`flex items-center justify-between ${containerClassName}`}>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {mobileMenuTrigger}
-          <h1 className={`font-heading text-base font-bold text-foreground ${titleClassName || ''}`}>
+          <h1 className={`font-heading text-sm sm:text-base font-bold text-foreground truncate ${titleClassName || ''}`}>
             {title}
           </h1>
         </div>

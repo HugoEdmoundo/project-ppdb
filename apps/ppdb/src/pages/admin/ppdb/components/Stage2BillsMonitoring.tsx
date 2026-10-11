@@ -65,11 +65,13 @@ export default function Stage2BillsMonitoring() {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="flex items-center justify-between gap-3 bg-card p-3 rounded-lg border">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-xs font-medium text-muted-foreground">Filter Status:</span>
-          <div className="flex items-center gap-1.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3 rounded-lg border">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-1">
+            <Filter className="h-4 w-4 shrink-0" />
+            <span className="font-medium">Status:</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
             <Button
               variant={statusFilter === '' ? 'default' : 'outline'}
               size="sm"
@@ -96,7 +98,7 @@ export default function Stage2BillsMonitoring() {
             </Button>
           </div>
         </div>
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs text-muted-foreground shrink-0 self-end sm:self-auto">
           Total: <span className="font-semibold text-foreground">{total}</span> tagihan
         </div>
       </div>
@@ -104,15 +106,15 @@ export default function Stage2BillsMonitoring() {
       {/* Bills Table */}
       <Card>
         <CardContent className="p-0">
-          <Table>
+          <Table className="min-w-[700px]">
             <TableHeader className="bg-primary/5">
               <TableRow>
-                <TableHead>Nama Santri</TableHead>
-                <TableHead>Komponen Biaya / Cicilan</TableHead>
-                <TableHead>Nominal</TableHead>
-                <TableHead>Jatuh Tempo</TableHead>
-                <TableHead>Status Pembayaran</TableHead>
-                <TableHead className="text-right">Waktu Masuk / Lunas</TableHead>
+                <TableHead className="whitespace-nowrap">Nama Santri</TableHead>
+                <TableHead className="whitespace-nowrap">Komponen Biaya / Cicilan</TableHead>
+                <TableHead className="whitespace-nowrap">Nominal</TableHead>
+                <TableHead className="whitespace-nowrap">Jatuh Tempo</TableHead>
+                <TableHead className="whitespace-nowrap">Status Pembayaran</TableHead>
+                <TableHead className="text-right whitespace-nowrap">Waktu Masuk / Lunas</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

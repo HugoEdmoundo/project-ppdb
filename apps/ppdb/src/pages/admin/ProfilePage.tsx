@@ -281,11 +281,11 @@ export default function AdminProfilePage() {
             </div>
           </SectionCard>
 
-          <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
-            <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 border-t border-border pt-5">
+            <Button type="button" variant="outline" onClick={() => navigate(-1)} className="w-full sm:w-auto">
               Batal
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving} className="w-full sm:w-auto">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
             </Button>

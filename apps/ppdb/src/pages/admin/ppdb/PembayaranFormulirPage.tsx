@@ -83,7 +83,7 @@ export default function PembayaranFormulirPage() {
       )}
 
       {/* Filter and Refresh Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-card p-3 rounded-xl border border-slate-200/80">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-3 rounded-xl border border-slate-200/80">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-xs font-medium text-muted-foreground mr-1">Status:</span>
           <Button
@@ -123,7 +123,7 @@ export default function PembayaranFormulirPage() {
         <Button
           variant="outline"
           size="sm"
-          className="h-7 text-xs px-3 rounded-lg gap-1.5 ml-auto"
+          className="h-7 text-xs px-3 rounded-lg gap-1.5 w-full sm:w-auto ml-0 sm:ml-auto justify-center"
           onClick={() => refetch()}
           disabled={isFetching}
         >
@@ -135,15 +135,15 @@ export default function PembayaranFormulirPage() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[700px]">
               <thead className="bg-emerald-primary/5 border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="py-3 px-4 text-left">No. Invoice</th>
-                  <th className="py-3 px-4 text-left">Nama Pendaftar</th>
-                  <th className="py-3 px-4 text-left">Nominal</th>
-                  <th className="py-3 px-4 text-left">Status</th>
-                  <th className="py-3 px-4 text-left">Metode</th>
-                  <th className="py-3 px-4 text-right">Waktu Transaksi</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">No. Invoice</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Nama Pendaftar</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Nominal</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Status</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Metode</th>
+                  <th className="py-3 px-4 text-right whitespace-nowrap">Waktu Transaksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

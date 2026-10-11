@@ -350,28 +350,28 @@ export default function ArsipPendaftarPage() {
 
       {/* Archive Results Table */}
       <Card className="border border-slate-200 overflow-hidden shadow-sm">
-        <Table>
+        <Table className="min-w-[820px]">
           <TableHeader className="bg-emerald-primary/5">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                 Nama Calon Santri & NISN
               </TableHead>
-              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                 Periode & Gelombang
               </TableHead>
-              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                 Jalur Pendaftaran
               </TableHead>
-              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                 Biaya Formulir
               </TableHead>
-              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                 Verifikasi Dokumen
               </TableHead>
-              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                 Status Seleksi
               </TableHead>
-              <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                 Dossier Lengkap
               </TableHead>
             </TableRow>
@@ -397,7 +397,7 @@ export default function ArsipPendaftarPage() {
                   onClick={() => handleOpenDossier(a.id)}
                   className="group transition-colors cursor-pointer hover:bg-emerald-50/40"
                 >
-                  <TableCell>
+                  <TableCell className="min-w-[180px]">
                     <div className="font-semibold text-slate-900 group-hover:text-emerald-700 transition-colors">
                       {a.full_name}
                     </div>
@@ -405,7 +405,7 @@ export default function ArsipPendaftarPage() {
                       NISN: {a.nisn || '-'} · ID: {a.id.slice(0, 8)}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <div className="text-xs font-semibold text-slate-800">
                       {a.period_name || 'Periode PPDB'}
                     </div>
@@ -413,21 +413,21 @@ export default function ArsipPendaftarPage() {
                       {a.wave_name || 'Gelombang'}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold capitalize text-slate-700">
                       {a.registration_path || '-'}
                     </span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <PaymentStatusBadge status={a.payment_status} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <DocStatusBadge status={a.status} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <SelectionStatusBadge status={a.status} />
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right whitespace-nowrap">
                     <Button
                       size="sm"
                       variant="outline"

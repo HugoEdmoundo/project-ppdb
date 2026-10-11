@@ -1,27 +1,20 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from "@/components/ui"
-import { ConfirmDialog } from "@/components/ui"
+import { Badge, Button, Card, CardDescription, CardHeader, CardTitle, Skeleton } from "@/components/ui"
 import { DocTrigger } from '@repo/ui'
 import {
-  CheckCircle, ChevronDown, ChevronUp, Lock, Wallet, FileUp, ClipboardCheck, Trophy, AlertCircle,
-  type LucideIcon,
+  CheckCircle, Lock, Wallet, FileUp, Trophy, AlertCircle,
+  Compass, ArrowLeftRight, ShieldCheck, BookOpen, MessageSquare, ArrowRight,
 } from 'lucide-react'
 import { apiFetch } from '@/api/client'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useToast } from '@/components/Toast'
-import TopBar from '@/components/shared/TopBar'
+import ApplicantTopBar from '@/components/shared/ApplicantTopBar'
 import ApplicantProfileModal from '@/components/shared/ApplicantProfileModal'
 import SupportFab from './components/SupportFab'
-import PaymentStep from './components/PaymentStep'
-import DocumentUploadStep from './components/DocumentUploadStep'
-import SelectionStep from './components/SelectionStep'
-import ResultStep from './components/ResultStep'
 import ChangePathModal from './components/ChangePathModal'
 import { cn } from '@/lib/utils'
-
-const STEP_ICONS: LucideIcon[] = [Wallet, FileUp, ClipboardCheck, Trophy]
 
 const STATUS_LABEL: Record<string, string> = {
   registration: 'Terdaftar',
@@ -36,22 +29,11 @@ const STATUS_LABEL: Record<string, string> = {
   expired: 'Kedaluwarsa',
 }
 
-const autoStepFor = (status: string | undefined) => {
-  if (status === 'document_uploaded_pending' || status === 'document_rejected' || status === 'document_uploaded') return 2
-  if (status === 'document_approved' || status === 'selection') return 3
-  if (status === 'passed' || status === 'failed') return 4
-  return 1
-}
-
 export default function ApplicantDashboardPage() {
   const { toast } = useToast()
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
 
-  const [expandedStep, setExpandedStep] = useState<number>(1)
-  const [prevStatus, setPrevStatus] = useState<string | null>(null)
-  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showChangePath, setShowChangePath] = useState(false)
 
@@ -66,14 +48,13 @@ export default function ApplicantDashboardPage() {
   })
 
   const applicant = transactionQuery.data?.applicant
-  const transaction = transactionQuery.data?.transaction
-  const documents = documentsQuery.data?.data || []
-  const requiredDocuments = documentsQuery.data?.required_documents || []
   const status = applicant?.status
   const loading = transactionQuery.isLoading || documentsQuery.isLoading
 
   const inSelection = ['document_approved', 'selection', 'passed', 'failed'].includes(status)
-  const inResult = ['passed', 'failed'].includes(status)
+
+  // Banner Ganti Jalur tampil selama belum diverifikasi/lulus ke tahap selanjutnya
+  const canChangePath = !['document_approved', 'selection', 'passed', 'failed'].includes(status)
 
   const selectionQuery = useQuery({
     queryKey: ['my-selection'],
@@ -90,24 +71,6 @@ export default function ApplicantDashboardPage() {
     enabled: inSelection,
   })
 
-  const loaQuery = useQuery({
-    queryKey: ['my-loa'],
-    queryFn: async () => {
-      const res = await apiFetch<any>('/ppdb/applicants/me/loa').catch(() => ({ loa: null }))
-      return res?.loa || null
-    },
-    enabled: inResult,
-  })
-
-  const stage2Query = useQuery({
-    queryKey: ['my-stage2-bills'],
-    queryFn: async () => {
-      const res = await apiFetch<any>('/payment/stage2/my-bills').catch(() => ({ bills: [], mou_signed: false }))
-      return res?.bills || []
-    },
-    enabled: inResult,
-  })
-
   const contactQuery = useQuery({
     queryKey: ['contact-info'],
     queryFn: () => apiFetch<any>('/companyprofile/contact-info'),
@@ -115,209 +78,149 @@ export default function ApplicantDashboardPage() {
 
   const contactInfo = contactQuery.data ?? null
 
-  // Auto-expand step sesuai status terbaru (derived state, bukan effect).
-  if (status && status !== prevStatus) {
-    setPrevStatus(status)
-    setExpandedStep(autoStepFor(status))
-  }
+  const regPath = (applicant?.registration_path || '').toLowerCase()
+  const isTiuPath = ['reguler', 'tiu', 'tes', 'reguler_tiu'].includes(regPath) || regPath.includes('tiu')
+  const tiuScore = selectionQuery.data?.result?.scores?.find((s: any) =>
+    (s.criteria_name || '').toLowerCase().includes('tiu') ||
+    (s.category_name || '').toLowerCase().includes('tiu')
+  )?.score
+  const hasTahfidzScore = selectionQuery.data?.sessionData?.has_tahfidz_score || false
+  const hasInterviewScore = selectionQuery.data?.sessionData?.has_interview_score || false
 
-  const refreshAll = () => {
-    queryClient.invalidateQueries({ queryKey: ['my-transaction'] })
-    queryClient.invalidateQueries({ queryKey: ['my-documents'] })
-    queryClient.invalidateQueries({ queryKey: ['my-selection'] })
-    queryClient.invalidateQueries({ queryKey: ['my-loa'] })
-    queryClient.invalidateQueries({ queryKey: ['my-stage2-bills'] })
-  }
-
-  const bookMutation = useMutation({
-    mutationFn: (sessionId: string) => apiFetch('/selection/applicants/me/book', {
-      method: 'POST',
-      body: JSON.stringify({ session_id: sessionId }),
-    }),
-    onSuccess: () => {
-      toast('success', 'Berhasil memilih jadwal ujian')
-      refreshAll()
-    },
-    onError: (e: any) => toast('error', e.message || 'Gagal memilih jadwal'),
-  })
-
-  const submitDocsMutation = useMutation({
-    mutationFn: () => apiFetch('/ppdb/documents/submit', { method: 'POST' }),
-    onSuccess: () => {
-      toast('success', 'Dokumen berhasil dikirim untuk verifikasi')
-      refreshAll()
-    },
-    onError: (e: any) => toast('error', e.message || 'Gagal mengirim dokumen'),
-    onSettled: () => setShowSubmitConfirm(false),
-  })
-
-
-  const uploadProofMutation = useMutation({
-    mutationFn: ({ billId, file }: { billId: string, file: File }) => {
-      const formData = new FormData()
-      formData.append('file', file)
-      return apiFetch(`/payment/stage2/bills/${billId}/upload-proof`, { method: 'POST', body: formData })
-    },
-    onSuccess: () => {
-      toast('success', 'Bukti pembayaran berhasil diunggah. Menunggu konfirmasi admin.')
-      refreshAll()
-    },
-    onError: (e: any) => toast('error', e.message || 'Gagal upload bukti'),
-  })
-
-  const handleLogout = async () => {
-    await logout()
-    navigate('/auth/login')
-  }
-
-  const handleSubmitDocs = () => {
-    setShowSubmitConfirm(false)
-    submitDocsMutation.mutate()
-  }
-
-
-  const handleBookSession = (sessionId: string) => {
-    if (!window.confirm('Anda yakin ingin memilih jadwal ini?')) return
-    bookMutation.mutate(sessionId)
-  }
-
-  const handleUploadProof = (billId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 5 * 1024 * 1024) {
-      toast('error', 'Ukuran file maksimal 5MB')
-      e.target.value = ''
-      return
-    }
-    uploadProofMutation.mutate({ billId, file })
-    e.target.value = ''
-  }
-
-  const toggleStep = (step: number) => {
-    setExpandedStep(prev => prev === step ? 0 : step)
-  }
-
-  const steps = [
+  // Step definition dinamis (Granular) mengarah ke halaman baru/terpisah
+  const steps = isTiuPath ? [
     {
       number: 1,
       title: 'Pembayaran Formulir',
       description: 'Menyelesaikan pembayaran pendaftaran PPDB.',
+      icon: Wallet,
       status: applicant?.payment_status === 'paid' ? 'completed' : 'pending',
-      content: <PaymentStep transaction={transaction} />
+      path: '/applicant/kuitansi',
     },
     {
       number: 2,
-      title: 'Upload Dokumen Persyaratan',
-      description: 'Mengunggah berkas-berkas yang dibutuhkan untuk verifikasi.',
-      status: ['document_approved', 'selection', 'passed', 'failed'].includes(applicant?.status) ? 'completed' :
+      title: 'Upload Dokumen',
+      description: 'Mengunggah berkas persyaratan sesuai jalur pilihan.',
+      icon: FileUp,
+      status: ['document_approved', 'selection', 'passed', 'failed'].includes(status) ? 'completed' :
               applicant?.payment_status === 'paid' ? 'active' : 'locked',
-      content: (
-        <DocumentUploadStep
-          applicant={applicant}
-          documents={documents}
-          requiredDocuments={requiredDocuments}
-          onDocumentsChange={() => queryClient.invalidateQueries({ queryKey: ['my-documents'] })}
-          onSubmitRequest={() => setShowSubmitConfirm(true)}
-        />
-      )
+      path: '/applicant/dokumen',
     },
     {
       number: 3,
-      title: 'Seleksi & Ujian',
-      description: 'Mengikuti tahapan tes tertulis atau wawancara.',
-      status: ['passed', 'failed'].includes(applicant?.status) ? 'completed' :
-              ['document_approved', 'selection'].includes(applicant?.status) ? 'active' : 'locked',
-      content: (
-        <SelectionStep
-          applicant={applicant}
-          sessionData={selectionQuery.data?.sessionData ?? null}
-          selectionResult={selectionQuery.data?.result ?? null}
-          booking={bookMutation.isPending}
-          onBookSession={handleBookSession}
-        />
-      )
+      title: 'Ujian TIU Online',
+      description: 'Tes Skolastik & Akademik via Safe Exam Browser (SEB).',
+      icon: ShieldCheck,
+      status: tiuScore !== undefined || ['passed', 'failed'].includes(status) ? 'completed' :
+              ['document_approved', 'selection'].includes(status) ? 'active' : 'locked',
+      path: '/applicant/ujian-tiu',
     },
     {
       number: 4,
-      title: 'Pengumuman Hasil Akhir',
-      description: 'Hasil kelulusan PPDB.',
-      status: ['passed', 'failed'].includes(applicant?.status) ? 'completed' : 'locked',
-      content: (
-        <ResultStep
-          applicant={applicant}
-          selectionResult={selectionQuery.data?.result ?? null}
-          loa={loaQuery.data}
-          stage2Bills={stage2Query.data || []}
-          onUploadProof={handleUploadProof}
-        />
-      )
-    }
+      title: 'Seleksi Tahfidz (1:1)',
+      description: "Jadwal dan ujian tartil serta tahfidz Al-Qur'an.",
+      icon: BookOpen,
+      status: hasTahfidzScore || ['passed', 'failed'].includes(status) ? 'completed' :
+              ['document_approved', 'selection'].includes(status) && (tiuScore !== undefined) ? 'active' : 'locked',
+      path: '/applicant/seleksi-tahfidz',
+    },
+    {
+      number: 5,
+      title: 'Seleksi Wawancara (1:1)',
+      description: 'Wawancara calon santri dan orang tua/wali.',
+      icon: MessageSquare,
+      status: hasInterviewScore || ['passed', 'failed'].includes(status) ? 'completed' :
+              ['document_approved', 'selection'].includes(status) && hasTahfidzScore ? 'active' : 'locked',
+      path: '/applicant/seleksi-wawancara',
+    },
+    {
+      number: 6,
+      title: 'Hasil Kelulusan & LoA',
+      description: 'Pengumuman hasil akhir penerimaan santri baru.',
+      icon: Trophy,
+      status: ['passed', 'failed'].includes(status) ? 'completed' : 'locked',
+      path: '/applicant/pengumuman',
+    },
+  ] : [
+    {
+      number: 1,
+      title: 'Pembayaran Formulir',
+      description: 'Menyelesaikan pembayaran pendaftaran PPDB.',
+      icon: Wallet,
+      status: applicant?.payment_status === 'paid' ? 'completed' : 'pending',
+      path: '/applicant/kuitansi',
+    },
+    {
+      number: 2,
+      title: 'Upload Dokumen',
+      description: 'Mengunggah berkas persyaratan sesuai jalur pilihan.',
+      icon: FileUp,
+      status: ['document_approved', 'selection', 'passed', 'failed'].includes(status) ? 'completed' :
+              applicant?.payment_status === 'paid' ? 'active' : 'locked',
+      path: '/applicant/dokumen',
+    },
+    {
+      number: 3,
+      title: 'Seleksi Tahfidz (1:1)',
+      description: "Jadwal dan ujian tartil serta tahfidz Al-Qur'an.",
+      icon: BookOpen,
+      status: hasTahfidzScore || ['passed', 'failed'].includes(status) ? 'completed' :
+              ['document_approved', 'selection'].includes(status) ? 'active' : 'locked',
+      path: '/applicant/seleksi-tahfidz',
+    },
+    {
+      number: 4,
+      title: 'Seleksi Wawancara (1:1)',
+      description: 'Wawancara calon santri dan orang tua/wali.',
+      icon: MessageSquare,
+      status: hasInterviewScore || ['passed', 'failed'].includes(status) ? 'completed' :
+              ['document_approved', 'selection'].includes(status) && hasTahfidzScore ? 'active' : 'locked',
+      path: '/applicant/seleksi-wawancara',
+    },
+    {
+      number: 5,
+      title: 'Hasil Kelulusan & LoA',
+      description: 'Pengumuman hasil akhir penerimaan santri baru.',
+      icon: Trophy,
+      status: ['passed', 'failed'].includes(status) ? 'completed' : 'locked',
+      path: '/applicant/pengumuman',
+    },
   ]
 
-  const firstName = (applicant?.full_name || user?.full_name || '').trim().split(' ')[0] || 'Calon Murid'
-  const initial = (applicant?.full_name || user?.full_name || 'C')[0]?.toUpperCase()
-  const paymentLabel = applicant?.payment_status === 'paid'
-    ? 'Tahap 1 Lunas'
-    : applicant?.payment_status === 'expired'
-      ? 'Kedaluwarsa'
-      : 'Menunggu Pembayaran'
-  const statusLabel = STATUS_LABEL[status] ?? status ?? 'Terdaftar'
   const doneSteps = steps.filter(s => s.status === 'completed').length
 
-  // ── Loading skeleton ──
+  const fullName = applicant?.full_name || user?.full_name || 'Pendaftar'
+  const firstName = fullName.split(' ')[0]
+
+  const paymentLabel = applicant?.payment_status === 'paid' ? 'Tahap 1 Lunas' : 'Menunggu Bayar'
+  const statusLabel = STATUS_LABEL[status] || status || 'Menunggu Pembayaran'
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        <TopBar
-          title="PPDB"
-          containerClassName="px-4 md:px-6 h-14 max-w-6xl mx-auto"
-          user={user}
-          subtitle={user?.role_name || 'Calon Murid'}
-          profileLabel="Profil Saya"
-          onProfile={() => setShowProfile(true)}
-          onLogout={handleLogout}
-        />
-        <div className="mx-auto max-w-4xl px-4 py-6 space-y-5">
-          <Skeleton className="h-44 w-full rounded-3xl" />
-          <div className="space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-start gap-4">
-                <Skeleton className="mt-1 h-11 w-11 shrink-0 rounded-full" />
-                <Skeleton className="h-24 w-full rounded-2xl" />
-              </div>
-            ))}
-          </div>
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <ApplicantTopBar onProfile={() => setShowProfile(true)} />
+        <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 space-y-6">
+          <Skeleton className="h-36 rounded-3xl" />
+          <Skeleton className="h-28 rounded-3xl" />
+          <Skeleton className="h-64 rounded-3xl" />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <TopBar
-        title="PPDB"
-        containerClassName="px-4 md:px-6 h-14 max-w-6xl mx-auto"
-        user={user}
-        subtitle={user?.role_name || 'Calon Murid'}
-        profileLabel="Profil Saya"
-        onProfile={() => setShowProfile(true)}
-        onLogout={handleLogout}
-      />
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <ApplicantTopBar onProfile={() => setShowProfile(true)} />
 
-      {/* Main Content */}
-      <div className="mx-auto max-w-4xl space-y-6 px-4 py-6">
-        {/* Greeting Card */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-dark via-emerald-primary to-emerald-bright p-6 text-white shadow-lg shadow-emerald-primary/20 md:p-8">
-          <div className="pointer-events-none absolute -right-10 -top-12 h-48 w-48 rounded-full bg-white/10" />
-          <div className="pointer-events-none absolute -bottom-16 right-24 h-40 w-40 rounded-full bg-gold-accent/25" />
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-2 ring-white/25 backdrop-blur-sm">
-              <span className="font-heading text-2xl font-bold text-white">{initial}</span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-emerald-100">Assalamu'alaikum,</p>
+      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 space-y-6">
+        {/* Welcome Header */}
+        <div className="rounded-3xl bg-gradient-to-r from-emerald-primary via-emerald-800 to-teal-800 p-4 sm:p-8 text-white shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6 relative z-10">
+            <div className="min-w-0">
+              <span className="text-emerald-100 text-xs font-medium uppercase tracking-wider">Dashboard Pendaftar</span>
               <h1 className="mt-0.5 truncate font-heading text-2xl font-bold md:text-3xl">{firstName}</h1>
-              <p className="mt-1 text-sm text-emerald-50/90">
+              <p className="mt-1 text-xs sm:text-sm text-emerald-50/90 leading-relaxed">
                 Pantau progres pendaftaran Anda dan selesaikan setiap tahapan yang masih aktif.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -327,22 +230,15 @@ export default function ApplicantDashboardPage() {
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/25">
                   {statusLabel}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/25 capitalize">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/30 capitalize">
+                  <Compass className="h-3.5 w-3.5" />
                   Jalur: {applicant?.registration_path || '-'}
                 </span>
-                {documents.length === 0 && !['passed', 'failed'].includes(status) && (
-                  <button
-                    onClick={() => setShowChangePath(true)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700/50 hover:bg-emerald-700/80 px-3 py-1 text-xs font-semibold text-white ring-1 ring-emerald-400/50 transition-colors cursor-pointer"
-                  >
-                    Ganti Jalur
-                  </button>
-                )}
               </div>
             </div>
-            <div className="shrink-0 flex items-center sm:flex-col sm:items-end justify-between gap-3">
+            <div className="shrink-0 flex items-center sm:flex-col sm:items-end justify-between gap-3 border-t border-white/10 sm:border-t-0 pt-3 sm:pt-0">
               <DocTrigger docKey="applicant-dashboard" variant="dark" />
-              <div className="sm:text-right">
+              <div className="text-right">
                 <p className="text-xs font-medium text-emerald-100">Progres Pendaftaran</p>
                 <p className="mt-0.5 font-heading text-xl font-bold">{doneSteps}<span className="text-emerald-100/70">/{steps.length}</span></p>
                 <div className="mt-2 h-1.5 w-28 overflow-hidden rounded-full bg-white/20">
@@ -353,6 +249,43 @@ export default function ApplicantDashboardPage() {
           </div>
         </div>
 
+        {/* Banner Container Ganti Jalur (Satu-satunya CTA) */}
+        {canChangePath && (
+          <div className="relative overflow-hidden rounded-3xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white p-4 sm:p-6 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="rounded-2xl bg-emerald-600 p-2.5 sm:p-3 text-white shrink-0 shadow-sm mt-0.5">
+                  <ArrowLeftRight className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] sm:text-xs font-bold uppercase tracking-wider border border-emerald-200">
+                      Opsi Ganti Jalur Pendaftaran
+                    </span>
+                    <span className="text-xs text-slate-500 font-medium">
+                      Jalur Aktif: <strong className="text-emerald-900 capitalize font-bold">{applicant?.registration_path || '-'}</strong>
+                    </span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 font-heading">
+                    Ingin Memilih Jalur Seleksi yang Berbeda?
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
+                    Salah memilih jalur pendaftaran atau ingin beralih ke jalur <strong>Reguler, Prestasi, Tahfidz, atau Rapor</strong>? Anda bebas mengganti jalur seleksi selama belum diverifikasi ke tahap selanjutnya.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={() => setShowChangePath(true)}
+                className="w-full md:w-auto shrink-0 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm px-5 py-3 rounded-xl shadow-md gap-2 h-auto cursor-pointer transition-transform hover:scale-102 active:scale-98"
+              >
+                <ArrowLeftRight className="h-4 w-4" />
+                Ganti Jalur
+              </Button>
+            </div>
+          </div>
+        )}
+
         {status === 'document_rejected' && (
           <div className="bg-red-50 border border-red-200 p-5 rounded-2xl shadow-sm relative overflow-hidden">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500" />
@@ -360,21 +293,16 @@ export default function ApplicantDashboardPage() {
               <AlertCircle className="w-5 h-5" /> Dokumen Ditolak
             </h3>
             <p className="text-red-700 mt-2 text-sm leading-relaxed">
-              Terdapat kekurangan atau kesalahan pada dokumen Anda dengan alasan:
-              <br />
-              <strong className="mt-1 block p-2 bg-white/60 rounded text-red-900 border border-red-100">
-                "{applicant?.rejection_reason || 'Silakan perbaiki dokumen Anda sesuai ketentuan.'}"
-              </strong>
-            </p>
-            <p className="text-red-700/80 mt-3 text-xs">
-              Buka bagian "Upload Dokumen Persyaratan" di bawah untuk mengunggah ulang dokumen yang ditolak.
+              Terdapat kekurangan atau kesalahan pada dokumen Anda dengan alasan:{' '}
+              <strong className="underline">{applicant?.rejection_reason || 'Mohon periksa dan unggah ulang dokumen yang sesuai'}</strong>.
+              Silakan buka tahap Dokumen untuk memperbaiki berkas.
             </p>
           </div>
         )}
 
         {/* Visual Timeline (Stepper) */}
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 overflow-x-auto hide-scrollbar">
-          <div className="min-w-[600px]">
+          <div className="min-w-[720px]">
             <div className="flex items-center justify-between relative">
               <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full z-0" />
               <div
@@ -385,7 +313,7 @@ export default function ApplicantDashboardPage() {
               {steps.map((step) => {
                 const isCompleted = step.status === 'completed'
                 const isActive = step.status === 'active'
-                const StepIcon = STEP_ICONS[step.number - 1]
+                const StepIcon = step.icon || CheckCircle
 
                 let circleCls = "bg-slate-100 text-slate-400 border-2 border-white ring-4 ring-slate-50"
                 if (isCompleted) circleCls = "bg-emerald-primary text-white border-2 border-white ring-4 ring-emerald-50 shadow-md"
@@ -411,108 +339,105 @@ export default function ApplicantDashboardPage() {
           </div>
         </div>
 
-        {/* Task Details */}
+        {/* Task Details - Buka Halaman Baru Saat Diklik (Bukan Dropdown) */}
         <div className="pt-4 pb-2">
-          <h2 className="text-lg font-semibold text-slate-800 mb-4 px-2">Detail Tugas Anda</h2>
-          <div className="relative space-y-6">
-            <div className="absolute bottom-8 left-[1.375rem] top-8 w-0.5 -translate-x-px bg-slate-200" />
-          {steps.map((step) => {
-            const isCompleted = step.status === 'completed'
-            const isActive = step.status === 'active'
-            const isPending = step.status === 'pending'
-            const isLocked = step.status === 'locked'
-            const isExpanded = expandedStep === step.number
-            const StepIcon = STEP_ICONS[step.number - 1]
+          <div className="flex items-center justify-between mb-4 px-2">
+            <div>
+              <h2 className="text-lg font-bold font-heading text-slate-900">Daftar Tahapan Seleksi</h2>
+              <p className="text-xs text-slate-500">Klik tahapan aktif untuk masuk ke halaman pengerjaan.</p>
+            </div>
+          </div>
 
-            const circleCls = isCompleted
-              ? 'bg-emerald-primary text-white ring-4 ring-emerald-primary/15'
-              : isActive
-                ? 'bg-white text-emerald-primary border-emerald-primary ring-4 ring-emerald-primary/10'
-                : isPending
-                  ? 'bg-gold-accent text-white ring-4 ring-gold-accent/15'
-                  : 'bg-slate-100 text-slate-400 border-slate-200'
+          <div className="relative space-y-4">
+            <div className="absolute bottom-8 left-5 sm:left-[1.375rem] top-8 w-0.5 -translate-x-px bg-slate-200" />
+            {steps.map((step) => {
+              const isCompleted = step.status === 'completed'
+              const isActive = step.status === 'active'
+              const isPending = step.status === 'pending'
+              const isLocked = step.status === 'locked'
+              const StepIcon = step.icon || CheckCircle
 
-            const stepBadge = isCompleted
-              ? <Badge variant="success">Selesai</Badge>
-              : isActive
-                ? <Badge variant="info">Sedang Berjalan</Badge>
-                : isPending
-                  ? <Badge variant="warning">Menunggu Bayar</Badge>
-                  : <Badge variant="outline" className="text-slate-400"><Lock className="mr-1 h-3 w-3" />Terkunci</Badge>
+              const circleCls = isCompleted
+                ? 'bg-emerald-primary text-white ring-4 ring-emerald-primary/15'
+                : isActive
+                  ? 'bg-white text-emerald-primary border-emerald-primary ring-4 ring-emerald-primary/10'
+                  : isPending
+                    ? 'bg-gold-accent text-white ring-4 ring-gold-accent/15'
+                    : 'bg-slate-100 text-slate-400 border-slate-200'
 
-            return (
-              <div key={step.number} className="group relative flex items-start">
-                <div className="z-10 mr-5 mt-1 flex h-11 w-11 shrink-0 items-center justify-center">
-                  <div className={`flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all duration-300 ${circleCls}`}>
-                    {isCompleted ? (
-                      <CheckCircle className="h-5 w-5" />
-                    ) : (
-                      <StepIcon className="h-5 w-5" />
-                    )}
-                  </div>
-                </div>
+              const stepBadge = isCompleted
+                ? <Badge variant="success">Selesai</Badge>
+                : isActive
+                  ? <Badge variant="info">Sedang Berjalan</Badge>
+                  : isPending
+                    ? <Badge variant="warning">Menunggu Bayar</Badge>
+                    : <Badge variant="outline" className="text-slate-400"><Lock className="mr-1 h-3 w-3" />Terkunci</Badge>
 
-                <Card
-                  className={cn(
-                    'w-[calc(100%-4rem)] border-slate-200 shadow-sm transition-all duration-300',
-                    isActive && 'border-emerald-primary/25 shadow-md ring-1 ring-emerald-primary/10',
-                    isLocked && 'bg-slate-50/50 opacity-60'
-                  )}
-                >
-                  <CardHeader
-                    className={cn('p-5', isLocked ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-slate-50')}
-                    onClick={() => !isLocked && toggleStep(step.number)}
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <CardTitle className={cn(
-                            'text-lg',
-                            isActive && 'text-emerald-primary',
-                            isCompleted && 'text-emerald-primary',
-                            isPending && 'text-gold-dark',
-                            isLocked && 'text-slate-700'
-                          )}>
-                            {step.title}
-                          </CardTitle>
-                          <div className="hidden sm:block">{stepBadge}</div>
-                        </div>
-                        <CardDescription className="mt-1 text-xs">{step.description}</CardDescription>
-                        <div className="mt-2 sm:hidden">{stepBadge}</div>
-                      </div>
-                      {!isLocked && (
-                        <div className="shrink-0 text-muted-foreground">
-                          {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                        </div>
+              return (
+                <div key={step.number} className="group relative flex items-start">
+                  <div className="z-10 mr-3 sm:mr-5 mt-1 flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center">
+                    <div className={`flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border-2 transition-all duration-300 ${circleCls}`}>
+                      {isCompleted ? (
+                        <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                      ) : (
+                        <StepIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                       )}
                     </div>
-                  </CardHeader>
+                  </div>
 
-                  {isExpanded && !isLocked && (
-                    <CardContent className="border-t border-dashed px-4 pb-4 pt-0 mt-4">
-                      <div className="animate-in slide-in-from-top-2 fade-in duration-200 pt-4">
-                        {step.content}
+                  <Card
+                    className={cn(
+                      'flex-1 min-w-0 border-slate-200 shadow-sm transition-all duration-300',
+                      isActive && 'border-emerald-primary/40 shadow-md ring-1 ring-emerald-primary/10 hover:border-emerald-primary',
+                      !isLocked && 'cursor-pointer hover:shadow-md hover:border-emerald-300 hover:bg-slate-50/50',
+                      isLocked && 'bg-slate-50/50 opacity-60 cursor-not-allowed'
+                    )}
+                    onClick={() => {
+                      if (isLocked) {
+                        toast('info', 'Tahap ini masih terkunci. Silakan selesaikan tahap sebelumnya terlebih dahulu.')
+                        return
+                      }
+                      navigate(step.path)
+                    }}
+                  >
+                    <CardHeader className="p-3.5 sm:p-5">
+                      <div className="flex items-center justify-between gap-3 sm:gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <CardTitle className={cn(
+                              'text-base sm:text-lg font-heading leading-tight break-words',
+                              isActive && 'text-emerald-primary',
+                              isCompleted && 'text-emerald-primary',
+                              isPending && 'text-gold-dark',
+                              isLocked && 'text-slate-700'
+                            )}>
+                              {step.title}
+                            </CardTitle>
+                            <div className="hidden sm:block">{stepBadge}</div>
+                          </div>
+                          <CardDescription className="mt-1 text-xs break-words">{step.description}</CardDescription>
+                          <div className="mt-2 sm:hidden">{stepBadge}</div>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-2">
+                          {!isLocked ? (
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-50 text-emerald-800 group-hover:bg-emerald-100 text-xs font-bold transition-all shadow-2xs">
+                              <span>Buka</span>
+                              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                            </div>
+                          ) : (
+                            <div className="p-2 text-slate-300">
+                              <Lock className="h-4 w-4" />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </CardContent>
-                  )}
-                </Card>
-              </div>
-            )
-          })}
+                    </CardHeader>
+                  </Card>
+                </div>
+              )
+            })}
           </div>
         </div>
-
-        <ConfirmDialog
-          isOpen={showSubmitConfirm}
-          onClose={() => setShowSubmitConfirm(false)}
-          onConfirm={handleSubmitDocs}
-          loading={submitDocsMutation.isPending}
-          title="Kirim Dokumen"
-          message="Apakah Anda yakin semua dokumen sudah benar? Dokumen yang sudah dikirim tidak bisa diubah kembali."
-          confirmLabel="Ya, Kirim"
-        />
-
-
       </div>
 
       {/* Profile Modal */}

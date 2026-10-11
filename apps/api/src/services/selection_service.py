@@ -594,7 +594,9 @@ class SelectionService:
                     (
                         "selection_result_passed",
                         {
-                            "nama_sekolah": "Pesantren Tahfidz Ar-Rahman",
+                            "nama_sekolah": (
+                                "Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
+                            ),
                             "link_aplikasi": f"{settings.ppdb_frontend_url}/dashboard",
                         },
                     ),
@@ -607,7 +609,9 @@ class SelectionService:
                     (
                         "selection_result_failed",
                         {
-                            "nama_sekolah": "Pesantren Tahfidz Ar-Rahman",
+                            "nama_sekolah": (
+                                "Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
+                            ),
                         },
                     ),
                 ],

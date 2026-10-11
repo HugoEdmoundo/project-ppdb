@@ -110,7 +110,7 @@ const PREVIEW_CONTEXT: Record<string, string> = {
   '{email}': 'ahmad@example.com',
   '{phone}': '081234567890',
   '{password}': 'Pass1234',
-  '{nama_sekolah}': 'Pesantren Tahfidz Ar-Rahman',
+  '{nama_sekolah}': "Pesantren Tahfidz Qur'an dan Digital Ar-Rahman",
   '{link_login}': 'https://ppdb.ptdarrahman.sch.id/login',
   '{link_aplikasi}': 'https://ppdb.ptdarrahman.sch.id/dashboard',
   '{link_pembayaran}': 'https://ppdb.ptdarrahman.sch.id/payment',
@@ -592,16 +592,16 @@ function TemplateTab({ templates, loading, onRefresh }: TemplateTabProps) {
       <Card>
         <CardContent className="p-0">
           {/* Toolbar */}
-          <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-3.5">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-3.5 sm:px-5 py-3">
+            <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-sm font-semibold">Template Notifikasi</span>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-44">
                 <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                  className="pl-8 h-8 text-xs w-44"
+                  className="pl-8 h-8 text-xs w-full"
                   placeholder="Cari event / label..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
@@ -615,20 +615,21 @@ function TemplateTab({ templates, loading, onRefresh }: TemplateTabProps) {
                 <option value="">Semua Fase</option>
                 {SPEC_PHASES.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
-              <Button variant="outline" size="sm" onClick={onRefresh}>
-                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />Refresh
+              <Button variant="outline" size="sm" onClick={onRefresh} className="h-8 px-2.5 text-xs">
+                <RefreshCw className="h-3.5 w-3.5 sm:mr-1.5" />
+                <span className="hidden sm:inline">Refresh</span>
               </Button>
             </div>
           </div>
 
-          <Table>
+          <Table className="min-w-[650px]">
             <TableHeader className="bg-primary/5">
               <TableRow>
-                <TableHead>Event Key</TableHead>
+                <TableHead className="whitespace-nowrap">Event Key</TableHead>
                 <TableHead>Label / Fase</TableHead>
-                <TableHead>Channel</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
+                <TableHead className="whitespace-nowrap">Channel</TableHead>
+                <TableHead className="whitespace-nowrap">Status</TableHead>
+                <TableHead className="text-right whitespace-nowrap">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -819,12 +820,12 @@ function TemplateEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Edit2 className="h-4 w-4 text-primary" />
-            Edit:{' '}
-            <span className="font-mono text-sm text-muted-foreground">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg break-words">
+            <Edit2 className="h-4 w-4 text-primary shrink-0" />
+            <span className="truncate">Edit:</span>{' '}
+            <span className="font-mono text-xs sm:text-sm text-muted-foreground truncate">
               {template.event_key}
             </span>
           </DialogTitle>
@@ -998,9 +999,9 @@ function LogTab() {
     <Card>
       <CardContent className="p-0">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-3.5">
-          <div className="flex flex-1 items-center gap-2">
-            <Inbox className="h-4 w-4 text-muted-foreground" />
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-3.5 sm:px-5 py-3">
+          <div className="flex items-center gap-2">
+            <Inbox className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="text-sm font-semibold">Log Pengiriman</span>
             {total > 0 && (
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
@@ -1008,7 +1009,7 @@ function LogTab() {
               </span>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
@@ -1021,7 +1022,7 @@ function LogTab() {
               <option value="invalid_number">No. Tidak Valid</option>
             </select>
             <Input
-              className="h-8 w-44 text-xs"
+              className="h-8 w-full sm:w-44 text-xs flex-1 sm:flex-initial"
               placeholder="Cari event key..."
               value={eventFilter}
               onChange={e => setEventFilter(e.target.value)}
@@ -1038,6 +1039,7 @@ function LogTab() {
             <Button
               variant="outline" size="sm"
               onClick={() => fetchLogs(page, statusFilter, eventFilter)}
+              className="h-8 px-2.5 text-xs"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
@@ -1045,22 +1047,23 @@ function LogTab() {
               variant="outline" size="sm"
               onClick={() => exportCSV(logs)}
               disabled={logs.length === 0}
+              className="h-8 px-2.5 text-xs"
             >
               <Download className="h-3.5 w-3.5 mr-1.5" />CSV
             </Button>
           </div>
         </div>
 
-        <Table>
+        <Table className="min-w-[750px]">
           <TableHeader className="bg-muted/40">
             <TableRow>
-              <TableHead>Penerima</TableHead>
-              <TableHead>Event</TableHead>
-              <TableHead>Channel</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Retry</TableHead>
-              <TableHead>WA ID</TableHead>
-              <TableHead>Waktu</TableHead>
+              <TableHead className="whitespace-nowrap">Penerima</TableHead>
+              <TableHead className="whitespace-nowrap">Event</TableHead>
+              <TableHead className="whitespace-nowrap">Channel</TableHead>
+              <TableHead className="whitespace-nowrap">Status</TableHead>
+              <TableHead className="whitespace-nowrap text-center">Retry</TableHead>
+              <TableHead className="whitespace-nowrap">WA ID</TableHead>
+              <TableHead className="whitespace-nowrap">Waktu</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1144,7 +1147,7 @@ function LogTab() {
         </Table>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-border px-5 py-3 text-sm text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border px-3.5 sm:px-5 py-3 text-xs sm:text-sm text-muted-foreground">
             <span>Halaman {page} dari {totalPages} ({total} log)</span>
             <div className="flex gap-1.5">
               <Button
@@ -1272,8 +1275,8 @@ export default function NotificationsPage() {
       )}
 
       <Tabs defaultValue="templates">
-        <TabsList className="mb-2">
-          <TabsTrigger value="send" className="flex items-center gap-1.5">
+        <TabsList className="mb-2 max-w-full overflow-x-auto no-scrollbar justify-start">
+          <TabsTrigger value="send" className="flex items-center gap-1.5 whitespace-nowrap">
             <Send className="h-3.5 w-3.5" />Kirim Pesan
           </TabsTrigger>
           <TabsTrigger value="templates" className="flex items-center gap-1.5">

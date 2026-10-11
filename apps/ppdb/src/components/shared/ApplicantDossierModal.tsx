@@ -147,9 +147,9 @@ export default function ApplicantDossierModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="w-[96vw] max-w-4xl max-h-[90vh] overflow-y-auto p-0">
           {/* Header */}
-          <div className="bg-slate-50 border-b p-6">
+          <div className="bg-slate-50 border-b p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -241,7 +241,7 @@ export default function ApplicantDossierModal({
           </div>
 
           {/* Body Content */}
-          <div className="p-6">
+          <div className="p-3.5 sm:p-6">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-3" />
@@ -257,26 +257,27 @@ export default function ApplicantDossierModal({
               </div>
             ) : !applicant ? null : (
               <Tabs defaultValue="biodata" className="w-full">
-                <TabsList className="grid grid-cols-5 w-full bg-slate-100 p-1 mb-6">
-                  <TabsTrigger value="biodata" className="text-xs gap-1.5">
+                <TabsList className="flex items-center justify-start overflow-x-auto no-scrollbar w-full bg-slate-100 p-1 mb-5 sm:mb-6 gap-1 whitespace-nowrap">
+                  <TabsTrigger value="biodata" className="text-xs gap-1.5 shrink-0 px-3 py-1.5">
                     <User className="h-3.5 w-3.5" />
                     Biodata
                   </TabsTrigger>
-                  <TabsTrigger value="dokumen" className="text-xs gap-1.5">
+                  <TabsTrigger value="dokumen" className="text-xs gap-1.5 shrink-0 px-3 py-1.5">
                     <FileText className="h-3.5 w-3.5" />
                     Dokumen ({documents.length})
                   </TabsTrigger>
-                  <TabsTrigger value="seleksi" className="text-xs gap-1.5">
+                  <TabsTrigger value="seleksi" className="text-xs gap-1.5 shrink-0 px-3 py-1.5">
                     <Brain className="h-3.5 w-3.5" />
                     Seleksi & Nilai
                   </TabsTrigger>
-                  <TabsTrigger value="pembayaran" className="text-xs gap-1.5">
+                  <TabsTrigger value="pembayaran" className="text-xs gap-1.5 shrink-0 px-3 py-1.5">
                     <CreditCard className="h-3.5 w-3.5" />
                     Keuangan
                   </TabsTrigger>
-                  <TabsTrigger value="loa" className="text-xs gap-1.5">
+                  <TabsTrigger value="loa" className="text-xs gap-1.5 shrink-0 px-3 py-1.5">
                     <Award className="h-3.5 w-3.5" />
-                    LoA & SKD</TabsTrigger>
+                    LoA & SKD
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* TAB 1: BIODATA */}
@@ -430,15 +431,15 @@ export default function ApplicantDossierModal({
                         Belum ada dokumen yang diunggah oleh pendaftar.
                       </div>
                     ) : (
-                      <Table>
+                      <Table className="min-w-[650px]">
                         <TableHeader>
                           <TableRow className="bg-slate-50/50">
-                            <TableHead className="text-xs font-semibold">Nama Dokumen</TableHead>
-                            <TableHead className="text-xs font-semibold">Nama Berkas</TableHead>
-                            <TableHead className="text-xs font-semibold">Ukuran</TableHead>
-                            <TableHead className="text-xs font-semibold">Status</TableHead>
-                            <TableHead className="text-xs font-semibold">Catatan / Verifikasi</TableHead>
-                            <TableHead className="text-xs font-semibold text-right">Aksi</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Nama Dokumen</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Nama Berkas</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Ukuran</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Status</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Catatan / Verifikasi</TableHead>
+                            <TableHead className="text-xs font-semibold text-right whitespace-nowrap">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -563,14 +564,14 @@ export default function ApplicantDossierModal({
                     </div>
 
                     {transcript?.evaluations?.length > 0 ? (
-                      <Table>
+                      <Table className="min-w-[650px]">
                         <TableHeader>
                           <TableRow className="bg-slate-50/50">
-                            <TableHead className="text-xs font-semibold">Tipe Evaluasi</TableHead>
-                            <TableHead className="text-xs font-semibold">Kriteria Penilaian</TableHead>
-                            <TableHead className="text-xs font-semibold">Bobot</TableHead>
-                            <TableHead className="text-xs font-semibold">Nilai</TableHead>
-                            <TableHead className="text-xs font-semibold">Penguji / Catatan</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Tipe Evaluasi</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Kriteria Penilaian</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Bobot</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Nilai</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Penguji / Catatan</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -627,14 +628,14 @@ export default function ApplicantDossierModal({
                     </div>
 
                     {payments?.form_payments?.length > 0 ? (
-                      <Table>
+                      <Table className="min-w-[650px]">
                         <TableHeader>
                           <TableRow className="bg-slate-50/50">
-                            <TableHead className="text-xs font-semibold">Nomor Invoice</TableHead>
-                            <TableHead className="text-xs font-semibold">Nominal</TableHead>
-                            <TableHead className="text-xs font-semibold">Status</TableHead>
-                            <TableHead className="text-xs font-semibold">Metode</TableHead>
-                            <TableHead className="text-xs font-semibold">Waktu Pembayaran</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Nomor Invoice</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Nominal</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Status</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Metode</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Waktu Pembayaran</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -695,14 +696,14 @@ export default function ApplicantDossierModal({
                     </div>
 
                     {payments?.stage2_bills?.length > 0 ? (
-                      <Table>
+                      <Table className="min-w-[650px]">
                         <TableHeader>
                           <TableRow className="bg-slate-50/50">
-                            <TableHead className="text-xs font-semibold">Termin Cicilan</TableHead>
-                            <TableHead className="text-xs font-semibold">Nominal Tagihan</TableHead>
-                            <TableHead className="text-xs font-semibold">Jatuh Tempo</TableHead>
-                            <TableHead className="text-xs font-semibold">Status</TableHead>
-                            <TableHead className="text-xs font-semibold">Konfirmasi Gateway</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Termin Cicilan</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Nominal Tagihan</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Jatuh Tempo</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Status</TableHead>
+                            <TableHead className="text-xs font-semibold whitespace-nowrap">Konfirmasi Gateway</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>

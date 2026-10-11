@@ -963,6 +963,359 @@ export const SYSTEM_DOCS: Record<string, DocItem> = {
       },
     ],
   },
+
+  'applicant-documents': {
+    title: 'Upload & Kirim Dokumen Persyaratan',
+    subtitle: 'Panduan pengunggahan berkas wajib, berkas tambahan jalur, batas ukuran, dan proses verifikasi panitia.',
+    sections: [
+      {
+        number: 1,
+        title: 'Dokumen Wajib vs Berkas Tambahan Jalur',
+        icon: FileText,
+        content: (
+          <div className="space-y-2 text-xs text-slate-700 leading-relaxed">
+            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+              <strong className="text-slate-900 block mb-0.5">Dokumen Wajib (Semua Jalur):</strong>
+              Kartu Keluarga (KK), Akta Kelahiran, Rapor/Ijazah terakhir, dan Pasfoto santri wajib diunggah oleh seluruh pendaftar tanpa terkecuali.
+            </div>
+            <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/60">
+              <strong className="text-emerald-950 block mb-0.5">Berkas Tambahan Khusus Jalur:</strong>
+              Jika Anda mendaftar melalui jalur non-reguler (seperti Jalur Prestasi, Tahfidz, atau Afirmasi), Anda wajib mengunggah sertifikat, piagam kejuaraan, syahadah tahfidz, atau dokumen pendukung terkait sebagai syarat validasi kelayakan jalur Anda.
+            </div>
+          </div>
+        ),
+      },
+      {
+        number: 2,
+        title: 'Ketentuan Format & Batas Ukuran File',
+        icon: Sparkles,
+        content: (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-1.5">
+            <p>
+              • Format file yang didukung: <strong>JPG, JPEG, PNG, atau PDF</strong>.
+            </p>
+            <p>
+              • Ukuran maksimal per berkas: <strong>2 MB</strong>.
+            </p>
+            <p>
+              • Pastikan hasil scan atau foto dokumen terlihat jelas, tidak buram, tidak terpotong, dan seluruh teks serta stempel dapat terbaca dengan baik oleh panitia verifikator.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 3,
+        title: 'Tombol Kirim Dokumen & Verifikasi Panitia',
+        icon: FileCheck,
+        content: (
+          <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-blue-950 leading-relaxed space-y-1.5">
+            <p>
+              Setelah semua berkas berhasil diunggah, tombol <strong>Kirim</strong> akan aktif. Klik tombol tersebut untuk menyerahkan dokumen ke antrean verifikasi panitia.
+            </p>
+            <p>
+              Setelah dikirim, status akan berubah menjadi <strong>Dokumen Menunggu Review</strong>. Anda akan menerima pemberitahuan WhatsApp begitu panitia selesai meninjau dokumen.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 4,
+        title: 'Revisi Dokumen Jika Status Ditolak',
+        icon: RefreshCw,
+        content: (
+          <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 leading-relaxed space-y-1.5">
+            <p>
+              Jika berkas Anda ditolak atau memerlukan perbaikan, sistem akan menampilkan catatan penolakan dari panitia. Unggah ulang dokumen yang diminta, kemudian klik tombol <strong>Kirim</strong> kembali untuk ditinjau ulang.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 5,
+        title: 'Ketentuan Ganti Jalur Pendaftaran',
+        icon: ShieldAlert,
+        content: (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-1.5">
+            <p>
+              Anda dapat berpindah jalur pendaftaran selama Anda <strong>belum pernah mengirimkan dokumen persyaratan untuk verifikasi</strong>.
+            </p>
+            <p>
+              Setelah dokumen pertama kali dikirimkan atau diverifikasi panitia, jalur pendaftaran akan dikunci secara permanen dan tidak dapat diubah lagi.
+            </p>
+          </div>
+        ),
+      },
+    ],
+  },
+
+  'applicant-payment': {
+    title: 'Kuitansi Pembayaran Formulir PPDB',
+    subtitle: 'Informasi keabsahan bukti pembayaran resmi, QR Code verifikasi, dan fitur bagikan link kuitansi.',
+    sections: [
+      {
+        number: 1,
+        title: 'Bukti Pembayaran Sah & Resmi',
+        icon: CreditCard,
+        content: (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-1.5">
+            <p>
+              Kuitansi digital ini merupakan bukti sah bahwa biaya formulir pendaftaran PPDB Pesantren Tahfidz Qur&apos;an dan Digital Ar-Rahman telah terbayar dan lunas di sistem keuangan kami.
+            </p>
+            <p>
+              Kuitansi mencantumkan Nomor Transaksi, Nama Santri, Jalur Pendaftaran, Metode Pembayaran, Waktu Transaksi, dan Stempel Status <strong>LUNAS</strong>.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 2,
+        title: 'Verifikasi Publik Melalui Kode QR',
+        icon: QrCode,
+        content: (
+          <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950 leading-relaxed space-y-1.5">
+            <p>
+              Setiap kuitansi dilengkapi kode QR otentik. Kode QR ini dapat dipindai oleh siapa pun menggunakan kamera ponsel untuk memvalidasi keaslian dokumen secara instan di halaman publik resmi pesantren.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 3,
+        title: 'Bagikan & Salin Tautan Kuitansi',
+        icon: Smartphone,
+        content: (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-1.5">
+            <p>
+              Gunakan tombol <strong>Bagikan</strong> atau tautan WhatsApp untuk mengirimkan bukti pembayaran ini kepada keluarga, wali santri, atau panitia.
+            </p>
+            <p>
+              Tautan publik yang dibagikan hanya menampilkan kuitansi bersih tanpa menu navigasi internal dashboard, sehingga aman dibagikan ke pihak luar.
+            </p>
+          </div>
+        ),
+      },
+    ],
+  },
+
+  'applicant-tiu': {
+    title: 'Ujian TIU (Safe Exam Browser)',
+    subtitle: 'Petunjuk teknis pelaksanaan Tes Intelegensi Umum menggunakan aplikasi Safe Exam Browser (SEB).',
+    sections: [
+      {
+        number: 1,
+        title: 'Khusus Pendaftar Jalur Reguler',
+        icon: Sparkles,
+        content: (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-1.5">
+            <p>
+              Ujian Tes Intelegensi Umum (TIU) diwajibkan bagi calon santri <strong>Jalur Reguler</strong> setelah berkas diverifikasi dan disetujui oleh panitia.
+            </p>
+            <p>
+              Pendaftar jalur khusus (Tahfidz, Prestasi, Afirmasi) tidak perlu mengerjakan ujian TIU dan dapat langsung melanjutkan ke Seleksi 1:1 Tahfidz.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 2,
+        title: 'Aplikasi Safe Exam Browser (SEB)',
+        icon: Shield,
+        content: (
+          <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-blue-950 leading-relaxed space-y-1.5">
+            <p>
+              Ujian wajib dikerjakan menggunakan komputer atau laptop yang telah terinstal aplikasi <strong>Safe Exam Browser (SEB)</strong> versi 3.x ke atas.
+            </p>
+            <p>
+              Unduh file konfigurasi <code>.seb</code> dari tombol yang tersedia di halaman ini. Buka file tersebut untuk masuk ke antarmuka ujian yang terkunci aman.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 3,
+        title: 'Satu Kali Kesempatan & Timer Ujian',
+        icon: Clock,
+        content: (
+          <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 leading-relaxed space-y-1.5">
+            <p>
+              Timer pengerjaan ujian dicatat di sisi server backend sejak file <code>.seb</code> berhasil di-generate dan diunduh.
+            </p>
+            <p>
+              Anda hanya memiliki <strong>1 (satu) kali kesempatan ujian</strong>. Pastikan perangkat dan koneksi internet stabil sebelum membuka ujian.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 4,
+        title: 'Penilaian Otomatis & Notifikasi Nilai',
+        icon: CheckCircle2,
+        content: (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-1.5">
+            <p>
+              Nilai TIU diproses otomatis melalui integrasi webhook begitu Anda menekan tombol Submit pada formulir ujian SEB.
+            </p>
+            <p>
+              Hasil nilai akan langsung tersimpan di sistem, dan notifikasi konfirmasi hasil TIU akan dikirimkan otomatis ke nomor WhatsApp pendaftar.
+            </p>
+          </div>
+        ),
+      },
+    ],
+  },
+
+  'applicant-tahfidz': {
+    title: 'Seleksi 1:1 Tahfidz Al-Qur\'an',
+    subtitle: 'Panduan pemilihan slot penguji, aspek penilaian tartil & hafalan, serta tata tertib pelaksanaan.',
+    sections: [
+      {
+        number: 1,
+        title: 'Pemilihan Slot Jadwal Penguji',
+        icon: CalendarDays,
+        content: (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-1.5">
+            <p>
+              Pilih salah satu jadwal ujian 1:1 Tahfidz yang tersedia di daftar sesi. Perhatikan nama asatidz/penguji, tanggal, waktu, serta mode sesi yang dipilih.
+            </p>
+            <p>
+              • <strong>Mode Online:</strong> Ujian dilaksanakan melalui video conference Zoom Meeting. Tautan Zoom akan muncul pada kartu jadwal Anda.
+            </p>
+            <p>
+              • <strong>Mode Offline:</strong> Ujian tatap muka langsung di kampus Pesantren Tahfidz Qur&apos;an dan Digital Ar-Rahman sesuai lokasi ruangan yang tertera.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 2,
+        title: 'Materi & Kriteria Penilaian',
+        icon: Award,
+        content: (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-1.5">
+            <p>
+              Aspek yang dinilai oleh penguji meliputi:
+            </p>
+            <p>
+              1. <strong>Makharijul Huruf & Tajwid:</strong> Ketepatan pelafalan huruf hijaiyah dan hukum bacaan tajwid.
+            </p>
+            <p>
+              2. <strong>Tartil & Kelancaran:</strong> Kecepatan, kefasihan ritme, serta kejelasan lantunan ayat Al-Qur'an.
+            </p>
+            <p>
+              3. <strong>Hafalan Al-Qur'an:</strong> Daya ingat, sambung ayat, dan jumlah hafalan juz/surat sesuai kriteria jalur pendaftaran.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 3,
+        title: 'Tata Tertib Ujian',
+        icon: ShieldAlert,
+        content: (
+          <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950 leading-relaxed space-y-1.5">
+            <p>
+              • Santri wajib mengenakan pakaian muslim yang rapi dan menutup aurat (baju koko/gamis/jilbab).
+            </p>
+            <p>
+              • Untuk sesi online, bergabunglah ke tautan Zoom minimal 10 menit sebelum jadwal dimulai di ruangan yang tenang dan pencahayaan terang.
+            </p>
+          </div>
+        ),
+      },
+    ],
+  },
+
+  'applicant-interview': {
+    title: 'Seleksi 1:1 Wawancara Santri & Wali',
+    subtitle: 'Panduan pelaksanaan wawancara komitmen calon santri dan orang tua/wali santri.',
+    sections: [
+      {
+        number: 1,
+        title: 'Pemilihan Jadwal Wawancara',
+        icon: CalendarDays,
+        content: (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-1.5">
+            <p>
+              Pilih slot waktu wawancara yang tersedia setelah menyelesaikan tahapan sebelumnya. Sesi wawancara dapat dilakukan secara <strong>Online (Zoom)</strong> atau <strong>Offline (tatap muka di pesantren)</strong>.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 2,
+        title: 'Kehadiran Calon Santri dan Wali',
+        icon: Users,
+        content: (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-1.5">
+            <p>
+              Sesi wawancara wajib dihadiri oleh <strong>calon santri didampingi oleh orang tua atau wali santri</strong>. Wawancara bertujuan membangun keselarasan dan kesepahaman antara pihak keluarga dan pengasuh pesantren.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 3,
+        title: 'Fokus & Ruang Lingkup Wawancara',
+        icon: Sparkles,
+        content: (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-1.5">
+            <p>
+              Pewawancara akan mendalami motivasi calon santri, kemandirian kehidupan asrama, riwayat kebiasaan dan kesehatan santri, serta kesiapan orang tua dalam mendukung program pendidikan dan tata tertib pesantren.
+            </p>
+          </div>
+        ),
+      },
+    ],
+  },
+
+  'applicant-result': {
+    title: 'Hasil Kelulusan & LoA Resmi',
+    subtitle: 'Petunjuk melihat pengumuman kelulusan, unduh dokumen LoA resmi, dan prosedur daftar ulang tahap 2.',
+    sections: [
+      {
+        number: 1,
+        title: 'Pengumuman Hasil Seleksi',
+        icon: Award,
+        content: (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-1.5">
+            <p>
+              Hasil seleksi diumumkan secara transparan di halaman ini setelah seluruh penilaian (TIU, Tahfidz, Wawancara) selesai direkapitulasi dan disidangkan oleh panitia penerimaan santri baru.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 2,
+        title: 'Unduh Dokumen Surat Kelulusan (LoA)',
+        icon: FileText,
+        content: (
+          <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950 leading-relaxed space-y-1.5">
+            <p>
+              Calon santri yang dinyatakan <strong>LULUS</strong> dapat langsung mengunduh <strong>Letter of Acceptance (LoA)</strong> resmi.
+            </p>
+            <p>
+              Surat ini memuat nomor registrasi resmi, ketetapan kelulusan, serta rincian biaya komitmen pendidikan yang telah disetujui.
+            </p>
+          </div>
+        ),
+      },
+      {
+        number: 3,
+        title: 'Daftar Ulang & Pembayaran Tahap 2',
+        icon: CreditCard,
+        content: (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-1.5">
+            <p>
+              Selesaikan daftar ulang tahap 2 (uang pangkal/gedung, SPP bulan pertama, seragam, dll.) sesuai pilihan termin pembayaran yang Anda tentukan sebelum batas waktu berakhir.
+            </p>
+            <p>
+              Jika membayar melalui transfer bank, unggah bukti pembayaran pada formulir yang disediakan agar dapat diverifikasi oleh admin keuangan pesantren.
+            </p>
+          </div>
+        ),
+      },
+    ],
+  },
 }
 
 export interface DocButtonProps {
@@ -1012,7 +1365,7 @@ export function DocSheet({ open, onOpenChange, doc, docKey }: DocSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-xl md:max-w-2xl overflow-y-auto p-6 space-y-6">
+      <SheetContent className="w-full max-w-[100vw] sm:max-w-xl md:max-w-2xl overflow-y-auto p-4 sm:p-6 space-y-6">
         <SheetHeader className="border-b pb-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
@@ -1047,7 +1400,7 @@ export function DocSheet({ open, onOpenChange, doc, docKey }: DocSheetProps) {
           <HelpCircle className="h-5 w-5 text-emerald-600 shrink-0" />
           <p className="text-xs text-emerald-900">
             {activeDoc.contactNote ||
-              'Ada pertanyaan atau kendala operasional? Hubungi Koordinator PPDB Pesantren Tahfidz Ar-Rahman.'}
+              'Ada pertanyaan atau kendala operasional? Hubungi Koordinator PPDB Pesantren Tahfidz Qur\'an dan Digital Ar-Rahman.'}
           </p>
         </div>
       </SheetContent>

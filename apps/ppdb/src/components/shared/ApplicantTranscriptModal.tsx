@@ -51,14 +51,14 @@ export default function ApplicantTranscriptModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[92vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader className="print:hidden">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <DialogTitle className="flex items-center gap-2 text-base">
-              <FileText className="h-5 w-5 text-primary" />
+              <FileText className="h-5 w-5 text-primary shrink-0" />
               <span>Transkrip Hasil Seleksi Calon Santri</span>
             </DialogTitle>
-            <Button onClick={handlePrint} size="sm" variant="outline" className="gap-1.5 h-8 text-xs">
+            <Button onClick={handlePrint} size="sm" variant="outline" className="gap-1.5 h-9 sm:h-8 text-xs w-full sm:w-auto font-medium">
               <Printer className="h-3.5 w-3.5" /> Cetak / Print PDF
             </Button>
           </div>
@@ -77,7 +77,7 @@ export default function ApplicantTranscriptModal({
             {/* Kop Lembaga */}
             <div className="border-b-2 border-slate-900 pb-4 text-center">
               <h2 className="text-lg font-bold uppercase tracking-wider text-emerald-800">
-                PESANTREN TAHFIDZ AR-RAHMAN
+                PESANTREN TAHFIDZ QUR&apos;AN DAN DIGITAL AR-RAHMAN
               </h2>
               <p className="text-xs text-slate-600 mt-0.5">
                 Penerimaan Peserta Didik Baru (PPDB) — Lembar Hasil Seleksi Calon Santri
@@ -88,7 +88,7 @@ export default function ApplicantTranscriptModal({
             </div>
 
             {/* Identitas Santri */}
-            <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-4 rounded border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs bg-slate-50 p-3 sm:p-4 rounded border">
               <div>
                 <span className="text-slate-500 block">Nama Lengkap</span>
                 <span className="font-semibold text-sm text-slate-900">{applicant.full_name}</span>
@@ -156,24 +156,26 @@ export default function ApplicantTranscriptModal({
                       <div className="bg-slate-100 px-3 py-1.5 font-semibold text-xs border-b">
                         {cat.category_name}
                       </div>
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b bg-slate-50/50 text-slate-500 text-[11px]">
-                            <th className="text-left p-2">Kriteria Penilaian</th>
-                            <th className="text-center p-2 w-20">Bobot</th>
-                            <th className="text-right p-2 w-24">Skor</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {cat.criteria?.map((cr: any, cidx: number) => (
-                            <tr key={cidx} className="border-b last:border-none">
-                              <td className="p-2 font-medium">{cr.criteria_name}</td>
-                              <td className="p-2 text-center text-slate-600">{cr.weight ? `${cr.weight}%` : '—'}</td>
-                              <td className="p-2 text-right font-bold text-slate-900">{cr.score}</td>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs min-w-[320px]">
+                          <thead>
+                            <tr className="border-b bg-slate-50/50 text-slate-500 text-[11px]">
+                              <th className="text-left p-2">Kriteria Penilaian</th>
+                              <th className="text-center p-2 w-20">Bobot</th>
+                              <th className="text-right p-2 w-24">Skor</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {cat.criteria?.map((cr: any, cidx: number) => (
+                              <tr key={cidx} className="border-b last:border-none">
+                                <td className="p-2 font-medium">{cr.criteria_name}</td>
+                                <td className="p-2 text-center text-slate-600">{cr.weight ? `${cr.weight}%` : '—'}</td>
+                                <td className="p-2 text-right font-bold text-slate-900">{cr.score}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   ))}
                 </div>

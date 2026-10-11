@@ -24,7 +24,7 @@ export default function SupportFab({ phone, whatsapp, email }: { phone?: string;
   }, [fabOpen])
 
   const telHref = `tel:${(phone || '').replace(/[^0-9+]/g, '')}`
-  const waHref = `https://wa.me/${(whatsapp || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Assalamualaikum! Saya ingin bertanya tentang PPDB Pesantren Ar-Rahman.')}`
+  const waHref = `https://wa.me/${(whatsapp || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent("Assalamualaikum! Saya ingin bertanya tentang PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.")}`
   const mailHref = `mailto:${email || ''}`
 
   const options = [
@@ -34,14 +34,14 @@ export default function SupportFab({ phone, whatsapp, email }: { phone?: string;
   ]
 
   return (
-    <div className="fixed bottom-6 right-6 z-[100]">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[100]">
       <div ref={containerRef} className="relative">
         <div
           role="dialog"
           aria-label="Butuh Bantuan?"
           aria-hidden={!fabOpen}
           className={[
-            'absolute bottom-full right-0 mb-4 w-[300px] max-w-[calc(100vw-2.5rem)]',
+            'absolute bottom-full right-0 mb-3 sm:mb-4 w-[280px] sm:w-[300px] max-w-[calc(100vw-2rem)]',
             'origin-bottom-right overflow-hidden rounded-2xl border border-border',
             'bg-card shadow-xl',
             'transition-all duration-300 ease-out',
@@ -87,7 +87,7 @@ export default function SupportFab({ phone, whatsapp, email }: { phone?: string;
           aria-label={fabOpen ? 'Tutup menu bantuan' : 'Butuh Bantuan?'}
           aria-expanded={fabOpen}
           aria-haspopup="dialog"
-          className="relative flex items-center justify-center w-14 h-14 rounded-full bg-emerald-600 text-white transition-all hover:bg-emerald-700 hover:shadow-lg hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 shadow-lg"
+          className="relative flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-emerald-600 text-white transition-all hover:bg-emerald-700 hover:shadow-lg hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 shadow-lg"
         >
           <span
             className="relative flex items-center justify-center"

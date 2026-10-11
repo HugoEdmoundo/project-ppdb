@@ -136,8 +136,8 @@ export default function ApplicantDocumentsAdmin({
   return (
     <div className="space-y-4">
       {/* Header Info */}
-      <div className="flex items-center justify-between p-3 bg-muted/40 rounded-lg border text-xs">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 bg-muted/40 rounded-lg border text-xs">
+        <div className="flex items-start sm:items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <span>
             Verifikasi berkas wajib & tambahan calon santri. Dokumen yang ditolak akan otomatis memicu WhatsApp instruksi revisi.
@@ -246,7 +246,7 @@ export default function ApplicantDocumentsAdmin({
 
       {/* Dialog Reject Dokumen Spesifik */}
       <Dialog open={rejectModalOpen} onOpenChange={setRejectModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-rose-600">
               <XCircle className="h-5 w-5" />
@@ -305,7 +305,7 @@ export default function ApplicantDocumentsAdmin({
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
             <Button variant="outline" size="sm" onClick={() => setRejectModalOpen(false)}>
               Batal
             </Button>

@@ -124,10 +124,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return !!item.children?.some(c => location.pathname.startsWith(c.href))
   }
 
+  const isCollapsed = collapsed && !mobileOpen
+
   const navLinkCls = (active: boolean) =>
     cn(
       'relative flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200',
-      collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5',
+      isCollapsed ? 'justify-center p-2.5' : 'px-3 py-2.5',
       active
         ? 'bg-gradient-to-r from-emerald-primary to-emerald-dark text-white shadow-md shadow-emerald-primary/25'
         : 'text-slate-600 hover:bg-emerald-primary/10 hover:text-foreground'
@@ -144,13 +146,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside
         className={cn(
           'fixed md:sticky top-0 left-0 z-40 h-dvh bg-white border-r border-slate-200 flex flex-col transition-all duration-300',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-          collapsed ? 'w-16' : 'w-60'
+          mobileOpen ? 'translate-x-0 w-64 max-w-[85vw] shadow-2xl' : '-translate-x-full md:translate-x-0',
+          collapsed ? 'md:w-16' : 'md:w-60'
         )}
       >
         {/* Header */}
-        <div className={cn('relative flex items-center border-b border-border/60 bg-white/40', collapsed ? 'justify-center px-2 py-3' : 'px-5 py-4')}>
-          {collapsed ? (
+        <div className={cn('relative flex items-center border-b border-border/60 bg-white/40', isCollapsed ? 'justify-center px-2 py-3' : 'px-5 py-4')}>
+          {isCollapsed ? (
             logoUrl ? <img src={logoUrl} alt="PTDARRAHMAN" className="h-8 w-8 object-contain" /> : <div className="h-8 w-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-lg select-none">ار</div>
           ) : (
             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -171,7 +173,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1 no-scrollbar">
-          {!collapsed && (
+          {!isCollapsed && (
             <div className="mb-2 mt-1 px-3 text-[11px] font-bold uppercase tracking-widest text-slate-400">
               Menu Utama
             </div>
@@ -186,17 +188,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <button
                     onClick={() => toggleExpand(item.label)}
                     className={navLinkCls(active)}
-                    title={collapsed ? item.label : undefined}
+                    title={isCollapsed ? item.label : undefined}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
-                    {!collapsed && (
+                    {!isCollapsed && (
                       <>
                         <span className="flex-1 text-left truncate">{item.label}</span>
                         <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                       </>
                     )}
                   </button>
-                  {!collapsed && isExpanded && (
+                  {!isCollapsed && isExpanded && (
                     <div className="ml-9 mt-1 space-y-0.5 border-l border-slate-200/70 pl-3">
                       {item.children.map((c: NavChild) => {
                         const childActive = location.pathname === c.href
@@ -225,11 +227,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={item.href}
                 to={item.href!}
                 className={cn(navLinkCls(active), 'group')}
-                title={collapsed ? item.label : undefined}
+                title={isCollapsed ? item.label : undefined}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-                {!collapsed && active && (
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
+                {!isCollapsed && active && (
                   <span className="absolute right-2.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-gold-accent" />
                 )}
               </NavLink>
@@ -238,7 +240,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         {/* Footer */}
-        {!collapsed && (
+        {!isCollapsed && (
           <div className="border-t border-slate-100 px-5 py-3">
             <p className="text-[11px] text-slate-400">PPDB Pesantren Ar-Rahman · {new Date().getFullYear()}</p>
           </div>
@@ -249,7 +251,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar
           title="Admin PPDB"
-          titleClassName="hidden sm:block"
+          titleClassName="text-xs sm:text-sm md:text-base font-bold text-foreground truncate"
           user={user}
           subtitle={user?.role_name || user?.user_type}
           profileLabel="Profile"
@@ -258,7 +260,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           mobileMenuTrigger={
             <button
               onClick={() => setMobileOpen(true)}
-              className="md:hidden -ml-2 rounded-xl p-2 text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground"
+              aria-label="Buka menu navigasi"
+              className="md:hidden -ml-1 flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground active:scale-95"
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -266,7 +269,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         />
 
         {/* Content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto animate-fade-in">
+        <main className="flex-1 p-3.5 sm:p-4 md:p-6 lg:p-8 overflow-y-auto animate-fade-in">
           {children}
         </main>
       </div>

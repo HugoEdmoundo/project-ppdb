@@ -158,14 +158,14 @@ export default function VerifikasiDokumenPage() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[700px]">
               <thead className="bg-emerald-primary/5 border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="py-3 px-4 text-left">Nama Pendaftar</th>
-                  <th className="py-3 px-4 text-left">Email / No. WA</th>
-                  <th className="py-3 px-4 text-left">Jalur Pendaftaran</th>
-                  <th className="py-3 px-4 text-left">Status Dokumen</th>
-                  <th className="py-3 px-4 text-right">Aksi</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Nama Pendaftar</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Email / No. WA</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Jalur Pendaftaran</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Status Dokumen</th>
+                  <th className="py-3 px-4 text-right whitespace-nowrap">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -230,7 +230,7 @@ export default function VerifikasiDokumenPage() {
 
       {/* Dialog Pemeriksaan Dokumen */}
       <Dialog open={!!selectedApplicant} onOpenChange={(v) => !v && setSelectedApplicant(null)}>
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[96vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Verifikasi Dokumen: {selectedApplicant?.full_name}</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">

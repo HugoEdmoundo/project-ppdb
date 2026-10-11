@@ -265,7 +265,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ── Widget Session 1:1 Saya ── */}
-      <Card className="rounded-2xl border-slate-100 bg-white p-5 shadow-sm">
+      <Card className="rounded-2xl border-slate-100 bg-white p-4 sm:p-5 shadow-sm">
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h2 className="flex items-center gap-2 font-heading text-base font-bold text-slate-900">
@@ -402,7 +402,7 @@ export default function AdminDashboardPage() {
 
       {/* Status Seleksi */}
       {!loading && selectionTotal > 0 && (
-        <Card className="rounded-2xl border-slate-100 bg-white p-5 shadow-sm">
+        <Card className="rounded-2xl border-slate-100 bg-white p-4 sm:p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="flex items-center gap-2 font-heading text-base font-bold text-slate-900">
               <Hourglass className="h-5 w-5 text-primary" />

@@ -49,6 +49,14 @@ def get_transactions(
     return service.get_transactions(page, perPage, status)
 
 
+@router.get("/public-receipt/{id}")
+def get_public_receipt(
+    id: str,
+    service: PaymentService = Depends(get_payment_service),
+):
+    return service.get_public_receipt(id)
+
+
 @router.get("/my-transaction")
 def get_my_transaction(
     user: dict = Depends(get_current_user),

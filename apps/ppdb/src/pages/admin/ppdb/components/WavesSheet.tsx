@@ -466,16 +466,16 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
 
   return (
     <Sheet open={!!period} onOpenChange={(v: boolean) => !v && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-3xl sm:w-[720px] overflow-y-auto">
-        <SheetHeader className="mb-6">
-          <SheetTitle className="text-xl">Gelombang — {period?.name}</SheetTitle>
+      <SheetContent side="right" className="w-full sm:max-w-3xl sm:w-[720px] overflow-y-auto p-4 sm:p-6">
+        <SheetHeader className="mb-4 sm:mb-6">
+          <SheetTitle className="text-lg sm:text-xl">Gelombang — {period?.name}</SheetTitle>
         </SheetHeader>
 
         <div className="space-y-5">
           <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-foreground">Daftar Gelombang</h3>
+            <h3 className="font-semibold text-foreground text-sm sm:text-base">Daftar Gelombang</h3>
             {canCrud && (
-              <Button size="sm" onClick={openCreate} className="gap-1">
+              <Button size="sm" onClick={openCreate} className="gap-1 h-8 sm:h-9 text-xs sm:text-sm">
                 <Plus className="h-4 w-4" /> Tambah
               </Button>
             )}
@@ -526,7 +526,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                   <div
                     key={w.id}
                     className={cn(
-                      'rounded-2xl border p-5 shadow-sm transition-shadow hover:shadow-md',
+                      'rounded-2xl border p-4 sm:p-5 shadow-sm transition-shadow hover:shadow-md',
                       w.status === 'active'
                         ? 'border-emerald-primary/40 ring-1 ring-emerald-primary/10 bg-white'
                         : 'border-slate-100 bg-white'
@@ -534,17 +534,17 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                   >
                     {/* Header */}
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
                         <div className={cn(
-                          'flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl font-heading text-xs font-bold leading-none',
+                          'flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 flex-col items-center justify-center rounded-xl font-heading text-xs font-bold leading-none',
                           w.status === 'active' ? 'bg-emerald-primary text-white shadow-sm' : 'bg-slate-100 text-slate-500'
                         )}>
                           <span className="text-[9px] uppercase opacity-80">Gel</span>
                           {w.wave_number}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-heading text-base font-bold text-foreground">{w.name}</h3>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-heading text-sm sm:text-base font-bold text-foreground truncate">{w.name}</h3>
                             <Badge variant={w.status === 'active' ? 'success' : 'secondary'} className={w.status === 'active' ? 'bg-emerald-bright text-white' : ''}>
                               {w.status === 'active' ? 'Aktif' : 'Nonaktif'}
                             </Badge>
@@ -558,14 +558,14 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                       </div>
 
                       {canCrud && (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto justify-end pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                           {w.status === 'active' ? (
-                            <Button variant="ghost" size="sm" onClick={() => setActionId({ id: w.id, type: 'deactivate' })} className="h-8 gap-1 px-2.5 text-amber-600 hover:bg-amber-50 hover:text-amber-700">
-                              <XCircle className="h-4 w-4" /> Nonaktifkan
+                            <Button variant="ghost" size="sm" onClick={() => setActionId({ id: w.id, type: 'deactivate' })} className="h-8 gap-1 px-2.5 text-amber-600 hover:bg-amber-50 hover:text-amber-700 text-xs">
+                              <XCircle className="h-4 w-4 shrink-0" /> Nonaktifkan
                             </Button>
                           ) : (
-                            <Button size="sm" onClick={() => setActionId({ id: w.id, type: 'activate' })} className="h-8 gap-1 bg-emerald-primary px-2.5 text-white hover:bg-emerald-dark shadow-sm">
-                              <CheckCircle className="h-4 w-4" /> Aktifkan
+                            <Button size="sm" onClick={() => setActionId({ id: w.id, type: 'activate' })} className="h-8 gap-1 bg-emerald-primary px-2.5 text-white hover:bg-emerald-dark shadow-sm text-xs">
+                              <CheckCircle className="h-4 w-4 shrink-0" /> Aktifkan
                             </Button>
                           )}
                           <Button
@@ -573,14 +573,14 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                             size="icon"
                             onClick={() => openFeeDialog(w)}
                             title="Rincian Biaya & Diskon"
-                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 shrink-0"
                           >
                             <Percent className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(w)} title="Edit" className="h-8 w-8 text-slate-500 hover:text-slate-700 hover:bg-slate-100">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(w)} title="Edit" className="h-8 w-8 text-slate-500 hover:text-slate-700 hover:bg-slate-100 shrink-0">
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => setDeletingId(w.id)} title="Hapus" className="h-8 w-8 text-rose-danger hover:bg-rose-light">
+                          <Button variant="ghost" size="icon" onClick={() => setDeletingId(w.id)} title="Hapus" className="h-8 w-8 text-rose-danger hover:bg-rose-light shrink-0">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -849,44 +849,44 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
           </DialogHeader>
 
           {/* Tab Navigation */}
-          <div className="flex border-b border-slate-200 mt-2 gap-1">
+          <div className="flex border-b border-slate-200 mt-2 gap-1 overflow-x-auto no-scrollbar whitespace-nowrap pb-0.5">
             <button
               type="button"
               onClick={() => setFeeActiveTab('components')}
               className={cn(
-                'flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all',
+                'flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs font-semibold border-b-2 transition-all shrink-0',
                 feeActiveTab === 'components'
                   ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               )}
             >
-              <Tag className="h-3.5 w-3.5" />
+              <Tag className="h-3.5 w-3.5 shrink-0" />
               1. Komponen Biaya
             </button>
             <button
               type="button"
               onClick={() => setFeeActiveTab('early_discount')}
               className={cn(
-                'flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all',
+                'flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs font-semibold border-b-2 transition-all shrink-0',
                 feeActiveTab === 'early_discount'
                   ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               )}
             >
-              <Sparkles className="h-3.5 w-3.5" />
+              <Sparkles className="h-3.5 w-3.5 shrink-0" />
               2. Diskon Awal
             </button>
             <button
               type="button"
               onClick={() => setFeeActiveTab('engine')}
               className={cn(
-                'flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all',
+                'flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs font-semibold border-b-2 transition-all shrink-0',
                 feeActiveTab === 'engine'
                   ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               )}
             >
-              <Calculator className="h-3.5 w-3.5" />
+              <Calculator className="h-3.5 w-3.5 shrink-0" />
               3. Hitung Biaya
             </button>
           </div>
@@ -908,12 +908,12 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                       Batas minimal pembayaran uang muka (DP) pertama yang wajib dilunasi pendaftar gelombang ini.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2 shrink-0 w-full sm:w-auto">
                     <CurrencyInput
                       value={feeWaveMinimumDp}
                       onValueChange={setFeeWaveMinimumDp}
                       placeholder="Contoh: 1.000.000"
-                      className="w-36 sm:w-44 bg-white"
+                      className="w-full xs:w-36 sm:w-44 bg-white"
                       disabled={!canCrud || savingMinimumDp}
                     />
                     {canCrud && (
@@ -921,7 +921,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                         size="sm"
                         onClick={handleSaveMinimumDp}
                         disabled={savingMinimumDp}
-                        className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                        className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 justify-center"
                       >
                         <Save className="h-3.5 w-3.5" />
                         {savingMinimumDp ? 'Menyimpan...' : 'Simpan DP'}
@@ -1026,15 +1026,15 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
 
                 {/* Tabel Komponen */}
                 <div className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-xs">
-                  <Table>
+                  <Table className="min-w-[550px]">
                     <TableHeader className="bg-slate-50">
                       <TableRow>
-                        <TableHead className="w-10 text-center">No</TableHead>
-                        <TableHead>Komponen</TableHead>
-                        <TableHead>Biaya Normal</TableHead>
-                        <TableHead>Potongan</TableHead>
-                        <TableHead>Diskon Reguler</TableHead>
-                        <TableHead className="w-20 text-right">Aksi</TableHead>
+                        <TableHead className="w-10 text-center whitespace-nowrap">No</TableHead>
+                        <TableHead className="whitespace-nowrap">Komponen</TableHead>
+                        <TableHead className="whitespace-nowrap">Biaya Normal</TableHead>
+                        <TableHead className="whitespace-nowrap">Potongan</TableHead>
+                        <TableHead className="whitespace-nowrap">Diskon Reguler</TableHead>
+                        <TableHead className="w-20 text-right whitespace-nowrap">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1196,15 +1196,15 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
 
                 {/* Tabel Diskon Pendaftar Awal */}
                 <div className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-xs">
-                  <Table>
+                  <Table className="min-w-[550px]">
                     <TableHeader className="bg-slate-50">
                       <TableRow>
-                        <TableHead className="w-10 text-center">No</TableHead>
-                        <TableHead>Komponen</TableHead>
-                        <TableHead>Diskon Reguler</TableHead>
-                        <TableHead>Diskon Awal</TableHead>
-                        <TableHead>Pendaftar Awal</TableHead>
-                        <TableHead className="w-20 text-right">Aksi</TableHead>
+                        <TableHead className="w-10 text-center whitespace-nowrap">No</TableHead>
+                        <TableHead className="whitespace-nowrap">Komponen</TableHead>
+                        <TableHead className="whitespace-nowrap">Diskon Reguler</TableHead>
+                        <TableHead className="whitespace-nowrap">Diskon Awal</TableHead>
+                        <TableHead className="whitespace-nowrap">Pendaftar Awal</TableHead>
+                        <TableHead className="w-20 text-right whitespace-nowrap">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1285,14 +1285,14 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
 
                 {/* Tabel Simpel 5 Kolom: No, Komponen, Biaya Normal, Diskon Reguler, Pendaftar Awal */}
                 <div className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-xs">
-                  <Table>
+                  <Table className="min-w-[550px]">
                     <TableHeader className="bg-slate-50">
                       <TableRow>
-                        <TableHead className="w-10 text-center font-bold text-xs">No</TableHead>
-                        <TableHead className="font-bold text-xs">Komponen</TableHead>
-                        <TableHead className="text-right font-bold text-xs">Biaya Normal</TableHead>
-                        <TableHead className="text-right font-bold text-xs bg-slate-100/50">Diskon Reguler</TableHead>
-                        <TableHead className="text-right font-bold text-xs text-emerald-950 bg-emerald-50/60">
+                        <TableHead className="w-10 text-center font-bold text-xs whitespace-nowrap">No</TableHead>
+                        <TableHead className="font-bold text-xs whitespace-nowrap">Komponen</TableHead>
+                        <TableHead className="text-right font-bold text-xs whitespace-nowrap">Biaya Normal</TableHead>
+                        <TableHead className="text-right font-bold text-xs bg-slate-100/50 whitespace-nowrap">Diskon Reguler</TableHead>
+                        <TableHead className="text-right font-bold text-xs text-emerald-950 bg-emerald-50/60 whitespace-nowrap">
                           {feeDialogWave?.early_discount_quota ? `{${feeDialogWave.early_discount_quota}} ` : ''}Pendaftar Awal
                         </TableHead>
                       </TableRow>

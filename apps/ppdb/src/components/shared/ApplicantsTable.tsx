@@ -34,8 +34,8 @@ function DocStatusBadge({ status }: { status: string }) {
     ? map.document_approved
     : map[status] || { label: (status || '-').replace('_', ' '), cls: 'bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-200', dot: 'bg-slate-400' }
   return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold', resolved.cls)}>
-      <span className={cn('h-1.5 w-1.5 rounded-full', resolved.dot)} />
+    <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap', resolved.cls)}>
+      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', resolved.dot)} />
       {resolved.label}
     </span>
   )
@@ -44,22 +44,22 @@ function DocStatusBadge({ status }: { status: string }) {
 function SelectionStatusBadge({ status }: { status?: string }) {
   if (status === 'passed')
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200 whitespace-nowrap">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
         Lulus
       </span>
     )
   if (status === 'failed')
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700 ring-1 ring-inset ring-red-200">
-        <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700 ring-1 ring-inset ring-red-200 whitespace-nowrap">
+        <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
         Tidak Lulus
       </span>
     )
   if (status === 'selection')
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200 whitespace-nowrap">
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
         Seleksi
       </span>
     )
@@ -70,16 +70,16 @@ export default function ApplicantsTable({ applicants, loading, hasActiveWave, sh
   const cols = showSelectionColumn ? 7 : 6
 
   return (
-    <Table>
+    <Table className="min-w-[720px]">
       <TableHeader className="bg-emerald-primary/5">
         <TableRow className="hover:bg-transparent">
-          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Pendaftar</TableHead>
-          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Email / No. WA</TableHead>
-          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Jalur Pendaftaran</TableHead>
-          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pembayaran</TableHead>
-          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Dokumen</TableHead>
+          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[200px]">Nama Pendaftar</TableHead>
+          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[170px]">Email / No. WA</TableHead>
+          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[130px]">Jalur Pendaftaran</TableHead>
+          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[130px]">Pembayaran</TableHead>
+          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[140px]">Dokumen</TableHead>
           {showSelectionColumn && (
-            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Seleksi</TableHead>
+            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[110px]">Seleksi</TableHead>
           )}
           <TableHead className="w-8" />
         </TableRow>
@@ -117,19 +117,18 @@ export default function ApplicantsTable({ applicants, loading, hasActiveWave, sh
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-primary to-emerald-dark text-xs font-bold text-white shadow-sm shadow-emerald-primary/20">
                     {initials(a.full_name)}
                   </div>
-                  <div className="min-w-0">
-                    <div className="truncate font-semibold text-slate-800">{a.full_name}</div>
-                    <div className="text-[11px] text-muted-foreground">{a.wave_name || '-'}</div>
+                  <div className="min-w-0 max-w-[200px]">
+                    <div className="truncate font-semibold text-slate-800" title={a.full_name}>{a.full_name}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">{a.wave_name || '-'}</div>
                   </div>
                 </div>
               </TableCell>
               <TableCell className="text-sm text-slate-600">
-                {a.email}
-                <br />
+                <div className="truncate max-w-[180px]" title={a.email}>{a.email}</div>
                 <span className="text-xs text-muted-foreground">{a.phone}</span>
               </TableCell>
               <TableCell className="text-sm">
-                <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold capitalize text-slate-600">
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold capitalize text-slate-600 whitespace-nowrap">
                   {a.registration_path || '-'}
                 </span>
               </TableCell>

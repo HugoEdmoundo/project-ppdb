@@ -32,7 +32,7 @@ export default function SessionDocSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-xl md:max-w-2xl overflow-y-auto p-6 space-y-6">
+      <SheetContent className="w-full max-w-full sm:max-w-xl md:max-w-2xl overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6">
         <SheetHeader className="border-b pb-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
@@ -186,7 +186,7 @@ export default function SessionDocSheet({
         <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center gap-3">
           <HelpCircle className="h-5 w-5 text-emerald-600 shrink-0" />
           <p className="text-xs text-emerald-900">
-            Ada pertanyaan atau kendala jadwal? Hubungi Koordinator PPDB Pesantren Tahfidz Ar-Rahman.
+            Ada pertanyaan atau kendala jadwal? Hubungi Koordinator PPDB Pesantren Tahfidz Qur&apos;an dan Digital Ar-Rahman.
           </p>
         </div>
       </SheetContent>

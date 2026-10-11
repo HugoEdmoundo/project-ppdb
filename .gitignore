@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+.pnpm-store/
 
 # Build outputs
 dist/
@@ -59,6 +60,7 @@ apps/api/uploads/
 .wrangler/
 
 # Scratch / debug artifacts
+scratch/
 scratch_*.py
 temp*.py
 del_*.py

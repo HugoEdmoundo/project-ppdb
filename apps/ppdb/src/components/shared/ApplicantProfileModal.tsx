@@ -11,14 +11,20 @@ interface ApplicantProfileModalProps {
   showPasswordHint?: boolean
 }
 
-export default function ApplicantProfileModal({ open, onOpenChange, applicant, title = 'Detail Pendaftar', showPasswordHint = false }: ApplicantProfileModalProps) {
+export default function ApplicantProfileModal({
+  open,
+  onOpenChange,
+  applicant,
+  title = 'Detail Pendaftar',
+  showPasswordHint = false,
+}: ApplicantProfileModalProps) {
   if (!applicant) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="text-base sm:text-lg">{title}</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="biodata" className="w-full mt-2">
@@ -53,7 +59,7 @@ export default function ApplicantProfileModal({ open, onOpenChange, applicant, t
 
               <div>
                 <p className="text-muted-foreground text-xs">Jalur Pendaftaran</p>
-                <p className="font-medium capitalize">{applicant.registration_path || '-'}</p>
+                <p className="font-medium capitalize mt-0.5">{applicant.registration_path || '-'}</p>
               </div>
 
 
@@ -98,9 +104,9 @@ export default function ApplicantProfileModal({ open, onOpenChange, applicant, t
                     <p className="text-muted-foreground text-xs">Kode Pos</p>
                     <p className="font-medium">{applicant.postal_code || '-'}</p>
                   </div>
-                  <div className="col-span-2">
+                  <div className="col-span-1 sm:col-span-2">
                     <p className="text-muted-foreground text-xs">Alamat Detail</p>
-                    <p className="font-medium">{applicant.address || '-'}</p>
+                    <p className="font-medium break-words">{applicant.address || '-'}</p>
                   </div>
                 </div>
               </div>

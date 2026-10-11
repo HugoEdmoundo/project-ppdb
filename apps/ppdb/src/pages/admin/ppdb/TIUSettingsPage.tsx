@@ -104,27 +104,27 @@ export default function TIUSettingsPage() {
   const secretConfigured = settingsQuery.data?.webhook_secret_configured
 
   return (
-    <div className="-m-4 md:-m-6 lg:-m-8 flex flex-col lg:flex-row h-auto lg:h-[calc(100dvh-3.5rem)] lg:overflow-hidden animate-fade-in">
+    <div className="-m-3.5 sm:-m-4 md:-m-6 lg:-m-8 flex flex-col lg:flex-row h-auto lg:h-[calc(100dvh-3.5rem)] lg:overflow-hidden animate-fade-in">
       {/* ── KIRI: Formulir Konfigurasi Utama (Fokus) ── */}
-      <div className="flex-1 p-4 md:p-6 lg:p-8 flex flex-col justify-start space-y-6 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex-1 p-3.5 sm:p-4 md:p-6 lg:p-8 flex flex-col justify-start space-y-5 sm:space-y-6 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {/* Header Bersih & Ringkas */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200/60">
           <div>
-            <h1 className="font-heading text-xl md:text-2xl font-bold tracking-tight text-slate-900">
+            <h1 className="font-heading text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900">
               Pengaturan TIU
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
               Integrasi Ujian Tes Inteligensi Umum (TIU) via Google Form + Safe Exam Browser (SEB).
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <DocTrigger docKey="ppdb-tiu-settings" variant="light" />
             {secretConfigured ? (
-              <Badge variant="success" className="text-xs px-3 py-1 gap-1.5 font-semibold">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Webhook Aktif
+              <Badge variant="success" className="text-xs px-2.5 sm:px-3 py-1 gap-1.5 font-semibold">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> Webhook Aktif
               </Badge>
             ) : (
-              <Badge variant="secondary" className="text-xs px-3 py-1 font-semibold">
+              <Badge variant="secondary" className="text-xs px-2.5 sm:px-3 py-1 font-semibold">
                 Webhook Belum Diset
               </Badge>
             )}
@@ -132,7 +132,7 @@ export default function TIUSettingsPage() {
         </div>
 
         {settingsQuery.isError && (
-          <div className="flex items-center gap-3 p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm">
+          <div className="flex items-center gap-3 p-3.5 sm:p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm">
             <AlertCircle className="h-5 w-5 shrink-0" />
             <span>Pengaturan TIU gagal dimuat. Coba muat ulang halaman.</span>
           </div>
@@ -140,19 +140,19 @@ export default function TIUSettingsPage() {
 
         {/* Card Formulir */}
         <Card className="shadow-sm border-slate-200/80">
-          <div className="px-6 py-4 border-b bg-slate-50/70 flex items-center justify-between rounded-t-xl">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b bg-slate-50/70 flex items-center justify-between rounded-t-xl">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
                 <LinkIcon className="h-4 w-4" />
               </div>
               <div>
-                <h2 className="font-semibold text-sm text-slate-800">Formulir Konfigurasi</h2>
-                <p className="text-xs text-muted-foreground">Berlaku secara global untuk seluruh gelombang.</p>
+                <h2 className="font-semibold text-xs sm:text-sm text-slate-800">Formulir Konfigurasi</h2>
+                <p className="text-[11px] sm:text-xs text-muted-foreground">Berlaku secara global untuk seluruh gelombang.</p>
               </div>
             </div>
           </div>
 
-          <CardContent className="p-6 space-y-5">
+          <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-5">
             {/* Input 1: Pre-filled URL */}
             <div className="space-y-1.5">
               <Label htmlFor="tiu-form-url" className="text-xs font-semibold flex items-center gap-1.5 text-slate-800">
@@ -239,7 +239,7 @@ export default function TIUSettingsPage() {
             </div>
 
             {/* Simpan Footer */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-4">
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <p className="text-[11px] text-muted-foreground">
                 Perubahan langsung berlaku ke seluruh pendaftaran aktif.
               </p>
@@ -251,7 +251,7 @@ export default function TIUSettingsPage() {
                   saveSettings.isPending ||
                   !isFormValid
                 }
-                className="gap-2 h-9 px-5 text-xs font-semibold shrink-0"
+                className="gap-2 h-9 px-5 text-xs font-semibold w-full sm:w-auto shrink-0"
               >
                 <Save className="h-3.5 w-3.5" />
                 {saveSettings.isPending ? 'Menyimpan...' : 'Simpan Pengaturan'}
@@ -262,7 +262,7 @@ export default function TIUSettingsPage() {
       </div>
 
       {/* ── KANAN: Panduan Integrasi (nempel pojok kanan, tanpa Card, scroll tanpa scrollbar) ── */}
-      <aside className="w-full lg:w-[380px] xl:w-[420px] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200/80 bg-slate-50/50 p-6 flex flex-col overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      <aside className="w-full lg:w-[380px] xl:w-[420px] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200/80 bg-slate-50/50 p-4 sm:p-6 flex flex-col overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {/* Header Panduan (Simple, no card container) */}
         <div className="flex items-center gap-2.5 pb-4 mb-5 border-b border-slate-200/70 shrink-0">
           <div className="p-1.5 rounded-lg bg-blue-100 text-blue-700">

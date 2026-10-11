@@ -120,25 +120,25 @@ export default function SelectionCategories() {
       <Card key={cat.id} className="overflow-hidden border border-slate-200/90 shadow-sm flex flex-col justify-between">
         <div>
           {/* Card Header */}
-          <div className="bg-slate-50/80 px-5 py-4 border-b flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-xl ${accentColor} text-white shadow-sm`}>
+          <div className="bg-slate-50/80 px-4 sm:px-5 py-3.5 sm:py-4 border-b flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className={`p-2 rounded-xl ${accentColor} text-white shadow-sm shrink-0`}>
                 <Icon className="h-5 w-5" />
               </div>
-              <div>
-                <h3 className="font-bold text-base text-slate-800">{title}</h3>
-                <p className="text-xs text-muted-foreground">Rubrik Penilaian Evaluator {cat.name}</p>
+              <div className="min-w-0">
+                <h3 className="font-bold text-sm sm:text-base text-slate-800 truncate">{title}</h3>
+                <p className="text-xs text-muted-foreground truncate">Rubrik Penilaian Evaluator {cat.name}</p>
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right ml-auto shrink-0">
               <Badge
                 variant={isOverWeight ? 'destructive' : isComplete ? 'success' : 'secondary'}
                 className="text-xs font-semibold px-2.5 py-0.5"
               >
-                Total Bobot: {totalWeight}%
+                Total: {totalWeight}%
               </Badge>
               {isOverWeight && (
-                <p className="text-[10px] text-red-600 mt-0.5">Melebihi 100%!</p>
+                <p className="text-[10px] text-red-600 mt-0.5 font-medium">Melebihi 100%!</p>
               )}
             </div>
           </div>
@@ -257,7 +257,7 @@ export default function SelectionCategories() {
 
       {/* Modal Dialog Form Kriteria (3 Inputan Lengkap: Nama, Deskripsi, Bobot) */}
       <Dialog open={!!criteriaModal} onOpenChange={(open) => !open && setCriteriaModal(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>
               {criteriaModal?.editing ? 'Edit Kriteria' : 'Tambah Kriteria'} — {criteriaModal?.categoryName}

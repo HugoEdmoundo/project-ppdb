@@ -88,8 +88,56 @@ class PaymentService:
                 "created_at": transaction.created_at,
                 "method": transaction.method,
                 "proof_url": transaction.proof_url,
+                "updated_at": transaction.updated_at,
             }
         return {"applicant": app_dict, "transaction": tx_dict}
+
+    def get_public_receipt(self, id: str) -> dict:
+        transaction = self.repo.get_transaction_by_id(id)
+        if not transaction:
+            transaction = self.repo.get_latest_transaction_by_applicant_id(id)
+        if not transaction:
+            applicant = self.repo.get_applicant_by_id(id)
+            if not applicant:
+                applicant = self.repo.get_applicant_by_user_id(id)
+            if not applicant:
+                raise HTTPException(
+                    status_code=404, detail="Kuitansi pembayaran tidak ditemukan"
+                )
+
+            return {
+                "id": applicant.id,
+                "receipt_no": f"KUI-PPDB-{applicant.id[:8].upper()}",
+                "applicant_name": applicant.full_name or "Calon Santri",
+                "registration_path": (applicant.registration_path or "Reguler").upper(),
+                "amount": 250000,
+                "payment_method": "QRIS",
+                "payment_date": applicant.created_at.isoformat()
+                if applicant.created_at
+                else None,
+                "status": applicant.payment_status or "paid",
+                "is_paid": applicant.payment_status == "paid",
+            }
+
+        applicant = (
+            self.repo.get_applicant_by_id(transaction.applicant_id)
+            if transaction.applicant_id
+            else None
+        )
+        dt = transaction.updated_at or transaction.created_at
+        return {
+            "id": transaction.id,
+            "receipt_no": f"KUI-PPDB-{transaction.id[:8].upper()}",
+            "applicant_name": applicant.full_name if applicant else "Calon Santri",
+            "registration_path": (
+                applicant.registration_path if applicant else "Reguler"
+            ).upper(),
+            "amount": transaction.amount,
+            "payment_method": (transaction.method or "QRIS").upper(),
+            "payment_date": dt.isoformat() if dt else None,
+            "status": transaction.status,
+            "is_paid": transaction.status in ("paid", "settlement", "success"),
+        }
 
     def check_wave_quota_and_close_if_full(self, wave_id: str | None) -> bool:
         """
@@ -733,7 +781,9 @@ class PaymentService:
                     "dp_payment_success",
                     applicant.user_id,
                     {
-                        "nama_sekolah": "Pesantren Tahfidz Ar-Rahman",
+                        "nama_sekolah": (
+                            "Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
+                        ),
                         "link_aplikasi": f"{settings.ppdb_frontend_url}/dashboard",
                         "link_grup_whatsapp": wa_link,
                     },

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MapPin, Phone, Mail, ArrowUpRight } from 'lucide-react'
 import VerseStrip from '@/components/ui/VerseStrip'
+import { ShapeDividerDiagonal } from '@/components/ui/shape-divider'
 import { socialLinks as staticSocialLinks, type SocialItem } from '@/data/social'
 import { apiFetch, API_BASE } from '@/api/client'
 import { useBrand } from '@repo/ui'
@@ -85,7 +86,12 @@ export default function Footer() {
   }
 
   return (
-    <footer className="relative overflow-hidden bg-[#EFEDE8] pt-16 pb-8 text-foreground">
+    <footer className="relative overflow-hidden bg-[#EFEDE8] pb-8 pt-20 text-foreground">
+      {/* Tear-off tipis memisahkan footer dari section sebelumnya. Section itu
+          berlatar #F6F4EE yang hanya 1.06:1 dari #EFEDE8, jadi tanpa tint
+         gradasinya tidak akan terbaca sama sekali. */}
+      <ShapeDividerDiagonal fill="#F6F4EE" tintStrength={0.2} />
+
       {/* Decorative Orbs */}
       <div
         className="pointer-events-none absolute -top-40 -left-40 h-80 w-80 rounded-full opacity-[0.04]"

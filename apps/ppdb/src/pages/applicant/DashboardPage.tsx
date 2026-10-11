@@ -301,7 +301,11 @@ export default function ApplicantDashboardPage() {
         )}
 
         {/* Visual Timeline (Stepper) */}
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 overflow-x-auto hide-scrollbar">
+{/* `no-scrollbar`, bukan `hide-scrollbar` — class itu tidak pernah
+            didefinisikan di index.css mana pun di repo, jadi scrollbar di
+            timeline ini akan muncul lagi. Lebar 720px mengikuti versi remote
+            karena tahap pendaftar yang baru memang lebih lebar. */}
+        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 overflow-x-auto no-scrollbar">
           <div className="min-w-[720px]">
             <div className="flex items-center justify-between relative">
               <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full z-0" />

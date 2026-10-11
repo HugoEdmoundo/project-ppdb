@@ -2,6 +2,9 @@ import tailwindcssAnimate from 'tailwindcss-animate'
 
 /** @type {import('tailwindcss').Config} */
 export default {
+  // Dark mode dikonfigurasi namun belum diaktifkan: tidak ada kode yang menambahkan
+  // class "dark" dan hanya ada 1 pemakaian "dark:" di seluruh app. Biarkan sebagai
+  // penyiapan; jangan tambah utility "dark:" sampai toggle benar-benar diimplementasikan.
   darkMode: ['class'],
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}', '../../packages/ui/src/**/*.{js,ts,jsx,tsx}'],
   theme: {
@@ -9,6 +12,7 @@ export default {
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
         heading: ['var(--font-heading)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'Georgia', 'serif'],
       },
       colors: {
         ivory: '#F7F5F0',

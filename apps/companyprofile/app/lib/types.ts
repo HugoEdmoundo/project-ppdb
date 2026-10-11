@@ -39,6 +39,7 @@ export interface AchievementContent {
 
 export interface GalleryContent {
   title?: string
+  desc?: string
 }
 
 export interface TestimonialContent {
@@ -117,6 +118,7 @@ export interface ContactInfo {
   email_primary: string
   email_admission: string
   office_hours: string | null
+  maps_embed?: string | null
 }
 
 export interface SettingsItem {

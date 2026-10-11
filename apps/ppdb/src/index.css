@@ -53,6 +53,14 @@
     --ring: 153 61% 26%;
     --radius: 0.75rem;
 
+    /* Alias warna utuh (bukan komponen HSL). Shape divider butuh warna sebagai
+       nilai utuh karena dicampur lewat `color-mix()`, yang tidak bisa membaca
+       `--primary: 153 61% 26%` tanpa `hsl()`.
+       Nilai disinkronkan dengan apps/companyprofile/app/globals.css. */
+    --bg: #f6f4ee; /* = hsl(--background) 43 30% 95% */
+    --bg-secondary: #efece7; /* = hsl(--secondary) 43 20% 92% */
+    --color-emerald: #1a6b47; /* = hsl(--primary) 153 61% 26% */
+
     --font-heading: 'DM Sans', system-ui, sans-serif;
     /* Display face untuk H1 brand. Playfair sudah di-load di index.html; dulu
        tidak terpakai sama sekali, jadi sia-sia. */
@@ -70,6 +78,15 @@
     @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
     font-family: 'Inter', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     overflow-x: hidden;
+  }
+
+  /* Playfair untuk semua heading, disamakan dengan companyprofile
+     (`h1..h6 { font-family: var(--font-display) }`). Di PPDB face Playfair
+     bernama `--font-brand`. Utilitas `font-heading` (DM Sans) tetap menang di
+     elemen non-heading seperti wordmark navbar dan nomor langkah. */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-brand), Georgia, serif;
+    letter-spacing: -0.02em;
   }
 
   button, a, input[type="submit"], input[type="reset"], input[type="button"] {
@@ -255,6 +272,26 @@
 @keyframes shimmer {
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(200%); }
+}
+
+/* Dipakai components/ui/meteors.tsx. Keyframe ini belum pernah ada, jadi
+   komponennya tidak bergerak sama sekali kalau dipasang. Jarak Y 400px harus
+   cukup panjang agar meteor jatuh melewati penuh tinggi container (kartu CTA),
+   dan rotasi 215deg -> 325deg membuat ekornya miring seperti jejak gerhana. */
+@keyframes meteor-effect {
+  0% {
+    transform: rotate(215deg) translateY(-20px);
+    opacity: 0;
+  }
+  50% { opacity: 1; }
+  100% {
+    transform: rotate(325deg) translateY(400px);
+    opacity: 0;
+  }
+}
+
+.animate-meteor-effect {
+  animation: meteor-effect linear infinite;
 }
 
 @keyframes logo-pulse {

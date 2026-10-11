@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { MapPin, Phone, Mail, ArrowUpRight } from 'lucide-react'
 import VerseStrip from '../ui/VerseStrip'
+import ShapeDividerDiagonal from '../ui/ShapeDividerDiagonal'
 import { socialLinks as staticSocialLinks } from '@/app/data/social'
 import { getContactInfo, getSocialLinks } from '@/app/lib/api'
 import { useProgramLinks } from '@/app/hooks/useProgramLinks'
@@ -55,6 +56,9 @@ export default function Footer() {
 
   return (
     <footer className="relative bg-[var(--bg-secondary)] pt-16 pb-8 overflow-hidden">
+      {/* Tear-off tipis untuk memisahkan footer dari section sebelumnya. */}
+      <ShapeDividerDiagonal fill="var(--bg)" tintStrength={0.2} />
+
       {/* Decorative Orbs */}
       <div className="absolute -top-40 -left-40 w-80 h-80 rounded-full opacity-[0.04]"
         style={{ background: 'radial-gradient(circle, var(--color-emerald) 0%, transparent 70%)' }}

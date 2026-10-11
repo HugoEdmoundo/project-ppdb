@@ -9,7 +9,7 @@ import FlowArt, { FlowSection } from '@/app/components/ui/story-scroll'
 
 import { useScrollReveal } from '@/app/hooks/useScrollAnimations'
 import type { Staff } from '@/app/lib/types'
-import { Shield, Target, BookOpen, Cpu, Globe, Heart, Award, ArrowRight, BookMarked } from 'lucide-react'
+import { Shield, Target, BookOpen, Cpu, Globe, Heart, Award, ArrowRight } from 'lucide-react'
 import { useRef, useEffect } from 'react'
 
 const coreValues = [
@@ -123,7 +123,7 @@ export default function AboutClient({ staff }: { staff: Staff[] }) {
         </FlowSection>
 
         {/* SECTION 2: Visi & Misi */}
-        <FlowSection aria-label="Visi Misi" style={{ backgroundColor: '#EFEDE8', color: '#1A1A1A' }}>
+        <FlowSection id="vision" aria-label="Visi Misi" style={{ backgroundColor: '#EFEDE8', color: '#1A1A1A' }}>
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5" />
 
           <div className="relative z-10 flex flex-col h-full overflow-y-auto no-scrollbar">
@@ -137,7 +137,7 @@ export default function AboutClient({ staff }: { staff: Staff[] }) {
 
               {/* Visi Card */}
               <div className="solid-card relative max-w-full">
-                <span className="absolute -top-4 -left-2 text-4xl md:text-5xl text-[var(--accent-gold)] font-serif leading-none">"</span>
+                <span className="absolute -top-4 -left-2 text-4xl md:text-5xl text-[var(--accent-gold)] font-serif leading-none">&ldquo;</span>
                 <p className="text-base md:text-lg lg:text-xl font-light leading-relaxed italic text-[var(--text-secondary)] relative z-10 pl-6 md:pl-8">
                   Menjadi Lembaga Pendidikan Terbaik bagi generasi Islam dengan memberikan penghayatan dan bekal hidup agar dapat berkembang menjadi generasi Islam yang berakhlak mulia, berkepribadian kuat, memiliki kompetensi hafizh Al-Quran dan IT serta berjiwa mandiri...
                 </p>

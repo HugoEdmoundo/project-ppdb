@@ -2,6 +2,7 @@
 
 // ── Primitives ────────────────────────────────────────────────────────────────
 export * from "./lib/utils";
+export * from "./lib/company-profile-url";
 export * from "./hooks/useBrand";
 export * from "./components/ui/avatar";
 export * from "./components/ui/badge";
@@ -24,6 +25,14 @@ export * from "./components/ui/switch";
 export * from "./components/ui/table";
 export * from "./components/ui/tabs";
 export * from "./components/ui/textarea";
+
+// ── Dashboard shell (sidebar + header + profile menu) ────────────────────────
+export * from "./components/dashboard/types";
+export * from "./components/dashboard/brand-mark";
+export * from "./components/dashboard/dashboard-profile-menu";
+export * from "./components/dashboard/dashboard-sidebar";
+export * from "./components/dashboard/dashboard-header";
+export * from "./components/dashboard/dashboard-shell";
 
 // ── Shared composite components ───────────────────────────────────────────────
 export * from "./components/ui/avatar-editor";

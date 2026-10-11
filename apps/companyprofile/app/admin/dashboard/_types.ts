@@ -35,6 +35,7 @@ export interface RowRecord {
   email_admission?: string
   address?: string
   office_hours?: string
+  maps_embed?: string
   icon?: string
   image?: string
   gallery?: unknown

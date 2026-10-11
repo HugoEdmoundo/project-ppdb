@@ -3,6 +3,8 @@
 import Image from 'next/image'
 import { motion, useReducedMotion } from 'framer-motion'
 import SectionTitle from '@/app/components/ui/SectionTitle'
+import ShapeDivider from '@/app/components/ui/ShapeDivider'
+import ShapeDividerBottom from '@/app/components/ui/ShapeDividerBottom'
 
 interface ProgramCard {
   image: string
@@ -106,7 +108,9 @@ export default function AboutProgramCarousel() {
   const duration = programs.length * 3
 
   return (
-    <section className="relative py-16 sm:py-20 md:py-28 bg-[var(--bg-secondary)] overflow-hidden">
+    <section className="relative pt-[120px] pb-[120px] bg-[var(--bg-secondary)] overflow-hidden">
+      <ShapeDivider fill="var(--bg)" />
+      
       <div className="absolute inset-0 bg-pattern-grid opacity-[0.03]" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-10 sm:mb-14 relative z-10">
@@ -157,6 +161,9 @@ export default function AboutProgramCarousel() {
           </motion.div>
         </div>
       )}
+      
+      {/* Bagian penutup */}
+      <ShapeDividerBottom fill="var(--bg)" />
     </section>
   )
 }

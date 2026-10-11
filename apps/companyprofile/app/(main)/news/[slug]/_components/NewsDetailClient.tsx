@@ -1,10 +1,11 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Calendar, User, ArrowLeft, ArrowRight } from 'lucide-react'
 import RichContent from '@/app/components/ui/RichContent'
+import { useScrollReveal } from '@/app/hooks/useScrollAnimations'
 import type { NewsArticle } from '@/app/lib/types'
 
 export default function NewsDetailClient({ article, allNews }: { article: NewsArticle; allNews: NewsArticle[] }) {
@@ -13,6 +14,9 @@ export default function NewsDetailClient({ article, allNews }: { article: NewsAr
   const currentIndex = allNews.findIndex((a) => a.slug === article.slug)
   const prev = currentIndex > 0 ? allNews[currentIndex - 1] : null
   const next = currentIndex < allNews.length - 1 ? allNews[currentIndex + 1] : null
+
+  const contentRef = useRef<HTMLDivElement>(null)
+  useScrollReveal(contentRef, { start: 'top 85%', targets: 'children', stagger: 0.08 })
 
   useEffect(() => {
     document.title = `${info?.title ?? ''} | PTDARRAHMAN`
@@ -68,7 +72,7 @@ export default function NewsDetailClient({ article, allNews }: { article: NewsAr
 
       {/* Content */}
       <section className="py-16 bg-[var(--bg)]">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div ref={contentRef} className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="prose prose-gray max-w-none">
           <RichContent content={info?.content ?? ''} />
           </div>

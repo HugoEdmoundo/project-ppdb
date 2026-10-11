@@ -4,10 +4,11 @@ import HeroSection from '@/app/components/sections/HeroSection'
 import AboutPreview from '@/app/components/sections/AboutPreview'
 import ProgramsPreview from '@/app/components/sections/ProgramsPreview'
 import FacilitiesPreview from '@/app/components/sections/FacilitiesPreview'
-import { getTestimonials } from '@/app/lib/api'
+import StatsSection from '@/app/components/sections/StatsSection'
+import { getTestimonials, getPrograms, getFacilities, getSettings } from '@/app/lib/api'
 import { getTestimonialsDummyFallback } from '@/app/lib/dummyTestimonials'
 import { fetchActivePpdbWave } from '@/app/lib/ppdb'
-import type { Testimonial } from '@/app/lib/types'
+import type { Testimonial, Program, Facility, SettingsItem } from '@/app/lib/types'
 
 const TestimonialsCarousel = dynamic(() => import('@/app/components/sections/TestimonialsCarousel'))
 const CTASection = dynamic(() => import('@/app/components/sections/CTASection'))
@@ -38,19 +39,30 @@ export const metadata: Metadata = {
 }
 
 export default async function Home() {
-  let testimonials: Testimonial[] | null = null
-  try { testimonials = await getTestimonials() } catch { testimonials = null }
-  testimonials = getTestimonialsDummyFallback(testimonials)
-  // Tahun ajaran & tanggal PPDB diambil dari backend, bukan diketik di sini.
-  const wave = await fetchActivePpdbWave()
+  const [wave, rawTestimonials, programs, facilities, settings] = await Promise.all([
+    fetchActivePpdbWave().catch(() => null),
+    getTestimonials().catch(() => null),
+    getPrograms().catch(() => [] as Program[]),
+    getFacilities().catch(() => [] as Facility[]),
+    getSettings().catch(() => [] as SettingsItem[]),
+  ])
+
+  const testimonials = getTestimonialsDummyFallback(rawTestimonials)
+
+  // Map settings ke object dictionary
+  const settingsMap = settings.reduce((acc, curr) => {
+    acc[curr.key] = curr.value
+    return acc
+  }, {} as Record<string, string>)
+
   return (
     <>
       <HeroSection wave={wave} />
       <div className="verse-divider" />
-      <AboutPreview />
-      <ProgramsPreview />
-      <FacilitiesPreview />
-      <div className="verse-divider" />
+      <AboutPreview settings={settingsMap} />
+      <StatsSection settings={settingsMap} />
+      <ProgramsPreview programs={programs ?? []} />
+      <FacilitiesPreview facilities={facilities ?? []} />
       <TestimonialsCarousel testimonials={testimonials ?? []} />
       <CTASection wave={wave} />
     </>

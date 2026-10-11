@@ -7,8 +7,11 @@ import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { useScrollReveal } from '../../hooks/useScrollAnimations'
 import TiltCard from '../ui/TiltCard'
+import ShapeDivider from '../ui/ShapeDivider'
 
-const facilities = [
+import type { Facility } from '@/app/lib/types'
+
+const fallbackFacilities = [
   {
     image: 'https://images.unsplash.com/photo-1564769662533-4f00a87b4056?q=80&w=2070&auto=format&fit=crop',
     name: 'Masjid Raya',
@@ -35,16 +38,27 @@ const facilities = [
   },
 ]
 
-export default function FacilitiesPreview() {
+export default function FacilitiesPreview({ facilities = [] }: { facilities?: Facility[] }) {
+  const displayFacilities = facilities.length > 0 
+    ? facilities.slice(0, 5).map(f => ({
+        image: f.image || fallbackFacilities[0].image,
+        name: f.content?.name || '',
+        desc: f.content?.desc || '',
+      }))
+    : fallbackFacilities;
+
   const sectionRef = useRef<HTMLElement>(null)
 
   useScrollReveal(sectionRef, { start: 'top 80%', stagger: 0.08 })
 
-  const [first, ...rest] = facilities
+  const [first, ...rest] = displayFacilities
 
   return (
-    <section ref={sectionRef} className="py-16 md:py-32 bg-[var(--bg)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+    <section ref={sectionRef} className="relative overflow-hidden pt-40 md:pt-48 pb-16 md:pb-32 bg-[var(--bg)]">
+      {/* Wave setinggi 137px menutupi bagian atas section ivory-dark dari
+          ProgramsPreview, jadi pt harus jauh lebih besar dari py aslinya. */}
+      <ShapeDivider fill="var(--bg-secondary)" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         <div className="text-center mb-10 sm:mb-16">
           <span className="section-badge justify-center">
             {'FASILITAS KELAS DUNIA'}

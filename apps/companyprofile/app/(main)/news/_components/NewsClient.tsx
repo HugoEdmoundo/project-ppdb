@@ -8,6 +8,7 @@ import { useScrollReveal } from '@/app/hooks/useScrollAnimations'
 import type { NewsArticle } from '@/app/lib/types'
 import { ArrowRight, Calendar, SearchX } from 'lucide-react'
 import EmptyState from '@/app/components/ui/EmptyState'
+import ShapeDivider from '@/app/components/ui/ShapeDivider'
 
 export default function NewsClient({ news }: { news: NewsArticle[] }) {
   const sectionRef = useRef<HTMLElement>(null)
@@ -51,8 +52,11 @@ export default function NewsClient({ news }: { news: NewsArticle[] }) {
         badge="BERITA TERBARU"
       />
 
-      <section ref={sectionRef} className="py-16 sm:py-20 bg-[var(--bg)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <section ref={sectionRef} className="relative overflow-hidden pt-40 sm:pt-44 pb-16 sm:pb-20 bg-[var(--bg)]">
+        {/* Wave meneruskan gradien PageHeader (yang berakhir di ivory-dark) ke
+            section berita yang berlatar ivory. */}
+        <ShapeDivider fill="var(--bg-secondary)" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
           {/* Featured Article */}
           {featured && (() => {
             const info = featured.content ?? {}

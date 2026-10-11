@@ -83,7 +83,7 @@ function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClos
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 cursor-pointer"
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center cursor-pointer"
       onClick={onClose}
       style={{
         background: 'rgba(0, 0, 0, 0.93)',
@@ -108,6 +108,7 @@ export default function GalleryClient({ gallery }: { gallery: GalleryItem[] }) {
   const slides = useMemo(
     () =>
       filtered.map((item) => ({
+        id: item.id,
         src: item.image,
         alt: item.content?.title ?? 'Galeri',
         title: item.content?.title,
@@ -244,86 +245,78 @@ export default function GalleryClient({ gallery }: { gallery: GalleryItem[] }) {
         {selected && (
           <ModalOverlay key="gallery-lightbox" onClose={() => setSelected(null)}>
             <div
-              className="w-[95vw] max-w-4xl md:max-w-5xl flex flex-col items-center justify-center cursor-default"
+              className="w-full max-w-4xl max-h-[90svh] bg-[var(--bg)] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl relative mx-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="relative w-full h-[60vh] sm:h-[70vh] md:h-[75vh] bg-black/40 rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex items-center justify-center">
+              <button
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/80 hover:text-white hover:bg-black/60 transition-all z-20"
+                onClick={() => setSelected(null)}
+                aria-label="Tutup"
+              >
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
 
-                <div className="absolute inset-0 p-2 sm:p-4 flex items-center justify-center">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={selected.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.22, ease: 'easeInOut' }}
-                      className="relative w-full h-full flex items-center justify-center"
-                    >
-                      {selected.image ? (
-                        <Image
-                          src={selected.image}
-                          alt={selected.content?.title || ''}
-                          fill
-                          style={{ objectFit: 'contain' }}
-                          className="select-none pointer-events-none"
-                          draggable={false}
-                          sizes="(max-width: 768px) 95vw, 85vw"
-                          priority
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded-2xl">No Image</div>
-                      )}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
+              <motion.div
+                layoutId={`gallery-image-${selected.id}`}
+                className="relative w-full md:w-3/5 aspect-[4/3] md:aspect-auto bg-[var(--bg-secondary)]"
+              >
+                {selected.image ? (
+                  <Image
+                    src={selected.image}
+                    alt={selected.content?.title || ''}
+                    fill
+                    style={{ objectFit: 'cover' }}
+                    className="select-none pointer-events-none"
+                    draggable={false}
+                    sizes="(max-width: 768px) 100vw, 60vw"
+                    priority
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)]">No Image</div>
+                )}
+              </motion.div>
 
-                <div
-                  className="absolute inset-0 z-10 md:hidden bg-transparent"
-                  onTouchStart={(e) => {
-                    const startX = e.touches[0].clientX
-                    const currentEl = e.currentTarget
-                    const handler = (ev: TouchEvent) => {
-                      const diff = ev.changedTouches[0].clientX - startX
-                      if (Math.abs(diff) > 50) {
-                        if (diff > 0 && selectedIndex > 0) setSelected(filtered[selectedIndex - 1])
-                        else if (diff < 0 && selectedIndex < filtered.length - 1) setSelected(filtered[selectedIndex + 1])
-                      }
-                      currentEl.removeEventListener('touchend', handler)
-                    }
-                    currentEl.addEventListener('touchend', handler, { passive: true })
-                  }}
-                />
+              <div className="w-full md:w-2/5 p-6 sm:p-8 flex flex-col overflow-y-auto">
+                <span className="text-xs sm:text-sm font-semibold tracking-wider text-[var(--accent)] uppercase mb-2">
+                  {selected.category}
+                </span>
+                <h3 className="text-xl sm:text-2xl font-[var(--font-display)] font-bold text-[var(--text)] mb-4">
+                  {selected.content?.title || 'Galeri'}
+                </h3>
+                
+                {selected.content?.desc ? (
+                  <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none text-[var(--text-secondary)] whitespace-pre-line">
+                    {selected.content.desc}
+                  </div>
+                ) : (
+                  <p className="text-[var(--text-muted)] text-sm italic">
+                    Tidak ada deskripsi.
+                  </p>
+                )}
 
-                <div className="absolute top-3 left-3 sm:top-4 sm:left-4 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md text-white text-xs sm:text-sm font-medium z-20">
-                  {selectedIndex + 1} / {filtered.length}
-                </div>
-
-                <button
-                  className="absolute top-3 right-3 sm:top-4 sm:right-4 w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white/80 hover:text-white hover:bg-black/80 transition-all z-20"
-                  onClick={() => setSelected(null)}
-                  aria-label="Tutup"
-                >
-                  <X className="w-5 h-5 sm:w-4 sm:h-4" />
-                </button>
-
-                <div className="absolute bottom-4 right-4 flex gap-2 z-20 hidden sm:flex">
-                  {filtered.map((_, i) => (
+                <div className="mt-auto pt-8 flex items-center justify-between gap-3 border-t border-[var(--color-border)]">
+                  <div className="flex gap-2">
                     <button
-                      key={i}
-                      onClick={() => setSelected(filtered[i])}
-                      className={`rounded-full transition-all duration-300 ${
-                        i === selectedIndex ? 'w-5 h-2 bg-white' : 'w-2 h-2 bg-white/30 hover:bg-white/60'
-                      }`}
-                      aria-label={`Slide ${i + 1}`}
-                    />
-                  ))}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center border border-[var(--color-border)] transition-all ${selectedIndex > 0 ? 'hover:bg-[var(--bg-secondary)] hover:text-[var(--accent)]' : 'opacity-30 cursor-not-allowed'}`}
+                      onClick={() => selectedIndex > 0 && setSelected(filtered[selectedIndex - 1])}
+                      disabled={selectedIndex === 0}
+                      aria-label="Sebelumnya"
+                    >
+                      <span className="text-xl leading-none">‹</span>
+                    </button>
+                    <button
+                      className={`w-10 h-10 rounded-full flex items-center justify-center border border-[var(--color-border)] transition-all ${selectedIndex < filtered.length - 1 ? 'hover:bg-[var(--bg-secondary)] hover:text-[var(--accent)]' : 'opacity-30 cursor-not-allowed'}`}
+                      onClick={() => selectedIndex < filtered.length - 1 && setSelected(filtered[selectedIndex + 1])}
+                      disabled={selectedIndex === filtered.length - 1}
+                      aria-label="Selanjutnya"
+                    >
+                      <span className="text-xl leading-none">›</span>
+                    </button>
+                  </div>
+                  <div className="text-xs sm:text-sm font-medium text-[var(--text-muted)]">
+                    {selectedIndex + 1} / {filtered.length}
+                  </div>
                 </div>
-              </div>
-
-              <div className="mt-4 text-center max-w-2xl px-4">
-                <p className="text-white text-sm sm:text-base font-medium tracking-wide drop-shadow-md">
-                  {selected.content?.title}
-                </p>
               </div>
             </div>
           </ModalOverlay>

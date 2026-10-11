@@ -11,6 +11,7 @@ import {
   useReducedMotion,
 } from 'framer-motion'
 import { Quote, ArrowUpRight } from 'lucide-react'
+import ShapeDivider from '../ui/ShapeDivider'
 import type { Testimonial } from '@/app/lib/types'
 
 const CARD_GAP = 24
@@ -199,7 +200,8 @@ export default function TestimonialsCarousel({ testimonials }: { testimonials: T
 
   if (items.length === 0) {
     return (
-      <section ref={sectionRef} className="relative py-16 md:py-32 bg-[var(--bg-secondary)] overflow-hidden">
+      <section ref={sectionRef} className="relative pt-40 md:pt-48 pb-16 md:pb-32 bg-[var(--bg-secondary)] overflow-hidden">
+        <ShapeDivider fill="var(--bg)" tintStrength={0.2} />
         <div className="absolute inset-0 bg-pattern-grid opacity-[0.03]" />
         {header}
         <div className="max-w-3xl mx-auto px-4 text-center relative z-10">
@@ -212,7 +214,8 @@ export default function TestimonialsCarousel({ testimonials }: { testimonials: T
   }
 
   return (
-    <section ref={sectionRef} className="relative py-16 md:py-32 bg-[var(--bg-secondary)] overflow-hidden">
+    <section ref={sectionRef} className="relative pt-40 md:pt-48 pb-16 md:pb-32 bg-[var(--bg-secondary)] overflow-hidden">
+      <ShapeDivider fill="var(--bg)" tintStrength={0.2} />
       <div className="absolute inset-0 bg-pattern-grid opacity-[0.03]" />
       {header}
 

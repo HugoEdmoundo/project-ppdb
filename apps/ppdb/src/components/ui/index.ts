@@ -6,6 +6,8 @@ export { default as GlobeLogo } from './globe';
 export { ScrollGlobe } from './landing-page';
 export type { GlobeSection, ScrollGlobeProps } from './landing-page';
 export { SectionGlobe, useSectionGlobe } from './section-globe';
+export { ShapeDivider, ShapeDividerDiagonal } from './shape-divider';
+export { Meteors } from './meteors';
 export type {
   GlobeStop,
   ResolvedGlobeStop,

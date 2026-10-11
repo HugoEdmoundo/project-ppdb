@@ -1,9 +1,13 @@
 'use client'
 
 import Image from 'next/image'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import PageHeader from '@/app/components/layout/PageHeader'
-import TiltCard from '@/app/components/ui/TiltCard'
+import { useScrollReveal } from '@/app/hooks/useScrollAnimations'
+import { StaffOrgChart } from '@/app/components/staff/StaffOrgChart'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/app/components/ui/Dialog'
 import type { Staff } from '@/app/lib/types'
 
 const tabs = [
@@ -14,10 +18,14 @@ const tabs = [
 
 export default function StaffClient({ staff }: { staff: Staff[] }) {
   const [filter, setFilter] = useState<'all' | 'leader' | 'teacher'>('all')
+  const [selected, setSelected] = useState<Staff | null>(null)
+  const sectionRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     document.title = 'Guru & Staff | PTDARRAHMAN'
   }, [])
+
+  useScrollReveal(sectionRef, { start: 'top 80%', stagger: 0.1, targets: 'children' })
 
   const filtered = filter === 'all' ? staff : staff.filter((s) => s.role === filter)
 
@@ -29,7 +37,7 @@ export default function StaffClient({ staff }: { staff: Staff[] }) {
       />
 
       <section className="py-16 sm:py-20 bg-[var(--bg)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div ref={sectionRef} className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex flex-wrap justify-center gap-2 mb-14">
             {tabs.map((tab) => (
               <button
@@ -48,28 +56,45 @@ export default function StaffClient({ staff }: { staff: Staff[] }) {
             ))}
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filtered.map((person) => {
-              const p = person.content ?? {}
-              return (
-                <TiltCard key={person.id} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6 transition-all duration-300 hover:border-[var(--accent)] hover:shadow-lg">
-                  <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-4 border-2 border-[var(--accent)]/20 relative">
-                    {person.image ? <Image src={person.image} alt={p.name || ''} fill className="object-cover" sizes="80px" /> : <div className="w-full h-full bg-[var(--bg-secondary)] rounded-full" />}
-                  </div>
-                  <h3 className="text-base font-bold font-[var(--font-heading)] text-center mb-1">{p.name}</h3>
-                  <p className="text-xs text-[var(--accent)] font-medium text-center mb-3">{p.position}</p>
-                  <p className="text-xs text-[var(--text-secondary)] text-center leading-relaxed mb-4 line-clamp-3">{p.bio}</p>
-                  <div className="flex flex-wrap justify-center gap-1">
-                    {(p.expertise || []).map((exp, j) => (
-                      <span key={j} className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)]">{exp}</span>
-                    ))}
-                  </div>
-                </TiltCard>
-              )
-            })}
-          </div>
+          <StaffOrgChart staff={filtered} onSelect={setSelected} selectedId={selected?.id} />
         </div>
       </section>
+
+      <Dialog open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null) }}>
+        <DialogContent className="max-w-md">
+          {selected && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-4">
+                  <span className="relative block w-16 h-16 rounded-full overflow-hidden border-2 border-[var(--accent)]/20 shrink-0">
+                    {selected.image ? (
+                      <Image src={selected.image} alt={selected.content?.name || ''} fill className="object-cover" sizes="64px" />
+                    ) : (
+                      <span className="flex w-full h-full items-center justify-center bg-[var(--bg-secondary)] text-[var(--accent)] font-bold text-xl">
+                        {(selected.content?.name || '?').charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </span>
+                  <div>
+                    <DialogTitle>{selected.content?.name}</DialogTitle>
+                    <p className="text-sm text-[var(--accent)] font-medium mt-0.5">{selected.content?.position}</p>
+                  </div>
+                </div>
+              </DialogHeader>
+              <DialogDescription className="leading-relaxed">
+                {selected.content?.bio || 'Belum ada biografi.'}
+              </DialogDescription>
+              {(selected.content?.expertise ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {selected.content!.expertise!.map((exp, j) => (
+                    <span key={j} className="text-xs px-2.5 py-1 rounded-full bg-[var(--accent)]/10 text-[var(--accent)]">{exp}</span>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { Plus, Upload, Link2, X } from 'lucide-react'
 import * as api from '@/app/lib/api'
@@ -40,6 +40,23 @@ export function CrudFormDialog({
 
   const tab = TABS.find((t) => t.key === activeTab)!
 
+  const [staffOptions, setStaffOptions] = useState<{ id: string; name: string; position: string }[]>([])
+  useEffect(() => {
+    if (activeTab !== 'staff') return
+    let cancelled = false
+    api.getStaff()
+      .then((list) => {
+        if (cancelled) return
+        setStaffOptions(
+          list
+            .filter((s) => s.id !== editingItem?.id)
+            .map((s) => ({ id: s.id, name: s.content?.name ?? '(tanpa nama)', position: s.content?.position ?? '' })),
+        )
+      })
+      .catch(() => setStaffOptions([]))
+    return () => { cancelled = true }
+  }, [activeTab, editingItem?.id])
+
   function buildContent(): Record<string, unknown> {
     const fields = CONTENT_FIELDS[activeTab] || []
     const base: Record<string, unknown> =
@@ -51,6 +68,11 @@ export function CrudFormDialog({
       const raw = formData[`_c_${f.name}`] ?? ''
       if (f.type === 'list') {
         content[f.name] = String(raw).split('\n').map((s) => s.trim()).filter(Boolean)
+      } else if (f.type === 'number') {
+        content[f.name] = raw === '' || raw === null ? undefined : Number(raw)
+      } else if (f.type === 'parent') {
+        if (raw) content[f.name] = String(raw)
+        else delete content[f.name]
       } else {
         content[f.name] = raw
       }
@@ -334,7 +356,7 @@ export function CrudFormDialog({
             <section>
               <SectionHeader label="Detail Konten" color="var(--accent)" />
               <div className="space-y-3.5">
-                {(CONTENT_FIELDS[activeTab] || []).map((f) => (
+                    {(CONTENT_FIELDS[activeTab] || []).map((f) => (
                   <div key={f.name} className="space-y-1.5">
                     <Label>{f.label}</Label>
                     {f.type === 'list' || f.type === 'textarea' ? (
@@ -343,6 +365,23 @@ export function CrudFormDialog({
                         onChange={(e) => setFormData({ ...formData, [`_c_${f.name}`]: e.target.value })}
                         rows={f.type === 'textarea' ? 5 : 4}
                       />
+                    ) : f.type === 'number' ? (
+                      <Input
+                        type="number"
+                        value={String(formData[`_c_${f.name}`] ?? '')}
+                        onChange={(e) => setFormData({ ...formData, [`_c_${f.name}`]: e.target.value })}
+                      />
+                    ) : f.type === 'parent' ? (
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={String(formData[`_c_${f.name}`] ?? '')}
+                        onChange={(e) => setFormData({ ...formData, [`_c_${f.name}`]: e.target.value })}
+                      >
+                        <option value="">— Tidak ada (posisi puncak) —</option>
+                        {staffOptions.map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}{s.position ? ` — ${s.position}` : ''}</option>
+                        ))}
+                      </select>
                     ) : (
                       <Input
                         type="text"

@@ -93,31 +93,28 @@ class PaymentService:
         return {"applicant": app_dict, "transaction": tx_dict}
 
     def get_public_receipt(self, id: str) -> dict:
+        """Kuitansi resmi hanya boleh dibuat dari record transaksi yang nyata.
+
+        Tidak ada transaksi = tidak ada pembayaran = tidak ada kuitansi.
+        Versi sebelumnya tetap mengembalikan kuitansi untuk pendaftar yang
+        belum membayar, lengkap dengan angka karangan (nominal Rp250.000 yang
+        juga mengabaikan `registration_fee` per gelombang, metode "QRIS", dan
+        nomor kwitansi dari 8 karakter pertama ID). `payment_status or "paid"`
+        membuat pendaftar tanpa status terbaca sebagai LUNAS. Itu masalah integritas
+        data keuangan, bukan sekadar tampilan.
+
+        Lookup `get_applicant_by_id` / `get_applicant_by_user_id` juga dihapus:
+        keduanya hanya melayani cabang fabrikasi itu, dan `by_user_id` membuat
+        user_id internal bisa dipakai menarik data pendaftar lain.
+        """
         transaction = self.repo.get_transaction_by_id(id)
         if not transaction:
             transaction = self.repo.get_latest_transaction_by_applicant_id(id)
-        if not transaction:
-            applicant = self.repo.get_applicant_by_id(id)
-            if not applicant:
-                applicant = self.repo.get_applicant_by_user_id(id)
-            if not applicant:
-                raise HTTPException(
-                    status_code=404, detail="Kuitansi pembayaran tidak ditemukan"
-                )
 
-            return {
-                "id": applicant.id,
-                "receipt_no": f"KUI-PPDB-{applicant.id[:8].upper()}",
-                "applicant_name": applicant.full_name or "Calon Santri",
-                "registration_path": (applicant.registration_path or "Reguler").upper(),
-                "amount": 250000,
-                "payment_method": "QRIS",
-                "payment_date": applicant.created_at.isoformat()
-                if applicant.created_at
-                else None,
-                "status": applicant.payment_status or "paid",
-                "is_paid": applicant.payment_status == "paid",
-            }
+        if not transaction:
+            raise HTTPException(
+                status_code=404, detail="Kuitansi pembayaran tidak ditemukan"
+            )
 
         applicant = (
             self.repo.get_applicant_by_id(transaction.applicant_id)
@@ -127,13 +124,21 @@ class PaymentService:
         dt = transaction.updated_at or transaction.created_at
         return {
             "id": transaction.id,
-            "receipt_no": f"KUI-PPDB-{transaction.id[:8].upper()}",
+            # 12 karakter heksadesimal, bukan `id[:12]`. UUID memuat tanda hubung,
+            # jadi `id[:12]` menghasilkan 11 hex + satu tanda hubung
+            # ("ABCDEF12-345") — bukan 12 karakter, dan tanda hubung tidak layak
+            # muncul di nomor dokumen keuangan. 8 karakter hanya 32 bit, dengan
+            # peluang bentrok ~1% pada 10.000 kuitansi.
+            "receipt_no": f"KUI-PPDB-{transaction.id.replace('-', '')[:12].upper()}",
             "applicant_name": applicant.full_name if applicant else "Calon Santri",
             "registration_path": (
-                applicant.registration_path if applicant else "Reguler"
+                (applicant.registration_path or "Reguler") if applicant else "Reguler"
             ).upper(),
             "amount": transaction.amount,
-            "payment_method": (transaction.method or "QRIS").upper(),
+            # Metode yang tidak tercatat ditulis apa adanya, bukan ditebak QRIS.
+            "payment_method": (
+                transaction.method or "TIDAK DIKETAHUI"
+            ).upper(),
             "payment_date": dt.isoformat() if dt else None,
             "status": transaction.status,
             "is_paid": transaction.status in ("paid", "settlement", "success"),

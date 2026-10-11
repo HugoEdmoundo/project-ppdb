@@ -3,6 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { motion } from "framer-motion"
 
 import { cn } from "@/app/lib/utils"
 
@@ -10,6 +11,7 @@ const useIsoLayoutEffect =
   typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect
 
 export interface CoverflowSlide {
+  id?: string
   src: string
   alt: string
   title?: string
@@ -358,14 +360,30 @@ export function CoverflowCarousel({
                 )}
                 style={{ width: "var(--cf-card)", touchAction: "pan-y" }}
               >
-                <Image
-                  src={slide.src}
-                  alt={slide.alt}
-                  fill
-                  sizes="(max-width: 640px) 148px, 260px"
-                  draggable={false}
-                  className="pointer-events-none h-full w-full select-none object-cover"
-                />
+                {slide.id ? (
+                  <motion.div
+                    layoutId={`gallery-image-${slide.id}`}
+                    className="relative w-full h-full"
+                  >
+                    <Image
+                      src={slide.src}
+                      alt={slide.alt}
+                      fill
+                      sizes="(max-width: 640px) 148px, 260px"
+                      draggable={false}
+                      className="pointer-events-none h-full w-full select-none object-cover"
+                    />
+                  </motion.div>
+                ) : (
+                  <Image
+                    src={slide.src}
+                    alt={slide.alt}
+                    fill
+                    sizes="(max-width: 640px) 148px, 260px"
+                    draggable={false}
+                    className="pointer-events-none h-full w-full select-none object-cover"
+                  />
+                )}
               </div>
             ))}
           </div>

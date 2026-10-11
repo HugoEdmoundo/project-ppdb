@@ -123,6 +123,7 @@ export default function RootLayout({
     <html
       lang="id"
       suppressHydrationWarning
+      data-scroll-behavior="smooth"
       className={`${inter.variable} ${dmSans.variable} ${playfair.variable} ${amiri.variable}`}
     >
       <body className="min-h-screen flex flex-col">

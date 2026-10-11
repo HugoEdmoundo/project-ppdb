@@ -62,6 +62,15 @@ PUBLIC_SETTINGS_KEYS = {
     "whatsapp_message",
     "whatsapp_message_en",
     "whatsapp_message_id",
+    "about_text",
+    "about_img_1",
+    "about_img_2",
+    "about_img_3",
+    "about_img_4",
+    "stat_students",
+    "stat_staff",
+    "stat_juz",
+    "stat_extracurricular",
 }
 
 ADMIN_SETTINGS_KEYS = PUBLIC_SETTINGS_KEYS | {
@@ -590,6 +599,7 @@ class ContactInfoUpdateReq(BaseModel):
     email_admission: str | None = None
     address: str | None = None
     office_hours: str | None = None
+    maps_embed: str | None = None
 
 
 @router.get("/contact-info")

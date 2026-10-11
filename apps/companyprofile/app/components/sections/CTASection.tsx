@@ -13,6 +13,8 @@ import { ContainerScroll } from '@/components/ui/container-scroll-animation'
 import { buildSchedule, type ActivePpdbWave } from '@/app/lib/ppdb'
 import { gsap, ScrollTrigger } from '@/app/lib/gsap'
 import { onLayoutReady, prefersReducedMotion } from '@/app/lib/motion'
+import CTAShapeDivider from '../ui/CTAShapeDivider'
+import Meteors from '../ui/Meteors'
 
 const Particles = dynamic(() => import('../ui/Particles'), { ssr: false })
 
@@ -51,11 +53,22 @@ export default function CTASection({ wave = null }: { wave?: ActivePpdbWave | nu
   return (
     <section
       ref={sectionRef}
-      className="relative overflow-hidden"
+      className="relative overflow-hidden pt-20"
       style={{
-        background: 'linear-gradient(135deg, var(--color-emerald) 0%, #0D3B28 50%, #0A0A0F 100%)',
+        background:
+          'linear-gradient(135deg, var(--color-emerald-ramp-1) 0%, var(--color-emerald-ramp-2) 45%, var(--color-emerald-ramp-3) 100%)',
       }}
     >
+      <CTAShapeDivider fill="var(--bg-secondary)" />
+      {/* Meteor hanya di pita atas section, di antara shape divider dan kartu.
+          Di bawah itu `Card` (max-w-5xl, background opaque) menutup hampir
+          seluruh lebar section — meteor yang melintas di belakangnya terpotong
+          di tengah layar lalu muncul lagi di sisi lain, dan itu terbaca sebagai
+          posisi acak. Pita ini kosong di desktop; di mobile ruangnya cuma ~68px,
+          jadi disembunyikan karena memang tidak ada area untuk diisi. */}
+      <div className="absolute inset-x-0 top-[150px] h-[150px] overflow-hidden hidden md:block">
+        <Meteors count={3} />
+      </div>
       <Particles count={25} />
       <div ref={bgRef} className="absolute inset-0 opacity-[0.05]"
         style={{ backgroundImage: 'radial-gradient(2px 2px at 20px 30px, white, transparent)', backgroundSize: '60px 60px' }}
@@ -74,7 +87,7 @@ export default function CTASection({ wave = null }: { wave?: ActivePpdbWave | nu
             </>
           }
         >
-          <div className="flex flex-col items-center justify-center h-full w-full bg-[#0A1A14] text-white p-6 sm:p-8 md:p-12 text-center rounded-xl border border-white/10">
+          <div className="flex flex-col items-center justify-center h-full w-full bg-[var(--color-emerald-ramp-card)] text-white p-6 sm:p-8 md:p-12 text-center rounded-xl border border-[var(--color-gold)]/25">
             <p className="text-sm sm:text-base md:text-lg text-white/80 mb-8 sm:mb-12 max-w-2xl mx-auto">
               {ppdb.academicYear ? (
                 <>

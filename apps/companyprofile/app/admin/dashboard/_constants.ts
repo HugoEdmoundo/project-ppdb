@@ -121,10 +121,11 @@ export const FORM_FIELDS: Record<string, { name: string; label: string; type: 't
     { name: 'email_admission', label: 'Email Penerimaan', type: 'text' },
     { name: 'address', label: 'Alamat', type: 'textarea' },
     { name: 'office_hours', label: 'Jam Kantor', type: 'text' },
+    { name: 'maps_embed', label: 'Maps Embed (Iframe/URL)', type: 'textarea' },
   ],
 }
 
-export const CONTENT_FIELDS: Record<string, { name: string; label: string; type: 'text' | 'textarea' | 'list' }[]> = {
+export const CONTENT_FIELDS: Record<string, { name: string; label: string; type: 'text' | 'textarea' | 'list' | 'number' | 'parent' }[]> = {
   news: [
     { name: 'title', label: 'Judul Berita', type: 'text' },
     { name: 'excerpt', label: 'Ringkasan', type: 'textarea' },
@@ -151,13 +152,18 @@ export const CONTENT_FIELDS: Record<string, { name: string; label: string; type:
     { name: 'position', label: 'Jabatan', type: 'text' },
     { name: 'bio', label: 'Biografi', type: 'textarea' },
     { name: 'expertise', label: 'Keahlian (1 per baris)', type: 'list' },
+    { name: 'parentId', label: 'Atasan (biarkan kosong jika puncak)', type: 'parent' },
+    { name: 'order', label: 'Urutan Tampilan', type: 'number' },
   ],
   achievements: [
     { name: 'title', label: 'Judul Prestasi', type: 'text' },
     { name: 'desc', label: 'Deskripsi', type: 'text' },
     { name: 'scope', label: 'Lingkup', type: 'text' },
   ],
-  gallery: [{ name: 'title', label: 'Judul Gambar', type: 'text' }],
+  gallery: [
+    { name: 'title', label: 'Judul Gambar', type: 'text' },
+    { name: 'desc', label: 'Deskripsi Gambar', type: 'textarea' }
+  ],
   testimonials: [{ name: 'quote', label: 'Kutipan Testimoni', type: 'textarea' }],
 }
 

@@ -32,6 +32,15 @@
   --color-gold-accent: var(--color-gold);
   --color-slate-dark: #334155;
   --color-rose-danger: #e11d48;
+  --color-obsidian: #1A1A1A;
+  --color-gold-light: #F0C878;
+  --color-emerald-bright: #22C55E;
+  --color-emerald-dark: #135235;
+  --color-rose-light: #FFEEEE;
+  --color-gold-bg: #FEFAEE;
+  --color-gold-dark: #B88F3D;
+  --color-ivory: #F7F5F0;
+  --color-elevated: #FFFFFF;
 }
 
 :root {
@@ -43,6 +52,13 @@
   --color-emerald: #1A6B47;
   --color-emerald-bright: #22C55E;
   --color-emerald-subtle: rgba(26, 107, 71, 0.08);
+  /* Ramp CTA: satu hue (emerald ~154°), tonal saja. Ramp lama berakhir di
+     #0A0A0F sehingga hue berputar 155° -> 240° dan bagian tengahnya
+     berinterpolasi jadi keruh. Ramp ini drift-nya cuma 2.8°. */
+  --color-emerald-ramp-1: #1F7A52;
+  --color-emerald-ramp-2: #15563A;
+  --color-emerald-ramp-3: #0A2B1E;
+  --color-emerald-ramp-card: #0E3327;
   --color-gold: #D4A853;
   --color-gold-light: #F0C878;
   --color-gold-subtle: rgba(212, 168, 83, 0.12);
@@ -264,6 +280,24 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-muted);
 }
 
+/* ── Animated underline for hero highlight ── */
+.animate-draw-underline path {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: drawUnderline 1s ease-out 0.9s forwards;
+}
+@keyframes drawUnderline {
+  to { stroke-dashoffset: 0; }
+}
+
+/* ── Embedded Google Maps iframe made responsive ── */
+.maps-embed iframe {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  border: 0;
+}
+
 /* ── Organization chart tree ── */
 .org-tree ul {
   display: flex;
@@ -434,7 +468,7 @@ h1, h2, h3, h4, h5, h6 {
   50% { opacity: 0.15; transform: scale(1.3); }
 }
 
-/* �"?�"? Empty / Error State Animations �"?�"? */
+/* Empty / Error State Animations */
 @keyframes emptyIn {
   from { opacity: 0; transform: translateY(18px); }
   to { opacity: 1; transform: translateY(0); }

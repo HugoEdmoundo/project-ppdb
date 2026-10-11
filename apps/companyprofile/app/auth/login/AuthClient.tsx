@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShieldCheck } from 'lucide-react'
 import { login } from '@/app/lib/api'
-import { AuthCard, AuthRecovery, useBrand } from '@repo/ui'
+import { AuthCard, useBrand } from '@repo/ui'
 import { API_BASE } from '@/app/lib/api'
 
 export default function AuthClient() {
@@ -13,7 +13,6 @@ export default function AuthClient() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [successName, setSuccessName] = useState('')
-  const [showRecovery, setShowRecovery] = useState(false)
 
   // Logo dinamis via useBrand (GET /companyprofile/settings/logo + live SSE).
   const { logoUrl } = useBrand(API_BASE)
@@ -52,12 +51,12 @@ export default function AuthClient() {
         successName={successName}
         onSubmit={handleLogin}
         submitText="Masuk"
-        forgotText="Lupa username atau password?"
-        onForgotClick={() => setShowRecovery(true)}
+        forgotText="Lupa username/password?"
+        recoveryMode="staff"
+        recoveryApiBase={API_BASE}
         badgeText="Akses Terbatas"
         badgeIcon={<ShieldCheck className="w-3.5 h-3.5 text-[#D4A853]" />}
       />
-      <AuthRecovery open={showRecovery} onClose={() => setShowRecovery(false)} apiBase={API_BASE} />
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { BookOpenCheck, MonitorSmartphone, HeartHandshake } from 'lucide-react'
 import { API_BASE } from '@/api/client'
-import { useBrand, AuthCard, AuthRecovery } from '@repo/ui'
+import { useBrand, AuthCard } from '@repo/ui'
 
 const PATTERN_OVERLAY = {
   backgroundImage:
@@ -59,8 +59,6 @@ export default function LoginPage() {
   const [successName, setSuccessName] = useState('')
   const { logoUrl } = useBrand(API_BASE)
 
-  const [showRecover, setShowRecover] = useState(false)
-
   // Redirect to dashboard logic
   useEffect(() => {
     if (!user) return
@@ -102,14 +100,15 @@ export default function LoginPage() {
       <div className="pointer-events-none absolute -bottom-28 -left-28 h-[350px] w-[350px] rounded-full bg-gold-accent/20 opacity-20 blur-3xl" />
 
       {/* ── LEFT BRAND PANEL ── */}
-      <aside className="relative flex w-full shrink-0 flex-col overflow-hidden bg-gradient-to-br from-emerald-dark via-emerald-primary to-[#103D27] px-6 py-7 lg:w-[46%] lg:min-h-dvh lg:justify-between lg:px-12 lg:py-12">
+      <aside className="relative flex w-full shrink-0 flex-col overflow-hidden bg-gradient-to-br from-emerald-dark via-emerald-primary to-[#103D27] px-5 py-3 lg:w-[46%] lg:min-h-dvh lg:justify-between lg:px-12 lg:py-12">
         <div className="pointer-events-none absolute inset-0 opacity-[0.14]" style={PATTERN_OVERLAY} />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/10" />
 
-        {/* Brand mark (mobile only — iklan tidak pakai logo) */}
-        <div className="relative z-10 lg:hidden">
-          <p className="font-heading text-lg font-bold text-white">Ar-Rahman</p>
-          <p className="text-[11px] text-white/70">Pesantren Tahfidz Qur'an &amp; Digital</p>
+        {/* Brand mark (mobile) — ringkas: cukup label institusi agar tidak memakan tinggi */}
+        <div className="relative z-10 flex items-center justify-center lg:hidden">
+          <p className="font-heading text-[11px] font-semibold uppercase tracking-[0.32em] text-white/80">
+            PTDARRAHMAN
+          </p>
         </div>
 
         {/* Showcase (desktop) */}
@@ -156,7 +155,7 @@ export default function LoginPage() {
       </aside>
 
       {/* ── RIGHT FORM ── */}
-      <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-10 lg:px-12 lg:py-12">
+      <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-5 lg:px-12 lg:py-12">
         <div className="w-full max-w-md flex flex-col items-center justify-center">
           <AuthCard
             title="Selamat Datang"
@@ -168,17 +167,16 @@ export default function LoginPage() {
             successName={successName}
             onSubmit={handleLogin}
             submitText="Masuk"
-            forgotText="Lupa username atau password?"
-            onForgotClick={() => setShowRecover(true)}
+            forgotText="Lupa username/password?"
+            recoveryMode="applicant"
+            recoveryApiBase={API_BASE}
           />
 
-          <p className="mt-6 text-center text-xs text-muted-foreground">
+          <p className="mt-4 text-center text-xs text-muted-foreground lg:mt-6">
             Pendaftar dapat memulihkan akun dengan NIK dan tanggal lahir. Admin PPDB yang lupa akses dapat menghubungi Superadmin.
           </p>
         </div>
       </main>
-
-      <AuthRecovery open={showRecover} onClose={() => setShowRecover(false)} apiBase={API_BASE} applicant />
     </div>
   )
 }

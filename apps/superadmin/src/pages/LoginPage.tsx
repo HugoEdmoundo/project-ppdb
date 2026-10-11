@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { API_BASE } from '../api/client'
 import { ShieldCheck } from 'lucide-react'
-import { useBrand, AuthCard, AuthRecovery } from '@repo/ui'
+import { useBrand, AuthCard } from '@repo/ui'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -16,7 +16,6 @@ export default function LoginPage() {
   // + live-update via SSE). Tidak ada aset logo statis — fallback text mark.
   const { logoUrl } = useBrand(API_BASE)
   const [successName, setSuccessName] = useState('')
-  const [showRecovery, setShowRecovery] = useState(false)
 
   const isSuperadmin = !!user && (user.user_type === 'superadmin' || !!user.is_superadmin)
 
@@ -71,12 +70,12 @@ export default function LoginPage() {
         successName={successName}
         onSubmit={handleLogin}
         submitText="Masuk"
-        forgotText="Lupa username atau password?"
-        onForgotClick={() => setShowRecovery(true)}
+        forgotText="Lupa username/password?"
+        recoveryMode="staff"
+        recoveryApiBase={API_BASE}
         badgeText="Akses Terbatas"
         badgeIcon={<ShieldCheck className="w-3.5 h-3.5 text-[#D4A853]" />}
       />
-      <AuthRecovery open={showRecovery} onClose={() => setShowRecovery(false)} apiBase={API_BASE} />
     </div>
   )
 }

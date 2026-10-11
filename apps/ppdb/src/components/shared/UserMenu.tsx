@@ -26,23 +26,23 @@ export default function UserMenu({ user, subtitle, profileLabel = 'Profile', onP
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="gap-2.5 rounded-xl px-3 py-1.5">
-          <Avatar className="h-9 w-9">
+        <Button variant="ghost" className="gap-2.5 rounded-xl px-2.5 sm:px-3 py-1.5 max-w-[200px] sm:max-w-none">
+          <Avatar className="h-9 w-9 shrink-0">
             <AvatarImage src={user.avatar_url || undefined} className="object-cover" />
             <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
               {user.full_name?.[0] || user.username?.[0] || 'A'}
             </AvatarFallback>
           </Avatar>
-          <div className="hidden sm:block pr-1 text-left">
-            <div className="font-semibold leading-snug text-foreground text-sm sm:text-[15px]">{user.full_name || user.username}</div>
-            {roleText && <div className="mt-1 text-xs text-muted-foreground">{roleText}</div>}
+          <div className="hidden sm:block pr-1 text-left min-w-0">
+            <div className="font-semibold leading-snug text-foreground text-sm sm:text-[15px] truncate max-w-[120px] md:max-w-[180px]">{user.full_name || user.username}</div>
+            {roleText && <div className="mt-0.5 text-xs text-muted-foreground truncate max-w-[120px] md:max-w-[180px]">{roleText}</div>}
           </div>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-56 max-w-[calc(100vw-2rem)]">
         <DropdownMenuLabel className="flex flex-col gap-0.5">
-          <span className="text-sm font-semibold text-foreground">{user.full_name || user.username}</span>
-          <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
+          <span className="text-sm font-semibold text-foreground truncate">{user.full_name || user.username}</span>
+          <span className="text-xs font-normal text-muted-foreground truncate">{user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {onProfile && (

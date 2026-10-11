@@ -59,12 +59,12 @@ export default function LoaSkdPage() {
 
       {/* Document Showcase Card */}
       <Card className="border-slate-200/80 shadow-sm overflow-hidden">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4">
+        <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-4 sm:p-6 pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <FileBadge className="h-5 w-5 text-indigo-600" />
-                <CardTitle className="text-lg font-semibold text-slate-800">
+                <FileBadge className="h-5 w-5 text-indigo-600 shrink-0" />
+                <CardTitle className="text-base sm:text-lg font-semibold text-slate-800">
                   Showcase Pratinjau Dokumen (Dummy Data)
                 </CardTitle>
               </div>
@@ -74,29 +74,29 @@ export default function LoaSkdPage() {
             </div>
 
             {/* Document Selector & Fullscreen Action */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
               <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-xs">
                 <button
                   onClick={() => setActiveTab('loa')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                     activeTab === 'loa'
                       ? 'bg-slate-900 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <FileText className="h-3.5 w-3.5" />
-                  LoA (Surat Keterangan Lulus)
+                  <FileText className="h-3.5 w-3.5 shrink-0" />
+                  <span>LoA (Surat Kelulusan)</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('skd')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                     activeTab === 'skd'
                       ? 'bg-slate-900 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <Award className="h-3.5 w-3.5" />
-                  SKD (Sertifikat CSS Murni)
+                  <Award className="h-3.5 w-3.5 shrink-0" />
+                  <span>SKD (Sertifikat)</span>
                 </button>
               </div>
 
@@ -104,50 +104,50 @@ export default function LoaSkdPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setFullscreenOpen(true)}
-                className="gap-1.5 text-xs h-8 bg-white"
+                className="gap-1.5 text-xs h-8 bg-white shrink-0"
               >
-                <Maximize2 className="h-3.5 w-3.5 text-slate-600" />
-                Layar Penuh
+                <Maximize2 className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                <span className="hidden xs:inline">Layar Penuh</span>
               </Button>
             </div>
           </div>
 
           {/* Sub-navigation for LoA Pages if LoA is selected */}
           {activeTab === 'loa' && (
-            <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-200/70">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-slate-500">Lembar LoA:</span>
-                <div className="inline-flex gap-1.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 mt-2 border-t border-slate-200/70">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+                <span className="text-xs font-medium text-slate-500 shrink-0">Lembar LoA:</span>
+                <div className="inline-flex gap-1.5 shrink-0">
                   <button
                     onClick={() => setLoaActivePage(1)}
-                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
                       loaActivePage === 1
                         ? 'bg-indigo-600 text-white'
                         : 'bg-slate-200/70 text-slate-700 hover:bg-slate-300'
                     }`}
                   >
-                    Halaman 1: Rincian Kelulusan & Pembiayaan
+                    Hal 1: Rincian & Biaya
                   </button>
                   <button
                     onClick={() => setLoaActivePage(2)}
-                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
                       loaActivePage === 2
                         ? 'bg-indigo-600 text-white'
                         : 'bg-slate-200/70 text-slate-700 hover:bg-slate-300'
                     }`}
                   >
-                    Halaman 2: Tata Cara Pembayaran & Rekening VA
+                    Hal 2: Rekening VA & Cara Bayar
                   </button>
                 </div>
               </div>
-              <span className="text-[11px] text-slate-400 font-mono">
+              <span className="text-[11px] text-slate-400 font-mono hidden md:inline">
                 Format Surat Resmi Sesuai Standar Institusi (2 Halaman)
               </span>
             </div>
           )}
         </CardHeader>
 
-        <CardContent className="p-6 bg-slate-100/60 min-h-[600px] flex items-center justify-center overflow-x-auto">
+        <CardContent className="p-3 sm:p-6 bg-slate-100/60 min-h-[500px] flex items-center justify-start md:justify-center overflow-x-auto">
           {activeTab === 'loa' ? (
             <LoaDocumentView
               page={loaActivePage}
@@ -162,13 +162,13 @@ export default function LoaSkdPage() {
 
       {/* Fullscreen Dialog Modal */}
       <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
-        <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto p-6 bg-slate-100">
-          <DialogHeader className="pb-3 border-b border-slate-200 flex flex-row items-center justify-between">
-            <DialogTitle className="text-base font-semibold text-slate-800 flex items-center gap-2">
-              <Eye className="h-4 w-4 text-indigo-600" />
-              {activeTab === 'loa' ? 'Pratinjau Letter of Acceptance [LoA]' : 'Pratinjau Surat Keterangan Diterima [SKD]'}
+        <DialogContent className="w-[95vw] max-w-5xl max-h-[92vh] overflow-y-auto p-4 sm:p-6 bg-slate-100">
+          <DialogHeader className="pb-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <DialogTitle className="text-sm sm:text-base font-semibold text-slate-800 flex items-center gap-2">
+              <Eye className="h-4 w-4 text-indigo-600 shrink-0" />
+              <span>{activeTab === 'loa' ? 'Pratinjau Letter of Acceptance [LoA]' : 'Pratinjau Surat Keterangan Diterima [SKD]'}</span>
             </DialogTitle>
-            <div className="flex items-center gap-2 mr-6">
+            <div className="flex items-center gap-2 sm:mr-6 self-start sm:self-auto">
               {activeTab === 'loa' && (
                 <div className="inline-flex gap-1 bg-white border border-slate-200 p-0.5 rounded-md">
                   <button
@@ -192,7 +192,7 @@ export default function LoaSkdPage() {
             </div>
           </DialogHeader>
 
-          <div className="flex justify-center py-4 overflow-x-auto">
+          <div className="flex justify-start md:justify-center py-4 overflow-x-auto">
             {activeTab === 'loa' ? (
               <LoaDocumentView
                 page={loaActivePage}

@@ -161,15 +161,15 @@ export default function PeriodsPage() {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
+          <Table className="min-w-[680px]">
             <TableHeader className="bg-primary/5">
               <TableRow>
-                <TableHead>Nama Periode</TableHead>
-                <TableHead>Tahun Ajaran</TableHead>
+                <TableHead className="whitespace-nowrap">Nama Periode</TableHead>
+                <TableHead className="whitespace-nowrap">Tahun Ajaran</TableHead>
                 <TableHead>Deskripsi</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Gelombang</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
+                <TableHead className="whitespace-nowrap">Status</TableHead>
+                <TableHead className="whitespace-nowrap">Gelombang</TableHead>
+                <TableHead className="text-right whitespace-nowrap">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -189,21 +189,21 @@ export default function PeriodsPage() {
               ) : (
                 periods.map((p: any) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>{p.academic_year}</TableCell>
+                    <TableCell className="font-medium whitespace-nowrap">{p.name}</TableCell>
+                    <TableCell className="whitespace-nowrap">{p.academic_year}</TableCell>
                     <TableCell className="max-w-[200px] truncate" title={p.description}>{p.description || '-'}</TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <Badge variant={p.status === 'active' ? 'success' : 'secondary'} className={p.status === 'active' ? 'bg-emerald-bright text-white' : ''}>
                         {p.status === 'active' ? 'Aktif' : 'Nonaktif'}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <Button variant="outline" size="sm" onClick={() => setSelectedPeriod(p)} className="gap-2 text-xs">
                         <Layers className="h-3 w-3" />
                         {p.wave_count || 0} Gelombang
                       </Button>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right whitespace-nowrap">
                       {canCrud && (
                         <div className="flex justify-end gap-2">
                           {p.status === 'active' ? (
@@ -237,7 +237,7 @@ export default function PeriodsPage() {
 
       {/* Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>{editingPeriod ? 'Edit Periode' : 'Tambah Periode'}</DialogTitle>
           </DialogHeader>

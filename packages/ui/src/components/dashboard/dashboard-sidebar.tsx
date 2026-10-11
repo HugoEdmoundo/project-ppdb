@@ -31,6 +31,13 @@ export function DashboardSidebar({
 }: DashboardSidebarProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
+  // Di mobile, state `collapsed` tidak boleh ikut memengaruhi tampilan. Kalau
+  // user pernah menyempitkan sidebar di desktop, nilainya tersimpan di
+  // localStorage dan akan ikut terbaca di HP — drawer mobile jadi hanya 64px
+  // dan praktis tidak bisa dipakai. Karena itu "menyempit" dihitung hanya
+  // untuk layar md ke atas.
+  const isCollapsed = collapsed && !mobileOpen
+
   const handleNavigate = (item: DashboardNavItem) => {
     onNavigate?.(item)
     onMobileOpenChange(false)
@@ -39,7 +46,7 @@ export function DashboardSidebar({
   const baseItem = (active: boolean) =>
     cn(
       "group/btn relative w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-150 text-left",
-      collapsed ? "justify-center p-2" : "px-3 py-2.5",
+      isCollapsed ? "justify-center p-2" : "px-3 py-2.5",
       active
         ? "bg-primary/10 text-foreground font-semibold shadow-sm"
         : "text-muted-foreground hover:bg-primary/10 hover:text-foreground"
@@ -55,7 +62,7 @@ export function DashboardSidebar({
       <>
         {activeBar(active)}
         {Icon && <Icon className="h-4 w-4 shrink-0" />}
-        {!collapsed && <span className="truncate">{item.label}</span>}
+        {!isCollapsed && <span className="truncate">{item.label}</span>}
       </>
     )
     if (item.href) {
@@ -64,7 +71,7 @@ export function DashboardSidebar({
           key={item.key}
           href={item.href}
           target={item.target}
-          title={collapsed ? item.label : undefined}
+          title={isCollapsed ? item.label : undefined}
           className={baseItem(active)}
           onClick={() => handleNavigate(item)}
         >
@@ -76,7 +83,7 @@ export function DashboardSidebar({
       <button
         key={item.key}
         type="button"
-        title={collapsed ? item.label : undefined}
+        title={isCollapsed ? item.label : undefined}
         className={baseItem(active)}
         onClick={() => {
           item.onClick?.()
@@ -98,20 +105,20 @@ export function DashboardSidebar({
       <div key={item.key}>
         <button
           type="button"
-          title={collapsed ? item.label : undefined}
+          title={isCollapsed ? item.label : undefined}
           className={baseItem(active)}
           onClick={() => setExpanded((prev) => ({ ...prev, [item.key]: !(prev[item.key] ?? hasActiveChild) }))}
         >
           {activeBar(active)}
           {Icon && <Icon className="h-4 w-4 shrink-0" />}
-          {!collapsed && (
+          {!isCollapsed && (
             <>
               <span className="flex-1 truncate text-left">{item.label}</span>
               <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform duration-200", isOpen && "rotate-180")} />
             </>
           )}
         </button>
-        {!collapsed && isOpen && (
+        {!isCollapsed && isOpen && (
           <div className="ml-9 mt-1 space-y-0.5 border-l border-border/60 pl-3">
             {children.map((c) => {
               const cactive = !!c.active
@@ -156,17 +163,17 @@ export function DashboardSidebar({
     <aside
       className={cn(
         "fixed md:sticky top-0 left-0 z-40 h-dvh bg-gradient-to-b from-white/80 to-white/60 backdrop-blur-xl flex flex-col border-r border-border/50 transition-all duration-300",
-        mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-        collapsed ? "w-16" : "w-64"
+        mobileOpen ? "translate-x-0 w-64 max-w-[85vw] shadow-2xl" : "-translate-x-full md:translate-x-0",
+        isCollapsed ? "md:w-16" : "md:w-64"
       )}
     >
       <div
         className={cn(
           "relative flex items-center border-b border-border/60 bg-white/30",
-          collapsed ? "justify-center px-2 py-4" : "px-5 py-4"
+          isCollapsed ? "justify-center px-2 py-4" : "px-5 py-4"
         )}
       >
-        {collapsed ? (
+        {isCollapsed ? (
           <BrandMark logoUrl={brand.logoUrl} name={brand.name} mark={brand.mark} size="sm" />
         ) : (
           <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -196,7 +203,7 @@ export function DashboardSidebar({
           if (group.items.length === 0) return null
           return (
             <div key={group.label ?? gi}>
-              {group.label && !collapsed && (
+              {group.label && !isCollapsed && (
                 <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/80 select-none">
                   {group.label}
                 </p>
@@ -211,7 +218,7 @@ export function DashboardSidebar({
         })}
       </nav>
 
-      {footer && !collapsed && <div className="border-t border-border/60 px-3 py-4 space-y-2">{footer}</div>}
+      {footer && !isCollapsed && <div className="border-t border-border/60 px-3 py-4 space-y-2">{footer}</div>}
     </aside>
   )
 }

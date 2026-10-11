@@ -131,7 +131,7 @@ function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: Sc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[92vh] overflow-y-auto">
+      <DialogContent className="w-[96vw] sm:max-w-3xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader className="print:hidden">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -396,13 +396,13 @@ function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: Sc
 
               {/* Tombol Validasi — hanya tampil jika admin punya hak */}
               {canCrud && !verdictMode && (
-                <div className="px-4 py-3 border-t border-slate-200/80 bg-white flex items-center justify-between gap-3">
+                <div className="px-4 py-3 border-t border-slate-200/80 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <p className="text-xs text-muted-foreground">
                     {graduationStatus === 'selection' || !graduationStatus
                       ? 'Tentukan keputusan kelulusan pendaftar ini.'
                       : 'Ubah keputusan yang sudah ditetapkan.'}
                   </p>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
                     {graduationStatus !== 'passed' && (
                       <Button
                         size="sm"
@@ -617,14 +617,14 @@ export default function PenilaianPage() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[700px]">
               <thead className="bg-emerald-primary/5 border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="py-3 px-4 text-left">Nama Pendaftar</th>
-                  <th className="py-3 px-4 text-left">Email / No. WA</th>
-                  <th className="py-3 px-4 text-left">Jalur Pendaftaran</th>
-                  <th className="py-3 px-4 text-left">Skor TIU</th>
-                  <th className="py-3 px-4 text-left">Status Seleksi</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Nama Pendaftar</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Email / No. WA</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Jalur Pendaftaran</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Skor TIU</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Status Seleksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

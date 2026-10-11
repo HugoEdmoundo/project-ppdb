@@ -35,18 +35,18 @@ export default function ApplicantSKDModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto p-4 sm:p-6 bg-slate-900 border-slate-800">
+      <DialogContent className="w-[95vw] max-w-4xl max-h-[95vh] overflow-y-auto p-4 sm:p-6 bg-slate-900 border-slate-800">
         <DialogHeader className="print:hidden pb-2 border-b border-slate-800">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <DialogTitle className="flex items-center gap-2 text-base text-amber-400">
-              <Award className="h-5 w-5 text-amber-400" />
+              <Award className="h-5 w-5 text-amber-400 shrink-0" />
               <span>Surat Keterangan Diterima (SKD) - Format Sertifikat</span>
             </DialogTitle>
             <Button
               onClick={handlePrint}
               size="sm"
               variant="outline"
-              className="gap-1.5 h-8 text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border-amber-500/30"
+              className="gap-1.5 h-9 sm:h-8 text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border-amber-500/30 w-full sm:w-auto font-medium"
             >
               <Printer className="h-3.5 w-3.5" /> Cetak / Print SKD
             </Button>
@@ -62,11 +62,11 @@ export default function ApplicantSKDModal({
             Data SKD tidak ditemukan.
           </div>
         ) : (
-          <div className="flex justify-center py-2 overflow-x-auto">
+          <div className="flex justify-start sm:justify-center py-2 overflow-x-auto w-full">
             {/* Pure CSS Certificate View (Landscape A4 ratio 1.414) */}
             <div
               ref={printRef}
-              className="relative w-[840px] aspect-[1.414] bg-gradient-to-br from-emerald-950 via-slate-950 to-emerald-900 text-white shadow-2xl border-4 border-slate-950 overflow-hidden flex flex-col justify-between p-8 select-none print:shadow-none print:border-none print:w-full print:m-0"
+              className="relative min-w-[680px] sm:min-w-0 sm:w-[840px] aspect-[1.414] bg-gradient-to-br from-emerald-950 via-slate-950 to-emerald-900 text-white shadow-2xl border-4 border-slate-950 overflow-hidden flex flex-col justify-between p-6 sm:p-8 select-none print:shadow-none print:border-none print:w-full print:m-0 shrink-0"
             >
               {/* Subtle Islamic Geometric Pattern Watermark in Background */}
               <div

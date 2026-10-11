@@ -429,15 +429,15 @@ export default function Sessions1on1Page({ forcedType }: Sessions1on1PageProps) 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* ── Top Header Bar ── */}
-      <div className="relative rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="relative rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shadow-xs shrink-0">
                 <CalendarDays className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900">{titleLabel}</h1>
+                <h1 className="text-lg sm:text-xl font-bold text-slate-900">{titleLabel}</h1>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Manajemen slot seleksi tatap muka 1:1. Slot dibersihkan jika tidak diambil pendaftar sampai waktu pelaksanaan.
                 </p>
@@ -446,7 +446,7 @@ export default function Sessions1on1Page({ forcedType }: Sessions1on1PageProps) 
           </div>
 
           {/* Action CTAs */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
             {/* CTA Lucide: book-open -> icon only without label and without card container */}
             <Button
               variant="ghost"
@@ -463,9 +463,9 @@ export default function Sessions1on1Page({ forcedType }: Sessions1on1PageProps) 
               <Button
                 size="sm"
                 onClick={handleOpenCreate}
-                className="gap-2 h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm"
+                className="gap-2 h-10 px-3 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold shadow-sm"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4 shrink-0" />
                 <span>Buat Session Baru</span>
               </Button>
             )}
@@ -473,8 +473,8 @@ export default function Sessions1on1Page({ forcedType }: Sessions1on1PageProps) 
         </div>
 
         {/* Status Indicators Quick Filter Bar (Compact without long text labels) */}
-        <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1 sm:pb-0 shrink-0">
             <button
               onClick={() => setStatusFilter('all')}
               className={cn(
@@ -650,7 +650,7 @@ export default function Sessions1on1Page({ forcedType }: Sessions1on1PageProps) 
 
       {/* ── Modal Dialog Tambah / Edit Session 1:1 ── */}
       <Dialog open={sessionModal !== null} onOpenChange={(open) => !open && setSessionModal(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-slate-900">
               {sessionModal === 'create' ? 'Buat Session 1:1 Baru' : 'Edit Session 1:1'}
@@ -673,7 +673,7 @@ export default function Sessions1on1Page({ forcedType }: Sessions1on1PageProps) 
             </div>
 
             {/* Tanggal & Jam Mulai (Tanpa Jam Selesai) */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-800">Tanggal Pelaksanaan</label>
                 <Input
@@ -691,9 +691,9 @@ export default function Sessions1on1Page({ forcedType }: Sessions1on1PageProps) 
                     type="time"
                     value={form.start_time}
                     onChange={(e) => setForm({ ...form, start_time: e.target.value })}
-                    className="h-9 text-xs px-2 flex-1"
+                    className="h-9 text-xs px-2 flex-1 min-w-0"
                   />
-                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">s/d Selesai</span>
+                  <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">s/d Selesai</span>
                 </div>
               </div>
             </div>
@@ -712,7 +712,7 @@ export default function Sessions1on1Page({ forcedType }: Sessions1on1PageProps) 
             {/* Mode: Online vs Offline */}
             <div className="space-y-1.5">
               <label className="font-bold text-slate-800">Mode Pelaksanaan</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, mode: 'offline' })}
@@ -723,7 +723,7 @@ export default function Sessions1on1Page({ forcedType }: Sessions1on1PageProps) 
                       : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                   )}
                 >
-                  <MapPin className="h-4 w-4" />
+                  <MapPin className="h-4 w-4 shrink-0" />
                   <span>Offline (Tatap Muka)</span>
                 </button>
                 <button
@@ -736,7 +736,7 @@ export default function Sessions1on1Page({ forcedType }: Sessions1on1PageProps) 
                       : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                   )}
                 >
-                  <Video className="h-4 w-4" />
+                  <Video className="h-4 w-4 shrink-0" />
                   <span>Online (Tatap Maya)</span>
                 </button>
               </div>

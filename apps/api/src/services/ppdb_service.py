@@ -1367,26 +1367,19 @@ class PPDBService:
                 status_code=404, detail="Data pendaftaran tidak ditemukan"
             )
 
-        # Aturan pendaftar-code: Fitur Ganti Jalur hanya terbuka SEBELUM
-        # pendaftar melakukan Upload Dokumen
-        existing_docs = self.repository.get_applicant_documents(applicant.id)
-        if existing_docs and len(existing_docs) > 0:
+        forbidden_statuses = {
+            "document_approved",
+            "selection",
+            "passed",
+            "failed",
+        }
+        if applicant.status in forbidden_statuses:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    "Fitur ganti jalur hanya terbuka sebelum Anda mengunggah dokumen."
+                    "Tidak dapat mengganti jalur setelah diverifikasi ke tahap "
+                    "selanjutnya"
                 ),
-            )
-
-        allowed_statuses = {
-            "pending_payment",
-            "document_uploaded_pending",
-            "document_rejected",
-        }
-        if applicant.status not in allowed_statuses:
-            raise HTTPException(
-                status_code=400,
-                detail="Tidak dapat mengganti jalur pada status saat ini",
             )
 
         new_path_clean = (new_path or "").strip().lower()
@@ -1762,7 +1755,7 @@ class PPDBService:
             "Jalur Pendaftaran: {{jalur}}\n"
             "Gelombang: {{gelombang}}\n\n"
             "Dinyatakan DITERIMA / LULUS sebagai santri baru di "
-            "Pesantren Tahfidz Ar-Rahman.\n\n"
+            "Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.\n\n"
             "Harap segera menyelesaikan tahapan administrasi dan "
             "pembayaran Tahap 2 sesuai jadwal yang ditentukan."
         )
@@ -1958,7 +1951,7 @@ class PPDBService:
             raw_health = applicant.get("disease_history") or ""
             health_lines = [
                 "FORMULIR IDENTIFIKASI KESEHATAN (PENGGANTI MEDCHECK)",
-                "Pesantren Tahfidz Ar-Rahman",
+                "Pesantren Tahfidz Qur'an dan Digital Ar-Rahman",
                 "----------------------------------------",
                 f"Nama Pendaftar: {applicant.get('full_name')}",
                 f"NISN: {applicant.get('nisn') or '-'}",
@@ -2056,7 +2049,7 @@ class PPDBService:
             evaluator_notes = dossier["transcript"].get("evaluator_notes", "-")
             transcript_txt = (
                 f"TRANSKRIP HASIL SELEKSI PPDB\n"
-                f"Pesantren Tahfidz Ar-Rahman\n"
+                f"Pesantren Tahfidz Qur'an dan Digital Ar-Rahman\n"
                 f"----------------------------------------\n"
                 f"Nama: {applicant.get('full_name')}\n"
                 f"NISN: {applicant.get('nisn') or '-'}\n"

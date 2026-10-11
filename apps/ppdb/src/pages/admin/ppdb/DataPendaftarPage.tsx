@@ -83,7 +83,7 @@ export default function DataPendaftarPage() {
       />
 
       {statusFilter && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-muted-foreground">Filter:</span>
           <Badge variant={statusFilter === 'expired' ? 'destructive' : 'secondary'} className="uppercase">
             {statusFilter}

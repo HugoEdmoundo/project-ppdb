@@ -14,6 +14,11 @@ import PeriodsPage from './pages/admin/ppdb/PeriodsPage'
 import LandingPage from './pages/public/LandingPage'
 import GlobeDemoPage from './pages/public/GlobeDemoPage'
 import RegisterPage from './pages/public/RegisterPage'
+import PublicReceiptPage from './pages/public/PublicReceiptPage'
+import ApplicantReceiptPage from './pages/applicant/ReceiptPage'
+import ApplicantDocumentsPage from './pages/applicant/DocumentsPage'
+import SelectionStagePage from './pages/applicant/SelectionStagePage'
+import ResultStagePage from './pages/applicant/ResultStagePage'
 import CheckoutPage from './pages/applicant/CheckoutPage'
 import ApplicantDashboardPage from './pages/applicant/DashboardPage'
 import ExamCardPage from './pages/applicant/ExamCardPage'
@@ -89,9 +94,18 @@ export default function App() {
 
             <Route path="/checkout" element={<ProtectedRoute role="applicant"><CheckoutPage /></ProtectedRoute>} />
 
+            {/* Public Kuitansi via Shared Link (Tanpa Header, Tanpa CTA Back, Tanpa Share) */}
+            <Route path="/kuitansi/:id" element={<PublicReceiptPage />} />
+
+            {/* Applicant Dedicated Stage Pages */}
             <Route path="/applicant" element={<ProtectedRoute role="applicant" requirePaid={true}><ApplicantDashboardPage /></ProtectedRoute>} />
+            <Route path="/applicant/kuitansi" element={<ProtectedRoute role="applicant" requirePaid={true}><ApplicantReceiptPage /></ProtectedRoute>} />
+            <Route path="/applicant/dokumen" element={<ProtectedRoute role="applicant" requirePaid={true}><ApplicantDocumentsPage /></ProtectedRoute>} />
+            <Route path="/applicant/ujian-tiu" element={<ProtectedRoute role="applicant" requirePaid={true}><SelectionStagePage section="tiu" title="Ujian TIU Online" subtitle="Tes Skolastik & Akademik via Safe Exam Browser (SEB)" /></ProtectedRoute>} />
+            <Route path="/applicant/seleksi-tahfidz" element={<ProtectedRoute role="applicant" requirePaid={true}><SelectionStagePage section="tahfidz" title="Seleksi Tahfidz (1:1)" subtitle="Jadwal dan ujian tartil serta tahfidz Al-Qur'an" /></ProtectedRoute>} />
+            <Route path="/applicant/seleksi-wawancara" element={<ProtectedRoute role="applicant" requirePaid={true}><SelectionStagePage section="interview" title="Seleksi Wawancara (1:1)" subtitle="Wawancara calon santri dan orang tua/wali" /></ProtectedRoute>} />
+            <Route path="/applicant/pengumuman" element={<ProtectedRoute role="applicant" requirePaid={true}><ResultStagePage /></ProtectedRoute>} />
             <Route path="/applicant/kartu-ujian" element={<ProtectedRoute role="applicant" requirePaid={true}><ExamCardPage /></ProtectedRoute>} />
-            <Route path="/applicant/ujian-tiu" element={<Navigate to="/applicant" replace />} />
 
             <Route path="/403" element={<ForbiddenPage />} />
             <Route path="*" element={<NotFoundPage />} />

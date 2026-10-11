@@ -132,7 +132,7 @@ class PaymentService:
             "receipt_no": f"KUI-PPDB-{transaction.id.replace('-', '')[:12].upper()}",
             "applicant_name": applicant.full_name if applicant else "Calon Santri",
             "registration_path": (
-                applicant.registration_path if applicant else "Reguler"
+                (applicant.registration_path or "Reguler") if applicant else "Reguler"
             ).upper(),
             "amount": transaction.amount,
             # Metode yang tidak tercatat ditulis apa adanya, bukan ditebak QRIS.

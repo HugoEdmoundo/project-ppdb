@@ -12,6 +12,25 @@ import type {
   DashboardUser,
 } from "./types"
 
+/**
+ * Chrome dashboard yang dipakai bersama oleh 4 panel: companyprofile admin
+ * (overview + dashboard), ppdb admin, dan superadmin.
+ *
+ * Yang SENGAJA berbeda per-panel dan bukan inkonsistensi:
+ * - `brand.subtitle` / `title` — tiap panel punya nama sendiri ("Admin CMS",
+ *   "Admin PPDB", "Superadmin").
+ * - `storageKey` — state sidebar yang ter-collapse harus terpisah per panel,
+ *   kalau tidak memcollapse sidebar di satu panel akan Walnut di panel lain.
+ * - `navGroups` — daftar menu tiap panel memang berbeda isi dan urutan.
+ *
+ * Yang TIDAK boleh berbeda (semua panel wajib mengirim):
+ * - `onViewSite` + link "Lihat Situs" di sidebarFooter — supaya dari panel
+ *   mana pun ada jalan balik ke situs publik.
+ * - `roleLabel` — kalau kosong, DashboardProfileMenu jatuh ke `user.role`,
+ *   jadi tetap tampil, tapi nilainya bisa berbeda antar panel.
+ * - Logo harus punya fallback ke favicon, dan TIDAK boleh jatuh ke path aset
+ *   statis. Logo kosong → BrandMark merender tile emerald + `ار`.
+ */
 export interface DashboardShellProps {
   brand: DashboardBrand
   navGroups: DashboardNavGroup[]

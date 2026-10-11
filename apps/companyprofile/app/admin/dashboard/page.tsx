@@ -431,7 +431,7 @@ export default function AdminDashboard() {
         subtitle="Kelola Konten"
         contentClassName="animate-fade-in"
         storageKey="cp_collapsed"
-        onCollapsedChange={(v) => localStorage.setItem('cp_collapsed', String(v))}
+        roleLabel={adminUser?.role_name || adminUser?.user_type}
         user={{
           fullName: adminUser?.full_name,
           username: adminUser?.username,

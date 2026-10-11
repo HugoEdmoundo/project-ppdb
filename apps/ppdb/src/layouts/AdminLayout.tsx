@@ -71,7 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const { logoUrl } = useBrand(API_BASE)
+  const { logoUrl, faviconUrl } = useBrand(API_BASE)
 
   const filtered = useFilteredNav(navItems as unknown as Parameters<typeof useFilteredNav>[0]) as NavItem[]
 
@@ -107,7 +107,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <DashboardShell
-      brand={{ name: 'PTDARRAHMAN', subtitle: 'PPDB Admin', logoUrl: logoUrl || undefined }}
+      brand={{ name: 'PTDARRAHMAN', subtitle: 'PPDB Admin', logoUrl: logoUrl || faviconUrl || undefined }}
       navGroups={navGroups}
       renderLink={RouterDashboardLink}
       title="Admin PPDB"

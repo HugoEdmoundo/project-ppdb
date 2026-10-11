@@ -148,9 +148,11 @@ export default function AdminOverview() {
         .then((settings) => {
           const logo = settings.find((s) => s.key === 'logo')?.value
           const favicon = settings.find((s) => s.key === 'favicon')?.value
-          if (favicon) setLogoUrl(favicon)
-          else if (logo) setLogoUrl(logo)
-          else setLogoUrl('/download.png')
+          // Fallback terakhir SENGAJA string kosong, bukan path aset statis:
+          // BrandMark akan merender tile emerald + `ار` saat logoUrl kosong
+          // (packages/ui/components/dashboard/brand-mark.tsx). Memakai
+          // '/download.png' melanggar aturan "No Static Logo" di AGENTS.md.
+          setLogoUrl(favicon || logo || '')
         })
         .catch(() => { })
     }
@@ -257,6 +259,7 @@ export default function AdminOverview() {
         subtitle="Dashboard"
         contentClassName="animate-fade-in"
         storageKey="cp_collapsed"
+        roleLabel={adminUser?.role_name || adminUser?.user_type}
         user={{
           fullName: adminUser?.full_name,
           username: adminUser?.username,

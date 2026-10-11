@@ -2,6 +2,7 @@
 
 // ── Primitives ────────────────────────────────────────────────────────────────
 export * from "./lib/utils";
+export * from "./lib/company-profile-url";
 export * from "./hooks/useBrand";
 export * from "./components/ui/avatar";
 export * from "./components/ui/badge";

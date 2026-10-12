@@ -274,24 +274,41 @@
   100% { transform: translateX(200%); }
 }
 
-/* Dipakai components/ui/meteors.tsx. Keyframe ini belum pernah ada, jadi
-   komponennya tidak bergerak sama sekali kalau dipasang. Jarak Y 400px harus
-   cukup panjang agar meteor jatuh melewati penuh tinggi container (kartu CTA),
-   dan rotasi 215deg -> 325deg membuat ekornya miring seperti jejak gerhana. */
+/* Dipakai components/ui/meteors.tsx.
+   Dua perubahan penting dari versi lama:
+
+   1. Sudut tidak lagi dianimasikan dari 215deg ke 325deg. Menggoyakkan rotasi membuat
+      ekornya berayun dan meteor terlihat seperti sapuan kuas, bukan meteor.
+      Sekarang sudut tetap per-element (--meteor-angle) dan hanya pergeserannya
+      yang dianimasikan, sehingga ekor selalu lurus di belakang kepala.
+
+   2. Fill mode `both` (sebelumnya tidak ada sama sekali). Tanpa itu, selama
+      animation-delay 0-6 detik tiap meteor diam diam-diam di posisi awal
+      dengan opacity bawaan — artinya muncul sebagai deretan titik statis
+      selama detik-detik pertama. Itulah alasan meteor-nya terlihat "tidak
+      muncul" sama sekali.
+
+   Jarak Y diambil dari --meteor-travel per-element supaya bisa melewati tinggi
+   kartu CTA tanpa magic number. */
 @keyframes meteor-effect {
   0% {
-    transform: rotate(215deg) translateY(-20px);
+    transform: rotate(var(--meteor-angle, 215deg)) translateY(-20px);
     opacity: 0;
   }
-  50% { opacity: 1; }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
   100% {
-    transform: rotate(325deg) translateY(400px);
+    transform: rotate(var(--meteor-angle, 215deg)) translateY(var(--meteor-travel, 700px));
     opacity: 0;
   }
 }
 
 .animate-meteor-effect {
-  animation: meteor-effect linear infinite;
+  animation: meteor-effect linear infinite both;
 }
 
 @keyframes logo-pulse {

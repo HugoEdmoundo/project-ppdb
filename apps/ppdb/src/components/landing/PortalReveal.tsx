@@ -219,29 +219,46 @@ export default function PortalReveal({ children }: { children?: React.ReactNode 
           className="absolute inset-y-0 right-0 z-10 w-1/2 bg-obsidian will-change-transform"
         />
 
-        {/* Kata kunci: tiap paruh menempel ke tepi panelnya sendiri */}
-        <div className="pointer-events-none absolute inset-0 z-20 flex items-center px-6">
-          <div
-            data-portal-half-left
-            className="flex w-1/2 justify-end pr-[1px] will-change-transform"
-          >
-            <span
-              data-portal-wordmark
-              className="whitespace-nowrap font-brand text-[clamp(1.6rem,9vw,9rem)] font-bold leading-none tracking-[0.06em] text-white"
+        {/* Kata kunci. Dua paruh tetap berdempet di seam supaya panel membelah
+            di antara huruf yang tepat, tapi KESELURUHAN kata dipusatkan sebagai
+            satu unit.
+
+            Sebelumnya tiap paruh diberi `w-1/2` dan menghampiri seam dari
+            sisinya masing-masing. Itu membuat seam selalu persis di tengah
+            viewport, tapi karena split-nya 5|6 huruf (PTDAR 5, RAHMAN 6) —
+            bukan 5|5 — paruh kanan lebih lebar dan seluruh kata terdorong ke
+            kanan. Terukur di vw 1283: jarak kiri 191px vs kanan 95px, jadi
+            meleset 60px dari pusat layar.
+
+            Dua hal itu memang tidak bisa sama-sama terpenuhi pada kata 11
+            huruf: seam tidak bisa berada di tengah viewport sekaligus di
+            tengah kata. Yang lebih penting dilihat mata adalah kata yang
+            terpusat, jadi seam yang mengalah.
+        */}
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-6">
+          <div className="flex items-center">
+            <div
+              data-portal-half-left
+              className="flex pr-[1px] will-change-transform"
             >
-              {WORDMARK_LEFT}
-            </span>
-          </div>
-          <div
-            data-portal-half-right
-            className="flex w-1/2 justify-start pl-[1px] will-change-transform"
-          >
-            <span
-              data-portal-wordmark
-              className="whitespace-nowrap font-brand text-[clamp(1.6rem,9vw,9rem)] font-bold leading-none tracking-[0.06em] text-white"
+              <span
+                data-portal-wordmark
+                className="whitespace-nowrap font-brand text-[clamp(1.6rem,9vw,9rem)] font-bold leading-none tracking-[0.06em] text-white"
+              >
+                {WORDMARK_LEFT}
+              </span>
+            </div>
+            <div
+              data-portal-half-right
+              className="flex pl-[1px] will-change-transform"
             >
-              {WORDMARK_RIGHT}
-            </span>
+              <span
+                data-portal-wordmark
+                className="whitespace-nowrap font-brand text-[clamp(1.6rem,9vw,9rem)] font-bold leading-none tracking-[0.06em] text-white"
+              >
+                {WORDMARK_RIGHT}
+              </span>
+            </div>
           </div>
         </div>
 

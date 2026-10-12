@@ -11,7 +11,7 @@ export default function ShapeDividerBottom({ fill = "var(--bg)" }: { fill?: stri
         className="relative block w-[calc(100%+1.3px)] h-[78px]"
       >
         <path
-          d="M1200,0H0V120H281.94C572.9,116.24,602.45,3.86,602.45,3.86h0S632,116.24,923,120h277Z"
+          d="M0,120H1200V16C1060,16 962,56 762,64C556,73 358,23 0,32Z"
           style={{ fill }}
         />
       </svg>

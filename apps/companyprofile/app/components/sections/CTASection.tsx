@@ -64,10 +64,18 @@ export default function CTASection({ wave = null }: { wave?: ActivePpdbWave | nu
           Di bawah itu `Card` (max-w-5xl, background opaque) menutup hampir
           seluruh lebar section — meteor yang melintas di belakangnya terpotong
           di tengah layar lalu muncul lagi di sisi lain, dan itu terbaca sebagai
-          posisi acak. Pita ini kosong di desktop; di mobile ruangnya cuma ~68px,
-          jadi disembunyikan karena memang tidak ada area untuk diisi. */}
-      <div className="absolute inset-x-0 top-[150px] h-[150px] overflow-hidden hidden md:block">
-        <Meteors count={3} />
+          posisi acak.
+
+          Jumlahnya dinaikkan dari 3 ke 9 dan pitanya diperlebar dari 150px ke
+          240px. Pada 3 meteor di pita 150px, Meteor ini praktis tak terlihat —
+          sudut pandang yang jarang, tiap meteor muncul satu per satu, jadi
+          biasanya hanya satu yang berada di layar pada satu waktu.
+
+          Pita masih disembunyikan di mobile: di lebar mobile ruang antara
+          shape divider dan kartu cuma ~68px, dan meteor yang tidak punya
+         ruang lintasan akan lebih terasa mengganggu daripada prettify nilai estetikanya. */}
+      <div className="absolute inset-x-0 top-[120px] h-[240px] overflow-hidden hidden md:block">
+        <Meteors count={9} />
       </div>
       <Particles count={25} />
       <div ref={bgRef} className="absolute inset-0 opacity-[0.05]"

@@ -36,7 +36,6 @@ export default function LandingPage() {
   const [wave, setWave] = useState<ActiveWave | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const headerRef = useRef<HTMLElement>(null)
   const lenisRef = useRef<Lenis | null>(null)
   const progressRef = useRef<HTMLDivElement>(null)
   const { logoUrl } = useBrand(API_BASE)
@@ -77,10 +76,11 @@ export default function LandingPage() {
     // Ambang 80px, sama dengan Navbar companyprofile.
     //
     // PENTING: nilainya dibaca di rAF yang sama dengan `lenis.raf()`, bukan dari
-    // event `scroll` native. Event scroll Api变量的 asynchronously terhadap rAF
-    // Lenis, jadi kelas baru datang terlambat — lalu transition CSSIDC.smoothen
-    // untuk kedua kalinya, dan navbar terlihat \"nge-lag\" di belakang scroll.
-    // Dengan membacanya se-frame, hanya ada satu sumber smoothening.
+    // event `scroll` native. Event scroll API dipanggil asynchronously terhadap
+    // rAF Lenis, jadi kelas baru datang terlambat — lalu transition CSS
+    // `ease-brand-pill` dijalankan untuk kedua kalinya, dan navbar terlihat
+    // "nge-lag" di belakang scroll. Dengan membacanya se-frame, hanya ada satu
+    // sumber smoothening.
     let navScrolled = false
     const applyNavScrolled = () => {
       const next = lenis.scroll > 80
@@ -117,43 +117,6 @@ export default function LandingPage() {
       lenis.destroy()
       if (lenisRef.current === lenis) lenisRef.current = null
     }
-  }, [])
-
-  // Navbar mengikuti progress portal: hilang saat panel masih menutup, muncul
-  // begitu panel mulai membelah, lalu tetap di atas portal sampai portal keluar
-  // dari layar.
-  //
-  // Kenapa tidak cukup dengan z-index: z-index hanya menyembunyikan navbar
-  // sampai portal keluar viewport — itu 120vh scroll, jauh lebih lama dari
-  // durasi panel membelah. Akibatnya bagian atas layar kosong terlalu lama.
-  useEffect(() => {
-    const header = headerRef.current
-    const portal = document.querySelector('[data-portal-section]')
-    if (!header || !portal) return
-    // Reduced motion: PortalReveal tidak dirender sama sekali, jadi tidak ada
-    // yang perlu dianimasikan — navbar dibiarkan apa adanya.
-    if (prefersReducedMotion()) return
-
-    gsap.registerPlugin(ScrollTrigger)
-
-    const ctx = gsap.context(() => {
-      gsap
-        .timeline({
-          scrollTrigger: {
-            trigger: portal,
-            start: 'top top',
-            end: 'bottom bottom',
-            scrub: true,
-          },
-        })
-        // 0 - 0.15: panel masih menutup rapat, navbar harus tetap hilang.
-        .to(header, { opacity: 0, duration: 0.15 })
-        // 0.15 - 0.45: navbar fade in. Di titik ini panel sudah terbuka ~70%
-        // (power2.inOut), jadi tidak muncul di atas layar yang masih gelap.
-        .to(header, { opacity: 1, duration: 0.3 }, 0.15)
-    })
-
-    return () => ctx.revert()
   }, [])
 
   useEffect(() => {
@@ -214,13 +177,15 @@ export default function LandingPage() {
           "nge-lag"/kurang halus. Nilai px yang realistis (setengah tinggi bar)
           bikin interpolasinya linear, dan secara visual tetap persis pill. */}
       <header
-        ref={headerRef}
         className={cn(
-          // z-[70] di atas PortalReveal (z-[60]) supaya navbar bisa muncul
-          // Vaulted di panel yang sedang membuka. Default PortalReveal z-60
-          // sudah cukup untuk menyembunyikannya; angka 70 hanya diperlukan
-          // karena navbar sekarang ikut difade-in.
-          'fixed z-[70] ease-brand-pill',
+          // z-50, di BAWAH PortalReveal (z-60), jadi navbar tidak perlu
+          // animasi opacity sendiri: panel portal yang menutup sudah menutupnya.
+          // Versi sebelumnya memakai z-70 + timeline fade (hold 0-0.15, ramp
+          // 0.15-0.45) supaya navbar muncul lebih cepat. Itu satu timeline
+          // ekstra hanya untuk menampakkan navbar, dan hasilnya navbar
+          // menyala di atas panel yang masih gelap. Behind-the-portal jauh
+          // lebih sederhana dan tidak perlu digeser timing-nya.
+          'fixed z-50 ease-brand-pill',
           'transition-[left,right,top,max-width,border-radius,background-color,box-shadow,border-color]',
         scrolled
           ? cn('left-2 right-2 top-2 mx-auto max-w-6xl border border-slate-200/80 bg-white/95 shadow-[0_8px_30px_rgb(0,0,0,0.08)] backdrop-blur-2xl md:left-8 md:right-8 md:top-4', PILL_RADIUS)

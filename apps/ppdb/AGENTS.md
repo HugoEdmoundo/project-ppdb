@@ -28,11 +28,21 @@ Aplikasi frontend Penerimaan Peserta Didik Baru (PPDB) untuk Pesantren Tahfidz Q
 - `/globe` (`GlobeDemoPage`): Halaman demo globe.
 - `/auth/login` (`LoginPage`): Shared login page for applicants and admins.
 - `/applicant/login`: Redirect ke `/auth/login`.
+- `/kuitansi/:id` (`PublicReceiptPage`): Kuitansi publik yang bisa dibagikan, memanggil `GET /payment/public-receipt/:id`.
+  - **Penting:** endpoint itu tidak butuh autentikasi dan **hanya terbit kalau ada record transaksi**. Kalau tidak ada transaksi, jawabannya 404 — jangan menambahkan cabang fallback yang merakit kuitansi dari data pendaftar saja, karena itu pernah menghasilkan kuitansi fiktif (nominal karangan, metode QRIS, status LUNAS) untuk pendaftar yang belum bayar. Lihat `PaymentService.get_public_receipt`.
 
 ### Applicant (Protected, `role="applicant"`)
 - `/checkout` (`CheckoutPage`): Payment paywall. Restricts users here if `payment_status != paid`.
-- `/applicant` (`DashboardPage`): Main dashboard for applicants. Requires the payment status to be paid (`requirePaid={true}`).
+- `/applicant` (`DashboardPage`): Ringkasan untuk pendaftar. Requires the payment status to be paid (`requirePaid={true}`).
+- `/applicant/kuitansi` (`ApplicantReceiptPage`): Kuitansi milik pendaftar sendiri.
+- `/applicant/dokumen` (`ApplicantDocumentsPage`): Unggah dan pantau dokumen.
+- `/applicant/ujian-tiu` (`SelectionStagePage` section `tiu`): Ujian TIU.
+- `/applicant/seleksi-tahfidz` (`SelectionStagePage` section `tahfidz`): Seleksi Tahfidz 1:1.
+- `/applicant/seleksi-wawancara` (`SelectionStagePage` section `interview`): Seleksi Wawancara 1:1.
+- `/applicant/pengumuman` (`ResultStagePage`): Pengumuman hasil.
 - `/applicant/kartu-ujian` (`ExamCardPage`): Download kartu/konfigurasi ujian TIU (SEB). Requires `requirePaid={true}`.
+
+Semua halaman tahapan di atas memakai `requirePaid={true}`. `SelectionStagePage` dipakai ulang untuk tiga tahap dengan `section` berbeda — menambah tahap baru cukup menambah route dengan `section` yang sesuai, bukan komponen baru.
 
 ### Admin (Protected, `role="admin"`)
 Wrapped in `AdminLayout` (`src/layouts/AdminLayout.tsx`):

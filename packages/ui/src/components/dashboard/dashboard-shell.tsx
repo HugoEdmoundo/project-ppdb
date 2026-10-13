@@ -24,12 +24,14 @@ import type {
  * - `navGroups` — daftar menu tiap panel memang berbeda isi dan urutan.
  *
  * Yang TIDAK boleh berbeda (semua panel wajib mengirim):
- * - `onViewSite` + link "Lihat Situs" di sidebarFooter — supaya dari panel
- *   mana pun ada jalan balik ke situs publik.
  * - `roleLabel` — kalau kosong, DashboardProfileMenu jatuh ke `user.role`,
  *   jadi tetap tampil, tapi nilainya bisa berbeda antar panel.
  * - Logo harus punya fallback ke favicon, dan TIDAK boleh jatuh ke path aset
  *   statis. Logo kosong → BrandMark merender tile emerald + `ار`.
+ *
+ * Yang SENGAJA hanya ada di CMS (panel lain TIDAK mengirim):
+ * - `onViewSite` + `sidebarFooter` "Lihat Situs" — jalan balik ke situs publik
+ *   hanya disediakan di Company Profile CMS, bukan di PPDB/Superadmin.
  */
 export interface DashboardShellProps {
   brand: DashboardBrand

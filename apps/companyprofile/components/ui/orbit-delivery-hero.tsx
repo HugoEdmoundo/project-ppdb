@@ -234,7 +234,7 @@ var init_motion = __esm({
 
 
 
-    GAIT_DISTANCE = 0.44;
+    GAIT_DISTANCE = 0.7;
 
 
 
@@ -847,211 +847,149 @@ function getSurfaceData(surfaceRaw) {
 
 function usePlanetAsset(onReady) {
 
-
-
   const base = useContext(AssetBaseContext);
-
-
 
   const [asset, setAsset] = useState(null);
 
-
-
   const [error, setError] = useState(null);
-
-
 
   useEffect(() => {
 
-
-
-    const abort = new AbortController();
-
-
-
-    const loader = new GLTFLoader();
-
-
-
     let disposed = false;
-
-
 
     let scene;
 
-
-
-    const loadWorldBuffer = async () => {
-
-      const candidates = [
-
-        "/models/whimsical-world.glb",
-
-        `${base}models/whimsical-world.glb`,
-
-        "https://cdn.jsdelivr.net/gh/fadeichev2121/planet@b3f70fbf4b577845b1d9d5947c9410fb4d925dae/models/whimsical-world.glb"
-
-      ];
-
-      for (const url of candidates) {
-
-        try {
-
-          const res = await fetch(url, { signal: abort.signal });
-
-          if (res.ok) return await res.arrayBuffer();
-
-        } catch (e) { }
-
-      }
-
-      throw new Error("Planet model whimsical-world.glb could not be loaded");
-
-    };
-
-
-
     onReady?.(false);
 
-    const surface2 = getSurfaceData(surface);
+    // Create procedural planet instead of loading GLB
+    const createProceduralPlanet = () => {
+      const group = new Group3();
+      
+      // Main planet sphere - emerald green
+      const planetGeometry = new SphereGeometry(2.2, 64, 48);
+      const planetMaterial = new MeshStandardMaterial({
+        color: 0x1A6B47,
+        roughness: 0.75,
+        metalness: 0.02,
+      });
+      const planetMesh = new Mesh3(planetGeometry, planetMaterial);
+      planetMesh.name = "Planet";
+      planetMesh.castShadow = true;
+      planetMesh.receiveShadow = true;
+      group.add(planetMesh);
 
+      // Add subtle noise/displacement via vertex colors for visual interest
+      const position = planetGeometry.attributes.position;
+      const colors = [];
+      for (let i = 0; i < position.count; i++) {
+        const x = position.getX(i);
+        const y = position.getY(i);
+        const z = position.getZ(i);
+        const noise = Math.sin(x * 3) * Math.cos(y * 3) * Math.sin(z * 3) * 0.02;
+        const variation = noise + Math.sin(x * 7) * 0.01;
+        colors.push(1 - variation * 0.5, 1 - variation * 0.3, 1 - variation * 0.4);
+      }
+      planetGeometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+      planetMaterial.vertexColors = true;
+      planetMaterial.needsUpdate = true;
 
+      // Masjid dome silhouette (decorative)
+      const domeGeometry = new SphereGeometry(0.18, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+      const domeMaterial = new MeshStandardMaterial({
+        color: 0x0D4A2E,
+        roughness: 0.85,
+        metalness: 0.0,
+      });
+      const domeMesh = new Mesh3(domeGeometry, domeMaterial);
+      domeMesh.name = "MasjidDome";
+      domeMesh.position.set(0, 2.2, 0);
+      domeMesh.rotation.x = -Math.PI / 2;
+      domeMesh.castShadow = true;
+      group.add(domeMesh);
 
-    loadWorldBuffer().then(async (buffer) => {
-
-
-
-      if (disposed) return;
-
-
-
-      const gltf = await loader.parseAsync(buffer, `${base}models/`);
-
-
-
-      scene = gltf.scene;
-
-
-
-      if (disposed) {
-
-
-
-        disposeScene(scene);
-
-
-
-        return;
-
-
-
+      // Minaret silhouettes (4 around the planet)
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2;
+        const x = Math.sin(angle) * 1.6;
+        const z = Math.cos(angle) * 1.6;
+        
+        const minaretGroup = new Group3();
+        
+        const baseGeometry = new CylinderGeometry(0.06, 0.08, 0.25, 8);
+        const baseMaterial = new MeshStandardMaterial({ color: 0x0D4A2E, roughness: 0.9 });
+        const baseMesh = new Mesh3(baseGeometry, baseMaterial);
+        baseMesh.position.y = 2.1;
+        minaretGroup.add(baseMesh);
+        
+        const shaftGeometry = new CylinderGeometry(0.025, 0.035, 0.6, 8);
+        const shaftMesh = new Mesh3(shaftGeometry, baseMaterial);
+        shaftMesh.position.y = 2.45;
+        minaretGroup.add(shaftMesh);
+        
+        const topGeometry = new SphereGeometry(0.04, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2);
+        const topMesh = new Mesh3(topGeometry, baseMaterial);
+        topMesh.position.y = 2.78;
+        topMesh.rotation.x = -Math.PI / 2;
+        minaretGroup.add(topMesh);
+        
+        const crescentGeometry = new TorusGeometry(0.035, 0.008, 8, 16, Math.PI);
+        const crescentMaterial = new MeshStandardMaterial({ 
+          color: 0xE5B842, 
+          roughness: 0.2, 
+          metalness: 0.8 
+        });
+        const crescentMesh = new Mesh3(crescentGeometry, crescentMaterial);
+        crescentMesh.position.y = 2.82;
+        crescentMesh.rotation.x = Math.PI / 2;
+        minaretGroup.add(crescentMesh);
+        
+        minaretGroup.position.set(x, 0, z);
+        minaretGroup.rotation.y = -angle;
+        group.add(minaretGroup);
       }
 
-
-
-      scene.traverse((node) => {
-
-
-
-        node.updateMatrix();
-
-
-
-        node.matrixAutoUpdate = false;
-
-
-
-        if (!(node instanceof Mesh)) return;
-
-
-
-        const materials = Array.isArray(node.material) ? node.material : [node.material];
-
-
-
-        for (const mat of materials) if (mat instanceof MeshStandardMaterial) {
-
-
-
-          mat.side = FrontSide;
-
-
-
-          mat.metalness = 0;
-
-
-
-          mat.roughness = 0.86;
-
-
-
-          mat.normalScale.setScalar(0.65);
-
-
-
-          if (mat.map) mat.map.anisotropy = 4;
-
-
-
-        }
-
-
-
+      // Gold accent ring around equator
+      const ringGeometry = new TorusGeometry(2.25, 0.015, 16, 64);
+      const ringMaterial = new MeshStandardMaterial({
+        color: 0xE5B842,
+        roughness: 0.2,
+        metalness: 0.9,
       });
+      const ringMesh = new Mesh3(ringGeometry, ringMaterial);
+      ringMesh.name = "EquatorRing";
+      ringMesh.rotation.x = Math.PI / 2;
+      group.add(ringMesh);
 
-
-
-      setAsset({ scene, surface: surface2 });
-
-
-
-      onReady?.(true);
-
-
-
-    }).catch((reason) => {
-
-
-
-      if (!disposed) setError(reason instanceof Error ? reason : new Error(String(reason)));
-
-
-
-    });
-
-
-
-    return () => {
-
-
-
-      disposed = true;
-
-
-
-      abort.abort();
-
-
-
-      if (scene) disposeScene(scene);
-
-
-
+      return group;
     };
 
+    try {
+      scene = createProceduralPlanet();
+      if (disposed) return;
 
+      // Simple uniform surface data (no heightmap needed)
+      const surfaceData = {
+        width: 128,
+        height: 65,
+        radii: new Float32Array(128 * 65).fill(1.0)
+      };
 
-  }, [onReady, base]);
+      setAsset({ scene, surface: surfaceData });
+      onReady?.(true);
+    } catch (reason) {
+      if (!disposed) setError(reason instanceof Error ? reason : new Error(String(reason)));
+    }
 
+    return () => {
+      disposed = true;
+      if (scene) disposeScene(scene);
+    };
 
+  }, [onReady]);
 
   if (error) throw error;
 
-
-
   return asset;
-
-
 
 }
 
@@ -1794,289 +1732,76 @@ var init_courierGreeting = __esm({
 
 
     CourierGreeting = class {
-
-
-
       constructor(scene) {
-
-
-
         this.scene = scene;
-
-
-
         scene.updateWorldMatrix(true, true);
-
-
-
         const inverseScene = scene.getWorldQuaternion(new Quaternion5()).invert();
-
-
-
         this.joints = ["RightArm", "RightForeArm", "RightHand"].map((name) => {
-
-
-
           const bone = scene.getObjectByName(name);
-
-
-
           if (!(bone instanceof Bone2)) throw new Error(`Greeting joint ${name} is missing.`);
-
-
-
           const rest = bone.getWorldQuaternion(new Quaternion5()).premultiply(inverseScene);
-
-
-
           const direction = up.clone().applyQuaternion(rest).normalize();
-
-
-
           const palm = new Vector34(1, 0, 0).addScaledVector(direction, -direction.x).normalize();
-
-
-
           return { bone, rest, direction, palm, animated: bone.quaternion.clone() };
-
-
-
         });
-
-
-
         this.restBendNormal.crossVectors(this.joints[0].direction, this.joints[1].direction).normalize();
-
-
-
       }
-
-
-
       joints;
-
-
-
       sceneRotation = new Quaternion5();
-
-
-
       inverseParent = new Quaternion5();
-
-
-
       aim = new Quaternion5();
-
-
-
       twist = new Quaternion5();
-
-
-
       target = new Quaternion5();
-
-
-
       direction = new Vector34();
-
-
-
       palm = new Vector34();
-
-
-
       wantedPalm = new Vector34();
-
-
-
       cross = new Vector34();
-
-
-
       restBendNormal = new Vector34();
-
-
-
       bendNormal = new Vector34();
-
-
-
       upperDirection = new Vector34(-0.55, -0.65, 0.52).normalize();
-
-
-
       forearmDirection = new Vector34();
-
-
-
       phase = 0;
-
-
-
       applied = false;
-
-
-
       weight = 0;
-
-
-
       restore() {
-
-
-
         if (!this.applied) return;
-
-
-
         for (const joint of this.joints) joint.bone.quaternion.copy(joint.animated);
-
-
-
         this.applied = false;
-
-
-
       }
-
-
-
       step(dt, ready, reduced) {
-
-
-
         this.weight = MathUtils4.damp(this.weight, ready ? 1 : 0, ready ? 4 : 9, dt);
-
-
-
         if (this.weight < 1e-4) {
-
-
-
           this.weight = 0;
-
-
-
           this.phase = 0;
-
-
-
         }
-
-
-
         if (ready && this.weight > 0.85 && !reduced) this.phase += dt * Math.PI * 2 * 0.9;
-
-
-
       }
-
-
-
       apply(reduced) {
-
-
-
         if (this.weight === 0) return;
-
-
-
         this.scene.getWorldQuaternion(this.sceneRotation);
-
-
-
         const wave = Math.sin(this.phase) * (reduced ? 0 : 0.12) * MathUtils4.smoothstep(this.weight, 0.85, 0.99);
-
-
-
         this.forearmDirection.set(-0.08 + wave * 0.35, 0.94, 0.33).normalize();
-
-
-
         this.bendNormal.crossVectors(this.upperDirection, this.forearmDirection).normalize();
-
-
-
         this.joints.forEach((joint, index) => {
-
-
-
           joint.animated.copy(joint.bone.quaternion);
-
-
-
           if (index === 0) this.direction.copy(this.upperDirection);
-
-
-
           else if (index === 1) this.direction.copy(this.forearmDirection);
-
-
-
           else this.direction.set(-0.06 + wave, 0.97, 0.22);
-
-
-
           this.direction.normalize();
-
-
-
           this.aim.setFromUnitVectors(joint.direction, this.direction);
-
-
-
           this.target.copy(this.aim).multiply(joint.rest);
-
-
-
           this.palm.copy(this.restBendNormal).addScaledVector(joint.direction, -this.restBendNormal.dot(joint.direction)).normalize().applyQuaternion(this.aim);
-
-
-
           this.wantedPalm.copy(this.bendNormal).addScaledVector(this.direction, -this.bendNormal.dot(this.direction)).normalize();
-
-
-
           const angle = Math.atan2(this.direction.dot(this.cross.crossVectors(this.palm, this.wantedPalm)), this.palm.dot(this.wantedPalm));
-
-
-
           this.twist.setFromAxisAngle(this.direction, angle);
-
-
-
           this.target.premultiply(this.twist);
-
-
-
           joint.bone.parent.getWorldQuaternion(this.inverseParent).invert();
-
-
-
           this.target.premultiply(this.sceneRotation).premultiply(this.inverseParent);
-
-
-
           joint.bone.quaternion.slerp(this.target, this.weight);
-
-
-
           joint.bone.updateWorldMatrix(false, true);
-
-
-
         });
-
-
-
         this.applied = true;
-
-
-
       }
-
-
-
     };
 
 
@@ -2341,7 +2066,7 @@ import { useFrame } from "@react-three/fiber";
 
 
 
-import { AnimationClip as AnimationClip2, AnimationMixer, Bone as Bone3, LoopRepeat, MathUtils as MathUtils5, Mesh as Mesh3, MeshStandardMaterial as MeshStandardMaterial2, NumberKeyframeTrack, Quaternion as Quaternion6, QuaternionKeyframeTrack, SkinnedMesh as SkinnedMesh3, Vector3 as Vector35, VectorKeyframeTrack, Group as Group3, CylinderGeometry as CylinderGeometry3, BoxGeometry as BoxGeometry3, ConeGeometry as ConeGeometry3 } from "three";
+import { AnimationClip as AnimationClip2, AnimationMixer, Bone as Bone3, LoopRepeat, MathUtils as MathUtils5, Mesh as Mesh3, MeshStandardMaterial as MeshStandardMaterial2, NumberKeyframeTrack, Quaternion as Quaternion6, QuaternionKeyframeTrack, SkinnedMesh as SkinnedMesh3, Vector3 as Vector35, VectorKeyframeTrack, Group as Group3, CylinderGeometry as CylinderGeometry3, BoxGeometry as BoxGeometry3, ConeGeometry as ConeGeometry3, SphereGeometry, TorusGeometry, Float32BufferAttribute } from "three";
 
 
 
@@ -2427,261 +2152,111 @@ function makeIdle(scene) {
 
 }
 
+// ── Body tints ───────────────────────────────────────────────────────────────
+// The courier body is a single skinned mesh wearing a baked clay texture, so the
+// clothing cannot be recolored through material.color (that would tint skin, cap
+// and shoes too). Instead we build a per-vertex mask from the skin weights: the
+// shirt is bound to the spine/arm bones, the trousers to the hips/leg bones, and
+// the head, hands, feet and bag are bound to neither. Each mask becomes a vertex
+// attribute, so the tint deforms along with the walk cycle. Passing null as a
+// zone color keeps the original texture for that zone.
+const SHIRT_JOINTS = new Set(["Spine", "Spine01", "Spine02", "LeftShoulder", "LeftArm", "LeftForeArm", "RightShoulder", "RightArm", "RightForeArm"]);
 
+// Hips + upper/lower leg, stopping short of the feet. The source model wears
+// short khaki trousers, so painting the whole leg reads as long trousers.
+const PANTS_JOINTS = new Set(["Hips", "LeftUpLeg", "LeftLeg", "RightUpLeg", "RightLeg"]);
 
+function applyBodyTints(root, zones) {
 
+  const active = zones.filter((zone) => zone.hex !== null && zone.hex !== undefined);
 
-function createGraduationAccessories(scene) {
-  // ─── DESAIN KARAKTER SANTRI WISUDAWAN PROFESIONAL ───────────
-  const SKIN_HAIR_RE = /head|face|hair|eye|brow|lash|ear|skin|teeth|tongue|mouth|hand|finger|nose|lip/i;
-  const SHOE_RE = /shoe|boot|foot|sneak|sole/i;
-  const PANTS_RE = /short|pant|trouser|bottom|leg|jean/i;
-  // Mesh pakaian pada GLB memakai nama baked seperti Delivery_Courier_Body_Mobile.
-  const SHIRT_RE = /shirt|top|torso|chest|body|upper|jacket|cloth|courier_body|body_mobile/i;
+  if (!active.length) return 0;
 
-  // Palet Warna: Emerald Islami & Midnight Navy dengan Aksen Gold Emas
-  const TOGA_DARK = 0x102A23;       // Deep emerald untuk rompi/jubah
-  const TOGA_EMERALD = 0x2C7A5A;    // Emerald highlight khas pesantren Ar-Rahman
-  const GOLD_METALLIC = 0xE5B842;   // Kuning keemasan berkilau untuk samir & rumbai
-  const SHIRT_WHITE = 0xF5F7FA;     // Kemeja putih bersih
-  const SHOES_LEATHER = 0x18191A;   // Pantofel formal hitam
+  let tinted = 0;
 
-  const mat = (color, rough = 0.75, metal = 0.0) =>
-    new MeshStandardMaterial2({
-      color,
-      roughness: rough,
-      metalness: metal,
-      side: 2
-    });
+  root.traverse((node) => {
 
-  const togaMat = mat(TOGA_DARK, 0.85);
-  const emeraldMat = mat(TOGA_EMERALD, 0.78);
-  const goldSilkMat = mat(GOLD_METALLIC, 0.28, 0.45);
-  const whiteMat = mat(SHIRT_WHITE, 0.65);
-  const shoeMat = mat(SHOES_LEATHER, 0.45, 0.1);
+    // Body only: the shoulder strap and the bag keep their own materials.
+    if (!(node instanceof SkinnedMesh3) || !node.name.includes("Courier_Body")) return;
 
-  function mk(geo, material, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0) {
-    const o = new Mesh3(geo, material);
-    o.position.set(px, py, pz);
-    if (rx || ry || rz) o.rotation.set(rx, ry, rz);
-    o.castShadow = true;
-    return o;
-  }
+    const skinIndex = node.geometry.attributes.skinIndex;
+    const skinWeight = node.geometry.attributes.skinWeight;
+    const bones = node.skeleton?.bones;
+    if (!skinIndex || !skinWeight || !bones) return;
 
-  function addOnce(parent, name, object) {
-    if (!parent) return null;
-    const existing = parent.getObjectByName(name);
-    if (existing) parent.remove(existing);
-    object.name = name;
-    parent.add(object);
-    return object;
-  }
+    for (const zone of active) {
 
-  // 1. Sembunyikan aksesoris tas & visor kurir bawaan
-  scene.traverse((node) => {
-    if (/^Delivery_Bag|^Delivery_Shoulder|^Visor|^Cap|^Helmet/i.test(node.name)) {
-      node.visible = false;
-    }
-  });
+      const isZoneJoint = bones.map((bone) => zone.joints.has(bone.name) ? 1 : 0);
+      const count = skinIndex.count;
+      const mask = new Float32Array(count);
 
-  // 2. Styling Material Karakter (Mempertahankan tekstur wajah & rambut asli)
-  scene.traverse((node) => {
-    if (!(node instanceof Mesh3)) return;
+      for (let vertex = 0; vertex < count; vertex++) {
 
-    const list = Array.isArray(node.material) ? node.material : [node.material];
+        let zoneWeight = 0;
 
-    list.forEach((source, index) => {
-      if (!(source instanceof MeshStandardMaterial2)) return;
+        for (let channel = 0; channel < 4; channel++) {
 
-      const label = `${node.name} | ${source.name}`;
+          const index = skinIndex.getComponent(vertex, channel);
 
-      // Jangan sentuh atau hapus map kulit, mata, wajah, atau rambut!
-      if (SKIN_HAIR_RE.test(label)) {
-        source.roughness = Math.max(source.roughness, 0.6);
-        source.metalness = 0;
-        source.needsUpdate = true;
-        return;
+          if (index < isZoneJoint.length && isZoneJoint[index]) {
+
+            zoneWeight += skinWeight.getComponent(vertex, channel);
+
+          }
+
+        }
+
+        // Summed weights keep the cuffs and the hem as a gradient, not a hard cut.
+
+        mask[vertex] = smoothstep(zoneWeight, 0.35, 0.65);
+
       }
 
-      const m = source.clone();
-      m.metalness = 0;
+      node.geometry.setAttribute("aTint" + zone.slot, new Float32BufferAttribute(mask, 1));
 
-      if (SHOE_RE.test(label)) {
-        m.map = null;
-        m.color.set(SHOES_LEATHER);
-        m.roughness = 0.4;
-      } else if (PANTS_RE.test(label)) {
-        m.map = null;
-        m.color.set(TOGA_DARK);
-        m.roughness = 0.88;
-      } else if (SHIRT_RE.test(label)) {
-        m.map = null;
-        m.color.set(SHIRT_WHITE);
-        m.roughness = 0.72;
-      } else {
-        m.map = null;
-        m.color.set(TOGA_EMERALD);
-        m.roughness = 0.8;
-      }
+    }
 
-      m.needsUpdate = true;
-      if (Array.isArray(node.material)) node.material[index] = m;
-      else node.material = m;
-    });
+    const attributes = active.map((zone) => "attribute float aTint" + zone.slot + ";\nvarying float vTint" + zone.slot + ";").join("\n");
+    const assignments = active.map((zone) => "  vTint" + zone.slot + " = aTint" + zone.slot + ";").join("\n");
+    const varyings = active.map((zone) => "varying float vTint" + zone.slot + ";\nuniform vec3 uTint" + zone.slot + ";").join("\n");
+    const blends = active.map((zone) => "  diffuseColor.rgb = mix(diffuseColor.rgb, uTint" + zone.slot + ", vTint" + zone.slot + ");").join("\n");
+    const uniforms = {};
+
+    for (const zone of active) {
+
+      uniforms["uTint" + zone.slot] = { value: new Vector35((zone.hex >> 16 & 255) / 255, (zone.hex >> 8 & 255) / 255, (zone.hex & 255) / 255) };
+
+    }
+
+    for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
+
+      material.onBeforeCompile = (shader) => {
+
+        Object.assign(shader.uniforms, uniforms);
+        shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\n" + attributes).replace("#include <begin_vertex>", "#include <begin_vertex>\n" + assignments);
+        shader.fragmentShader = shader.fragmentShader.replace("#include <common>", "#include <common>\n" + varyings).replace("#include <color_fragment>", "#include <color_fragment>\n" + blends);
+
+      };
+
+      // One shared program for every instance; only the uniform values change.
+      material.customProgramCacheKey = () => "ar-rahman-body-tints";
+      material.needsUpdate = true;
+
+    }
+
+    tinted++;
+
   });
 
-  // 3. Peci santri yang mengikuti animasi tulang kepala.
-  const head = scene.getObjectByName("Head") || scene.getObjectByName("head");
-  if (head) {
-    const cap = addOnce(head, "SantriPeci", new Group3());
-    if (cap) {
-      // Kopiah / Peci dasar topi
-      cap.add(
-        mk(
-          new CylinderGeometry3(0.105, 0.12, 0.075, 24),
-          togaMat,
-          0, 0.052, -0.015,
-          -0.05, 0, 0
-        )
-      );
+  return tinted;
 
-      // Peci memiliki lis emerald yang mengikuti bentuk kepala.
-      cap.add(
-        mk(
-          new CylinderGeometry3(0.122, 0.122, 0.012, 24),
-          emeraldMat,
-          0, 0.018, -0.015,
-          -0.05, 0, 0
-        )
-      );
-
-      // Pin kecil emas di bagian depan peci.
-      cap.add(
-        mk(
-          new CylinderGeometry3(0.014, 0.014, 0.012, 16),
-          goldSilkMat,
-          0, 0.06, 0.1,
-          Math.PI / 2, 0, 0
-        )
-      );
-
-    }
-  }
-
-  // 4. Kerah Jubah V-Neck + Kemeja Putih
-  const neck = scene.getObjectByName("neck") || scene.getObjectByName("Neck");
-  if (neck) {
-    const collar = addOnce(neck, "GraduationCollar", new Group3());
-    if (collar) {
-      collar.add(
-        mk(
-          new CylinderGeometry3(0.068, 0.082, 0.042, 20, 1, true),
-          whiteMat,
-          0, 0.038, 0
-        )
-      );
-    }
-  }
-
-  // 5. Samir / Selempang Wisuda (Stole) & Gordon Medali
-  const spine = scene.getObjectByName("Spine02") ||
-    scene.getObjectByName("Spine01") ||
-    scene.getObjectByName("Hips");
-
-  if (spine) {
-    const stole = addOnce(spine, "GraduationStole", new Group3());
-    if (stole) {
-      // Pita Selempang Kiri (Berwarna Emerald & Emas)
-      stole.add(
-        mk(
-          new BoxGeometry3(0.032, 0.26, 0.008),
-          emeraldMat,
-          -0.046, -0.085, 0.116,
-          0.04, 0, -0.04
-        )
-      );
-      stole.add(
-        mk(
-          new BoxGeometry3(0.006, 0.26, 0.009),
-          goldSilkMat,
-          -0.033, -0.085, 0.117,
-          0.04, 0, -0.04
-        )
-      );
-
-      // Pita Selempang Kanan
-      stole.add(
-        mk(
-          new BoxGeometry3(0.032, 0.26, 0.008),
-          emeraldMat,
-          0.046, -0.085, 0.116,
-          0.04, 0, 0.04
-        )
-      );
-      stole.add(
-        mk(
-          new BoxGeometry3(0.006, 0.26, 0.009),
-          goldSilkMat,
-          0.033, -0.085, 0.117,
-          0.04, 0, 0.04
-        )
-      );
-
-      // Medali Kelulusan Santri Tahfidz (Gordon) di tengah dada
-      stole.add(
-        mk(
-          new CylinderGeometry3(0.024, 0.024, 0.007, 16),
-          goldSilkMat,
-          0, -0.19, 0.125,
-          Math.PI / 2, 0, 0
-        )
-      );
-    }
-  }
-
-  // 6. Tabung / Map Tabung Ijazah di Tangan Kiri
-  const leftHand = scene.getObjectByName("LeftHand") || scene.getObjectByName("hand_l");
-  if (leftHand) {
-    const diploma = addOnce(leftHand, "DiplomaScroll", new Group3());
-    if (diploma) {
-      // Tabung Silinder Beludru Hijau
-      diploma.add(
-        mk(
-          new CylinderGeometry3(0.019, 0.019, 0.17, 16),
-          emeraldMat,
-          0, 0.04, 0,
-          Math.PI / 2, 0, 0.2
-        )
-      );
-      // Tutup & Aksen Pita Emas Tabung
-      diploma.add(
-        mk(
-          new CylinderGeometry3(0.021, 0.021, 0.015, 16),
-          goldSilkMat,
-          0, 0.04, 0.075,
-          Math.PI / 2, 0, 0.2
-        )
-      );
-      diploma.add(
-        mk(
-          new CylinderGeometry3(0.021, 0.021, 0.015, 16),
-          goldSilkMat,
-          0, 0.04, -0.075,
-          Math.PI / 2, 0, 0.2
-        )
-      );
-      diploma.add(
-        mk(
-          new CylinderGeometry3(0.0205, 0.0205, 0.016, 16),
-          goldSilkMat,
-          0, 0.04, 0,
-          Math.PI / 2, 0, 0.2
-        )
-      );
-    }
-  }
 }
-function Courier({ motion, paused, reduced, onReady }) {
+
+
+
+
+
+function Courier({ motion, paused, reduced, onReady, shirtColor, pantsColor, showBag }) {
 
 
 
@@ -2803,6 +2378,19 @@ function Courier({ motion, paused, reduced, onReady }) {
 
       optimizeRigidBag(gltf.scene);
 
+      // The bag and its shoulder strap are separate meshes, so both can just be
+      // hidden. The strap alone reads as a crossbody strap with nothing to
+      // carry, so showBag covers the whole set.
+      if (!showBag) {
+
+        gltf.scene.traverse((node) => {
+
+          if (node.name === "Delivery_Bag_Mobile" || node.name === "Delivery_Shoulder_Strap_Mobile") node.visible = false;
+
+        });
+
+      }
+
 
 
       gltf.scene.traverse((node) => {
@@ -2849,9 +2437,11 @@ function Courier({ motion, paused, reduced, onReady }) {
 
       });
 
-      createGraduationAccessories(gltf.scene);
+      applyBodyTints(gltf.scene, [{ slot: "shirt", joints: SHIRT_JOINTS, hex: shirtColor }, { slot: "pants", joints: PANTS_JOINTS, hex: pantsColor }]);
 
+      
 
+      
 
       const clips = gltf.animations.filter((animation) => animation.duration > 0.3);
 
@@ -2934,13 +2524,8 @@ function Courier({ motion, paused, reduced, onReady }) {
 
 
     }).catch((reason) => {
-
-
-
+      console.error("Courier load error:", reason);
       if (!cancelled) setError(reason instanceof Error ? reason : new Error(String(reason)));
-
-
-
     });
 
 
@@ -2981,7 +2566,9 @@ function Courier({ motion, paused, reduced, onReady }) {
 
 
 
-  }, [onReady, base]);
+  }, [onReady, base, shirtColor, pantsColor, showBag]);
+
+  if (error) throw error;
 
 
 
@@ -3803,7 +3390,7 @@ function ResponsiveCamera() {
 
 
 
-function World2({ motion, auto, reduced, onReady }) {
+function World2({ motion, auto, reduced, onReady, shirtColor, pantsColor, showBag }) {
 
 
 
@@ -3967,7 +3554,7 @@ function World2({ motion, auto, reduced, onReady }) {
 
 
 
-    <group ref={runner} visible={!!asset && courierReady}><Courier motion={motion} paused={!auto} reduced={reduced} onReady={setCourierReady} /></group>
+    <group ref={runner} visible={!!asset && courierReady}><Courier motion={motion} paused={!auto} reduced={reduced} onReady={setCourierReady} shirtColor={shirtColor} pantsColor={pantsColor} showBag={showBag} /></group>
 
 
 
@@ -4235,7 +3822,7 @@ function buildStories(academicYear) {
 
 
 
-function App({ academicYear }) {
+function App({ academicYear, shirtColor, pantsColor, showBag }) {
 
   var stories = buildStories(academicYear);
 
@@ -4812,7 +4399,7 @@ function App({ academicYear }) {
 
 
 
-          {sceneMounted && <SceneBoundary><Suspense fallback={null}><PlanetScene3 motion={motion} active={visible && tabVisible && !story} auto={auto} reduced={reduced} prototype={prototype} onReady={setReady} /></Suspense></SceneBoundary>}
+          {sceneMounted && <SceneBoundary><Suspense fallback={null}><PlanetScene3 motion={motion} active={visible && tabVisible && !story} auto={auto} reduced={reduced} prototype={prototype} onReady={setReady} shirtColor={shirtColor} pantsColor={pantsColor} showBag={showBag} /></Suspense></SceneBoundary>}
 
 
 
@@ -4846,7 +4433,7 @@ function App({ academicYear }) {
 
 
 
-    <footer className="site-footer"><p className="footer-left">Santri Beradab<br />Generasi Digital</p><button className="motion-button" onClick={toggleMotion} aria-pressed={!auto} aria-label={auto ? "Pause and greet the courier" : "Start moving"}>{auto ? <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5v10m6-10v10" stroke="currentColor" strokeWidth="1.5" /></svg> : <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 8 6-8 6Z" fill="currentColor" /></svg>}<span>{auto ? "Pause" : "Start"}</span></button><p className="footer-right">Tahfidz 30 Juz<br />Global IT Academy</p></footer>
+    <footer className="site-footer"><p className="footer-left">Santri Beradab<br />Generasi Digital</p><button className="motion-button" onClick={toggleMotion} aria-pressed={!auto} aria-label={auto ? "Pause and greet the wisudawan" : "Start moving"}>{auto ? <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5v10m6-10v10" stroke="currentColor" strokeWidth="1.5" /></svg> : <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 8 6-8 6Z" fill="currentColor" /></svg>}<span>{auto ? "Pause" : "Start"}</span></button><p className="footer-right">Tahfidz 30 Juz<br />Global IT Academy</p></footer>
 
 
 
@@ -5080,9 +4667,9 @@ var css = `@font-face{font-family:'Orbit DM Sans';font-style:normal;font-weight:
 
 `;
 
-/** @param {{ theme?: string, assetBaseUrl?: string, academicYear?: string | null }} props */
+/** @param {{ theme?: string, assetBaseUrl?: string, academicYear?: string | null, shirtColor?: number | null, pantsColor?: number | null }} props */
 
-function OrbitDeliveryHero(props) {
+function PPDBHero(props) {
 
   var theme = props.theme || "auto";
 
@@ -5090,12 +4677,23 @@ function OrbitDeliveryHero(props) {
 
   var academicYear = props.academicYear || null;
 
-  return <AssetBaseContext.Provider value={assetBaseUrl.replace(/\/$/, "") + "/"}><div className="orbit-delivery" data-theme={theme}><style>{css}</style><App academicYear={academicYear} /></div></AssetBaseContext.Provider>;
+  // Hex color for the courier's shirt (torso + sleeves). Pass null for the original white clay.
+
+  const shirtColor = props.shirtColor === undefined ? 0x1E3A8A : props.shirtColor;
+
+  // Black reads as long trousers over the model's short khaki pair.
+
+  const pantsColor = props.pantsColor === undefined ? 0x0B0B0D : props.pantsColor;
+
+  // The bag and its shoulder strap are hidden by default; pass true to bring them back.
+
+  const showBag = props.showBag === undefined ? false : props.showBag;
+
+  return <AssetBaseContext.Provider value={assetBaseUrl.replace(/\/$/, "") + "/"}><div className="orbit-delivery" data-theme={theme}><style>{css}</style><App academicYear={academicYear} shirtColor={shirtColor} pantsColor={pantsColor} showBag={showBag} /></div></AssetBaseContext.Provider>;
 
 }
 
 export {
-
-  OrbitDeliveryHero as default
-
+  PPDBHero as default,
+  PPDBHero as OrbitDeliveryHero
 };

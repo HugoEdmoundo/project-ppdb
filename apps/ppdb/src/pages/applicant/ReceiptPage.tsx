@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/api/client'
 import { useToast } from '@/components/Toast'
-import ApplicantTopBar from '@/components/shared/ApplicantTopBar'
 import ApplicantPageHeader from '@/components/shared/ApplicantPageHeader'
 import OfficialReceiptCard, { type ReceiptData } from '@/components/shared/OfficialReceiptCard'
 import { Button, Skeleton } from '@/components/ui'
@@ -97,15 +96,12 @@ export default function ApplicantReceiptPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <ApplicantTopBar />
-
-      <main className="flex-1 max-w-4xl mx-auto w-full px-3.5 sm:px-6 py-6 sm:py-8 space-y-6">
-        <ApplicantPageHeader
-          title="Kuitansi Pembayaran Formulir"
-          description="Bukti pembayaran sah pendaftaran calon santri baru Pesantren Tahfidz Qur'an dan Digital Ar-Rahman."
-          docKey="applicant-payment"
-          action={
+    <div className="mx-auto max-w-4xl w-full space-y-6">
+      <ApplicantPageHeader
+        title="Kuitansi Pembayaran Formulir"
+        description="Bukti pembayaran sah pendaftaran calon santri baru Pesantren Tahfidz Qur'an dan Digital Ar-Rahman."
+        docKey="applicant-payment"
+        action={
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <Button
                 type="button"
@@ -163,7 +159,6 @@ export default function ApplicantReceiptPage() {
             </p>
           </div>
         ) : null}
-      </main>
     </div>
   )
 }

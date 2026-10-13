@@ -1,3 +1,4 @@
+import path from "path";
 import type { NextConfig } from "next";
 
 // Origin API digunakan di CSP connect-src. Di produksi isi NEXT_PUBLIC_API_URL
@@ -12,6 +13,9 @@ const cspConnectSrc = [
 ].join(" ");
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: path.resolve(__dirname, "../../"),
+  },
   images: {
     remotePatterns: [
       {

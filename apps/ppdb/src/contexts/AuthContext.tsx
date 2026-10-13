@@ -21,8 +21,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({ user: null, loading: true, login: async () => {}, logout: async () => {}, refreshUser: async () => {} })
 
+// Dummy auth: pilih peran mock sesuai path supaya tiap panel bisa dibuka
+// langsung. `/applicant` & `/checkout` → user applicant; sisanya admin. Hanya
+// aktif saat VITE_MOCK_AUTH=true; produksi tidak terpengaruh.
+function resolveInitialUser(): AuthUser | null {
+  const stored = api.getStoredUser() as AuthUser | null
+  if (!api.MOCK_AUTH) return stored
+  const wantApplicant = /^\/(applicant|checkout)(\/|$)/.test(window.location.pathname)
+  if (stored && (stored.user_type === 'applicant') === wantApplicant) return stored
+  return api.getMockUser(wantApplicant ? 'pendaftar' : 'admin') as AuthUser
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => api.getStoredUser())
+  const [user, setUser] = useState<AuthUser | null>(() => resolveInitialUser())
   // loading hanya true jika ada sesi tersimpan yang perlu divalidasi ke backend.
   const [loading, setLoading] = useState(() => !!api.getStoredUser())
 

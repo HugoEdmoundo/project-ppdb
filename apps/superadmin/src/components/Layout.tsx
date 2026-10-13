@@ -2,13 +2,11 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Users, Shield, GraduationCap, Bell, History, MessageCircle,
-  Globe, ExternalLink,
 } from 'lucide-react'
 import { API_BASE } from '../api/client'
 import {
   DashboardShell,
   useBrand,
-  resolveCompanyProfileUrl,
   type DashboardLinkComponent,
   type DashboardNavGroup,
 } from '@repo/ui'
@@ -27,10 +25,6 @@ const RouterDashboardLink: DashboardLinkComponent = ({ href, target, title, clas
   <Link to={href ?? '#'} target={target} title={title} className={className} onClick={onClick}>
     {children}
   </Link>
-)
-
-const COMPANY_PROFILE_URL = resolveCompanyProfileUrl(
-  import.meta.env.VITE_COMPANY_PROFILE_URL as string | undefined,
 )
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -82,25 +76,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         role: 'Superadmin',
       }}
       onProfile={() => navigate('/profile')}
-      onViewSite={() => window.open(COMPANY_PROFILE_URL, '_blank')}
       onLogout={handleLogout}
-      sidebarFooter={
-        <>
-          <Link
-            to={COMPANY_PROFILE_URL}
-            target="_blank"
-            title="Lihat Situs"
-            className="group/link w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-150 hover:bg-primary/10 hover:text-foreground"
-          >
-            <Globe className="h-4 w-4 shrink-0" />
-            <span className="truncate">Lihat Situs</span>
-            <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground/60 opacity-0 transition-opacity group-hover/link:opacity-100" />
-          </Link>
-          <p className="px-3 pt-1 text-[10px] leading-relaxed text-muted-foreground/70 select-none">
-            © {new Date().getFullYear()} PTDARRAHMAN · Superadmin
-          </p>
-        </>
-      }
     >
       {children}
     </DashboardShell>

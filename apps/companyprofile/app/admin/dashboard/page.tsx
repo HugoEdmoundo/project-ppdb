@@ -9,17 +9,18 @@ import { useSSE } from '@/app/hooks/useSSE'
 import AdminToast, { toast } from '@/app/components/ui/AdminToast'
 import AdminConfirm from '@/app/components/ui/AdminConfirm'
 import {
-  Plus, Settings, LayoutDashboard, Loader2,
-  Globe, ExternalLink, FolderOpen,
+  Plus, Settings, LayoutDashboard, Loader2, FolderOpen,
 } from 'lucide-react'
 import ProfileModal from '@/app/components/ProfileModal'
 import CrossTabSync from '@/app/components/CrossTabSync'
 import EmptyState from '@/app/components/ui/EmptyState'
+import { DashboardShell } from '@repo/ui'
 import {
-  DashboardShell,
-  type DashboardLinkComponent,
-  type DashboardNavGroup,
-} from '@repo/ui'
+  AdminDashboardLink,
+  AdminSidebarFooter,
+  buildAdminNavGroups,
+  useAdminLogo,
+} from '../_admin-shell'
 import { Button } from '@/app/components/ui/Button'
 import { Card } from '@/app/components/ui/Card'
 import {
@@ -49,18 +50,6 @@ const TAB_DESCRIPTIONS: Record<string, string> = {
   contact: 'Perbarui informasi kontak pesantren.',
   settings: 'Konfigurasi logo, favicon, dan pengaturan situs.',
 }
-
-const SIDEBAR_GROUPS: { label: string; keys: string[] }[] = [
-  { label: 'Konten', keys: ['news', 'programs', 'facilities', 'gallery', 'testimonials'] },
-  { label: 'Informasi', keys: ['staff', 'achievements', 'social', 'contact'] },
-  { label: 'Sistem', keys: ['settings'] },
-]
-
-const NextDashboardLink: DashboardLinkComponent = ({ href, target, title, className, onClick, children }) => (
-  <Link href={href ?? '#'} target={target} title={title} className={className} onClick={onClick}>
-    {children}
-  </Link>
-)
 
 // ─── Skeleton ───────────────────────────────────────────────
 
@@ -124,7 +113,7 @@ export default function AdminDashboard() {
   // ── Auth state ────────────────────────────────────────────────────────────
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null)
   const [pagePermissions, setPagePermissions] = useState<string[] | null>(null)
-  const [logoUrl, setLogoUrl] = useState('')
+  const logoUrl = useAdminLogo()
 
   const isSuperadmin =
     adminUser?.user_type === 'superadmin' || adminUser?.is_superadmin === true
@@ -173,21 +162,6 @@ export default function AdminDashboard() {
     })
     return () => es.close()
   }, [adminUser?.id])
-
-  // ── Dynamic logo ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    const loadLogo = () => {
-      api.getSettings()
-        .then((settings) => {
-          const logo = settings.find((s) => s.key === 'logo')?.value
-          const favicon = settings.find((s) => s.key === 'favicon')?.value
-          setLogoUrl(favicon || logo || '')
-        })
-        .catch(() => { })
-    }
-    loadLogo()
-    return eventBus.on('companyprofile:refresh', loadLogo)
-  }, [])
 
   const handle401 = useCallback(() => {
     localStorage.removeItem('admin_user')
@@ -397,25 +371,15 @@ export default function AdminDashboard() {
 
   const activeTabDef = TABS.find((t) => t.key === activeTab)!
 
-  const navGroups: DashboardNavGroup[] = [
-    {
-      items: [
-        { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/admin/overview' },
-      ],
-    },
-    ...SIDEBAR_GROUPS.map((group) => ({
-      label: group.label,
-      items: filteredTabs
-        .filter((t) => group.keys.includes(t.key))
-        .map((t) => ({
-          key: t.key,
-          label: t.label,
-          icon: t.icon,
-          active: activeTab === t.key,
-          onClick: () => setActiveTab(t.key),
-        })),
-    })).filter((g) => g.items.length > 0),
-  ]
+  const navGroups = buildAdminNavGroups(
+    filteredTabs.map((t) => ({
+      key: t.key,
+      label: t.label,
+      icon: t.icon,
+      active: activeTab === t.key,
+      onClick: () => setActiveTab(t.key),
+    })),
+  )
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -426,7 +390,7 @@ export default function AdminDashboard() {
       <DashboardShell
         brand={{ name: 'PTDARRAHMAN', subtitle: 'Admin CMS', logoUrl: logoUrl || undefined }}
         navGroups={navGroups}
-        renderLink={NextDashboardLink}
+        renderLink={AdminDashboardLink}
         title="Admin CMS"
         subtitle="Kelola Konten"
         contentClassName="animate-fade-in"
@@ -442,23 +406,7 @@ export default function AdminDashboard() {
         onProfile={() => setProfileOpen(true)}
         onViewSite={() => window.open('/', '_blank')}
         onLogout={handleLogout}
-        sidebarFooter={
-          <>
-            <Link
-              href="/"
-              target="_blank"
-              title="Lihat Situs"
-              className="group/link w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-150 hover:bg-primary/10 hover:text-foreground"
-            >
-              <Globe className="h-4 w-4 shrink-0" />
-              <span className="truncate">Lihat Situs</span>
-              <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground/60 opacity-0 transition-opacity group-hover/link:opacity-100" />
-            </Link>
-            <p className="px-3 pt-1 text-[10px] leading-relaxed text-muted-foreground/70 select-none">
-              © {new Date().getFullYear()} PTDARRAHMAN
-            </p>
-          </>
-        }
+        sidebarFooter={<AdminSidebarFooter />}
       >
 
 

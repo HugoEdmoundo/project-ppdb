@@ -59,12 +59,21 @@ export default function ProgramsClient({ programs }: { programs: Program[] }) {
 
       <section ref={sectionRef} className="py-12 sm:py-16 md:py-20 bg-[var(--bg)]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          {/* Tab program. Thick: hover untuk mouse, fokus untuk keyboard,
-              klik untuk sentuh — hover saja tidak akan pernah aktif di HP. */}
+          {/* Tab program.
+              Bentuk segmented bar, bukan pil terpisah yang melayang:
+              keempatnya duduk di dalam satu track yang warnanya sekeluarga
+              dengan tombol (bg-secondary + border), jadi terbaca sebagai satu
+              kendali utuh. Hanya segmen terpilih yang memakai warna accent —
+              kalau semua tombol punya warna sendiri, baris ini terlihat
+              seperti empat tombol yang kebetulan berdekatan, bukan satu
+              sakelar.
+
+              Lebar penuh di mobile supaya tidak membungkus jadi dua baris,
+              ikut lebar isinya di desktop. */}
           <div
             role="tablist"
             aria-label="Daftar program"
-            className="flex flex-wrap justify-center gap-2 mb-8 sm:mb-10"
+            className="mb-8 flex w-full flex-wrap justify-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--bg-secondary)] p-1.5 sm:mb-10 sm:w-auto sm:flex-nowrap sm:justify-start"
           >
             {programs.map((prog, idx) => {
               const TabIcon = iconMap[prog.icon] || BookOpen
@@ -83,7 +92,7 @@ export default function ProgramsClient({ programs }: { programs: Program[] }) {
                   onFocus={() => setActiveIndex(idx)}
                   onClick={() => setActiveIndex(idx)}
                   onKeyDown={(e) => onTabKeyDown(e, idx)}
-                  className={`relative rounded-full px-4 py-2.5 sm:px-5 text-sm font-semibold transition-colors duration-300 ${
+                  className={`relative flex-1 rounded-full px-3 py-2.5 text-sm font-semibold transition-colors duration-300 sm:flex-none sm:px-5 ${
                     isActive
                       ? 'text-white'
                       : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
@@ -92,12 +101,12 @@ export default function ProgramsClient({ programs }: { programs: Program[] }) {
                   {isActive && (
                     <motion.span
                       layoutId="active-program-tab"
-                      className="absolute inset-0 bg-[var(--accent)] rounded-full shadow-md"
+                      className="absolute inset-0 rounded-full bg-[var(--accent)] shadow-md"
                       transition={{ type: 'spring', bounce: 0.18, duration: 0.55 }}
                     />
                   )}
-                  <span className="relative z-10 flex items-center gap-2">
-                    <TabIcon className="w-4 h-4" />
+                  <span className="relative z-10 flex items-center justify-center gap-2 whitespace-nowrap">
+                    <TabIcon className="w-4 h-4 shrink-0" />
                     {prog.content?.title || 'Program'}
                   </span>
                 </button>

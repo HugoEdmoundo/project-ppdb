@@ -6,6 +6,7 @@ import { ToastProvider } from './components/Toast'
 import { ErrorState } from '@repo/ui'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminLayout from './layouts/AdminLayout'
+import ApplicantLayout from './layouts/ApplicantLayout'
 import LoginPage from './pages/auth/LoginPage'
 import NotFoundPage from './pages/errors/NotFoundPage'
 import ForbiddenPage from './pages/errors/ForbiddenPage'
@@ -106,16 +107,19 @@ export default function App() {
             <Route path="/receipt/:id" element={<PublicReceiptPage />} />
             <Route path="/loa/:registrationNo" element={<PublicLoaPage />} />
 
-            {/* Applicant Dedicated Stage Pages */}
-            <Route path="/applicant" element={<ProtectedRoute role="applicant" requirePaid={true}><ApplicantDashboardPage /></ProtectedRoute>} />
-            <Route path="/applicant/kuitansi" element={<ProtectedRoute role="applicant" requirePaid={true}><ApplicantReceiptPage /></ProtectedRoute>} />
-            <Route path="/applicant/dokumen" element={<ProtectedRoute role="applicant" requirePaid={true}><ApplicantDocumentsPage /></ProtectedRoute>} />
-            <Route path="/applicant/ujian-tiu" element={<ProtectedRoute role="applicant" requirePaid={true}><SelectionStagePage section="tiu" title="Ujian TIU Online" subtitle="Tes Skolastik & Akademik via Safe Exam Browser (SEB)" /></ProtectedRoute>} />
-            <Route path="/applicant/seleksi-tahfidz" element={<ProtectedRoute role="applicant" requirePaid={true}><SelectionStagePage section="tahfidz" title="Seleksi Tahfidz (1:1)" subtitle="Jadwal dan ujian tartil serta tahfidz Al-Qur'an" /></ProtectedRoute>} />
-            <Route path="/applicant/seleksi-wawancara" element={<ProtectedRoute role="applicant" requirePaid={true}><SelectionStagePage section="interview" title="Seleksi Wawancara (1:1)" subtitle="Wawancara calon santri dan orang tua/wali" /></ProtectedRoute>} />
-            <Route path="/applicant/pengumuman" element={<ProtectedRoute role="applicant" requirePaid={true}><ResultStagePage /></ProtectedRoute>} />
-            <Route path="/applicant/bayar-dp" element={<ProtectedRoute role="applicant" requirePaid={true}><DpStagePage /></ProtectedRoute>} />
-            <Route path="/applicant/pembayaran-tahap2" element={<ProtectedRoute role="applicant" requirePaid={true}><Stage2PaymentPage /></ProtectedRoute>} />
+            {/* Applicant portal: satu chrome (DashboardShell) untuk semua halaman.
+                Kartu Ujian & checkout tetap mandiri (tampilan print / paywall). */}
+            <Route path="/applicant" element={<ProtectedRoute role="applicant" requirePaid={true}><ApplicantLayout><Outlet /></ApplicantLayout></ProtectedRoute>}>
+              <Route index element={<ApplicantDashboardPage />} />
+              <Route path="kuitansi" element={<ApplicantReceiptPage />} />
+              <Route path="dokumen" element={<ApplicantDocumentsPage />} />
+              <Route path="ujian-tiu" element={<SelectionStagePage section="tiu" title="Ujian TIU Online" subtitle="Tes Skolastik & Akademik via Safe Exam Browser (SEB)" />} />
+              <Route path="seleksi-tahfidz" element={<SelectionStagePage section="tahfidz" title="Seleksi Tahfidz (1:1)" subtitle="Jadwal dan ujian tartil serta tahfidz Al-Qur'an" />} />
+              <Route path="seleksi-wawancara" element={<SelectionStagePage section="interview" title="Seleksi Wawancara (1:1)" subtitle="Wawancara calon santri dan orang tua/wali" />} />
+              <Route path="pengumuman" element={<ResultStagePage />} />
+              <Route path="bayar-dp" element={<DpStagePage />} />
+              <Route path="pembayaran-tahap2" element={<Stage2PaymentPage />} />
+            </Route>
             <Route path="/applicant/kartu-ujian" element={<ProtectedRoute role="applicant" requirePaid={true}><ExamCardPage /></ProtectedRoute>} />
 
             <Route path="/403" element={<ForbiddenPage />} />

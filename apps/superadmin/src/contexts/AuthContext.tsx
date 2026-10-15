@@ -19,7 +19,9 @@ const AuthContext = createContext<AuthContextType>({
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => api.getStoredUser())
+  const [user, setUser] = useState<AuthUser | null>(() =>
+    api.getStoredUser() ?? (api.MOCK_AUTH ? api.getMockUser() : null)
+  )
   // loading hanya true jika ada sesi tersimpan yang perlu divalidasi ke backend.
   // Tanpa sesi tersimpan, langsung false agar ProtectedRoute redirect ke /auth/login.
   const [loading, setLoading] = useState(() => !!api.getStoredUser())

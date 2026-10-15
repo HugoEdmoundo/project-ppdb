@@ -274,26 +274,6 @@
   100% { transform: translateX(200%); }
 }
 
-/* Dipakai components/ui/meteors.tsx. Keyframe ini belum pernah ada, jadi
-   komponennya tidak bergerak sama sekali kalau dipasang. Jarak Y 400px harus
-   cukup panjang agar meteor jatuh melewati penuh tinggi container (kartu CTA),
-   dan rotasi 215deg -> 325deg membuat ekornya miring seperti jejak gerhana. */
-@keyframes meteor-effect {
-  0% {
-    transform: rotate(215deg) translateY(-20px);
-    opacity: 0;
-  }
-  50% { opacity: 1; }
-  100% {
-    transform: rotate(325deg) translateY(400px);
-    opacity: 0;
-  }
-}
-
-.animate-meteor-effect {
-  animation: meteor-effect linear infinite;
-}
-
 @keyframes logo-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0.6; transform: scale(0.93); }

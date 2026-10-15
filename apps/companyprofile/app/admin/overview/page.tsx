@@ -12,15 +12,16 @@ import CrossTabSync from '@/app/components/CrossTabSync'
 import {
   Newspaper, GraduationCap, Building2, Users, Trophy,
   Image as ImageIcon, MessageSquare, Link as LinkIcon, Phone, Settings,
-  LayoutDashboard, ArrowRight, Calendar, Sparkles, PenSquare, PictureInPicture2,
-  Globe, ExternalLink,
+  ArrowRight, Calendar, Sparkles, PenSquare, PictureInPicture2,
 } from 'lucide-react'
 import ProfileModal from '@/app/components/ProfileModal'
+import { DashboardShell } from '@repo/ui'
 import {
-  DashboardShell,
-  type DashboardLinkComponent,
-  type DashboardNavGroup,
-} from '@repo/ui'
+  AdminDashboardLink,
+  AdminSidebarFooter,
+  buildAdminNavGroups,
+  useAdminFavicon,
+} from '../_admin-shell'
 import { buttonVariants } from '@/app/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/Card'
 import { cn } from '@/app/lib/utils'
@@ -61,18 +62,6 @@ const SECTIONS: SectionDef[] = [
   { key: 'settings', label: 'Pengaturan', icon: Settings, tint: 'from-slate-600 to-slate-800', href: '/admin/dashboard?tab=settings', description: 'Konfigurasi situs' },
 ]
 
-const SIDEBAR_GROUPS: { label: string; keys: string[] }[] = [
-  { label: 'Konten', keys: ['news', 'programs', 'facilities', 'gallery', 'testimonials'] },
-  { label: 'Informasi', keys: ['staff', 'achievements', 'social', 'contact'] },
-  { label: 'Sistem', keys: ['settings'] },
-]
-
-const NextDashboardLink: DashboardLinkComponent = ({ href, target, title, className, onClick, children }) => (
-  <Link href={href ?? '#'} target={target} title={title} className={className} onClick={onClick}>
-    {children}
-  </Link>
-)
-
 // ─── Main Component ─────────────────────────────────────────
 
 export default function AdminOverview() {
@@ -84,7 +73,8 @@ export default function AdminOverview() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [profileOpen, setProfileOpen] = useState(false)
-  const [logoUrl, setLogoUrl] = useState('/download.png')
+
+  const faviconUrl = useAdminFavicon()
 
   useSSE('companyprofile')
 
@@ -140,25 +130,6 @@ export default function AdminOverview() {
       router.replace('/auth/login')
     }
   }, [router])
-
-  // Logo dinamis (tidak ada aset statis).
-  useEffect(() => {
-    const loadLogo = () => {
-      api.getSettings()
-        .then((settings) => {
-          const logo = settings.find((s) => s.key === 'logo')?.value
-          const favicon = settings.find((s) => s.key === 'favicon')?.value
-          // Fallback terakhir SENGAJA string kosong, bukan path aset statis:
-          // BrandMark akan merender tile emerald + `ار` saat logoUrl kosong
-          // (packages/ui/components/dashboard/brand-mark.tsx). Memakai
-          // '/download.png' melanggar aturan "No Static Logo" di AGENTS.md.
-          setLogoUrl(favicon || logo || '')
-        })
-        .catch(() => { })
-    }
-    loadLogo()
-    return eventBus.on('companyprofile:refresh', loadLogo)
-  }, [])
 
   // Ambil ringkasan data (count) seluruh modul + berita terbaru.
   const fetchOverview = useCallback(async () => {
@@ -231,19 +202,10 @@ export default function AdminOverview() {
     year: 'numeric',
   })
 
-  const navGroups: DashboardNavGroup[] = [
-    {
-      items: [
-        { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/admin/overview', active: true },
-      ],
-    },
-    ...SIDEBAR_GROUPS.map((group) => ({
-      label: group.label,
-      items: filteredSections
-        .filter((s) => group.keys.includes(s.key))
-        .map((s) => ({ key: s.key, label: s.label, icon: s.icon, href: s.href })),
-    })).filter((g) => g.items.length > 0),
-  ]
+  const navGroups = buildAdminNavGroups(
+    filteredSections.map((s) => ({ key: s.key, label: s.label, icon: s.icon, href: s.href })),
+    true,
+  )
 
   return (
     <>
@@ -252,9 +214,14 @@ export default function AdminOverview() {
       {profileOpen && <ProfileModal open onClose={() => setProfileOpen(false)} />}
 
       <DashboardShell
-        brand={{ name: 'PTDARRAHMAN', subtitle: 'Admin CMS', logoUrl: logoUrl || undefined }}
+        brand={{
+          name: 'PTDARRAHMAN',
+          subtitle: 'Admin CMS',
+          faviconUrl: faviconUrl || undefined,
+          logoUrl: faviconUrl || undefined,
+        }}
         navGroups={navGroups}
-        renderLink={NextDashboardLink}
+        renderLink={AdminDashboardLink}
         title="Admin CMS"
         subtitle="Dashboard"
         contentClassName="animate-fade-in"
@@ -270,23 +237,7 @@ export default function AdminOverview() {
         onProfile={() => setProfileOpen(true)}
         onViewSite={() => window.open('/', '_blank')}
         onLogout={handleLogout}
-        sidebarFooter={
-          <>
-            <Link
-              href="/"
-              target="_blank"
-              title="Lihat Situs"
-              className="group/link w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-150 hover:bg-primary/10 hover:text-foreground"
-            >
-              <Globe className="h-4 w-4 shrink-0" />
-              <span className="truncate">Lihat Situs</span>
-              <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground/60 opacity-0 transition-opacity group-hover/link:opacity-100" />
-            </Link>
-            <p className="px-3 pt-1 text-[10px] leading-relaxed text-muted-foreground/70 select-none">
-              © {new Date().getFullYear()} PTDARRAHMAN
-            </p>
-          </>
-        }
+        sidebarFooter={<AdminSidebarFooter />}
       >
 
 

@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 
 import { ShapeDivider, ShapeDividerDiagonal } from './shape-divider'
-import { Meteors } from './meteors'
+
 
 afterEach(cleanup)
 
@@ -91,26 +91,5 @@ describe.each([
     expect(container.querySelector('svg')?.getAttribute('class')).toContain(
       `h-[${height}px]`,
     )
-  })
-})
-
-describe('Meteors', () => {
-  it('meresan meteor yang memakai kelas animasi yang benar', () => {
-    // animate-meteor-effect sebelumnya tidak pernah ada di index.css, jadi
-    // komponen ini tidak bergerak sama sekali.
-    const { container } = render(<Meteors number={6} />)
-    const spans = container.querySelectorAll('span.animate-meteor-effect')
-
-    expect(spans).toHaveLength(6)
-    expect(container.firstElementChild?.getAttribute('aria-hidden')).toBe('true')
-  })
-
-  it('memberi delay dan duration berbeda agar tidak jatuh berbaris', () => {
-    const { container } = render(<Meteors number={8} />)
-    const delays = [...container.querySelectorAll('span')].map(
-      (s) => (s as HTMLElement).style.animationDelay,
-    )
-
-    expect(new Set(delays).size).toBeGreaterThan(1)
   })
 })

@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth, useFilteredNav } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CalendarDays, CreditCard, Bell, Users, Archive, Settings, ClipboardCheck, Award, Globe, ExternalLink, CalendarCheck, FileCheck2
+  LayoutDashboard, CalendarDays, CreditCard, Bell, Users, Archive, Settings, ClipboardCheck, Award, CalendarCheck, FileCheck2
 } from 'lucide-react'
 import { API_BASE } from '@/api/client'
 import {
@@ -109,7 +109,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <DashboardShell
-      brand={{ name: 'PTDARRAHMAN', subtitle: 'PPDB Admin', logoUrl: logoUrl || faviconUrl || undefined }}
+      brand={{
+        name: 'PTDARRAHMAN',
+        subtitle: 'PPDB Admin',
+        faviconUrl: faviconUrl || logoUrl || undefined,
+        logoUrl: faviconUrl || logoUrl || undefined,
+      }}
       navGroups={navGroups}
       renderLink={RouterDashboardLink}
       title="Admin PPDB"
@@ -125,25 +130,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         role: user?.role_name || user?.user_type,
       }}
       onProfile={() => navigate('/admin/profile')}
-      onViewSite={() => window.open('/', '_blank')}
       onLogout={handleLogout}
-      sidebarFooter={
-        <>
-          <Link
-            to="/"
-            target="_blank"
-            title="Lihat Situs"
-            className="group/link w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-150 hover:bg-primary/10 hover:text-foreground"
-          >
-            <Globe className="h-4 w-4 shrink-0" />
-            <span className="truncate">Lihat Situs</span>
-            <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground/60 opacity-0 transition-opacity group-hover/link:opacity-100" />
-          </Link>
-          <p className="px-3 pt-1 text-[10px] leading-relaxed text-muted-foreground/70 select-none">
-            PPDB Pesantren Ar-Rahman · {new Date().getFullYear()}
-          </p>
-        </>
-      }
     >
       {children}
     </DashboardShell>

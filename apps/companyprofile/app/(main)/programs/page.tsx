@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import ProgramsClient from './_components/ProgramsClient'
 import { getPrograms } from '@/app/lib/api'
+import { fallbackPrograms } from '@/app/lib/programs'
 import type { Program } from '@/app/lib/types'
 
 export const metadata: Metadata = {
@@ -32,5 +33,8 @@ export const metadata: Metadata = {
 export default async function ProgramsPage() {
   let programs: Program[] | null = null
   try { programs = await getPrograms() } catch { programs = null }
-  return <ProgramsClient programs={programs ?? []} />
+  // Data API selalu menang kalau ada — CRUD tidak berubah. Cadangan hanya
+  // menyala saat fetch gagal atau kosong, supaya halaman ini tidak kosong
+  // total di antara navbar dan footer.
+  return <ProgramsClient programs={programs?.length ? programs : fallbackPrograms()} />
 }

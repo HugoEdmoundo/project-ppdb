@@ -2,6 +2,60 @@ const USER_KEY = 'ppdb_user'
 
 export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 
+// ── Dummy auth (dev-only) ────────────────────────────────────
+// Aktifkan lewat VITE_MOCK_AUTH=true di .env lokal saat backend/DB belum bisa
+// dipakai. Login tidak menghubungi server: sesi `ppdb_user` diisi user dummy.
+// Username yang mengandung "pendaftar"/"applicant"/"siswa" memberi user
+// bertipe applicant (agar portal pendaftar bisa dibuka); selain itu admin.
+// Wajib `false` di produksi (default mati).
+export const MOCK_AUTH = (import.meta.env.VITE_MOCK_AUTH || '').trim().toLowerCase() === 'true'
+
+const APPLICANT_HINT = /pendaftar|applicant|siswa|murid/i
+
+export function buildMockUser(username = 'admin') {
+  if (APPLICANT_HINT.test(username)) {
+    return {
+      id: 'mock-applicant-0001',
+      username: username || 'pendaftar',
+      email: 'pendaftar@localhost',
+      full_name: 'Pendaftar (Dummy)',
+      role_id: 'mock-role-applicant',
+      role_name: 'Pendaftar',
+      user_type: 'applicant',
+      is_active: true,
+      avatar_url: '',
+      permissions: { ppdb: 'read' },
+      is_superadmin: false,
+      page_permissions: [] as string[],
+      payment_status: 'paid',
+      payment_deadline: '',
+    }
+  }
+  return {
+    id: 'mock-admin-0001',
+    username: username || 'admin',
+    email: 'admin@localhost',
+    full_name: 'Admin PPDB (Dummy)',
+    role_id: 'mock-role-superadmin',
+    role_name: 'Superadmin',
+    user_type: 'superadmin',
+    is_active: true,
+    avatar_url: '',
+    permissions: { ppdb: 'crud', companyprofile: 'crud' },
+    is_superadmin: true,
+    page_permissions: [] as string[],
+  }
+}
+
+/** Sesi dummy yang cocok dengan hint peran, atau buat+simpan baru. */
+export function getMockUser(username = 'admin') {
+  const wantApplicant = APPLICANT_HINT.test(username)
+  const stored = getStoredUser()
+  if (stored && (stored.user_type === 'applicant') === wantApplicant) return stored
+  const user = buildMockUser(username)
+  setUser(user)
+  return user
+}
 /**
  * Error HTTP dengan status code. Tetap turunan `Error` sehingga kode yang
  * membaca `err.message` tidak terpengaruh; `status` dipakai untuk membedakan
@@ -112,6 +166,11 @@ export async function apiFetchBlob(endpoint: string, opts: RequestInit = {}): Pr
 }
 
 export async function login(username: string, password: string) {
+  if (MOCK_AUTH) {
+    const user = buildMockUser(username)
+    setUser(user)
+    return user
+  }
   const data = await apiFetch<{ user: any }>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) })
   if (data.user) {
     setUser(data.user); return data.user
@@ -120,6 +179,13 @@ export async function login(username: string, password: string) {
 }
 
 export async function getMe() {
+  if (MOCK_AUTH) {
+    const stored = getStoredUser()
+    if (stored) return stored
+    const user = buildMockUser('admin')
+    setUser(user)
+    return user
+  }
   const data = await apiFetch<any>('/auth/me'); setUser(data); return data
 }
 

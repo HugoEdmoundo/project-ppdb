@@ -174,10 +174,10 @@ export function DashboardSidebar({
         )}
       >
         {isCollapsed ? (
-          <BrandMark logoUrl={brand.logoUrl} name={brand.name} mark={brand.mark} size="sm" />
+          <BrandMark faviconUrl={brand.faviconUrl} logoUrl={brand.logoUrl} name={brand.name} mark={brand.mark} size="sm" />
         ) : (
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <BrandMark logoUrl={brand.logoUrl} name={brand.name} mark={brand.mark} size="md" />
+            <BrandMark faviconUrl={brand.faviconUrl} logoUrl={brand.logoUrl} name={brand.name} mark={brand.mark} size="md" />
             <div className="min-w-0">
               <div className="font-heading text-sm font-bold text-foreground truncate">{brand.name}</div>
               {brand.subtitle && (

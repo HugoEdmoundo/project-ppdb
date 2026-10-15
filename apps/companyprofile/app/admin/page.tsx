@@ -2,11 +2,15 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { MOCK_AUTH, getMockUser } from '@/app/lib/api'
 
 export default function AdminPage() {
   const router = useRouter()
 
   useEffect(() => {
+    // Dummy auth: isi sesi `admin_user` bila belum ada, supaya /admin bisa
+    // dibuka langsung saat backend/DB belum jalan (NEXT_PUBLIC_MOCK_AUTH=true).
+    if (MOCK_AUTH) getMockUser()
     const user = typeof window !== 'undefined' ? localStorage.getItem('admin_user') : null
     if (user) {
       router.replace('/admin/overview')

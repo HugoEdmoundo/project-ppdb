@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/api/client'
 import { useToast } from '@/components/Toast'
-import ApplicantTopBar from '@/components/shared/ApplicantTopBar'
 import ApplicantPageHeader from '@/components/shared/ApplicantPageHeader'
 import DocumentUploadStep from './components/DocumentUploadStep'
 import { ConfirmDialog, Skeleton } from '@/components/ui'
@@ -42,47 +41,43 @@ export default function ApplicantDocumentsPage() {
   })
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <ApplicantTopBar />
+    <div className="mx-auto max-w-4xl w-full space-y-6">
+      <ApplicantPageHeader
+        title="Upload & Kirim Dokumen"
+        description="Unggah berkas persyaratan wajib dan berkas pendukung sesuai jalur pendaftaran Anda."
+        docKey="applicant-documents"
+      />
 
-      <main className="flex-1 max-w-4xl mx-auto w-full px-3.5 sm:px-6 py-6 sm:py-8 space-y-6">
-        <ApplicantPageHeader
-          title="Upload & Kirim Dokumen"
-          description="Unggah berkas persyaratan wajib dan berkas pendukung sesuai jalur pendaftaran Anda."
-          docKey="applicant-documents"
-        />
+      {isLoading ? (
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
+          <Skeleton className="h-10 w-1/3" />
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-sm border border-slate-200">
+          <DocumentUploadStep
+            applicant={applicant}
+            documents={documents}
+            requiredDocuments={requiredDocuments}
+            onDocumentsChange={() => queryClient.invalidateQueries({ queryKey: ['my-documents'] })}
+            onSubmitRequest={() => setShowSubmitConfirm(true)}
+          />
+        </div>
+      )}
 
-        {isLoading ? (
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
-            <Skeleton className="h-10 w-1/3" />
-            <Skeleton className="h-40 w-full" />
-            <Skeleton className="h-40 w-full" />
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-sm border border-slate-200">
-            <DocumentUploadStep
-              applicant={applicant}
-              documents={documents}
-              requiredDocuments={requiredDocuments}
-              onDocumentsChange={() => queryClient.invalidateQueries({ queryKey: ['my-documents'] })}
-              onSubmitRequest={() => setShowSubmitConfirm(true)}
-            />
-          </div>
-        )}
-
-        <ConfirmDialog
-          isOpen={showSubmitConfirm}
-          onClose={() => setShowSubmitConfirm(false)}
-          onConfirm={() => {
-            setShowSubmitConfirm(false)
-            submitDocsMutation.mutate()
-          }}
-          loading={submitDocsMutation.isPending}
-          title="Kirim Dokumen"
-          message="Apakah Anda yakin semua dokumen sudah benar? Dokumen yang sudah dikirim tidak bisa diubah kembali."
-          confirmLabel="Kirim"
-        />
-      </main>
+      <ConfirmDialog
+        isOpen={showSubmitConfirm}
+        onClose={() => setShowSubmitConfirm(false)}
+        onConfirm={() => {
+          setShowSubmitConfirm(false)
+          submitDocsMutation.mutate()
+        }}
+        loading={submitDocsMutation.isPending}
+        title="Kirim Dokumen"
+        message="Apakah Anda yakin semua dokumen sudah benar? Dokumen yang sudah dikirim tidak bisa diubah kembali."
+        confirmLabel="Kirim"
+      />
     </div>
   )
 }

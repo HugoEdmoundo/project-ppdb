@@ -20,6 +20,51 @@ export const FALLBACK_API = (process.env.NEXT_PUBLIC_FALLBACK_API_URL || '').rep
 export const API_BASE = PRIMARY_API
 const USER_KEY = 'admin_user'
 
+// ── Dummy auth (dev-only) ────────────────────────────────────
+// Aktifkan lewat NEXT_PUBLIC_MOCK_AUTH=true di .env lokal saat backend/DB belum
+// bisa dipakai. Login tidak menghubungi server: cukup mengisi sesi `admin_user`
+// dengan user dummy, sehingga chrome dashboard bisa dibuka untuk inspeksi.
+// Wajib `false` di produksi (default mati).
+export const MOCK_AUTH = (process.env.NEXT_PUBLIC_MOCK_AUTH || '').trim().toLowerCase() === 'true'
+
+export interface AuthMe {
+  id: string; username: string; email: string; full_name: string
+  avatar_url: string; user_type: string; is_active: boolean
+  role_id: string; role_name: string; is_superadmin: boolean
+  permissions: Record<string, string>
+  page_permissions: string[]
+}
+
+function buildMockUser(username = 'admin'): AuthMe {
+  return {
+    id: 'mock-admin-0001',
+    username: username || 'admin',
+    email: 'admin@localhost',
+    full_name: 'Admin CMS (Dummy)',
+    avatar_url: '',
+    user_type: 'superadmin',
+    is_active: true,
+    role_id: 'mock-role-superadmin',
+    role_name: 'Superadmin',
+    is_superadmin: true,
+    permissions: { companyprofile: 'crud', ppdb: 'crud' },
+    page_permissions: [],
+  }
+}
+
+/** Sesi dummy yang sudah tersimpan, atau buat+simpan baru. */
+export function getMockUser(username = 'admin'): AuthMe {
+  if (typeof window !== 'undefined') {
+    const raw = localStorage.getItem(USER_KEY)
+    if (raw) {
+      try { return JSON.parse(raw) as AuthMe } catch { /* simpan ulang di bawah */ }
+    }
+  }
+  const user = buildMockUser(username)
+  if (typeof window !== 'undefined') localStorage.setItem(USER_KEY, JSON.stringify(user))
+  return user
+}
+
 function isRetryableStatus(status: number): boolean {
   // Hanya 5xx yang boleh fallback. 404 berarti "tidak ada" — fallback ke
   // server lain hanya menyia-nyiakan request dan menutupi error asli.
@@ -169,6 +214,12 @@ export async function getStaff(): Promise<Staff[]> {
 // ── Auth ────────────────────────────────────────────────────
 
 export async function login(username: string, password: string) {
+  if (MOCK_AUTH) {
+    getMockUser(username)
+    return { access_token: 'mock', refresh_token: 'mock', token_type: 'bearer' } as unknown as {
+      access_token: string; refresh_token: string; token_type: string
+    }
+  }
   const res = await fetchWithFallback(`${API_BASE}/companyprofile/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -370,14 +421,9 @@ async function fetchAuthApi<T>(endpoint: string, opts?: RequestInit): Promise<T>
   return parseJsonSafe<T>(res, `API ${endpoint}`)
 }
 
-export async function getMe() {
-  return fetchAuthApi<{
-    id: string; username: string; email: string; full_name: string
-    avatar_url: string; user_type: string; is_active: boolean
-    role_id: string; role_name: string; is_superadmin: boolean
-    permissions: Record<string, string>
-    page_permissions: string[]
-  }>('/companyprofile/auth/me')
+export async function getMe(): Promise<AuthMe> {
+  if (MOCK_AUTH) return getMockUser()
+  return fetchAuthApi<AuthMe>('/companyprofile/auth/me')
 }
 
 export async function updateProfile(data: {

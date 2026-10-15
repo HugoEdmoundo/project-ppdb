@@ -44,7 +44,7 @@ export default function ShapeDividerDiagonal({
             <stop offset="100%" style={{ stopColor: mix(1) }} />
           </linearGradient>
         </defs>
-        <path d="M1200 0L0 0 892.25 114.72 1200 0z" style={{ fill: `url(#${gradientId})` }} />
+        <path d="M0,0H1200V120C900,120 560,62 0,44Z" style={{ fill: `url(#${gradientId})` }} />
       </svg>
     </div>
   )

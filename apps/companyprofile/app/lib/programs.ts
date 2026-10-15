@@ -76,6 +76,29 @@ export function fallbackProgramSlugs(): Record<string, string> {
   return Object.fromEntries(KNOWN_PROGRAMS.map((p) => [p.id, p.fallbackSlug]))
 }
 
+/**
+ * Daftar program cadangan, dipakai halaman /programs ketika API tidak
+ * tersedia atau mengembalikan kosong.
+ *
+ * Sebelumnya halaman daftar ini tidak punya cadangan sama sekali: `page.tsx`
+ * mengirim `programs ?? []` dan `ProgramsClient` mengembalikan null untuk array
+ * kosong, jadi seluruh isi program hilang — halaman jadi kosong total antara
+ * navbar dan footer. Padahal halaman detail (`/programs/[slug]`) dan link di
+ * navbar sudah memakai `fallbackProgram` / `resolveProgramSlugs`, sehingga
+ * keduanya tetap jalan. Dari tiga pemakai data program, hanya halaman daftar
+ * yang bolong.
+ *
+ * Urutan prioritas tetap: kalau API mengembalikan data, data itu yang dipakai
+ * (CRUD tidak berubah). Cadangan ini hanya menyala saat fetch gagal atau
+ * kosong, supaya `/programs` — halaman yang paling sering dibagikan — tidak
+ * ikut kosong hanya karena MySQL timeout sesaat.
+ */
+export function fallbackPrograms(): Program[] {
+  return KNOWN_PROGRAMS.map((p) => fallbackProgram(p.fallbackSlug)).filter(
+    (p): p is Program => p !== null,
+  )
+}
+
 export async function resolveProgramSlugs(): Promise<Record<string, string>> {
   const resolved = fallbackProgramSlugs()
   let programs: Program[] = []

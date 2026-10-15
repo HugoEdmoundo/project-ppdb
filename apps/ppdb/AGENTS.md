@@ -21,7 +21,6 @@ Aplikasi frontend Penerimaan Peserta Didik Baru (PPDB) untuk Pesantren Tahfidz Q
   - `AuthContext`: Mengelola state pendaftar/admin, login/logout, dan permission. Auto-refresh `/auth/me` tiap 30 detik untuk mendeteksi perubahan status atau izin.
 
 ## Routes & Pages (`src/pages/`)
-
 ### 1. Public Routes
 - `/` (`LandingPage`): Beranda publik PPDB.
 - `/register` (`RegisterPage`): Formulir pendaftaran calon santri bertahap (7 bagian: Pilih Jalur, Identitas, Orang Tua, Kontak, Domisili, Identifikasi Kesehatan 10 soal, Pernyataan).

@@ -14,6 +14,11 @@ import { ArabesquePattern, MihrabArch } from './HeroDecorations'
  */
 const RUNWAY_VH = 220
 
+// Titik (dalam satuan tinggi viewport) saat sticky frame mulai lepas dan hero
+// mulai terangkat keluar layar: runway 220vh dikurangi tinggi frame 100vh.
+// Dipakai sebagai awal fade-out hero — lihat catatan panjang di dalam useEffect.
+const RELEASE_VH = (RUNWAY_VH - 100) / 100
+
 /**
  * Kata kunci dipecah tepat di garis sambungan panel.
  *
@@ -63,8 +68,48 @@ export default function PortalReveal({ children }: { children?: React.ReactNode 
       const wordmark = section.querySelectorAll('[data-portal-wordmark]')
       const seam = section.querySelector('[data-portal-seam]')
       const hint = section.querySelector('[data-portal-hint]')
+      const content = section.querySelector('[data-portal-content]')
 
       if (!backdrop || !panelLeft || !panelRight || !halfLeft || !halfRight) return
+
+      // Fade-out hero SAAT KELUAR, bukan di timeline utama.
+      //
+      // Timeline utama di-scrub dari `top top` sampai `bottom bottom`, yaitu
+      // 220vh - 100vh = 120vh, dan sudah tuntas di scrollY ±1080. Fase ketika
+      // frame lepas dari sticky dan hero terangkat keluar (1080 → ~1700) ada
+      // DI LUAR jangkauan timeline itu, jadi tidak bisa dianimasikan dari sana.
+      //
+      // Percobaan pertama menaruh fade di dalam timeline utama (posisi 0.52)
+      // dan hasilnya salah: hero sudah opacity 0 di scrollY 950, padahal
+      // posisinya baru bergeser 40px dan masih hampir sepenuhnya di layar.
+      // Terlihat seperti hero berkedip hilang, bukan transisi.
+      //
+      // `ease: 'none'` di sini benar dan bukan yang dilarang di timeline utama:
+      // fade ini terikat linear ke posisi scroll, bukan gerak antar-layer.
+      // Dipakai opacity saja tanpa `y` karena frame-nya sendiri sudah bergerak
+      // ke atas — menambah offset lagi hanya jadi gerak ganda.
+      //
+      // Diletakkan SEBELUM timeline utama dengan sengaja: tes PortalReveal mengiris
+      // sumber file mulai baris deklarasi timeline lalu ke akhir file untuk
+      // memeriksa `ease: 'none'` di timeline utama, jadi blok ini harus berada
+      // di luar potongan tersebut.
+      if (content) {
+        gsap.fromTo(
+          content,
+          { opacity: 1 },
+          {
+            opacity: 0,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: section,
+              start: () => window.innerHeight * RELEASE_VH,
+              end: () => window.innerHeight * (RELEASE_VH + 0.7),
+              scrub: 0.2,
+              invalidateOnRefresh: true,
+            },
+          },
+        )
+      }
 
       // `xPercent` dipakai (bukan px) supaya proporsional terhadap lebar paruh
       // yang berubah mengikuti viewport — tidak ada magic number.
@@ -174,29 +219,46 @@ export default function PortalReveal({ children }: { children?: React.ReactNode 
           className="absolute inset-y-0 right-0 z-10 w-1/2 bg-obsidian will-change-transform"
         />
 
-        {/* Kata kunci: tiap paruh menempel ke tepi panelnya sendiri */}
-        <div className="pointer-events-none absolute inset-0 z-20 flex items-center px-6">
-          <div
-            data-portal-half-left
-            className="flex w-1/2 justify-end pr-[1px] will-change-transform"
-          >
-            <span
-              data-portal-wordmark
-              className="whitespace-nowrap font-brand text-[clamp(1.6rem,9vw,9rem)] font-bold leading-none tracking-[0.06em] text-white"
+        {/* Kata kunci. Dua paruh tetap berdempet di seam supaya panel membelah
+            di antara huruf yang tepat, tapi KESELURUHAN kata dipusatkan sebagai
+            satu unit.
+
+            Sebelumnya tiap paruh diberi `w-1/2` dan menghampiri seam dari
+            sisinya masing-masing. Itu membuat seam selalu persis di tengah
+            viewport, tapi karena split-nya 5|6 huruf (PTDAR 5, RAHMAN 6) —
+            bukan 5|5 — paruh kanan lebih lebar dan seluruh kata terdorong ke
+            kanan. Terukur di vw 1283: jarak kiri 191px vs kanan 95px, jadi
+            meleset 60px dari pusat layar.
+
+            Dua hal itu memang tidak bisa sama-sama terpenuhi pada kata 11
+            huruf: seam tidak bisa berada di tengah viewport sekaligus di
+            tengah kata. Yang lebih penting dilihat mata adalah kata yang
+            terpusat, jadi seam yang mengalah.
+        */}
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-6">
+          <div className="flex items-center">
+            <div
+              data-portal-half-left
+              className="flex pr-[1px] will-change-transform"
             >
-              {WORDMARK_LEFT}
-            </span>
-          </div>
-          <div
-            data-portal-half-right
-            className="flex w-1/2 justify-start pl-[1px] will-change-transform"
-          >
-            <span
-              data-portal-wordmark
-              className="whitespace-nowrap font-brand text-[clamp(1.6rem,9vw,9rem)] font-bold leading-none tracking-[0.06em] text-white"
+              <span
+                data-portal-wordmark
+                className="whitespace-nowrap font-brand text-[clamp(1.6rem,9vw,9rem)] font-bold leading-none tracking-[0.06em] text-white"
+              >
+                {WORDMARK_LEFT}
+              </span>
+            </div>
+            <div
+              data-portal-half-right
+              className="flex pl-[1px] will-change-transform"
             >
-              {WORDMARK_RIGHT}
-            </span>
+              <span
+                data-portal-wordmark
+                className="whitespace-nowrap font-brand text-[clamp(1.6rem,9vw,9rem)] font-bold leading-none tracking-[0.06em] text-white"
+              >
+                {WORDMARK_RIGHT}
+              </span>
+            </div>
           </div>
         </div>
 

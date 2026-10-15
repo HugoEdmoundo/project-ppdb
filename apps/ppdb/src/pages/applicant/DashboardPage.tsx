@@ -11,8 +11,6 @@ import {
 import { apiFetch } from '@/api/client'
 import { useQuery } from '@tanstack/react-query'
 import { useToast } from '@/components/Toast'
-import ApplicantTopBar from '@/components/shared/ApplicantTopBar'
-import ApplicantProfileModal from '@/components/shared/ApplicantProfileModal'
 import SupportFab from './components/SupportFab'
 import ChangePathModal from './components/ChangePathModal'
 import { cn } from '@/lib/utils'
@@ -35,7 +33,6 @@ export default function ApplicantDashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  const [showProfile, setShowProfile] = useState(false)
   const [showChangePath, setShowChangePath] = useState(false)
 
   const transactionQuery = useQuery({
@@ -244,22 +241,17 @@ export default function ApplicantDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col">
-        <ApplicantTopBar onProfile={() => setShowProfile(true)} />
-        <div className="max-w-5xl mx-auto w-full px-3.5 sm:px-6 py-6 sm:py-8 space-y-5 sm:space-y-6">
-          <Skeleton className="h-36 rounded-3xl" />
-          <Skeleton className="h-28 rounded-3xl" />
-          <Skeleton className="h-64 rounded-3xl" />
-        </div>
+      <div className="mx-auto max-w-5xl w-full space-y-6">
+        <Skeleton className="h-36 rounded-3xl" />
+        <Skeleton className="h-28 rounded-3xl" />
+        <Skeleton className="h-64 rounded-3xl" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <ApplicantTopBar onProfile={() => setShowProfile(true)} />
-
-      <div className="max-w-5xl mx-auto w-full px-3.5 sm:px-6 py-6 sm:py-8 space-y-5 sm:space-y-6">
+    <>
+      <div className="mx-auto max-w-5xl w-full space-y-6">
         {/* Welcome Header */}
         <div className="rounded-3xl bg-gradient-to-r from-emerald-primary via-emerald-800 to-teal-800 p-5 sm:p-8 text-white shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl pointer-events-none" />
@@ -487,15 +479,6 @@ export default function ApplicantDashboardPage() {
         </div>
       </div>
 
-      {/* Profile Modal */}
-      <ApplicantProfileModal
-        open={showProfile}
-        onOpenChange={setShowProfile}
-        applicant={applicant ? { ...applicant, full_name: applicant.full_name || user?.full_name, email: applicant.email || user?.email } : null}
-        title="Profil Saya"
-        showPasswordHint
-      />
-
       {/* Floating Support FAB */}
       {contactInfo && (contactInfo.phone_primary || contactInfo.whatsapp || contactInfo.email_primary) && (
         <SupportFab
@@ -512,6 +495,6 @@ export default function ApplicantDashboardPage() {
           currentPath={applicant?.registration_path || ''}
         />
       )}
-    </div>
+    </>
   )
 }

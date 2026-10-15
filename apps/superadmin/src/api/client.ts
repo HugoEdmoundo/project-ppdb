@@ -30,6 +30,38 @@ async function parseJsonSafe<T>(res: Response, label: string): Promise<T> {
 
 const USER_KEY = 'sa_user'
 
+// ── Dummy auth (dev-only) ────────────────────────────────────
+// Aktifkan lewat VITE_MOCK_AUTH=true di .env lokal saat backend/DB belum bisa
+// dipakai. Login tidak menghubungi server: sesi `sa_user` diisi user dummy.
+// Wajib `false` di produksi (default mati).
+export const MOCK_AUTH = (import.meta.env.VITE_MOCK_AUTH || '').trim().toLowerCase() === 'true'
+
+function buildMockUser(username = 'superadmin'): AuthUser {
+  return {
+    id: 'mock-superadmin-0001',
+    username: username || 'superadmin',
+    email: 'superadmin@localhost',
+    full_name: 'Superadmin (Dummy)',
+    avatar_url: '',
+    role_id: 'mock-role-superadmin',
+    role_name: 'Superadmin',
+    user_type: 'superadmin',
+    is_active: true,
+    is_superadmin: true,
+    permissions: { companyprofile: 'crud', ppdb: 'crud' },
+    page_permissions: [],
+  }
+}
+
+/** Sesi dummy yang sudah tersimpan, atau buat+simpan baru. */
+export function getMockUser(username = 'superadmin'): AuthUser {
+  const stored = getStoredUser()
+  if (stored) return stored
+  const user = buildMockUser(username)
+  setStoredUser(user)
+  return user
+}
+
 function clearAuth() {
   localStorage.removeItem(USER_KEY)
 }
@@ -133,6 +165,11 @@ async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Promise<T>
 // ── Auth ──────────────────────────────────────────────────
 
 export async function login(username: string, password: string): Promise<AuthUser> {
+  if (MOCK_AUTH) {
+    const user = buildMockUser(username)
+    setStoredUser(user)
+    return user
+  }
   const data: LoginResponse = await apiFetch('/companyprofile/auth/login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
@@ -150,6 +187,7 @@ export async function login(username: string, password: string): Promise<AuthUse
 }
 
 export async function getMe(): Promise<AuthUser> {
+  if (MOCK_AUTH) return getMockUser()
   const user = await apiFetch<AuthUser>('/companyprofile/auth/me')
   setStoredUser(user)
   return user

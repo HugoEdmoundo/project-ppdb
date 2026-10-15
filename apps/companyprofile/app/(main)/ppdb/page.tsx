@@ -20,7 +20,7 @@ import { buildSchedule } from '@/app/lib/ppdb'
 import ShapeDividerDiagonal from '@/app/components/ui/ShapeDividerDiagonal'
 
 // Load Three.js 3D Hero dynamically with SSR disabled to prevent hydration/canvas errors
-const OrbitDeliveryHero = dynamic(
+const PPDBHero = dynamic(
   () => import('@/components/ui/orbit-delivery-hero'),
   {
     ssr: false,
@@ -43,7 +43,7 @@ export default function PPDBPage() {
     <div className="w-full min-h-screen bg-[var(--bg)] text-[var(--text)]">
       {/* 3D Interactive Planet & Courier Hero */}
       <section className="relative w-full">
-        <OrbitDeliveryHero theme="auto" academicYear={ppdb.academicYear} />
+        <PPDBHero theme="auto" academicYear={ppdb.academicYear} />
       </section>
 
       {/* Tear-off tipis memisahkan hero 3D dari section info. Sengaja tanpa

@@ -234,7 +234,7 @@ var init_motion = __esm({
 
 
 
-    GAIT_DISTANCE = 0.7;
+    GAIT_DISTANCE = 0.44;
 
 
 
@@ -847,149 +847,211 @@ function getSurfaceData(surfaceRaw) {
 
 function usePlanetAsset(onReady) {
 
+
+
   const base = useContext(AssetBaseContext);
+
+
 
   const [asset, setAsset] = useState(null);
 
+
+
   const [error, setError] = useState(null);
+
+
 
   useEffect(() => {
 
+
+
+    const abort = new AbortController();
+
+
+
+    const loader = new GLTFLoader();
+
+
+
     let disposed = false;
+
+
 
     let scene;
 
+
+
+    const loadWorldBuffer = async () => {
+
+      const candidates = [
+
+        "/models/whimsical-world.glb",
+
+        `${base}models/whimsical-world.glb`,
+
+        "https://cdn.jsdelivr.net/gh/fadeichev2121/planet@b3f70fbf4b577845b1d9d5947c9410fb4d925dae/models/whimsical-world.glb"
+
+      ];
+
+      for (const url of candidates) {
+
+        try {
+
+          const res = await fetch(url, { signal: abort.signal });
+
+          if (res.ok) return await res.arrayBuffer();
+
+        } catch (e) { }
+
+      }
+
+      throw new Error("Planet model whimsical-world.glb could not be loaded");
+
+    };
+
+
+
     onReady?.(false);
 
-    // Create procedural planet instead of loading GLB
-    const createProceduralPlanet = () => {
-      const group = new Group3();
-      
-      // Main planet sphere - emerald green
-      const planetGeometry = new SphereGeometry(2.2, 64, 48);
-      const planetMaterial = new MeshStandardMaterial({
-        color: 0x1A6B47,
-        roughness: 0.75,
-        metalness: 0.02,
-      });
-      const planetMesh = new Mesh3(planetGeometry, planetMaterial);
-      planetMesh.name = "Planet";
-      planetMesh.castShadow = true;
-      planetMesh.receiveShadow = true;
-      group.add(planetMesh);
+    const surface2 = getSurfaceData(surface);
 
-      // Add subtle noise/displacement via vertex colors for visual interest
-      const position = planetGeometry.attributes.position;
-      const colors = [];
-      for (let i = 0; i < position.count; i++) {
-        const x = position.getX(i);
-        const y = position.getY(i);
-        const z = position.getZ(i);
-        const noise = Math.sin(x * 3) * Math.cos(y * 3) * Math.sin(z * 3) * 0.02;
-        const variation = noise + Math.sin(x * 7) * 0.01;
-        colors.push(1 - variation * 0.5, 1 - variation * 0.3, 1 - variation * 0.4);
-      }
-      planetGeometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
-      planetMaterial.vertexColors = true;
-      planetMaterial.needsUpdate = true;
 
-      // Masjid dome silhouette (decorative)
-      const domeGeometry = new SphereGeometry(0.18, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-      const domeMaterial = new MeshStandardMaterial({
-        color: 0x0D4A2E,
-        roughness: 0.85,
-        metalness: 0.0,
-      });
-      const domeMesh = new Mesh3(domeGeometry, domeMaterial);
-      domeMesh.name = "MasjidDome";
-      domeMesh.position.set(0, 2.2, 0);
-      domeMesh.rotation.x = -Math.PI / 2;
-      domeMesh.castShadow = true;
-      group.add(domeMesh);
 
-      // Minaret silhouettes (4 around the planet)
-      for (let i = 0; i < 4; i++) {
-        const angle = (i / 4) * Math.PI * 2;
-        const x = Math.sin(angle) * 1.6;
-        const z = Math.cos(angle) * 1.6;
-        
-        const minaretGroup = new Group3();
-        
-        const baseGeometry = new CylinderGeometry(0.06, 0.08, 0.25, 8);
-        const baseMaterial = new MeshStandardMaterial({ color: 0x0D4A2E, roughness: 0.9 });
-        const baseMesh = new Mesh3(baseGeometry, baseMaterial);
-        baseMesh.position.y = 2.1;
-        minaretGroup.add(baseMesh);
-        
-        const shaftGeometry = new CylinderGeometry(0.025, 0.035, 0.6, 8);
-        const shaftMesh = new Mesh3(shaftGeometry, baseMaterial);
-        shaftMesh.position.y = 2.45;
-        minaretGroup.add(shaftMesh);
-        
-        const topGeometry = new SphereGeometry(0.04, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2);
-        const topMesh = new Mesh3(topGeometry, baseMaterial);
-        topMesh.position.y = 2.78;
-        topMesh.rotation.x = -Math.PI / 2;
-        minaretGroup.add(topMesh);
-        
-        const crescentGeometry = new TorusGeometry(0.035, 0.008, 8, 16, Math.PI);
-        const crescentMaterial = new MeshStandardMaterial({ 
-          color: 0xE5B842, 
-          roughness: 0.2, 
-          metalness: 0.8 
-        });
-        const crescentMesh = new Mesh3(crescentGeometry, crescentMaterial);
-        crescentMesh.position.y = 2.82;
-        crescentMesh.rotation.x = Math.PI / 2;
-        minaretGroup.add(crescentMesh);
-        
-        minaretGroup.position.set(x, 0, z);
-        minaretGroup.rotation.y = -angle;
-        group.add(minaretGroup);
-      }
+    loadWorldBuffer().then(async (buffer) => {
 
-      // Gold accent ring around equator
-      const ringGeometry = new TorusGeometry(2.25, 0.015, 16, 64);
-      const ringMaterial = new MeshStandardMaterial({
-        color: 0xE5B842,
-        roughness: 0.2,
-        metalness: 0.9,
-      });
-      const ringMesh = new Mesh3(ringGeometry, ringMaterial);
-      ringMesh.name = "EquatorRing";
-      ringMesh.rotation.x = Math.PI / 2;
-      group.add(ringMesh);
 
-      return group;
-    };
 
-    try {
-      scene = createProceduralPlanet();
       if (disposed) return;
 
-      // Simple uniform surface data (no heightmap needed)
-      const surfaceData = {
-        width: 128,
-        height: 65,
-        radii: new Float32Array(128 * 65).fill(1.0)
-      };
 
-      setAsset({ scene, surface: surfaceData });
+
+      const gltf = await loader.parseAsync(buffer, `${base}models/`);
+
+
+
+      scene = gltf.scene;
+
+
+
+      if (disposed) {
+
+
+
+        disposeScene(scene);
+
+
+
+        return;
+
+
+
+      }
+
+
+
+      scene.traverse((node) => {
+
+
+
+        node.updateMatrix();
+
+
+
+        node.matrixAutoUpdate = false;
+
+
+
+        if (!(node instanceof Mesh)) return;
+
+
+
+        const materials = Array.isArray(node.material) ? node.material : [node.material];
+
+
+
+        for (const mat of materials) if (mat instanceof MeshStandardMaterial) {
+
+
+
+          mat.side = FrontSide;
+
+
+
+          mat.metalness = 0;
+
+
+
+          mat.roughness = 0.86;
+
+
+
+          mat.normalScale.setScalar(0.65);
+
+
+
+          if (mat.map) mat.map.anisotropy = 4;
+
+
+
+        }
+
+
+
+      });
+
+
+
+      setAsset({ scene, surface: surface2 });
+
+
+
       onReady?.(true);
-    } catch (reason) {
+
+
+
+    }).catch((reason) => {
+
+
+
       if (!disposed) setError(reason instanceof Error ? reason : new Error(String(reason)));
-    }
+
+
+
+    });
+
+
 
     return () => {
+
+
+
       disposed = true;
+
+
+
+      abort.abort();
+
+
+
       if (scene) disposeScene(scene);
+
+
+
     };
 
-  }, [onReady]);
+
+
+  }, [onReady, base]);
+
+
 
   if (error) throw error;
 
+
+
   return asset;
+
+
 
 }
 
@@ -1732,76 +1794,289 @@ var init_courierGreeting = __esm({
 
 
     CourierGreeting = class {
+
+
+
       constructor(scene) {
+
+
+
         this.scene = scene;
+
+
+
         scene.updateWorldMatrix(true, true);
+
+
+
         const inverseScene = scene.getWorldQuaternion(new Quaternion5()).invert();
+
+
+
         this.joints = ["RightArm", "RightForeArm", "RightHand"].map((name) => {
+
+
+
           const bone = scene.getObjectByName(name);
+
+
+
           if (!(bone instanceof Bone2)) throw new Error(`Greeting joint ${name} is missing.`);
+
+
+
           const rest = bone.getWorldQuaternion(new Quaternion5()).premultiply(inverseScene);
+
+
+
           const direction = up.clone().applyQuaternion(rest).normalize();
+
+
+
           const palm = new Vector34(1, 0, 0).addScaledVector(direction, -direction.x).normalize();
+
+
+
           return { bone, rest, direction, palm, animated: bone.quaternion.clone() };
+
+
+
         });
+
+
+
         this.restBendNormal.crossVectors(this.joints[0].direction, this.joints[1].direction).normalize();
+
+
+
       }
+
+
+
       joints;
+
+
+
       sceneRotation = new Quaternion5();
+
+
+
       inverseParent = new Quaternion5();
+
+
+
       aim = new Quaternion5();
+
+
+
       twist = new Quaternion5();
+
+
+
       target = new Quaternion5();
+
+
+
       direction = new Vector34();
+
+
+
       palm = new Vector34();
+
+
+
       wantedPalm = new Vector34();
+
+
+
       cross = new Vector34();
+
+
+
       restBendNormal = new Vector34();
+
+
+
       bendNormal = new Vector34();
+
+
+
       upperDirection = new Vector34(-0.55, -0.65, 0.52).normalize();
+
+
+
       forearmDirection = new Vector34();
+
+
+
       phase = 0;
+
+
+
       applied = false;
+
+
+
       weight = 0;
+
+
+
       restore() {
+
+
+
         if (!this.applied) return;
+
+
+
         for (const joint of this.joints) joint.bone.quaternion.copy(joint.animated);
+
+
+
         this.applied = false;
+
+
+
       }
+
+
+
       step(dt, ready, reduced) {
+
+
+
         this.weight = MathUtils4.damp(this.weight, ready ? 1 : 0, ready ? 4 : 9, dt);
+
+
+
         if (this.weight < 1e-4) {
+
+
+
           this.weight = 0;
+
+
+
           this.phase = 0;
+
+
+
         }
+
+
+
         if (ready && this.weight > 0.85 && !reduced) this.phase += dt * Math.PI * 2 * 0.9;
+
+
+
       }
+
+
+
       apply(reduced) {
+
+
+
         if (this.weight === 0) return;
+
+
+
         this.scene.getWorldQuaternion(this.sceneRotation);
+
+
+
         const wave = Math.sin(this.phase) * (reduced ? 0 : 0.12) * MathUtils4.smoothstep(this.weight, 0.85, 0.99);
+
+
+
         this.forearmDirection.set(-0.08 + wave * 0.35, 0.94, 0.33).normalize();
+
+
+
         this.bendNormal.crossVectors(this.upperDirection, this.forearmDirection).normalize();
+
+
+
         this.joints.forEach((joint, index) => {
+
+
+
           joint.animated.copy(joint.bone.quaternion);
+
+
+
           if (index === 0) this.direction.copy(this.upperDirection);
+
+
+
           else if (index === 1) this.direction.copy(this.forearmDirection);
+
+
+
           else this.direction.set(-0.06 + wave, 0.97, 0.22);
+
+
+
           this.direction.normalize();
+
+
+
           this.aim.setFromUnitVectors(joint.direction, this.direction);
+
+
+
           this.target.copy(this.aim).multiply(joint.rest);
+
+
+
           this.palm.copy(this.restBendNormal).addScaledVector(joint.direction, -this.restBendNormal.dot(joint.direction)).normalize().applyQuaternion(this.aim);
+
+
+
           this.wantedPalm.copy(this.bendNormal).addScaledVector(this.direction, -this.bendNormal.dot(this.direction)).normalize();
+
+
+
           const angle = Math.atan2(this.direction.dot(this.cross.crossVectors(this.palm, this.wantedPalm)), this.palm.dot(this.wantedPalm));
+
+
+
           this.twist.setFromAxisAngle(this.direction, angle);
+
+
+
           this.target.premultiply(this.twist);
+
+
+
           joint.bone.parent.getWorldQuaternion(this.inverseParent).invert();
+
+
+
           this.target.premultiply(this.sceneRotation).premultiply(this.inverseParent);
+
+
+
           joint.bone.quaternion.slerp(this.target, this.weight);
+
+
+
           joint.bone.updateWorldMatrix(false, true);
+
+
+
         });
+
+
+
         this.applied = true;
+
+
+
       }
+
+
+
     };
 
 
@@ -2066,7 +2341,7 @@ import { useFrame } from "@react-three/fiber";
 
 
 
-import { AnimationClip as AnimationClip2, AnimationMixer, Bone as Bone3, LoopRepeat, MathUtils as MathUtils5, Mesh as Mesh3, MeshStandardMaterial as MeshStandardMaterial2, NumberKeyframeTrack, Quaternion as Quaternion6, QuaternionKeyframeTrack, SkinnedMesh as SkinnedMesh3, Vector3 as Vector35, VectorKeyframeTrack, Group as Group3, CylinderGeometry as CylinderGeometry3, BoxGeometry as BoxGeometry3, ConeGeometry as ConeGeometry3, SphereGeometry, TorusGeometry, Float32BufferAttribute } from "three";
+import { AnimationClip as AnimationClip2, AnimationMixer, Bone as Bone3, LoopRepeat, MathUtils as MathUtils5, Mesh as Mesh3, MeshStandardMaterial as MeshStandardMaterial2, NumberKeyframeTrack, Quaternion as Quaternion6, QuaternionKeyframeTrack, SkinnedMesh as SkinnedMesh3, Vector3 as Vector35, VectorKeyframeTrack, Group as Group3, CylinderGeometry as CylinderGeometry3, BoxGeometry as BoxGeometry3, ConeGeometry as ConeGeometry3, Float32BufferAttribute } from "three";
 
 
 
@@ -2152,6 +2427,10 @@ function makeIdle(scene) {
 
 }
 
+
+
+
+
 // ── Body tints ───────────────────────────────────────────────────────────────
 // The courier body is a single skinned mesh wearing a baked clay texture, so the
 // clothing cannot be recolored through material.color (that would tint skin, cap
@@ -2165,6 +2444,35 @@ const SHIRT_JOINTS = new Set(["Spine", "Spine01", "Spine02", "LeftShoulder", "Le
 // Hips + upper/lower leg, stopping short of the feet. The source model wears
 // short khaki trousers, so painting the whole leg reads as long trousers.
 const PANTS_JOINTS = new Set(["Hips", "LeftUpLeg", "LeftLeg", "RightUpLeg", "RightLeg"]);
+
+// The walk cycle drives CourierBag.translation on every frame, so moving the
+// bone once at load time is pointless: the mixer overwrites it on the first
+// animation tick. The backpack offset therefore has to live in the translation
+// track itself, in the bone parent space, which is the bind space rotated 180
+// degrees about X (hence the sign flip on Y and Z).
+function offsetBagTrack(clip, delta) {
+
+  const track = clip.tracks.find((candidate) => candidate.name === "CourierBag.position");
+
+  if (!track) return false;
+
+  const values = Array.from(track.values);
+
+  for (let i = 0; i < values.length; i += 3) {
+
+    values[i] += delta.x;
+    values[i + 1] += delta.y;
+    values[i + 2] += delta.z;
+
+  }
+
+  track.values = new Float32Array(values);
+
+  return true;
+
+}
+
+
 
 function applyBodyTints(root, zones) {
 
@@ -2186,29 +2494,46 @@ function applyBodyTints(root, zones) {
 
     for (const zone of active) {
 
-      const isZoneJoint = bones.map((bone) => zone.joints.has(bone.name) ? 1 : 0);
-      const count = skinIndex.count;
+      const count = node.geometry.attributes.position.count;
       const mask = new Float32Array(count);
 
-      for (let vertex = 0; vertex < count; vertex++) {
+      if (zone.cutoff !== undefined) {
 
-        let zoneWeight = 0;
+        // Cutoff zones have no bone of their own, so they key off the bind-space
+        // height instead and fade out across a thin band.
+        const position = node.geometry.attributes.position;
 
-        for (let channel = 0; channel < 4; channel++) {
+        for (let vertex = 0; vertex < count; vertex++) {
 
-          const index = skinIndex.getComponent(vertex, channel);
-
-          if (index < isZoneJoint.length && isZoneJoint[index]) {
-
-            zoneWeight += skinWeight.getComponent(vertex, channel);
-
-          }
+          mask[vertex] = smoothstep(position.getY(vertex), zone.cutoff - 0.02, zone.cutoff + 0.02);
 
         }
 
-        // Summed weights keep the cuffs and the hem as a gradient, not a hard cut.
+      } else {
 
-        mask[vertex] = smoothstep(zoneWeight, 0.35, 0.65);
+        const isZoneJoint = bones.map((bone) => zone.joints.has(bone.name) ? 1 : 0);
+
+        for (let vertex = 0; vertex < count; vertex++) {
+
+          let zoneWeight = 0;
+
+          for (let channel = 0; channel < 4; channel++) {
+
+            const index = skinIndex.getComponent(vertex, channel);
+
+            if (index < isZoneJoint.length && isZoneJoint[index]) {
+
+              zoneWeight += skinWeight.getComponent(vertex, channel);
+
+            }
+
+          }
+
+          // Summed weights keep the cuffs and the hem as a gradient, not a hard cut.
+
+          mask[vertex] = smoothstep(zoneWeight, 0.35, 0.65);
+
+        }
 
       }
 
@@ -2256,7 +2581,7 @@ function applyBodyTints(root, zones) {
 
 
 
-function Courier({ motion, paused, reduced, onReady, shirtColor, pantsColor, showBag }) {
+function Courier({ motion, paused, reduced, onReady, shirtColor, pantsColor, showBag, showStrap, showCap, capCutoff }) {
 
 
 
@@ -2378,14 +2703,35 @@ function Courier({ motion, paused, reduced, onReady, shirtColor, pantsColor, sho
 
       optimizeRigidBag(gltf.scene);
 
-      // The bag and its shoulder strap are separate meshes, so both can just be
-      // hidden. The strap alone reads as a crossbody strap with nothing to
-      // carry, so showBag covers the whole set.
+      // Wear the bag as a backpack. In bind space the model faces +Z (the toes point
+      // that way) and the back surface sits near z = -0.21, while the bag is
+      // authored hanging at the left hip. The offset centres it at x = 0, z = -0.30
+      // and lifts it between the shoulder blades. It is applied in bone-local space,
+      // and BagSuspension re-derives the bone position from its world anchor every
+      // frame, so the offset survives the walk cycle.
+      // The backpack offset lives in the walk-cycle track, see offsetBagTrack().
+
+      // The cap has no bone and no UV island of its own: the Head bone spans the whole
+      // skull (4,647 vertices, y 1.29-1.70) and the cap UVs are interleaved across the
+      // whole atlas. Cutting the crown away leaves a flat-topped head, so instead the
+      // cap is recoloured to the hair tone sampled from the atlas (#674B43) via a
+      // cutoff zone in applyBodyTints. Tune the height with /ppdb?cap=1.55.
+      // The diagonal crossbody strap belongs to the messenger look, so it goes.
+      if (!showStrap) {
+
+        gltf.scene.traverse((node) => {
+
+          if (node.name === "Delivery_Shoulder_Strap_Mobile") node.visible = false;
+
+        });
+
+      }
+
       if (!showBag) {
 
         gltf.scene.traverse((node) => {
 
-          if (node.name === "Delivery_Bag_Mobile" || node.name === "Delivery_Shoulder_Strap_Mobile") node.visible = false;
+          if (node.name === "Delivery_Bag_Mobile") node.visible = false;
 
         });
 
@@ -2437,11 +2783,10 @@ function Courier({ motion, paused, reduced, onReady, shirtColor, pantsColor, sho
 
       });
 
-      applyBodyTints(gltf.scene, [{ slot: "shirt", joints: SHIRT_JOINTS, hex: shirtColor }, { slot: "pants", joints: PANTS_JOINTS, hex: pantsColor }]);
 
-      
 
-      
+      applyBodyTints(gltf.scene, [{ slot: "shirt", joints: SHIRT_JOINTS, hex: shirtColor }, { slot: "pants", joints: PANTS_JOINTS, hex: pantsColor }, { slot: "cap", cutoff: capCutoff, hex: showCap ? null : capColor }]);
+
 
       const clips = gltf.animations.filter((animation) => animation.duration > 0.3);
 
@@ -2485,6 +2830,10 @@ function Courier({ motion, paused, reduced, onReady, shirtColor, pantsColor, sho
 
       const seamless = makeSeamlessRun(clip);
 
+      // Carry the bag as a backpack: centre it on the spine and push it behind the back.
+
+      if (showBag) offsetBagTrack(seamless, new Vector35(-0.237, -0.352, 0.28));
+
 
 
       const run = mixer.clipAction(seamless).setLoop(LoopRepeat, Infinity).play();
@@ -2524,8 +2873,13 @@ function Courier({ motion, paused, reduced, onReady, shirtColor, pantsColor, sho
 
 
     }).catch((reason) => {
-      console.error("Courier load error:", reason);
+
+
+
       if (!cancelled) setError(reason instanceof Error ? reason : new Error(String(reason)));
+
+
+
     });
 
 
@@ -2566,9 +2920,7 @@ function Courier({ motion, paused, reduced, onReady, shirtColor, pantsColor, sho
 
 
 
-  }, [onReady, base, shirtColor, pantsColor, showBag]);
-
-  if (error) throw error;
+  }, [onReady, base, shirtColor, pantsColor, showBag, showStrap, showCap, capCutoff]);
 
 
 
@@ -3390,7 +3742,7 @@ function ResponsiveCamera() {
 
 
 
-function World2({ motion, auto, reduced, onReady, shirtColor, pantsColor, showBag }) {
+function World2({ motion, auto, reduced, onReady, shirtColor, pantsColor, showBag, showStrap, showCap, capCutoff }) {
 
 
 
@@ -3554,7 +3906,7 @@ function World2({ motion, auto, reduced, onReady, shirtColor, pantsColor, showBa
 
 
 
-    <group ref={runner} visible={!!asset && courierReady}><Courier motion={motion} paused={!auto} reduced={reduced} onReady={setCourierReady} shirtColor={shirtColor} pantsColor={pantsColor} showBag={showBag} /></group>
+    <group ref={runner} visible={!!asset && courierReady}><Courier motion={motion} paused={!auto} reduced={reduced} onReady={setCourierReady} shirtColor={shirtColor} pantsColor={pantsColor} showBag={showBag} showStrap={showStrap} showCap={showCap} capCutoff={capCutoff} /></group>
 
 
 
@@ -3822,7 +4174,7 @@ function buildStories(academicYear) {
 
 
 
-function App({ academicYear, shirtColor, pantsColor, showBag }) {
+function App({ academicYear, shirtColor, pantsColor, showBag, showStrap, showCap, capCutoff }) {
 
   var stories = buildStories(academicYear);
 
@@ -4399,7 +4751,7 @@ function App({ academicYear, shirtColor, pantsColor, showBag }) {
 
 
 
-          {sceneMounted && <SceneBoundary><Suspense fallback={null}><PlanetScene3 motion={motion} active={visible && tabVisible && !story} auto={auto} reduced={reduced} prototype={prototype} onReady={setReady} shirtColor={shirtColor} pantsColor={pantsColor} showBag={showBag} /></Suspense></SceneBoundary>}
+          {sceneMounted && <SceneBoundary><Suspense fallback={null}><PlanetScene3 motion={motion} active={visible && tabVisible && !story} auto={auto} reduced={reduced} prototype={prototype} onReady={setReady} shirtColor={shirtColor} pantsColor={pantsColor} showBag={showBag} showStrap={showStrap} showCap={showCap} capCutoff={capCutoff} /></Suspense></SceneBoundary>}
 
 
 
@@ -4433,7 +4785,7 @@ function App({ academicYear, shirtColor, pantsColor, showBag }) {
 
 
 
-    <footer className="site-footer"><p className="footer-left">Santri Beradab<br />Generasi Digital</p><button className="motion-button" onClick={toggleMotion} aria-pressed={!auto} aria-label={auto ? "Pause and greet the wisudawan" : "Start moving"}>{auto ? <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5v10m6-10v10" stroke="currentColor" strokeWidth="1.5" /></svg> : <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 8 6-8 6Z" fill="currentColor" /></svg>}<span>{auto ? "Pause" : "Start"}</span></button><p className="footer-right">Tahfidz 30 Juz<br />Global IT Academy</p></footer>
+    <footer className="site-footer"><p className="footer-left">Santri Beradab<br />Generasi Digital</p><button className="motion-button" onClick={toggleMotion} aria-pressed={!auto} aria-label={auto ? "Pause and greet the courier" : "Start moving"}>{auto ? <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5v10m6-10v10" stroke="currentColor" strokeWidth="1.5" /></svg> : <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 8 6-8 6Z" fill="currentColor" /></svg>}<span>{auto ? "Pause" : "Start"}</span></button><p className="footer-right">Tahfidz 30 Juz<br />Global IT Academy</p></footer>
 
 
 
@@ -4667,9 +5019,9 @@ var css = `@font-face{font-family:'Orbit DM Sans';font-style:normal;font-weight:
 
 `;
 
-/** @param {{ theme?: string, assetBaseUrl?: string, academicYear?: string | null, shirtColor?: number | null, pantsColor?: number | null }} props */
+/** @param {{ theme?: string, assetBaseUrl?: string, academicYear?: string | null, shirtColor?: number | null, pantsColor?: number | null, showBag?: boolean, showStrap?: boolean, showCap?: boolean, capCutoff?: number | null }} props */
 
-function PPDBHero(props) {
+function OrbitDeliveryHero(props) {
 
   var theme = props.theme || "auto";
 
@@ -4685,15 +5037,30 @@ function PPDBHero(props) {
 
   const pantsColor = props.pantsColor === undefined ? 0x0B0B0D : props.pantsColor;
 
-  // The bag and its shoulder strap are hidden by default; pass true to bring them back.
+  // The courier walks empty-handed: no bag, no strap. showBag=true brings back
+  // the backpack (offsetBagTrack centres it on the spine), showStrap=true brings
+  // back the diagonal crossbody strap of the original messenger look.
 
   const showBag = props.showBag === undefined ? false : props.showBag;
 
-  return <AssetBaseContext.Provider value={assetBaseUrl.replace(/\/$/, "") + "/"}><div className="orbit-delivery" data-theme={theme}><style>{css}</style><App academicYear={academicYear} shirtColor={shirtColor} pantsColor={pantsColor} showBag={showBag} /></div></AssetBaseContext.Provider>;
+  const showStrap = props.showStrap === undefined ? false : props.showStrap;
+
+  // The cap is worn as authored. showCap={false} blends it into the hair with capColor
+  // and the cut height (?cap=1.55 or capCutoff), ignored while it is true.
+  const showCap = props.showCap === undefined ? true : props.showCap;
+
+  const capParam = typeof location !== "undefined" ? new URLSearchParams(location.search).get("cap") : null;
+  const capCutoff = props.capCutoff !== undefined ? props.capCutoff : capParam !== null ? Number(capParam) : 1.55;
+
+  // Hair tone sampled from the atlas at head height, so the cap blends into the hair.
+  const capColor = props.capColor === undefined ? 0x674B43 : props.capColor;
+
+  return <AssetBaseContext.Provider value={assetBaseUrl.replace(/\/$/, "") + "/"}><div className="orbit-delivery" data-theme={theme}><style>{css}</style><App academicYear={academicYear} shirtColor={shirtColor} pantsColor={pantsColor} showBag={showBag} showStrap={showStrap} showCap={showCap} capCutoff={capCutoff} /></div></AssetBaseContext.Provider>;
 
 }
 
 export {
-  PPDBHero as default,
-  PPDBHero as OrbitDeliveryHero
+
+  OrbitDeliveryHero as default
+
 };

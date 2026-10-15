@@ -75,3 +75,7 @@ list_*.py
 .dockerignore.bak
 Thumbs.db
 ehthumbs.db
+
+# Local test runs & screenshots
+.playwright-mcp/
+/*.png

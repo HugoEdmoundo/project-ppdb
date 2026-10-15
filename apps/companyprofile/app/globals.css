@@ -116,13 +116,43 @@ h1, h2, h3, h4, h5, h6 {
   color: #fff;
 }
 
-/* ── Verse Strip ── */
-.verse-strip {
-  height: 2px;
-  background: linear-gradient(90deg, var(--color-emerald) 0%, var(--color-gold) 50%, var(--color-emerald) 100%);
-  position: relative;
-  overflow: visible;
+/* ── Wave Animation ── */
+@keyframes sideMorph {
+  0% {
+    transform: scaleX(1) skewY(0deg);
+  }
+  50% {
+    transform: scaleX(1.08) skewY(1deg);
+  }
+  100% {
+    transform: scaleX(0.95) skewY(-1deg);
+  }
 }
+
+.wave-layer {
+  animation: sideMorph 10s ease-in-out infinite alternate;
+  /* Penting untuk elemen SVG. Tanpa `fill-box`, transform dihitung
+     terhadap viewBox dan scaling jadi dari pojok kiri atas — gelombang
+     akan "mengembang" ke satu sisi saja dan terlihat slip, bukan bernapas.
+     Dengan fill-box + origin center, sumbu scaleX benar-benar di tengah. */
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.layer-1 { animation-delay: 0s; }
+.layer-2 { animation-delay: -2.5s; }
+.layer-3 { animation-delay: -5s; }
+.layer-4 { animation-delay: -7.5s; }
+
+/* Gerak dekoratif yang terus-menerus: pengguna yang memilih reduced motion
+   tidak boleh mendapatnya sama sekali. */
+@media (prefers-reduced-motion: reduce) {
+  .wave-layer {
+    animation: none;
+  }
+}
+
 
 
 /* ── Section Badge ── */

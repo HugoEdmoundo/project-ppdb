@@ -12,7 +12,12 @@ import MagneticButton from '../ui/MagneticButton'
 import { buildSchedule, type ActivePpdbWave } from '@/app/lib/ppdb'
 import { gsap, ScrollTrigger } from '@/app/lib/gsap'
 import { onLayoutReady, prefersReducedMotion } from '@/app/lib/motion'
+import HeroWaveSVG from './HeroWaveSVG'
 
+// Dipakai di HeroSection tapi import-nya belum ada — TypeScript gagal dengan
+// "Cannot find name 'Particles'". Pola dynamic + ssr:false disamakan dengan
+// CTASection yang memakai komponen yang sama, supaya tidak ada dua cara
+// memuatnya di app ini.
 const Particles = dynamic(() => import('../ui/Particles'), { ssr: false })
 
 export default function HeroSection({ wave = null }: { wave?: ActivePpdbWave | null }) {
@@ -93,8 +98,10 @@ export default function HeroSection({ wave = null }: { wave?: ActivePpdbWave | n
     >
       {/* Subtle pattern overlay */}
       <div className="absolute inset-0 bg-pattern-dots opacity-[0.15] pointer-events-none" />
-      {/* Decorative background with parallax */}
+      {/* Corrected decorative wave SVG - colors now match company profile (emerald + gold) */}
+      <HeroWaveSVG />
       <Particles count={40} />
+      {/* Decorative background with parallax */}
       <div ref={decorRef1} className="absolute top-0 right-0 w-1/2 h-full opacity-[0.04] pointer-events-none"
         style={{ background: 'radial-gradient(ellipse at center, var(--color-emerald) 0%, transparent 70%)' }}
       />

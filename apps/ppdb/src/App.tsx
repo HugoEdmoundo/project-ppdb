@@ -34,6 +34,7 @@ import ArsipPendaftarPage from './pages/admin/ppdb/ArsipPendaftarPage'
 import VerifikasiDokumenPage from './pages/admin/ppdb/VerifikasiDokumenPage'
 import PembayaranFormulirPage from './pages/admin/ppdb/PembayaranFormulirPage'
 import PembayaranTahap2Page from './pages/admin/ppdb/PembayaranTahap2Page'
+import PembayaranTahap2DetailPage from './pages/admin/ppdb/PembayaranTahap2DetailPage'
 import PenilaianPage from './pages/admin/ppdb/PenilaianPage'
 import ReviewLoaPage from './pages/admin/ppdb/ReviewLoaPage'
 import PublicLoaPage from './pages/public/PublicLoaPage'
@@ -81,6 +82,7 @@ export default function App() {
               <Route path="verifikasi-dokumen" element={<VerifikasiDokumenPage />} />
               <Route path="pembayaran-formulir" element={<PembayaranFormulirPage />} />
               <Route path="pembayaran-tahap2" element={<PembayaranTahap2Page />} />
+              <Route path="pembayaran-tahap2/:applicantId" element={<PembayaranTahap2DetailPage />} />
               <Route path="sessions" element={<Navigate to="/admin/sessions/tahfidz" replace />} />
               <Route path="sessions/tahfidz" element={<Sessions1on1Page forcedType="tahfidz" />} />
               <Route path="sessions/wawancara" element={<Sessions1on1Page forcedType="interview" />} />

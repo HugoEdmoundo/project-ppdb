@@ -86,23 +86,43 @@ export function AdminSidebarFooter() {
 }
 
 /**
- * Logo dinamis dari settings (fallback favicon, lalu string kosong → BrandMark
+ * Favicon dinamis dari settings (fallback logo, lalu string kosong → BrandMark
  * merender tile emerald + `ار`). Tidak ada path aset statis sesuai AGENTS.md.
  */
-export function useAdminLogo(): string {
-  const [logoUrl, setLogoUrl] = useState('')
+export function useAdminFavicon(): string {
+  const [faviconUrl, setFaviconUrl] = useState('')
   useEffect(() => {
-    const loadLogo = () => {
+    const loadFavicon = () => {
       api.getSettings()
         .then((settings) => {
-          const logo = settings.find((s) => s.key === 'logo')?.value
           const favicon = settings.find((s) => s.key === 'favicon')?.value
-          setLogoUrl(favicon || logo || '')
+          const logo = settings.find((s) => s.key === 'logo')?.value
+          if (favicon) {
+            setFaviconUrl(favicon)
+          } else if (logo) {
+            setFaviconUrl(logo)
+          } else {
+            fetch(`${api.API_BASE}/companyprofile/settings/favicon`)
+              .then((res) => (res.ok ? res.json() : null))
+              .then((data) => {
+                if (data?.value) setFaviconUrl(String(data.value))
+              })
+              .catch(() => {})
+          }
         })
-        .catch(() => { })
+        .catch(() => {
+          fetch(`${api.API_BASE}/companyprofile/settings/favicon`)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+              if (data?.value) setFaviconUrl(String(data.value))
+            })
+            .catch(() => {})
+        })
     }
-    loadLogo()
-    return eventBus.on('companyprofile:refresh', loadLogo)
+    loadFavicon()
+    return eventBus.on('companyprofile:refresh', loadFavicon)
   }, [])
-  return logoUrl
+  return faviconUrl
 }
+
+export const useAdminLogo = useAdminFavicon

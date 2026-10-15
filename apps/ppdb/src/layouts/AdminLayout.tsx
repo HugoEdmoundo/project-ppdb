@@ -107,7 +107,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <DashboardShell
-      brand={{ name: 'PTDARRAHMAN', subtitle: 'PPDB Admin', logoUrl: logoUrl || faviconUrl || undefined }}
+      brand={{
+        name: 'PTDARRAHMAN',
+        subtitle: 'PPDB Admin',
+        faviconUrl: faviconUrl || logoUrl || undefined,
+        logoUrl: faviconUrl || logoUrl || undefined,
+      }}
       navGroups={navGroups}
       renderLink={RouterDashboardLink}
       title="Admin PPDB"

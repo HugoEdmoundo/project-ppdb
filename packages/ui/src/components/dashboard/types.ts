@@ -29,6 +29,7 @@ export interface DashboardBrand {
   name: string
   subtitle?: string
   logoUrl?: string
+  faviconUrl?: string
   mark?: ReactNode
 }
 

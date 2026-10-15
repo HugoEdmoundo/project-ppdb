@@ -61,7 +61,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <DashboardShell
-      brand={{ name: 'PTDARRAHMAN', subtitle: 'Superadmin', logoUrl: logoUrl || faviconUrl || undefined }}
+      brand={{
+        name: 'PTDARRAHMAN',
+        subtitle: 'Superadmin',
+        faviconUrl: faviconUrl || logoUrl || undefined,
+        logoUrl: faviconUrl || logoUrl || undefined,
+      }}
       navGroups={navGroups}
       renderLink={RouterDashboardLink}
       title="Superadmin"

@@ -76,7 +76,12 @@ export default function ApplicantLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <DashboardShell
-        brand={{ name: 'PTDARRAHMAN', subtitle: 'PPDB Pendaftar', logoUrl: logoUrl || faviconUrl || undefined }}
+        brand={{
+          name: 'PTDARRAHMAN',
+          subtitle: 'PPDB Pendaftar',
+          faviconUrl: faviconUrl || logoUrl || undefined,
+          logoUrl: faviconUrl || logoUrl || undefined,
+        }}
         navGroups={navGroups}
         renderLink={RouterDashboardLink}
         title="PPDB"

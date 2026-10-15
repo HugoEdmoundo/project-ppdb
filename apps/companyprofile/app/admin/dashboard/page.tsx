@@ -19,7 +19,7 @@ import {
   AdminDashboardLink,
   AdminSidebarFooter,
   buildAdminNavGroups,
-  useAdminLogo,
+  useAdminFavicon,
 } from '../_admin-shell'
 import { Button } from '@/app/components/ui/Button'
 import { Card } from '@/app/components/ui/Card'
@@ -113,7 +113,7 @@ export default function AdminDashboard() {
   // ── Auth state ────────────────────────────────────────────────────────────
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null)
   const [pagePermissions, setPagePermissions] = useState<string[] | null>(null)
-  const logoUrl = useAdminLogo()
+  const faviconUrl = useAdminFavicon()
 
   const isSuperadmin =
     adminUser?.user_type === 'superadmin' || adminUser?.is_superadmin === true
@@ -388,7 +388,12 @@ export default function AdminDashboard() {
       <AdminConfirm />
 
       <DashboardShell
-        brand={{ name: 'PTDARRAHMAN', subtitle: 'Admin CMS', logoUrl: logoUrl || undefined }}
+        brand={{
+          name: 'PTDARRAHMAN',
+          subtitle: 'Admin CMS',
+          faviconUrl: faviconUrl || undefined,
+          logoUrl: faviconUrl || undefined,
+        }}
         navGroups={navGroups}
         renderLink={AdminDashboardLink}
         title="Admin CMS"

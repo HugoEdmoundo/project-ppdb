@@ -20,7 +20,7 @@ import {
   AdminDashboardLink,
   AdminSidebarFooter,
   buildAdminNavGroups,
-  useAdminLogo,
+  useAdminFavicon,
 } from '../_admin-shell'
 import { buttonVariants } from '@/app/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/Card'
@@ -74,7 +74,7 @@ export default function AdminOverview() {
   const [error, setError] = useState('')
   const [profileOpen, setProfileOpen] = useState(false)
 
-  const logoUrl = useAdminLogo()
+  const faviconUrl = useAdminFavicon()
 
   useSSE('companyprofile')
 
@@ -214,7 +214,12 @@ export default function AdminOverview() {
       {profileOpen && <ProfileModal open onClose={() => setProfileOpen(false)} />}
 
       <DashboardShell
-        brand={{ name: 'PTDARRAHMAN', subtitle: 'Admin CMS', logoUrl: logoUrl || undefined }}
+        brand={{
+          name: 'PTDARRAHMAN',
+          subtitle: 'Admin CMS',
+          faviconUrl: faviconUrl || undefined,
+          logoUrl: faviconUrl || undefined,
+        }}
         navGroups={navGroups}
         renderLink={AdminDashboardLink}
         title="Admin CMS"

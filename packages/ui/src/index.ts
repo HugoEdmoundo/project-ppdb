@@ -33,6 +33,8 @@ export * from "./components/dashboard/dashboard-profile-menu";
 export * from "./components/dashboard/dashboard-sidebar";
 export * from "./components/dashboard/dashboard-header";
 export * from "./components/dashboard/dashboard-shell";
+export * from "./components/dashboard/semantic-search/semantic-search";
+export * from "./components/dashboard/semantic-search/semantic-engine";
 
 // ── Shared composite components ───────────────────────────────────────────────
 export * from "./components/ui/avatar-editor";

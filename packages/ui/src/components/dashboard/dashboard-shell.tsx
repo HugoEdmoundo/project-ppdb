@@ -39,6 +39,8 @@ export interface DashboardShellProps {
   user?: DashboardUser | null
   renderLink?: DashboardLinkComponent
   onNavigate?: (item: DashboardNavItem) => void
+  apiBase?: string
+  showSearch?: boolean
 
   title?: string
   subtitle?: string
@@ -90,6 +92,8 @@ export function DashboardShell({
   user,
   renderLink,
   onNavigate,
+  apiBase,
+  showSearch = true,
   title,
   subtitle,
   breadcrumb,
@@ -169,6 +173,11 @@ export function DashboardShell({
           siteLabel={siteLabel}
           logoutLabel={logoutLabel}
           right={headerRight}
+          navGroups={navGroups}
+          onNavigate={onNavigate}
+          renderLink={renderLink}
+          apiBase={apiBase}
+          showSearch={showSearch}
         />
         <main className={cn("flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto", contentClassName)}>{children}</main>
       </div>

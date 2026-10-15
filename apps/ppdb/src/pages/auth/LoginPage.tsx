@@ -107,7 +107,7 @@ export default function LoginPage() {
         {/* Brand mark (mobile) — ringkas: cukup label institusi agar tidak memakan tinggi */}
         <div className="relative z-10 flex items-center justify-center lg:hidden">
           <p className="font-heading text-[11px] font-semibold uppercase tracking-[0.32em] text-white/80">
-            PTDARRAHMAN
+            Gwenchana Gwenchanayo
           </p>
         </div>
 

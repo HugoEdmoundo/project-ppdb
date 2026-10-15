@@ -1,10 +1,15 @@
 "use client"
-
 import type { ReactNode } from "react"
 import { ChevronRight, Menu } from "lucide-react"
 import { cn } from "../../lib/utils"
 import { DashboardProfileMenu } from "./dashboard-profile-menu"
-import type { DashboardUser } from "./types"
+import { SemanticSearch } from "./semantic-search/semantic-search"
+import type {
+  DashboardLinkComponent,
+  DashboardNavGroup,
+  DashboardNavItem,
+  DashboardUser,
+} from "./types"
 
 export interface DashboardHeaderProps {
   user?: DashboardUser | null
@@ -22,6 +27,11 @@ export interface DashboardHeaderProps {
   logoutLabel?: string
   right?: ReactNode
   className?: string
+  navGroups?: DashboardNavGroup[]
+  onNavigate?: (item: DashboardNavItem) => void
+  renderLink?: DashboardLinkComponent
+  apiBase?: string
+  showSearch?: boolean
 }
 
 export function DashboardHeader({
@@ -40,6 +50,11 @@ export function DashboardHeader({
   logoutLabel,
   right,
   className,
+  navGroups,
+  onNavigate,
+  renderLink,
+  apiBase,
+  showSearch = true,
 }: DashboardHeaderProps) {
   const crumbs =
     breadcrumb ??
@@ -68,6 +83,15 @@ export function DashboardHeader({
         </div>
 
         <div className="flex items-center gap-2">
+          {showSearch && (
+            <SemanticSearch
+              navGroups={navGroups}
+              user={user}
+              apiBase={apiBase}
+              onNavigate={onNavigate}
+              renderLink={renderLink}
+            />
+          )}
           {right}
           <DashboardProfileMenu
             user={user}

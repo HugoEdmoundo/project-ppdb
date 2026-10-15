@@ -117,8 +117,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }}
       navGroups={navGroups}
       renderLink={RouterDashboardLink}
-      title="Admin PPDB"
-      subtitle={user?.role_name || user?.user_type}
+      onNavigate={(item) => {
+        if (item.href) navigate(item.href)
+      }}
+      apiBase={API_BASE}
       roleLabel={user?.role_name || user?.user_type}
       contentClassName="animate-fade-in"
       storageKey="ppdb_collapsed"

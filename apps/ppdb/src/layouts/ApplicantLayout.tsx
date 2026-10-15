@@ -84,6 +84,7 @@ export default function ApplicantLayout({ children }: { children: ReactNode }) {
         }}
         navGroups={navGroups}
         renderLink={RouterDashboardLink}
+        showSearch={false}
         title="PPDB"
         subtitle={user?.role_name || 'Calon Murid'}
         roleLabel={user?.role_name || 'Calon Murid'}

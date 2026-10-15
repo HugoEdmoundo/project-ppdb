@@ -222,6 +222,11 @@ export default function AdminOverview() {
         }}
         navGroups={navGroups}
         renderLink={AdminDashboardLink}
+        onNavigate={(item) => {
+          if (item.onClick) item.onClick()
+          else if (item.href) router.push(item.href)
+        }}
+        apiBase={api.API_BASE}
         title="Admin CMS"
         subtitle="Dashboard"
         contentClassName="animate-fade-in"

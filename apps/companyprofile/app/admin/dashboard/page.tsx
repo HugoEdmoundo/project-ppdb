@@ -396,6 +396,19 @@ export default function AdminDashboard() {
         }}
         navGroups={navGroups}
         renderLink={AdminDashboardLink}
+        onNavigate={(item) => {
+          if (item.onClick) {
+            item.onClick()
+          } else if (item.href) {
+            const tabMatch = item.href.match(/tab=([^&]+)/)
+            if (tabMatch && tabMatch[1]) {
+              setActiveTab(tabMatch[1])
+            } else {
+              router.push(item.href)
+            }
+          }
+        }}
+        apiBase={api.API_BASE}
         title="Admin CMS"
         subtitle="Kelola Konten"
         contentClassName="animate-fade-in"

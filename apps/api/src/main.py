@@ -21,6 +21,7 @@ from src.modules.ppdb.router import router as ppdb_router
 from src.modules.roles.router import router as roles_router
 from src.modules.selection.router import router as selection_router
 from src.modules.superadmin.router import router as superadmin_router
+from src.modules.search.router import router as search_router
 from src.modules.uploads.router import router as uploads_router
 from src.modules.users.router import router as users_router
 from src.modules.whatsapp.router import router as whatsapp_router
@@ -243,6 +244,7 @@ app.include_router(
 )
 app.include_router(selection_router, prefix="/selection", tags=["Selection"])
 app.include_router(whatsapp_router, prefix="/whatsapp", tags=["WhatsApp"])
+app.include_router(search_router, prefix="/search", tags=["Search"])
 if settings.upload_provider == "db":
     app.include_router(uploads_router, tags=["Uploads"])
 elif settings.upload_provider == "local":

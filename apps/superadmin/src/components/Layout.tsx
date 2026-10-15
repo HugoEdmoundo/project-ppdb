@@ -69,8 +69,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       }}
       navGroups={navGroups}
       renderLink={RouterDashboardLink}
-      title="Superadmin"
-      subtitle={pageSegment}
+      onNavigate={(item) => {
+        if (item.href) navigate(item.href)
+      }}
+      apiBase={API_BASE}
       roleLabel="Superadmin"
       storageKey="sa_collapsed"
       user={{

@@ -54,7 +54,7 @@ Aplikasi frontend Penerimaan Peserta Didik Baru (PPDB) untuk Pesantren Tahfidz Q
 - `/admin/sessions/wawancara` (`Sessions1on1Page`, `forcedType="interview"`): Manajemen jadwal & pewawancara sesi 1:1 Wawancara.
 - `/admin/sessions/:sessionType/evaluasi/:sessionId` (`SessionEvaluationPage`): Form penilaian rubrik evaluator.
 - `/admin/penilaian` (`PenilaianPage`): Rekapitulasi nilai akhir dan keputusan kelulusan.
-- `/admin/review-loa` (`ReviewLoaPage`): Verifikasi tanda tangan LoA pendaftar.
+- `/admin/review-loa` (`ReviewLoaPage`): Daftar seluruh penerima LoA (pendaftar lulus), termasuk yang sudah bertanda tangan maupun menunggu tanda tangan orang tua/wali.
 - `/admin/pengumuman` (`LoaSkdPage`): Template LoA & latar SKD.
 - `/admin/periods` (`PeriodsPage`): Manajemen periode dan gelombang pendaftaran.
 - `/admin/tiu-settings` (`TIUSettingsPage`): Konfigurasi global TIU (URL Pre-filled Google Form, durasi, webhook secret).

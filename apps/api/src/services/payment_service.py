@@ -25,9 +25,11 @@ from src.models.ppdb import (
     PPDBApplicantDiscount,
     PPDBPaymentTransaction,
     PPDBStage2Bill,
+    PPDBWave,
     PPDBWaveFeeItem,
 )
 from src.repositories.payment_repository import PaymentRepository
+from src.repositories.ppdb_scope import get_active_period_info
 
 logger = logging.getLogger("ptdarrahman.payment")
 WIB = ZoneInfo("Asia/Jakarta")
@@ -78,14 +80,25 @@ class PaymentService:
 
     def get_transactions(self, page: int, per_page: int, status: str | None) -> dict:
         offset = (page - 1) * per_page
-        active_wave = self.repo.get_active_wave_info()
-        if not active_wave:
-            return {"data": [], "total": 0, "active_wave": None}
+        # Scope halaman operasional admin = seluruh gelombang dalam periode aktif.
+        active_period = get_active_period_info(self.repo.db)
+        if not active_period:
+            return {
+                "data": [],
+                "total": 0,
+                "active_wave": None,
+                "active_period": None,
+            }
 
         data, total = self.repo.get_transactions(
-            active_wave["id"], status, per_page, offset
+            active_period["id"], status, per_page, offset
         )
-        return {"data": data, "total": total, "active_wave": active_wave}
+        return {
+            "data": data,
+            "total": total,
+            "active_wave": self.repo.get_active_wave_info(),
+            "active_period": active_period,
+        }
 
     def calculate_applicant_financials(
         self, applicant_id: str, exclude_tx_id: str | None = None
@@ -1181,9 +1194,35 @@ class PaymentService:
     ) -> dict:
         from sqlalchemy import or_, select
 
-        query = select(PPDBApplicant).where(
-            PPDBApplicant.status == "passed",
-            PPDBApplicant.deleted_at.is_(None),
+        # Scope halaman operasional admin = seluruh gelombang dalam periode aktif.
+        # Tanpa periode aktif, tidak ada data (bukan lintas periode).
+        active_period = get_active_period_info(self.repo.db)
+        if not active_period:
+            return {
+                "data": [],
+                "total": 0,
+                "page": page,
+                "per_page": per_page,
+                "active_period": None,
+                "summary": {
+                    "total_applicants": 0,
+                    "lunas_count": 0,
+                    "belum_lunas_count": 0,
+                    "belum_dp_count": 0,
+                    "total_obligation_sum": 0,
+                    "total_paid_sum": 0,
+                    "total_remaining_sum": 0,
+                },
+            }
+
+        query = (
+            select(PPDBApplicant)
+            .join(PPDBWave, PPDBApplicant.wave_id == PPDBWave.id)
+            .where(
+                PPDBWave.period_id == active_period["id"],
+                PPDBApplicant.status == "passed",
+                PPDBApplicant.deleted_at.is_(None),
+            )
         )
         if wave_id:
             query = query.where(PPDBApplicant.wave_id == wave_id)
@@ -1270,6 +1309,7 @@ class PaymentService:
             "total": total_filtered,
             "page": page,
             "per_page": per_page,
+            "active_period": active_period,
             "summary": {
                 "total_applicants": len(applicants),
                 "lunas_count": lunas_count,

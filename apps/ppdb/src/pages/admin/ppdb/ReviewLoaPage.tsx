@@ -11,20 +11,14 @@ import {
   TableBody,
   TableCell,
   Badge,
-  Button,
   Input,
   TableSkeletonRows,
   EmptyState,
 } from '@/components/ui'
 import PageHeaderCard from '@/components/shared/PageHeaderCard'
 import PaginationControls from '@/components/shared/PaginationControls'
-import {
-  FileCheck2,
-  Search,
-  ExternalLink,
-  ShieldCheck,
-  CheckCircle2,
-} from 'lucide-react'
+import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
+import { FileCheck2, Search, Clock, CheckCircle2 } from 'lucide-react'
 
 export default function ReviewLoaPage() {
   const [search, setSearch] = useState('')
@@ -53,14 +47,23 @@ export default function ReviewLoaPage() {
       return await apiFetch<{
         data: any[]
         total: number
+        grand_total: number
+        signed_count: number
+        pending_count: number
         page: number
         per_page: number
+        active_period: { id: string; name: string } | null
       }>(`/ppdb/signed-loa-applicants?${params.toString()}`)
     },
   })
 
   const applicants = data?.data || []
   const total = data?.total || 0
+  const grandTotal = data?.grand_total ?? total
+  const signedCount = data?.signed_count ?? 0
+  const pendingCount = data?.pending_count ?? 0
+  const activePeriod = data?.active_period && typeof data.active_period === 'object' ? data.active_period : null
+  const hasActivePeriod = !!activePeriod
 
   const handleRowClick = (applicant: any) => {
     const targetUrl = `/loa/${applicant.registration_number || applicant.id}`
@@ -70,25 +73,35 @@ export default function ReviewLoaPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeaderCard
-        title="Review LoA Ditandatangani"
-        description="Daftar calon santri yang telah melakukan konfirmasi tanda tangan digital dua pihak (Orang Tua / Wali). Klik baris data untuk langsung membuka dokumen resmi LoA PDF."
+        title="Review LoA Calon Santri"
+        description="Daftar calon santri penerima Surat Penerimaan (LoA) pada periode aktif — baik yang sudah menandatangani secara digital bersama orang tua/wali maupun yang masih menunggu tanda tangan. Klik baris data untuk membuka dokumen resmi LoA."
         docKey="ppdb-review-loa"
         blocks={[
           {
             icon: FileCheck2,
-            label: 'Total LoA Ditandatangani',
-            value: `${total} santri`,
+            label: 'Total Penerima LoA',
+            value: `${grandTotal} santri`,
             active: true,
           },
           {
-            icon: ShieldCheck,
-            label: 'Konfirmasi 2 Pihak',
-            value: `${total} terverifikasi`,
-            active: total > 0,
-            pulse: total > 0,
+            icon: Clock,
+            label: 'Menunggu Tanda Tangan',
+            value: `${pendingCount} santri`,
+            active: pendingCount > 0,
+            pulse: pendingCount > 0,
+          },
+          {
+            icon: CheckCircle2,
+            label: 'Sudah Ditandatangani',
+            value: `${signedCount} terverifikasi`,
+            active: signedCount > 0,
           },
         ]}
       />
+
+      {!isLoading && hasActivePeriod === false && (
+        <NoActiveWaveBanner message="Tidak ada periode yang aktif saat ini. Aktifkan periode terlebih dahulu untuk menampilkan penerima LoA." />
+      )}
 
       <Card className="border-slate-200/80 shadow-xs">
         <CardContent className="p-4 sm:p-6 space-y-4">
@@ -104,81 +117,81 @@ export default function ReviewLoaPage() {
               />
             </div>
             <div className="text-xs text-slate-500 font-medium">
-              Menampilkan {applicants.length} dari {total} data pendaftar bertanda tangan
+              Menampilkan {applicants.length} dari {total} penerima LoA
             </div>
           </div>
 
           {/* Table */}
           <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
-            <Table>
+            <Table className="table-fixed">
               <TableHeader className="bg-slate-50/80">
                 <TableRow>
-                  <TableHead className="w-12 text-center text-xs">No</TableHead>
-                  <TableHead className="text-xs">No. Registrasi</TableHead>
-                  <TableHead className="text-xs">Nama Calon Santri</TableHead>
-                  <TableHead className="text-xs">Jalur & Gelombang</TableHead>
-                  <TableHead className="text-xs">Penandatangan (Orang Tua / Wali)</TableHead>
-                  <TableHead className="text-xs">Waktu Tanda Tangan</TableHead>
-                  <TableHead className="text-xs text-center">Status Konfirmasi</TableHead>
-                  <TableHead className="text-xs text-right">Aksi</TableHead>
+                  <TableHead className="w-[16%] px-2 text-xs">No. Reg</TableHead>
+                  <TableHead className="w-[25%] px-2 text-xs">Nama</TableHead>
+                  <TableHead className="w-[15%] px-2 text-xs">Jalur</TableHead>
+                  <TableHead className="w-[15%] px-2 text-xs">Penandatangan</TableHead>
+                  <TableHead className="w-[17%] px-2 text-xs">Ditandatangani</TableHead>
+                  <TableHead className="w-[12%] px-2 text-center text-xs">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableSkeletonRows cols={8} rows={5} />
+                  <TableSkeletonRows cols={6} rows={5} />
                 ) : applicants.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-12">
+                    <TableCell colSpan={6} className="py-12">
                       <EmptyState
                         icon={FileCheck2}
-                        title="Belum Ada LoA Ditandatangani"
+                        title="Belum Ada Penerima LoA"
                         description={
                           debouncedSearch
-                            ? 'Tidak ada data pendaftar bertanda tangan yang cocok dengan pencarian Anda.'
-                            : 'Belum ada calon santri lulus yang menyelesaikan tanda tangan digital orang tua/wali.'
+                            ? 'Tidak ada data penerima LoA yang cocok dengan pencarian Anda.'
+                            : 'Belum ada calon santri yang dinyatakan lulus dan menerima Surat Penerimaan (LoA).'
                         }
                       />
                     </TableCell>
                   </TableRow>
                 ) : (
-                  applicants.map((app, index) => (
+                  applicants.map((app) => (
                     <TableRow
                       key={app.id}
                       onClick={() => handleRowClick(app)}
                       className="cursor-pointer hover:bg-emerald-50/40 transition-colors group"
-                      title="Klik untuk membuka dokumen resmi LoA PDF"
+                      title="Klik untuk membuka dokumen resmi LoA"
                     >
-                      <TableCell className="text-center text-xs text-slate-500 font-medium">
-                        {(page - 1) * perPage + index + 1}
+                      <TableCell className="px-2 py-3">
+                        <div
+                          className="truncate font-mono text-xs font-bold text-indigo-700"
+                          title={app.registration_number || app.id.slice(0, 8).toUpperCase()}
+                        >
+                          {app.registration_number || app.id.slice(0, 8).toUpperCase()}
+                        </div>
                       </TableCell>
-                      <TableCell className="font-mono text-xs font-bold text-indigo-700 whitespace-nowrap">
-                        {app.registration_number || app.id.slice(0, 8).toUpperCase()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-semibold text-slate-900 text-xs">
+                      <TableCell className="px-2 py-3">
+                        <div className="truncate text-xs font-semibold text-slate-900" title={app.full_name}>
                           {app.full_name}
                         </div>
-                        <div className="text-[11px] text-slate-500">
-                          {app.previous_school || '-'}
-                        </div>
                       </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
-                        <span className="font-medium text-slate-700 uppercase">
+                      <TableCell className="px-2 py-3">
+                        <div
+                          className="truncate text-xs font-medium uppercase text-slate-700"
+                          title={`${app.registration_path || 'Reguler'} · ${app.wave_name || 'Gelombang 1'}`}
+                        >
                           {app.registration_path || 'Reguler'}
-                        </span>
-                        <div className="text-[11px] text-slate-500">
-                          {app.wave_name || 'Gelombang 1'}
+                          <span className="font-normal normal-case text-slate-400">
+                            {' · '}{app.wave_name || 'Gelombang 1'}
+                          </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs">
-                        <div className="font-semibold text-slate-800">
+                      <TableCell className="px-2 py-3">
+                        <div
+                          className="truncate text-xs text-slate-800"
+                          title={app.loa_signer_name || '-'}
+                        >
                           {app.loa_signer_name || '-'}
                         </div>
-                        <div className="text-[11px] text-slate-500">
-                          Hubungan: {app.loa_signer_relation || 'Orang Tua / Wali'}
-                        </div>
                       </TableCell>
-                      <TableCell className="text-xs text-slate-600 whitespace-nowrap">
+                      <TableCell className="px-2 py-3 text-xs text-slate-600 whitespace-nowrap">
                         {app.loa_signed_at
                           ? new Date(app.loa_signed_at).toLocaleDateString('id-ID', {
                               day: 'numeric',
@@ -189,28 +202,24 @@ export default function ReviewLoaPage() {
                             })
                           : '-'}
                       </TableCell>
-                      <TableCell className="text-center whitespace-nowrap">
-                        <Badge
-                          variant="success"
-                          className="gap-1 text-[10px] font-semibold bg-emerald-100 text-emerald-800 border-emerald-300"
-                        >
-                          <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                          Sah 2 Pihak
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right whitespace-nowrap">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleRowClick(app)
-                          }}
-                          className="h-7 px-2.5 text-xs gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          <span>Buka LoA</span>
-                        </Button>
+                      <TableCell className="px-2 py-3 text-center whitespace-nowrap">
+                        {app.is_loa_signed ? (
+                          <Badge
+                            variant="success"
+                            className="gap-1 text-[10px] font-semibold bg-emerald-100 text-emerald-800 border-emerald-300"
+                          >
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                            Sah 2 Pihak
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 text-[10px] font-semibold bg-amber-50 text-amber-700 border-amber-300"
+                          >
+                            <Clock className="h-3 w-3 text-amber-600" />
+                            Menunggu
+                          </Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

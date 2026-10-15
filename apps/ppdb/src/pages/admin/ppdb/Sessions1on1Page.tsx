@@ -36,6 +36,7 @@ import {
   Tag,
 } from 'lucide-react'
 import SessionDocSheet from './components/SessionDocSheet'
+import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
 import { cn } from '@/lib/utils'
 
 interface Sessions1on1PageProps {
@@ -88,12 +89,15 @@ export default function Sessions1on1Page({ forcedType }: Sessions1on1PageProps) 
     queryKey: ['selection-sessions', currentType],
     queryFn: async () => {
       const res = await api.apiFetch<any>(`/selection/sessions?type=${currentType}`)
-      return res?.data || []
+      return res
     },
     refetchInterval: 15000, // Live poll every 15s to reflect take-session & auto-deletions
   })
 
-  const sessions: any[] = sessionResponse || []
+  const sessions: any[] = useMemo(() => sessionResponse?.data || [], [sessionResponse])
+  // Halaman ini hanya menampilkan sesi dari PERIODE aktif.
+  const activePeriod = sessionResponse?.active_period && typeof sessionResponse.active_period === 'object' ? sessionResponse.active_period : null
+  const hasActivePeriod = !!activePeriod
 
   // Create / Edit Mutation
   const saveMutation = useMutation({
@@ -547,6 +551,10 @@ export default function Sessions1on1Page({ forcedType }: Sessions1on1PageProps) 
         </div>
       </div>
 
+      {!isLoading && hasActivePeriod === false && (
+        <NoActiveWaveBanner message="Tidak ada periode yang aktif saat ini. Aktifkan periode terlebih dahulu untuk mengelola session 1:1." />
+      )}
+
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((idx) => (
@@ -607,7 +615,7 @@ export default function Sessions1on1Page({ forcedType }: Sessions1on1PageProps) 
                   </span>
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  Seluruh slot session pada gelombang aktif ini dari semua penguji/admin.
+                  Seluruh slot session pada periode aktif ini dari semua penguji/admin.
                 </p>
               </div>
             </div>

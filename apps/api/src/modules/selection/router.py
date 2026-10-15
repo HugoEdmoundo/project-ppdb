@@ -51,6 +51,7 @@ from src.modules.selection.schemas import (
     SessionCreate,
     SessionUpdate,
 )
+from src.repositories.ppdb_scope import get_active_period_info
 from src.repositories.selection_repository import SelectionRepository
 from src.services.selection_service import SelectionService
 
@@ -73,11 +74,22 @@ def get_sessions(
     user: dict = Depends(require_ppdb_read),
     svc: SelectionService = Depends(get_selection_service),
 ):
-    active_wave = svc.repo.get_active_wave_info()
-    if not active_wave:
-        return {"data": [], "total": 0, "active_wave": None}
+    # Scope halaman admin = seluruh gelombang dalam PERIODE aktif.
+    active_period = get_active_period_info(svc.repo.db)
+    if not active_period:
+        return {
+            "data": [],
+            "total": 0,
+            "active_wave": None,
+            "active_period": None,
+        }
     data = svc.get_sessions(session_type=session_type)
-    return {"data": data, "total": len(data), "active_wave": active_wave}
+    return {
+        "data": data,
+        "total": len(data),
+        "active_wave": svc.repo.get_active_wave_info(),
+        "active_period": active_period,
+    }
 
 
 @router.get("/sessions/{session_id}/evaluation")

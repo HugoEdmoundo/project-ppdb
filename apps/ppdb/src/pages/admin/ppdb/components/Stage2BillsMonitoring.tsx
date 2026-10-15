@@ -131,6 +131,19 @@ export default function Stage2BillsMonitoring() {
     },
   })
 
+  // Periode aktif — halaman ini hanya memuat gelombang dalam periode tersebut.
+  const { data: periods = [] } = useQuery({
+    queryKey: ['periods-all'],
+    queryFn: async () => {
+      const res = await apiFetch<any[]>('/ppdb/periods/all')
+      return res || []
+    },
+  })
+  const activePeriod = periods.find((p) => p.status === 'active') || null
+  const periodWaves = activePeriod
+    ? waves.filter((w: any) => w.period_id === activePeriod.id)
+    : []
+
   // Fetch Stage 2 Monitoring data
   const { data, isLoading, isFetching, refetch } = useQuery<MonitoringResponse>({
     queryKey: ['stage2-monitoring', waveFilter, statusFilter, searchQuery, page],
@@ -310,8 +323,8 @@ export default function Stage2BillsMonitoring() {
                 }}
                 className="w-full text-xs rounded-xl border border-input bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 h-9"
               >
-                <option value="">Semua Gelombang</option>
-                {waves.map((w: any) => (
+                <option value="">Semua Gelombang (Periode Aktif)</option>
+                {periodWaves.map((w: any) => (
                   <option key={w.id} value={w.id}>
                     {w.name} {w.status === 'active' ? '(Aktif)' : ''}
                   </option>

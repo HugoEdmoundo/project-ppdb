@@ -23,6 +23,7 @@ interface TransactionItem {
   paid_at?: string | null
   applicant_name?: string
   applicant_email?: string
+  wave_name?: string | null
 }
 
 export default function PembayaranFormulirPage() {
@@ -39,14 +40,14 @@ export default function PembayaranFormulirPage() {
       qs.append('page', page.toString())
       qs.append('perPage', limit.toString())
 
-      const res = await api.apiFetch<{ data: TransactionItem[]; total: number; active_wave: any }>(`/payment/transactions?${qs.toString()}`)
+      const res = await api.apiFetch<{ data: TransactionItem[]; total: number; active_period: any }>(`/payment/transactions?${qs.toString()}`)
       return res
     }
   })
 
   const transactions = data?.data || []
-  const activeWaveData = data?.active_wave && typeof data.active_wave === 'object' ? data.active_wave : null
-  const hasActiveWave = !!activeWaveData
+  const activePeriodData = data?.active_period && typeof data.active_period === 'object' ? data.active_period : null
+  const hasActivePeriod = !!activePeriodData
   const totalPages = data?.total ? Math.ceil(data.total / limit) : 1
 
   const handleFilterChange = (status: string) => {
@@ -62,7 +63,7 @@ export default function PembayaranFormulirPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeaderCard
         title="Pembayaran Formulir"
-        description="Monitoring transaksi pembayaran formulir pendaftaran calon santri pada gelombang aktif."
+        description="Monitoring transaksi pembayaran formulir pendaftaran calon santri pada periode aktif."
         loading={loading}
         docKey="ppdb-pembayaran-formulir"
         action={
@@ -73,13 +74,13 @@ export default function PembayaranFormulirPage() {
           </Button>
         }
         blocks={[
-          { icon: Activity, label: 'Gelombang Aktif', value: activeWaveData?.name || 'Tidak ada', active: hasActiveWave, pulse: hasActiveWave },
+          { icon: Activity, label: 'Periode Aktif', value: activePeriodData?.name || 'Tidak ada', active: hasActivePeriod, pulse: hasActivePeriod },
           { icon: CreditCard, label: 'Total Transaksi', value: data?.total != null ? `${data.total} transaksi` : '—', active: true },
         ]}
       />
 
-      {!loading && hasActiveWave === false && (
-        <NoActiveWaveBanner message="Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk memantau pembayaran formulir." />
+      {!loading && hasActivePeriod === false && (
+        <NoActiveWaveBanner message="Tidak ada periode yang aktif saat ini. Aktifkan periode terlebih dahulu untuk memantau pembayaran formulir." />
       )}
 
       {/* Filter and Refresh Bar */}
@@ -168,6 +169,9 @@ export default function PembayaranFormulirPage() {
                       <td className="py-3 px-4">
                         <div className="font-semibold text-slate-800">{tx.applicant_name || '-'}</div>
                         <div className="text-xs text-muted-foreground">{tx.applicant_email || '-'}</div>
+                        {tx.wave_name && (
+                          <div className="text-[11px] text-emerald-700/80">{tx.wave_name}</div>
+                        )}
                       </td>
                       <td className="py-3 px-4 font-semibold text-slate-700">
                         {formatRp(tx.amount)}

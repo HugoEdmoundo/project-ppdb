@@ -18,7 +18,7 @@ function renderTable(props: Partial<Parameters<typeof ApplicantsTable>[0]> = {})
     <ApplicantsTable
       applicants={[applicant]}
       loading={false}
-      hasActiveWave={true}
+      hasActivePeriod={true}
       showSelectionColumn
       {...props}
     />
@@ -92,9 +92,9 @@ describe('ApplicantsTable — fungsi tetap berjalan', () => {
     expect(screen.getByText('Belum Ada Pendaftar')).toBeInTheDocument()
   })
 
-  it('menampilkan state gelombang tidak aktif', () => {
-    renderTable({ applicants: [], hasActiveWave: false })
-    expect(screen.getByText('Tidak Ada Gelombang Aktif')).toBeInTheDocument()
+  it('menampilkan state periode tidak aktif', () => {
+    renderTable({ applicants: [], hasActivePeriod: false })
+    expect(screen.getByText('Tidak Ada Periode Aktif')).toBeInTheDocument()
   })
 
   it('menampilkan skeleton saat loading', () => {

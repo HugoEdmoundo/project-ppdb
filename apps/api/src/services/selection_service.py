@@ -21,6 +21,7 @@ from src.modules.selection.schemas import (
     SessionCreate,
     SessionUpdate,
 )
+from src.repositories.ppdb_scope import get_active_period, get_wave_ids_in_period
 from src.repositories.selection_repository import SelectionRepository
 
 WIB = ZoneInfo("Asia/Jakarta")
@@ -59,9 +60,16 @@ class SelectionService:
         return wave_id
 
     def get_sessions(self, session_type: str | None = None) -> list[dict[str, Any]]:
-        wave_id = self._get_active_wave_id_or_400()
+        """Daftar sesi admin dari seluruh gelombang dalam PERIODE aktif.
+
+        Bila tidak ada periode aktif, hasilnya kosong (bukan lintas periode).
+        """
+        active_period = get_active_period(self.repo.db)
+        if not active_period:
+            return []
+        wave_ids = get_wave_ids_in_period(self.repo.db, active_period.id)
         return self.repo.get_sessions_with_booking_details(
-            wave_id, session_type=session_type
+            wave_ids, session_type=session_type
         )
 
     def _require_active_wave_session(self, session_id: str):

@@ -31,17 +31,18 @@ export default function DataPendaftarPage() {
       if (statusFilter) qs.append('status', statusFilter)
       qs.append('page', page.toString())
       qs.append('perPage', limit.toString())
-      // Halaman admin PPDB hanya menampilkan pendaftar gelombang aktif.
-      qs.append('wave_id', 'active')
+      // Halaman admin PPDB hanya menampilkan pendaftar dari PERIODE aktif
+      // (seluruh gelombang di dalamnya).
+      qs.append('period_id', 'active')
 
-      const res = await api.apiFetch<{ data: Applicant[], total: number, active_wave: any }>(`/ppdb/applicants?${qs.toString()}`)
+      const res = await api.apiFetch<{ data: Applicant[], total: number, active_period: any }>(`/ppdb/applicants?${qs.toString()}`)
       return res
     }
   })
 
   const applicants = data?.data || []
-  const activeWaveData = data?.active_wave && typeof data.active_wave === 'object' ? data.active_wave : null
-  const hasActiveWave = !!activeWaveData
+  const activePeriodData = data?.active_period && typeof data.active_period === 'object' ? data.active_period : null
+  const hasActivePeriod = !!activePeriodData
   const totalPages = data?.total ? Math.ceil(data.total / limit) : 1
 
   const handleSearch = (e: React.FormEvent) => {
@@ -65,13 +66,13 @@ export default function DataPendaftarPage() {
           </Button>
         }
         blocks={[
-          { icon: Activity, label: 'Gelombang Aktif', value: activeWaveData?.name || 'Tidak ada', active: hasActiveWave, pulse: hasActiveWave },
+          { icon: Activity, label: 'Periode Aktif', value: activePeriodData?.name || 'Tidak ada', active: hasActivePeriod, pulse: hasActivePeriod },
           { icon: Users, label: 'Total Pendaftar', value: data?.total != null ? `${data.total} terdaftar` : '—', active: true },
         ]}
       />
 
-      {!loading && hasActiveWave === false && (
-        <NoActiveWaveBanner message="Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk menampilkan data pendaftar." />
+      {!loading && hasActivePeriod === false && (
+        <NoActiveWaveBanner message="Tidak ada periode yang aktif saat ini. Aktifkan periode terlebih dahulu untuk menampilkan data pendaftar." />
       )}
 
       <ToolbarCard
@@ -104,7 +105,7 @@ export default function DataPendaftarPage() {
           <ApplicantsTable
             applicants={applicants}
             loading={loading}
-            hasActiveWave={hasActiveWave}
+            hasActivePeriod={hasActivePeriod}
             showSelectionColumn
             onRowClick={setSelectedApplicant}
           />

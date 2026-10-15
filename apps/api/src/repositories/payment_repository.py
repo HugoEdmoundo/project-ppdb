@@ -9,6 +9,7 @@ from src.models.ppdb import (
     PPDBApplicant,
     PPDBApplicantDiscount,
     PPDBPaymentTransaction,
+    PPDBPeriod,
     PPDBStage2Bill,
     PPDBWave,
     PPDBWaveFeeItem,
@@ -23,27 +24,41 @@ class PaymentRepository:
         self.db = db
 
     def get_active_wave_id(self) -> str | None:
-        stmt = select(PPDBWave.id).where(PPDBWave.status == "active").limit(1)
+        # Gelombang hanya dianggap aktif bila periode induknya juga aktif.
+        stmt = (
+            select(PPDBWave.id)
+            .join(PPDBPeriod, PPDBPeriod.id == PPDBWave.period_id)
+            .where(PPDBWave.status == "active", PPDBPeriod.status == "active")
+            .limit(1)
+        )
         return cast(str | None, self.db.scalars(stmt).first())
 
     def get_active_wave_info(self) -> dict[str, str] | None:
-        stmt = select(PPDBWave).where(PPDBWave.status == "active").limit(1)
+        stmt = (
+            select(PPDBWave)
+            .join(PPDBPeriod, PPDBPeriod.id == PPDBWave.period_id)
+            .where(PPDBWave.status == "active", PPDBPeriod.status == "active")
+            .limit(1)
+        )
         wave = self.db.scalars(stmt).first()
         return {"id": wave.id, "name": wave.name} if wave else None
 
     def get_transactions(
-        self, wave_id: str, status: str | None, limit: int, offset: int
+        self, period_id: str, status: str | None, limit: int, offset: int
     ) -> tuple[list[Any], int]:
+        """Transaksi formulir dari seluruh gelombang dalam satu periode aktif."""
         stmt = (
             select(
                 PPDBPaymentTransaction,
                 PPDBApplicant.full_name.label("applicant_name"),
                 PPDBApplicant.email.label("applicant_email"),
+                PPDBWave.name.label("wave_name"),
             )
             .join(
                 PPDBApplicant, PPDBPaymentTransaction.applicant_id == PPDBApplicant.id
             )
-            .where(PPDBApplicant.wave_id == wave_id)
+            .join(PPDBWave, PPDBApplicant.wave_id == PPDBWave.id)
+            .where(PPDBWave.period_id == period_id)
         )
 
         count_stmt = (
@@ -52,7 +67,8 @@ class PaymentRepository:
             .join(
                 PPDBApplicant, PPDBPaymentTransaction.applicant_id == PPDBApplicant.id
             )
-            .where(PPDBApplicant.wave_id == wave_id)
+            .join(PPDBWave, PPDBApplicant.wave_id == PPDBWave.id)
+            .where(PPDBWave.period_id == period_id)
         )
 
         if status:
@@ -88,6 +104,7 @@ class PaymentRepository:
                 "updated_at": tx.updated_at,
                 "applicant_name": r.applicant_name,
                 "applicant_email": r.applicant_email,
+                "wave_name": r.wave_name,
             }
             result.append(tx_dict)
 

@@ -35,6 +35,7 @@ from src.modules.ppdb.schemas import (
     WaveUpdate,
 )
 from src.repositories.ppdb_repository import PPDBRepository
+from src.repositories.ppdb_scope import get_active_period, get_active_period_info
 
 WIB = ZoneInfo("Asia/Jakarta")
 
@@ -962,13 +963,20 @@ class PPDBService:
         label asal. Filter ``period_id``/``wave_id`` bersifat opsional untuk
         mempersempit tampilan.
 
-        ``wave_id = "active"`` mempertahankan perilaku lama (hanya gelombang
-        aktif) untuk halaman admin PPDB yang memang operasional per gelombang.
+        ``period_id = "active"`` membatasi ke PERIODE aktif (semua gelombang di
+        dalamnya) — inilah scope halaman operasional admin PPDB. Bila tidak ada
+        periode aktif, hasilnya kosong. ``wave_id = "active"`` dipertahankan
+        untuk kompatibilitas (hanya gelombang aktif).
         """
         resolved_wave_id = wave_id
         if wave_id == "active":
             active_wave = self.repository.get_active_wave()
             resolved_wave_id = active_wave.id if active_wave else "__none__"
+
+        resolved_period_id = period_id
+        if period_id == "active":
+            active_period = get_active_period(self.repository.db)
+            resolved_period_id = active_period.id if active_period else "__none__"
 
         data, total = self.repository.get_applicants_paginated(
             resolved_wave_id,
@@ -976,7 +984,7 @@ class PPDBService:
             status,
             page,
             per_page,
-            period_id=period_id,
+            period_id=resolved_period_id,
             payment_status=payment_status,
         )
 
@@ -988,9 +996,12 @@ class PPDBService:
             "data": data,
             "total": total,
             "active_wave": active_wave_info,
+            "active_period": get_active_period_info(self.repository.db),
             "scope": {
                 "wave_id": resolved_wave_id if resolved_wave_id != "__none__" else None,
-                "period_id": period_id,
+                "period_id": (
+                    resolved_period_id if resolved_period_id != "__none__" else None
+                ),
             },
         }
 
@@ -1978,6 +1989,21 @@ class PPDBService:
         from src.models.auth import User
         from src.models.ppdb import PPDBPeriod, PPDBWave
 
+        # Halaman operasional admin hanya menampilkan penerima LoA dari periode
+        # aktif. Tanpa periode aktif, tidak ada data (bukan lintas periode).
+        active_period = get_active_period_info(self.repository.db)
+        if not active_period:
+            return {
+                "data": [],
+                "total": 0,
+                "grand_total": 0,
+                "signed_count": 0,
+                "pending_count": 0,
+                "page": page,
+                "per_page": per_page,
+                "active_period": None,
+            }
+
         query = (
             self.repository.db.query(
                 PPDBApplicant,
@@ -1988,8 +2014,19 @@ class PPDBService:
             .outerjoin(PPDBWave, PPDBApplicant.wave_id == PPDBWave.id)
             .outerjoin(PPDBPeriod, PPDBWave.period_id == PPDBPeriod.id)
             .outerjoin(User, PPDBApplicant.user_id == User.id)
-            .filter(PPDBApplicant.is_loa_signed.is_(True))
+            # Semua pendaftar yang dinyatakan LULUS telah menerima LoA, baik yang
+            # sudah menandatangani maupun yang masih menunggu tanda tangan.
+            .filter(
+                PPDBApplicant.status == "passed",
+                PPDBWave.period_id == active_period["id"],
+            )
         )
+
+        # Ringkasan global (tanpa filter pencarian)
+        signed_count = query.filter(PPDBApplicant.is_loa_signed.is_(True)).count()
+        grand_total = query.count()
+        pending_count = grand_total - signed_count
+
         if search:
             s = f"%{search.strip()}%"
             query = query.filter(
@@ -2003,7 +2040,11 @@ class PPDBService:
 
         total = query.count()
         rows = (
-            query.order_by(PPDBApplicant.loa_signed_at.desc())
+            query.order_by(
+                PPDBApplicant.is_loa_signed.desc(),
+                PPDBApplicant.loa_signed_at.desc(),
+                PPDBApplicant.updated_at.desc(),
+            )
             .offset((page - 1) * per_page)
             .limit(per_page)
             .all()
@@ -2033,8 +2074,12 @@ class PPDBService:
         return {
             "data": data,
             "total": total,
+            "grand_total": grand_total,
+            "signed_count": signed_count,
+            "pending_count": pending_count,
             "page": page,
             "per_page": per_page,
+            "active_period": active_period,
         }
 
     def get_loa_by_registration_or_id(self, identifier: str) -> dict[str, Any]:

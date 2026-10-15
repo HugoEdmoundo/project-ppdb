@@ -541,7 +541,9 @@ def get_applicants(
     """Daftar pendaftar.
 
     Tanpa filter, seluruh pendaftar dari semua periode & gelombang dikembalikan.
-    ``wave_id="active"`` untuk membatasi ke gelombang aktif saja.
+    ``period_id="active"`` membatasi ke periode aktif (semua gelombang di
+    dalamnya) — scope halaman operasional admin. ``wave_id="active"`` untuk
+    membatasi ke gelombang aktif saja (kompatibilitas).
     """
     return service.get_applicants(
         page, perPage, search, wave_id, status, period_id, payment_status

@@ -24,8 +24,9 @@ import {
   QrCode,
   Smartphone,
   RefreshCw,
+  X,
 } from 'lucide-react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './sheet'
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './sheet'
 import { Button } from './button'
 import { Badge } from './badge'
 import { cn } from '../../lib/utils'
@@ -1396,12 +1397,26 @@ export function DocSheet({ open, onOpenChange, doc, docKey }: DocSheetProps) {
         })}
 
         {/* Footer Bantuan */}
-        <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center gap-3">
-          <HelpCircle className="h-5 w-5 text-emerald-600 shrink-0" />
-          <p className="text-xs text-emerald-900">
-            {activeDoc.contactNote ||
-              'Ada pertanyaan atau kendala operasional? Hubungi Koordinator PPDB Pesantren Tahfidz Qur\'an dan Digital Ar-Rahman.'}
-          </p>
+        <div className="space-y-3">
+          <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center gap-3">
+            <HelpCircle className="h-5 w-5 text-emerald-600 shrink-0" />
+            <p className="text-xs text-emerald-900">
+              {activeDoc.contactNote ||
+                'Ada pertanyaan atau kendala operasional? Hubungi Koordinator PPDB Pesantren Tahfidz Qur\'an dan Digital Ar-Rahman.'}
+            </p>
+          </div>
+          <div className="flex justify-end sm:justify-center">
+            <SheetClose asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="group w-full gap-2 rounded-xl border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 hover:scale-[1.01] sm:w-auto"
+              >
+                <X className="h-4 w-4 transition-transform group-hover:scale-110" />
+                Tutup Panduan
+              </Button>
+            </SheetClose>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

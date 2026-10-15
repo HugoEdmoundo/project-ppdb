@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 interface ApplicantsTableProps {
   applicants: any[]
   loading: boolean
-  hasActiveWave: boolean | null
+  hasActivePeriod: boolean | null
   showSelectionColumn?: boolean
   onRowClick?: (applicant: any) => void
 }
@@ -80,7 +80,7 @@ function SelectionStatusBadge({ status }: { status?: string }) {
 
 const headBase = 'h-11 text-[11px] font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap align-middle'
 
-export default function ApplicantsTable({ applicants, loading, hasActiveWave, showSelectionColumn = false, onRowClick }: ApplicantsTableProps) {
+export default function ApplicantsTable({ applicants, loading, hasActivePeriod, showSelectionColumn = false, onRowClick }: ApplicantsTableProps) {
   const totalCols = showSelectionColumn ? 7 : 6
 
   return (
@@ -119,11 +119,11 @@ export default function ApplicantsTable({ applicants, loading, hasActiveWave, sh
           <TableRow className="hover:bg-transparent">
             <TableCell colSpan={totalCols} className="py-8">
               <EmptyState
-                icon={hasActiveWave === false ? Waves : UserRoundSearch}
-                title={hasActiveWave === false ? "Tidak Ada Gelombang Aktif" : "Belum Ada Pendaftar"}
+                icon={hasActivePeriod === false ? Waves : UserRoundSearch}
+                title={hasActivePeriod === false ? "Tidak Ada Periode Aktif" : "Belum Ada Pendaftar"}
                 description={
-                  hasActiveWave === false
-                    ? "Aktifkan gelombang terlebih dahulu untuk menampilkan data."
+                  hasActivePeriod === false
+                    ? "Aktifkan periode terlebih dahulu untuk menampilkan data."
                     : "Belum ada pendaftar yang sesuai kriteria pencarian."
                 }
                 className="bg-transparent border-transparent"

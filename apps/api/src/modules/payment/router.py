@@ -3,6 +3,7 @@ from fastapi import (
     Depends,
     File,
     Form,
+    HTTPException,
     Query,
     Request,
     UploadFile,
@@ -160,15 +161,29 @@ def get_applicant_transactions(
     return service.get_applicant_transactions(applicant_id)
 
 
+async def _read_json_body(request: Request) -> dict:
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400, detail="Body webhook bukan JSON yang valid"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=400, detail="Body webhook harus berupa objek JSON"
+        )
+    return payload
+
+
 @router.post("/webhook")
 async def payment_webhook(
     request: Request,
     service: PaymentService = Depends(get_payment_service),
 ):
     """
-    Webhook pembayaran formulir & PPDB (Pak Kasir QRIS / Gateway).
+    Webhook pembayaran formulir & PPDB (Pakasir QRIS / Gateway).
     """
-    payload = await request.json()
+    payload = await _read_json_body(request)
     x_secret = request.headers.get("X-Secret")
     return service.process_pakkasir_webhook(payload, x_secret=x_secret)
 
@@ -179,9 +194,9 @@ async def pakkasir_webhook(
     service: PaymentService = Depends(get_payment_service),
 ):
     """
-    Webhook resmi 1 Pintu QRIS Pak Kasir untuk verifikasi pembayaran real-time.
+    Webhook resmi 1 Pintu QRIS Pakasir untuk verifikasi pembayaran real-time.
     """
-    payload = await request.json()
+    payload = await _read_json_body(request)
     x_secret = request.headers.get("X-Secret")
     return service.process_pakkasir_webhook(payload, x_secret=x_secret)
 

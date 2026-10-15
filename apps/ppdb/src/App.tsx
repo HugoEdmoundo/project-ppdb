@@ -19,6 +19,8 @@ import ApplicantReceiptPage from './pages/applicant/ReceiptPage'
 import ApplicantDocumentsPage from './pages/applicant/DocumentsPage'
 import SelectionStagePage from './pages/applicant/SelectionStagePage'
 import ResultStagePage from './pages/applicant/ResultStagePage'
+import DpStagePage from './pages/applicant/DpStagePage'
+import Stage2PaymentPage from './pages/applicant/Stage2PaymentPage'
 import CheckoutPage from './pages/applicant/CheckoutPage'
 import ApplicantDashboardPage from './pages/applicant/DashboardPage'
 import ExamCardPage from './pages/applicant/ExamCardPage'
@@ -110,6 +112,8 @@ export default function App() {
             <Route path="/applicant/seleksi-tahfidz" element={<ProtectedRoute role="applicant" requirePaid={true}><SelectionStagePage section="tahfidz" title="Seleksi Tahfidz (1:1)" subtitle="Jadwal dan ujian tartil serta tahfidz Al-Qur'an" /></ProtectedRoute>} />
             <Route path="/applicant/seleksi-wawancara" element={<ProtectedRoute role="applicant" requirePaid={true}><SelectionStagePage section="interview" title="Seleksi Wawancara (1:1)" subtitle="Wawancara calon santri dan orang tua/wali" /></ProtectedRoute>} />
             <Route path="/applicant/pengumuman" element={<ProtectedRoute role="applicant" requirePaid={true}><ResultStagePage /></ProtectedRoute>} />
+            <Route path="/applicant/bayar-dp" element={<ProtectedRoute role="applicant" requirePaid={true}><DpStagePage /></ProtectedRoute>} />
+            <Route path="/applicant/pembayaran-tahap2" element={<ProtectedRoute role="applicant" requirePaid={true}><Stage2PaymentPage /></ProtectedRoute>} />
             <Route path="/applicant/kartu-ujian" element={<ProtectedRoute role="applicant" requirePaid={true}><ExamCardPage /></ProtectedRoute>} />
 
             <Route path="/403" element={<ForbiddenPage />} />

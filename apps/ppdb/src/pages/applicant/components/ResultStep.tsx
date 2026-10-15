@@ -75,7 +75,7 @@ export default function ResultStep({ applicant, selectionResult, loa }: ResultSt
   // SKD Query
   const { data: skdData } = useQuery({
     queryKey: ['applicant-skd', applicant?.id],
-    queryFn: () => apiFetch<any>(`/ppdb/applicants/${applicant?.id}/skd`),
+    queryFn: () => apiFetch<any>('/ppdb/applicants/me/skd'),
     enabled: !!applicant?.id && financials.dp_paid,
   })
 
@@ -437,7 +437,7 @@ export default function ResultStep({ applicant, selectionResult, loa }: ResultSt
                     </Button>
                   </div>
                 )}
-                <ApplicantSKDModal open={showSkdModal} onOpenChange={setShowSkdModal} applicantId={applicant?.id} />
+                <ApplicantSKDModal open={showSkdModal} onOpenChange={setShowSkdModal} applicantId={applicant?.id} isApplicantPortal={true} />
               </div>
             </div>
           )}

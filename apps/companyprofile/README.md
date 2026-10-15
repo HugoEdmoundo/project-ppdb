@@ -9,7 +9,7 @@
 
 ---
 
-Aplikasi **Company Profile** (website publik) dan **Portal Informasi** utama untuk Pesantren Tahfidz Qur'an dan Digital Ar-Rahman. Didesain untuk memberikan performa SEO terbaik dan pengalaman navigasi yang mulus.
+Aplikasi **Company Profile** (website publik) dan **Portal Informasi** utama untuk Pesantren Tahfidz Qur'an dan Digital Ar-Rahman. Didesain untuk memberikan performa SEO terbaik, pengalaman navigasi yang mulus, dan integrasi pendaftaran santri baru.
 
 ## 🗺️ Halaman Utama
 
@@ -17,15 +17,16 @@ Aplikasi **Company Profile** (website publik) dan **Portal Informasi** utama unt
 - 📰 `/about`, `/news`, `/news/[slug]` — Profil & berita pesantren
 - 🏆 `/programs`, `/programs/[slug]` — Program unggulan
 - 📸 `/facilities`, `/achievements`, `/gallery`, `/staff`, `/contact` — Informasi publik lainnya
-- 🚪 `/auth` — Portal login terpusat (Siswa/Orang Tua)
-- ⚙️ `/admin/login`, `/admin/dashboard` — CRUD dashboard khusus konten web (Berita, Galeri, dll)
+- 🎓 `/ppdb` — Halaman informasi PPDB interaktif dengan 3D Hero
+- 🚪 `/auth/login` — Portal login terpusat (Pendaftar, Admin, & Superadmin)
+- ⚙️ `/admin/overview`, `/admin/dashboard` — CRUD dashboard konten web (Berita, Galeri, Fasilitas, Pengaturan, dll.)
 
 ## 🛠️ Stack Teknologi
 
-- **Framework:** Next.js (App Router / Pages Router) + Turbopack
+- **Framework:** Next.js 16 (App Router) + Turbopack
 - **Bahasa:** TypeScript
-- **Styling & UI:** Tailwind CSS v4, framer-motion, lucide-react
-- **Koneksi API:** Terhubung dengan [`apps/api`](../api/README.md) (FastAPI)
+- **Styling & UI:** Tailwind CSS v4, framer-motion, Three.js, lucide-react
+- **Koneksi API:** Terhubung dengan [`apps/api`](../api/README.md) (FastAPI) via HTTP-only Cookies (`credentials: 'include'`)
 
 ## 📦 Menjalankan secara Lokal
 

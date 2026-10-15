@@ -663,6 +663,21 @@ def get_applicant_transcript(
     return service.get_applicant_transcript(id)
 
 
+# Rute /applicants/me/* HARUS didaftarkan SEBELUM /applicants/{id} agar "me"
+# tidak ditangkap sebagai id oleh route {id} di bawah ini.
+@router.get("/applicants/me/loa")
+def get_my_loa(
+    user: dict[str, Any] = Depends(get_current_user),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    applicant = service.repository.get_applicant_by_user_id(user["id"])
+    if not applicant:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+    return service.get_applicant_loa(applicant.id)
+
+
 @router.get("/applicants/{id}/loa")
 def get_applicant_loa(
     id: str,
@@ -780,21 +795,6 @@ def download_applicant_dossier_zip(
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{zip_filename}"'},
     )
-
-
-# Rute /applicants/me/* didaftarkan SEBELUM /applicants/{id} agar "me"
-# tidak ditangkap sebagai id.
-@router.get("/applicants/me/loa")
-def get_my_loa(
-    user: dict[str, Any] = Depends(get_current_user),
-    service: PPDBService = Depends(get_ppdb_service),
-):
-    applicant = service.repository.get_applicant_by_user_id(user["id"])
-    if not applicant:
-        from fastapi import HTTPException
-
-        raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
-    return service.get_applicant_loa(applicant.id)
 
 
 @router.post("/applicants/me/sign-loa")

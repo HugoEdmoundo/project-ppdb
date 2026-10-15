@@ -1,115 +1,111 @@
 # PPDB Frontend App (PTDARRAHMAN)
 
-Aplikasi frontend Penerimaan Peserta Didik Baru (PPDB) untuk Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.
+Aplikasi frontend Penerimaan Peserta Didik Baru (PPDB) untuk Pesantren Tahfidz Qur'an dan Digital Ar-Rahman. Melayani calon santri/wali murid (registrasi, tes TIU via SEB, seleksi 1:1, pembayaran QRIS Pakasir v2, cicilan, dan LoA/SKD) serta backoffice admin PPDB.
 
 ## Tech Stack
 - **Framework:** React 19 + Vite 8
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS v3, `class-variance-authority`, `clsx`, `tailwind-merge`
-- **UI Components:** Radix UI primitives (`@radix-ui/react-*`), shadcn-style structured in `src/components/ui/`, Lucide React for icons
+- **UI Components:** Radix UI primitives (`@radix-ui/react-*`), custom components di `src/components/ui/`, Lucide React untuk icons
 - **Routing:** React Router v7 (`react-router-dom`)
-- **Build & Deploy:** Built with `tsc -b && vite build`
+- **Build & Deploy:** Dibangun dengan `tsc -b && vite build`
 
 ## Architecture & State Management
 - **API Client (`src/api/client.ts`):**
-  - Custom `fetch` wrapper (`apiFetch`) with JSON-safe error parsing.
-  - Cookie-based auth (`credentials: 'include'`); no tokens in localStorage/headers. Automatic token refresh via `/auth/refresh` on 401, then redirects to `/auth/login` if it still fails.
-  - `API_BASE` berasal dari `VITE_API_URL` (fallback string kosong → request ke origin yang sama / Vite dev proxy). TIDAK ada mekanisme failover PRIMARY→FALLBACK API; `fetchWithFallback` hanyalah wrapper `fetch` polos.
+  - Custom `fetch` wrapper (`apiFetch`) dengan parsing error JSON aman.
+  - Berbasis cookie (`credentials: 'include'`); tidak ada token otentikasi di localStorage/header. Refresh token otomatis via `/companyprofile/auth/refresh` atau `/auth/refresh` saat 401.
+  - `API_BASE` berasal dari `VITE_API_URL` (fallback kosong → same origin / dev proxy).
 - **Services (`src/services/`):**
-  - Modular API calls: `authService` (di `auth.service.ts`), plus `ppdbService`, `applicantService`, `paymentService`, `notificationService`, `settingsService` (di `index.ts`).
+  - Modular API calls: `authService`, `ppdbService`, `applicantService`, `paymentService`, `notificationService`, `settingsService`.
 - **Global Contexts (`src/contexts/`):**
-  - `AuthContext`: Manages user state, login/logout, and permissions. Auto-refreshes `/auth/me` every 30 seconds to catch permission or deactivation changes on the fly.
+  - `AuthContext`: Mengelola state pendaftar/admin, login/logout, dan permission. Auto-refresh `/auth/me` tiap 30 detik untuk mendeteksi perubahan status atau izin.
 
 ## Routes & Pages (`src/pages/`)
-### Public
-- `/` (`LandingPage`): Entry point for PPDB.
-- `/register` (`RegisterPage`): New student registration.
-  - **Pattern:** Sukses → render inline success state + kredensial login via `SuccessState`/`CredentialsCard` (bukan route terpisah). Gagal → alert validasi inline di form.
-- `/globe` (`GlobeDemoPage`): Halaman demo globe.
-- `/auth/login` (`LoginPage`): Shared login page for applicants and admins.
-- `/applicant/login`: Redirect ke `/auth/login`.
 
-### Applicant (Protected, `role="applicant"`)
-- `/checkout` (`CheckoutPage`): Payment paywall. Restricts users here if `payment_status != paid`.
-- `/applicant` (`DashboardPage`): Main dashboard for applicants. Requires the payment status to be paid (`requirePaid={true}`).
-- `/applicant/kartu-ujian` (`ExamCardPage`): Download kartu/konfigurasi ujian TIU (SEB). Requires `requirePaid={true}`.
+### 1. Public Routes
+- `/` (`LandingPage`): Beranda publik PPDB.
+- `/register` (`RegisterPage`): Formulir pendaftaran calon santri bertahap (7 bagian: Pilih Jalur, Identitas, Orang Tua, Kontak, Domisili, Identifikasi Kesehatan 10 soal, Pernyataan).
+- `/globe` (`GlobeDemoPage`): Halaman demo 3D globe.
+- `/auth/login` (`LoginPage`): Halaman login terpusat untuk pendaftar dan admin PPDB.
+- `/applicant/login`: Alias redirect ke `/auth/login`.
+- `/kuitansi/:id` & `/receipt/:id` (`PublicReceiptPage`): Halaman verifikasi publik kuitansi pembayaran resmi (dengan QR code dan signature hash).
+- `/loa/:registrationNo` (`PublicLoaPage`): Halaman verifikasi publik Surat Penerimaan (LoA) resmi calon santri.
 
-### Admin (Protected, `role="admin"`)
-Wrapped in `AdminLayout` (`src/layouts/AdminLayout.tsx`):
-- `/admin/dashboard` (`AdminDashboardPage`): General stats and overview.
-- `/admin/data-pendaftar` (`DataPendaftarPage`): Applicant data overview.
-- `/admin/verifikasi-dokumen` (`VerifikasiDokumenPage`): Document reviews and detailed applicant data.
-- `/admin/pembayaran-formulir` (`PembayaranFormulirPage`): Form payment invoices and verifications.
-- `/admin/pembayaran-tahap2` (`PembayaranTahap2Page`): Stage-2 (DP) payments and installments.
-- `/admin/sessions/tahfidz` (`Sessions1on1Page`): Session 1:1 Tahfidz scheduling and penguji.
-- `/admin/sessions/wawancara` (`Sessions1on1Page`, `forcedType="interview"`): Session 1:1 Wawancara scheduling and pewawancara.
-- `/admin/sessions/:sessionType/evaluasi/:sessionId` (`SessionEvaluationPage`): Evaluator scoring form.
-- `/admin/penilaian` (`PenilaianPage`): Recapitulation of results / passing decisions.
-- `/admin/periods` (`PeriodsPage`): PPDB periods and waves management.
-- `/admin/tiu-settings` (`TIUSettingsPage`): Global TIU settings (Google Form URL, webhook secret, duration).
-- `/admin/notifications` (`NotificationsPage`): Notification history/templates.
-- `/admin/selection` and `/admin/rubrik` (`SelectionPage`): Scoring rubric configuration.
-- `/admin/pengumuman` (`LoaSkdPage`): Preview/generate LoA & SKD.
-- `/admin/arsip` (`ArsipPendaftarPage`): Cross-period dossier search and export.
-- `/admin/profile` (`AdminProfilePage`): Admin profile settings.
+### 2. Applicant Protected Routes (`role="applicant"`, `requirePaid={true}`)
+- `/checkout` (`CheckoutPage`): Halaman paywall biaya formulir (dibuka jika `payment_status != paid`).
+- `/applicant` (`ApplicantDashboardPage`): Dashboard utama pendaftar yang memuat timeline tahapan dan rangkuman status.
+- `/applicant/kuitansi` (`ApplicantReceiptPage`): Riwayat dan rincian kuitansi pembayaran resmi (formulir, DP, dan cicilan).
+- `/applicant/dokumen` (`ApplicantDocumentsPage`): Unggah dokumen wajib (NISN, KK, Akte, Foto) serta dokumen tambahan jalur khusus (Sertifikat/Rapor/Bukti Hafalan).
+- `/applicant/ujian-tiu` (`SelectionStagePage` - section TIU): Pengunduhan file `.seb` untuk ujian TIU Safe Exam Browser dan panduan ujian.
+- `/applicant/seleksi-tahfidz` (`SelectionStagePage` - section Tahfidz): Pemilihan slot jadwal sesi 1:1 Tahfidz bersama penguji.
+- `/applicant/seleksi-wawancara` (`SelectionStagePage` - section Wawancara): Pemilihan slot sesi 1:1 Wawancara (terbuka otomatis setelah nilai Tahfidz terinput).
+- `/applicant/pengumuman` (`ResultStagePage`): Pengumuman kelulusan, preview LoA resmi, dan tanda tangan digital orang tua.
+- `/applicant/bayar-dp` (`DpStagePage`): Pembayaran DP (Down Payment) biaya masuk melalui Pakasir v2 QRIS dinamis.
+- `/applicant/pembayaran-tahap2` (`Stage2PaymentPage`): Pengaturan opsi cicilan biaya masuk, pembayaran cicilan, dan penerbitan Surat Keterangan Diterima (SKD) serta link WhatsApp Group resmi santri.
+- `/applicant/kartu-ujian` (`ExamCardPage`): Unduh kartu ujian/identitas pendaftar.
 
-### Errors
-- `/403` (`ForbiddenPage`): Insufficient permissions.
-- `*` (`NotFoundPage`): 404 Not Found.
+### 3. Admin Protected Routes (`role="admin"`, wrapped in `AdminLayout`)
+- `/admin/dashboard` (`AdminDashboardPage`): Statistik pendaftar dan analitik ringkas.
+- `/admin/data-pendaftar` (`DataPendaftarPage`): Ringkasan dan tabel pendaftar aktif.
+- `/admin/verifikasi-dokumen` (`VerifikasiDokumenPage`): Pemeriksaan berkas pendaftar dan kuesioner kesehatan.
+- `/admin/pembayaran-formulir` (`PembayaranFormulirPage`): Monitoring invoice formulir dan integrasi Pakasir.
+- `/admin/pembayaran-tahap2` (`PembayaranTahap2Page`): Monitoring pembayaran DP dan tagihan cicilan tahap 2.
+- `/admin/sessions/tahfidz` (`Sessions1on1Page`): Manajemen jadwal & penguji sesi 1:1 Tahfidz.
+- `/admin/sessions/wawancara` (`Sessions1on1Page`, `forcedType="interview"`): Manajemen jadwal & pewawancara sesi 1:1 Wawancara.
+- `/admin/sessions/:sessionType/evaluasi/:sessionId` (`SessionEvaluationPage`): Form penilaian rubrik evaluator.
+- `/admin/penilaian` (`PenilaianPage`): Rekapitulasi nilai akhir dan keputusan kelulusan.
+- `/admin/review-loa` (`ReviewLoaPage`): Verifikasi tanda tangan LoA pendaftar.
+- `/admin/pengumuman` (`LoaSkdPage`): Template LoA & latar SKD.
+- `/admin/periods` (`PeriodsPage`): Manajemen periode dan gelombang pendaftaran.
+- `/admin/tiu-settings` (`TIUSettingsPage`): Konfigurasi global TIU (URL Pre-filled Google Form, durasi, webhook secret).
+- `/admin/notifications` (`NotificationsPage`): Riwayat dan template notifikasi WhatsApp.
+- `/admin/selection` & `/admin/rubrik` (`SelectionPage`): Konfigurasi bobot rubrik penilaian.
+- `/admin/arsip` (`ArsipPendaftarPage`): Pencarian arsip dossier lengkap lintas periode/gelombang dan ekspor ZIP.
+- `/admin/profile` (`AdminProfilePage`): Pengaturan profil admin.
 
-## Product Requirements: Backoffice Configuration
+### 4. Error Pages
+- `/403` (`ForbiddenPage`): Akses ditolak.
+- `*` (`NotFoundPage`): Halaman tidak ditemukan.
 
-Ikuti ringkasan kebutuhan di root [`AGENTS.md`](../../AGENTS.md) dan dokumen sumber di `../../docs/`. Arah sistem PPDB lama bukan spesifikasi untuk perubahan produk baru. Struktur route dan implementasi yang dijelaskan di atas hanya membantu menemukan kode saat ini.
+---
 
-Fokus produk yang disepakati adalah konfigurasi backoffice sebelum pendaftaran dibuka:
-- Gelombang: waktu buka/tutup, biaya formulir, kuota pendaftar, diskon DP3/gedung/SPP, diskon untuk X pendaftar pertama, dan minimal DP.
-- Template/LoA: generate dan preview LoA sebelum publish, klausul non-refundable yang pada diagram ditandai hardcoded, dan latar SKD.
-- Rubrik: kriteria, bobot, dan formulir evaluator Tahfidz serta wawancara. Nilai TIU masuk otomatis; admin tidak menginput nilainya.
-- Session 1:1 Tahfidz dan Session 1:1 Wawancara: jadwal, petugas, mode online/offline, dan tautan/lokasi.
-- Pengaturan TIU global: URL Google Form sumber soal, webhook secret, durasi tes, dan Apps Script untuk menyinkronkan soal ke aplikasi; tidak ada konfigurasi TIU per gelombang.
+## 💡 Komponen Modal & Fitur Spesial (`src/pages/applicant/components/`)
+- **`OfficialReceiptModal`**: Modal dialog detail kuitansi resmi lengkap dengan stempel digital dan verifikasi QR link.
+- **`QrisPaymentModal`**: Dialog QRIS dinamis Pakasir v2 dengan timer kedaluwarsa, panduan bayar, dan pengecekan status otomatis.
+- **`ApplicantLoAModal`**: Modal tampilan Surat Penerimaan Resmi (LoA) dengan klausul non-refundable dan kanvas tanda tangan.
+- **`ApplicantSKDModal`**: Modal Surat Keterangan Diterima (SKD) dengan nomor registrasi unik resmi.
+- **`LoaResultStep` & `DpCertificateStep`**: Komponen tahapan kelulusan dan pembayaran DP.
 
-Hanya satu periode aktif secara global. Mengaktifkan periode menonaktifkan periode lain dan gelombang di luarnya; menonaktifkan periode menonaktifkan gelombang di dalamnya. Gelombang hanya bisa aktif jika periode induknya aktif, dan hanya satu gelombang boleh aktif dalam satu periode. Pendaftar otomatis terkait ke satu-satunya gelombang aktif pada periode aktif. Kuota dan diskon X pendaftar awal dihitung dari pembayaran formulir sukses; saat kuota tercapai, pendaftaran dan gelombang ditutup otomatis serta tagihan yang belum dibayar dibatalkan. Kirim pengingat pembayaran setiap Senin bagi pendaftar yang belum bayar sampai gelombang ditutup. Data lintas periode/gelombang dicari dari halaman Arsip/Cari Pendaftar khusus; jangan menambahkan filter periode/gelombang ke semua halaman.
+---
 
-Pendaftaran publik dibuka ketika ada gelombang aktif di periode aktif, jadwal pendaftaran sudah masuk, dan kuota pembayaran formulir belum penuh. Template LoA bukan prasyarat pendaftaran. Halaman Arsip/Cari Pendaftar menampilkan dossier lengkap satu pendaftar, termasuk biodata, dokumen beserta riwayat verifikasi, TIU, sesi/nilai Session 1:1 Tahfidz/Wawancara, keputusan, LoA, pembayaran/cicilan, dan SKD/nomor registrasi. Sediakan unduhan per berkas dan ZIP lengkap berisi ringkasan PDF serta berkas asli terstruktur.
+## 📋 Aturan Bisnis & Ruang Lingkup Sistem
 
-TIU menggunakan metode Pre-filled Google Form yang dibungkus Safe Exam Browser (SEB). URL Form (beserta placeholder `{token}`), webhook secret, dan durasi disetel global. Pendaftar mengunduh konfigurasi `.seb` dari dashboard (endpoint `/selection/applicants/me/tiu-seb`), di mana timer server mulai berjalan saat file digenerate. SEB membuka Google Form dengan token pendaftar terisi otomatis dan layar terkunci (hanya desktop/laptop Windows/macOS; ponsel tidak didukung). Saat peserta submit form, trigger `onSubmit` Apps Script mengirim nilai kuis secara real-time ke `POST /ppdb/webhook/tiu`. Backend memvalidasi token dan batas durasi (submit <= start + duration + 5 menit toleransi), menyimpan nilai secara idempoten, lalu memicu notifikasi WhatsApp hasil TIU. Setiap pendaftar hanya mendapat satu attempt tanpa retake. Ikuti `docs/PANDUAN_UJIAN_TIU_SEB.md` dan `docs/INTEGRASI_TIU_APPS_SCRIPT.md`.
+1. **Status Ruang Lingkup:**
+   - Konfigurasi backoffice admin dan tahapan seleksi pendaftar (dokumen, SEB TIU, sesi 1:1, pembayaran DP Pakasir v2, cicilan, LoA/SKD) **keduanya aktif** dalam sistem.
+2. **Tanpa Pemilihan Jenjang:**
+   - Sistem tidak mengenal jenjang (`SMP`, `SMK`). Tidak ada kolom/input jenjang di registrasi pendaftar maupun pengaturan gelombang.
+3. **Kuesioner Identifikasi Kesehatan (10 Soal):**
+   - Menggantikan Medcheck, diisi saat registrasi, tersimpan sebagai data profil sensitif yang hanya dapat dilihat di detail/dossier admin.
+4. **Ujian TIU via Safe Exam Browser (SEB):**
+   - Pendaftar mengunduh file `.seb` dari `/applicant/ujian-tiu`. Waktu mulai dicatat di server saat file di-generate.
+   - SEB mengunci layar desktop (Windows/macOS) dan membuka Pre-filled Google Form dengan token pendaftar terisi otomatis.
+   - Trigger `onSubmit` Apps Script mengirim nilai ke `POST /ppdb/webhook/tiu`. Nilai tersimpan idempoten dan memicu WA notifikasi.
+5. **Pembayaran & Pakasir v2:**
+   - Kuota gelombang dan diskon pendaftar awal dihitung dari pembayaran formulir sukses.
+   - Pendaftar yang lulus membayar DP via QRIS Pakasir v2, lalu dapat mengatur skema cicilan sisa tagihan.
+   - SKD dan tautan WhatsApp Group resmi santri hanya terbuka setelah DP Tahap 2 lunas.
 
-## Aturan Khusus: Jenjang dan Formulir Kesehatan
+---
 
-**Tidak ada pemilihan jenjang pendidikan.**
-- Aplikasi ini tidak mengenal daftar jenjang (`SMP`, `SMK`, atau lainnya) dan tidak menyediakan pemilihan jenjang di mana pun: `/register`, dashboard pendaftar, halaman publik, maupun panel wave. Jangan menambah field, select, checkbox, atau validasi jenjang.
-- Jangan membaca/menampilkan whitelist `ALLOWED_LEVELS`, scope `allowed_levels` gelombang, atau field `registration_level` pendaftar sebagai sumber kebenaran. Itu sisa flow lama; jangan andalkan untuk menentukan UI atau validasi baru.
-- Bila jenjang perlu tampil pada dokumen (LoA/SKD/transkrip), ia adalah atribut tetap institusi, bukan input pengguna. Butuh keputusan produk sebelum menambah setting baru.
+## 🎨 Dynamic Branding & Loading
+- **No Static Logo:** Logo institusi selalu diambil dinamis via `settingsService.getLogo()` (GET `/companyprofile/settings/logo`).
+- **Live Updates:** Perubahan aset brand langsung terefleksi via Server-Sent Events (SSE) `/companyprofile/events`.
+- **`PageLoader` & `Skeleton`:** Loader animasi dual SVG arc spinner tanpa aset gambar statis.
 
-**Formulir Identifikasi Kesehatan (pengganti Medcheck).**
-- Diisi sendiri oleh pendaftar pada `/register`, bukan oleh petugas medis, dan disimpan sebagai data profil kesehatan pendaftar yang tampil di detail/dossier untuk admin.
-- Rincian pertanyaan, urutan, dan caption ada di `docs/REQUIREMENTS.md` bagian "Formulir Identifikasi Kesehatan" (10 pertanyaan + Pernyataan). Ikuti urutan dan caption itu.
-- Ya/Tidak membuka turunannya secara kondisional; keterangan pada jawaban "Tidak" dikosongkan dan tidak dikirim. Pertanyaan diagnosis dan alergi berupa daftar checkbox, tidak memaksa minimal satu centang.
-- Pernyataan wajib dikonfirmasi sebelum submit, dan kelengkapan divalidasi ulang di server.
-- Data sensitif: Jangan tampilkan di list/tabel umum. Akses lewat izin khusus, catat jejak audit, dan sudah termasuk dossier/ZIP di halaman Arsip.
-- Saat ini belum diputuskan apakah boleh diperbarui setelah pendaftaran, apakah semua pertanyaan wajib, siapa boleh membaca, dan berapa lama disimpan. Jangan implementasi jawaban atas hal itu tanpa keputusan.
+---
 
-Koreksi penting: kebijakan attempt TIU di paragraf tepat di atas sudah usang—jangan ikuti bagian yang menyebut retake atau beberapa attempt. Aturan terbaru: setiap pendaftar hanya memiliki satu attempt dan tidak bisa retake setelah selesai/waktu habis. Jawaban disimpan otomatis di server; bila koneksi putus, peserta membuka kembali lewat SEB untuk melanjutkan attempt yang sama dengan jawaban tersimpan dipulihkan. Timer tetap berjalan dan tidak di-reset.
-
-## Dynamic Branding & Events
-- **Favicon & Logo:** Di-fetch dinamis via `settingsService.getFavicon()` dan `settingsService.getLogo()` dari endpoint `/companyprofile/settings/{key}`.
-- **⚠️ WAJIB — No Static Logo:** Tidak ada aset logo statis di project ini. Logo HARUS selalu diambil secara dinamis dari API. Jangan pernah hardcode path gambar logo.
-- **Real-time Updates:** Perubahan pada brand otomatis live di client melalui Server-Sent Events (SSE) yang listening di `/companyprofile/events` (lihat `App.tsx` & `AdminLayout.tsx`).
-
-## Loading System (`src/components/ui/`)
-- **`PageLoader`** — Full-screen branded loader digunakan di `ProtectedRoute` saat auth check.
-  - Logo diambil **dinamis** via `settingsService.getLogo()` (GET `/companyprofile/settings/logo`), fallback ke text mark jika belum tersedia.
-  - Animasi: dual SVG arc spinner (emerald luar + gold dalam, counter-rotating) + logo pulse + staggered dots.
-  - CSS: pure CSS keyframes (`ring-spin`, `logo-pulse`) di `index.css`. SVG arc gap menggunakan `strokeDasharray`.
-  - **Dilarang** pakai `<img src="/logo.png">` atau aset statis apapun.
-- **`Skeleton`** — Shimmer gradient (flowing `before:` pseudo-element) menggantikan `animate-pulse` biasa.
-- **`TableSkeletonRows`** — Renders N baris skeleton di dalam `<TableBody>` untuk replace teks "Memuat data...".
-  - Usage: `<TableSkeletonRows cols={7} rows={6} />` di dalam blok `{loading ? (...) : ...}`.
-  - Tiap sel punya lebar variatif + stagger delay buat kesan loading yang natural.
-
-
-## Build & Run
-- `npm run dev` — Start Vite dev server.
-- `npm run build` — Type checking (`tsc -b`) & build production (`vite build`).
-- `npm run preview` — Preview local build production.
-- `npm run lint` — Lint code via ESLint.
+## 💻 Build & Run
+- `npm run dev` — Menjalankan Vite dev server lokal (port default `5174` pada config lokal, atau `5173` saat dijalankan via Docker preview).
+- `npm run build` — Type-checking (`tsc -b`) & build production (`vite build`).
+- `npm run preview` — Menjalankan preview hasil build.
+- `npm run lint` — Menjalankan ESLint.

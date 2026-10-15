@@ -27,18 +27,29 @@ export const DigitalSignaturePad = forwardRef<DigitalSignaturePadRef, DigitalSig
       const ctx = canvas.getContext('2d')
       if (!ctx) return
 
-      // Handle retina / high-DPI screens
-      const ratio = Math.max(window.devicePixelRatio || 1, 1)
-      const rect = canvas.getBoundingClientRect()
-      canvas.width = rect.width * ratio
-      canvas.height = rect.height * ratio
-      ctx.scale(ratio, ratio)
+      const initCanvas = () => {
+        if (!canvasRef.current || hasDrawn) return
+        const ratio = Math.max(window.devicePixelRatio || 1, 1)
+        const rect = canvasRef.current.getBoundingClientRect()
+        if (rect.width === 0) return
+        canvasRef.current.width = rect.width * ratio
+        canvasRef.current.height = rect.height * ratio
+        ctx.scale(ratio, ratio)
 
-      ctx.strokeStyle = '#0f172a' // slate-900
-      ctx.lineWidth = 2.5
-      ctx.lineCap = 'round'
-      ctx.lineJoin = 'round'
-    }, [])
+        ctx.strokeStyle = '#0f172a' // slate-900
+        ctx.lineWidth = 2.5
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+      }
+
+      initCanvas()
+      const timer = setTimeout(initCanvas, 300)
+      window.addEventListener('resize', initCanvas)
+      return () => {
+        clearTimeout(timer)
+        window.removeEventListener('resize', initCanvas)
+      }
+    }, [hasDrawn])
 
     const getPos = (e: React.MouseEvent | React.TouchEvent) => {
       const canvas = canvasRef.current

@@ -36,7 +36,7 @@ export default function ApplicantProfileModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs">Nama Lengkap</p>
-                <p className="font-medium">{applicant.full_name}</p>
+                <p className="font-medium break-words">{applicant.full_name}</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Status Pembayaran</p>
@@ -50,11 +50,11 @@ export default function ApplicantProfileModal({
 
               <div>
                 <p className="text-muted-foreground text-xs">Email</p>
-                <p className="font-medium">{applicant.email || '-'}</p>
+                <p className="font-medium break-all">{applicant.email || '-'}</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">No. WhatsApp</p>
-                <p className="font-medium">{applicant.phone || '-'}</p>
+                <p className="font-medium break-words">{applicant.phone || '-'}</p>
               </div>
 
               <div>
@@ -116,54 +116,54 @@ export default function ApplicantProfileModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div>
                     <p className="text-muted-foreground text-[11px]">Nama Ayah</p>
-                    <p className="text-sm font-medium">{applicant.father_name || applicant.parent_name || '-'}</p>
+                    <p className="text-sm font-medium break-words">{applicant.father_name || applicant.parent_name || '-'}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-[11px]">No. WA Ayah</p>
-                    <p className="text-sm font-medium">{applicant.father_phone || applicant.parent_phone || '-'}</p>
+                    <p className="text-sm font-medium break-words">{applicant.father_phone || applicant.parent_phone || '-'}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-[11px]">Pekerjaan Ayah</p>
-                    <p className="text-sm font-medium">{applicant.father_job || '-'}</p>
+                    <p className="text-sm font-medium break-words">{applicant.father_job || '-'}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-[11px]">Nama Ibu</p>
-                    <p className="text-sm font-medium">{applicant.mother_name || '-'}</p>
+                    <p className="text-sm font-medium break-words">{applicant.mother_name || '-'}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-[11px]">No. WA Ibu</p>
-                    <p className="text-sm font-medium">{applicant.mother_phone || '-'}</p>
+                    <p className="text-sm font-medium break-words">{applicant.mother_phone || '-'}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-[11px]">Pekerjaan Ibu</p>
-                    <p className="text-sm font-medium">{applicant.mother_job || '-'}</p>
+                    <p className="text-sm font-medium break-words">{applicant.mother_job || '-'}</p>
                   </div>
                   {applicant.guardian_name && (
                     <>
                       <div>
                         <p className="text-muted-foreground text-[11px]">Nama Wali</p>
-                        <p className="text-sm font-medium">{applicant.guardian_name}</p>
+                        <p className="text-sm font-medium break-words">{applicant.guardian_name}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground text-[11px]">Pekerjaan Wali</p>
-                        <p className="text-sm font-medium">{applicant.guardian_job || '-'}</p>
+                        <p className="text-sm font-medium break-words">{applicant.guardian_job || '-'}</p>
                       </div>
                     </>
                   )}
                   <div>
                     <p className="text-muted-foreground text-[11px]">Email Orang Tua/Wali</p>
-                    <p className="text-sm font-medium">{applicant.parent_email || '-'}</p>
+                    <p className="text-sm font-medium break-all">{applicant.parent_email || '-'}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-[11px]">Penghasilan Per Bulan</p>
-                    <p className="text-sm font-medium">{applicant.parent_income || '-'}</p>
+                    <p className="text-sm font-medium break-words">{applicant.parent_income || '-'}</p>
                   </div>
                 </div>
               </div>
 
               <div className="col-span-1 sm:col-span-2">
                 <p className="text-muted-foreground text-xs">Asal Sekolah</p>
-                <p className="font-medium">{applicant.previous_school || '-'}</p>
+                <p className="font-medium break-words">{applicant.previous_school || '-'}</p>
               </div>
 
               <div className="col-span-1 sm:col-span-2">

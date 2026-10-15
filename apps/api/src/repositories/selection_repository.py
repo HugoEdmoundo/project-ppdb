@@ -485,6 +485,25 @@ class SelectionRepository:
         )
         return cast(Sequence[tuple[Any, ...]], self.db.execute(stmt).all())
 
+    def get_applicant_scores_full(self, applicant_id: str) -> Sequence[tuple]:
+        stmt = (
+            select(
+                SelectionScore.score,
+                SelectionCriteria.name.label("criteria_name"),
+                SelectionCategory.name.label("category_name"),
+                SelectionCriteria.weight.label("weight"),
+                SelectionCategory.id.label("category_id"),
+                SelectionCriteria.id.label("criteria_id"),
+            )
+            .join(SelectionCriteria, SelectionScore.criteria_id == SelectionCriteria.id)
+            .join(
+                SelectionCategory, SelectionCriteria.category_id == SelectionCategory.id
+            )
+            .where(SelectionScore.applicant_id == applicant_id)
+            .order_by(SelectionCategory.created_at, SelectionCriteria.created_at)
+        )
+        return cast(Sequence[tuple[Any, ...]], self.db.execute(stmt).all())
+
     def get_earliest_session_date(self, wave_id: str, today_iso: str) -> date | None:
         stmt = (
             select(SelectionSession.session_date)

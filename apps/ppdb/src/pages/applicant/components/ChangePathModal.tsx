@@ -191,16 +191,16 @@ export default function ChangePathModal({ open, onOpenChange, currentPath }: Cha
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <span className={cn(
                             'p-1.5 rounded-lg shrink-0',
                             isSelected ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700'
                           )}>
                             <Icon className="h-4 w-4" />
                           </span>
-                          <div>
-                            <h4 className="font-semibold text-sm text-slate-900">{opt.name}</h4>
-                            <p className="text-[11px] text-slate-500">{opt.subtitle}</p>
+                          <div className="min-w-0">
+                            <h4 className="font-semibold text-sm text-slate-900 truncate">{opt.name}</h4>
+                            <p className="text-[11px] text-slate-500 truncate">{opt.subtitle}</p>
                           </div>
                         </div>
 

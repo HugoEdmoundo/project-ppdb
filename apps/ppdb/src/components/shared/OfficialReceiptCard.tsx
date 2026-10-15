@@ -145,38 +145,38 @@ export default function OfficialReceiptCard({ receipt, showWatermark = true }: O
                 {isLunas ? 'Status: LUNAS ✓' : 'Status: BELUM LUNAS'}
               </span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-              <div className="bg-slate-50 p-2.5 rounded-lg border">
-                <span className="text-muted-foreground block text-[11px]">Total Tagihan LoA</span>
-                <span className="font-bold text-slate-900 text-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 text-xs">
+              <div className="bg-slate-50 p-2.5 rounded-lg border min-w-0">
+                <span className="text-muted-foreground block text-[10px] sm:text-[11px] truncate">Total Tagihan LoA</span>
+                <span className="font-bold text-slate-900 text-xs sm:text-sm block truncate">
                   {formatRp(receipt.financial_snapshot.total_obligation || 0)}
                 </span>
               </div>
-              <div className="bg-slate-50 p-2.5 rounded-lg border">
-                <span className="text-muted-foreground block text-[11px]">Terbayar Sblm Transaksi</span>
-                <span className="font-semibold text-slate-700 text-sm">
+              <div className="bg-slate-50 p-2.5 rounded-lg border min-w-0">
+                <span className="text-muted-foreground block text-[10px] sm:text-[11px] truncate">Terbayar Sblm Transaksi</span>
+                <span className="font-semibold text-slate-700 text-xs sm:text-sm block truncate">
                   {formatRp(receipt.financial_snapshot.total_paid_before || 0)}
                 </span>
               </div>
-              <div className="bg-slate-50 p-2.5 rounded-lg border">
-                <span className="text-muted-foreground block text-[11px]">Sisa Sblm Transaksi</span>
-                <span className="font-semibold text-amber-800 text-sm">
+              <div className="bg-slate-50 p-2.5 rounded-lg border min-w-0">
+                <span className="text-muted-foreground block text-[10px] sm:text-[11px] truncate">Sisa Sblm Transaksi</span>
+                <span className="font-semibold text-amber-800 text-xs sm:text-sm block truncate">
                   {formatRp(receipt.financial_snapshot.remaining_before || 0)}
                 </span>
               </div>
-              <div className="bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-200">
-                <span className="text-emerald-800 block text-[11px] font-medium">Dibayar Transaksi Ini</span>
-                <span className="font-bold text-emerald-700 text-sm">{amountStr}</span>
+              <div className="bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-200 min-w-0">
+                <span className="text-emerald-800 block text-[10px] sm:text-[11px] font-medium truncate">Dibayar Transaksi Ini</span>
+                <span className="font-bold text-emerald-700 text-xs sm:text-sm block truncate">{amountStr}</span>
               </div>
-              <div className="bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-200">
-                <span className="text-emerald-800 block text-[11px] font-medium">Total Akumulasi Terbayar</span>
-                <span className="font-bold text-emerald-800 text-sm">
+              <div className="bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-200 min-w-0">
+                <span className="text-emerald-800 block text-[10px] sm:text-[11px] font-medium truncate">Total Akumulasi Terbayar</span>
+                <span className="font-bold text-emerald-800 text-xs sm:text-sm block truncate">
                   {formatRp(receipt.financial_snapshot.total_paid_after || 0)}
                 </span>
               </div>
-              <div className={`p-2.5 rounded-lg border ${isLunas ? 'bg-emerald-100/50 border-emerald-300' : 'bg-red-50/70 border-red-200'}`}>
-                <span className={`${isLunas ? 'text-emerald-800' : 'text-red-700'} block text-[11px] font-medium`}>Sisa Tagihan Setelahnya</span>
-                <span className={`font-bold text-sm ${isLunas ? 'text-emerald-900' : 'text-red-700'}`}>
+              <div className={`p-2.5 rounded-lg border min-w-0 ${isLunas ? 'bg-emerald-100/50 border-emerald-300' : 'bg-red-50/70 border-red-200'}`}>
+                <span className={`${isLunas ? 'text-emerald-800' : 'text-red-700'} block text-[10px] sm:text-[11px] font-medium truncate`}>Sisa Tagihan Setelahnya</span>
+                <span className={`font-bold text-xs sm:text-sm block truncate ${isLunas ? 'text-emerald-900' : 'text-red-700'}`}>
                   {formatRp(receipt.financial_snapshot.remaining_after || 0)}
                 </span>
               </div>

@@ -49,12 +49,17 @@ export default function ApplicantLoAModal({
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [signatureData, setSignatureData] = useState<string | null>(null)
 
+  const loaQueryKey = ['applicant-loa', isApplicantPortal ? 'me' : applicantId]
+
   const { data, isLoading } = useQuery<LoaData>({
-    queryKey: ['applicant-loa', applicantId],
+    queryKey: loaQueryKey,
     queryFn: async () => {
-      return await apiFetch<LoaData>(`/ppdb/applicants/${applicantId}/loa`)
+      const url = isApplicantPortal
+        ? '/ppdb/applicants/me/loa'
+        : `/ppdb/applicants/${applicantId}/loa`
+      return await apiFetch<LoaData>(url)
     },
-    enabled: open && !!applicantId,
+    enabled: open && (isApplicantPortal || !!applicantId),
   })
 
   // Pre-fill parent name when data is loaded
@@ -77,7 +82,7 @@ export default function ApplicantLoAModal({
     },
     onSuccess: () => {
       toast('success', 'Letter of Acceptance berhasil ditandatangani secara digital!')
-      queryClient.invalidateQueries({ queryKey: ['applicant-loa', applicantId] })
+      queryClient.invalidateQueries({ queryKey: loaQueryKey })
       queryClient.invalidateQueries({ queryKey: ['my-loa'] })
       queryClient.invalidateQueries({ queryKey: ['my-transaction'] })
       queryClient.invalidateQueries({ queryKey: ['signed-loa-applicants'] })
@@ -239,7 +244,7 @@ export default function ApplicantLoAModal({
             )}
 
             {/* Document Render View */}
-            <div className="flex justify-center overflow-x-auto py-2">
+            <div className="flex justify-start sm:justify-center overflow-x-auto touch-pan-x py-2">
               <LoaOfficialDocument data={data} page={activePage} />
             </div>
 

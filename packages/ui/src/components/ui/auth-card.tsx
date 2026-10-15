@@ -180,19 +180,28 @@ export function AuthCard({
             )}
           </div>
 
-          {/* ── Panel: Pemulihan akun (geser) ── */}
+          {/* ── Panel: Pemulihan akun (geser) ──
+              Saat tidak aktif, panel ini dikeluarkan dari perhitungan tinggi kartu
+              (grid-template-rows 0fr pada satu baris grid) supaya tinggi kartu
+              mengikuti panel yang benar-benar terlihat. Tanpa ini, panel pemulihan
+              yang lebih tinggi memaksa baris flex (dan kartu) ikut meninggi sehingga
+              menyisakan ruang kosong di bawah panel login selama logo belum tampil.
+              Panel tetap ter-render (bukan display:none) agar animasi geser tetap ada. */}
           {canRecover ? (
             <div
-              className="w-1/2 shrink-0"
+              className="grid w-1/2 shrink-0 transition-[grid-template-rows] duration-300 ease-out"
+              style={{ gridTemplateRows: recovering ? "1fr" : "0fr" }}
               aria-hidden={!recovering}
               inert={!recovering ? true : undefined}
             >
-              <AuthRecoveryForm
-                apiBase={recoveryApiBase}
-                applicant={recoveryApplicant}
-                onClose={() => setShowRecovery(false)}
-                closeText="Kembali ke login"
-              />
+              <div className="min-h-0 overflow-hidden">
+                <AuthRecoveryForm
+                  apiBase={recoveryApiBase}
+                  applicant={recoveryApplicant}
+                  onClose={() => setShowRecovery(false)}
+                  closeText="Kembali ke login"
+                />
+              </div>
             </div>
           ) : null}
         </div>

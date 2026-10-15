@@ -9,21 +9,26 @@ interface ApplicantSKDModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   applicantId: string
+  isApplicantPortal?: boolean
 }
 
 export default function ApplicantSKDModal({
   open,
   onOpenChange,
   applicantId,
+  isApplicantPortal = false,
 }: ApplicantSKDModalProps) {
   const printRef = useRef<HTMLDivElement>(null)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['applicant-skd', applicantId],
+    queryKey: ['applicant-skd', isApplicantPortal ? 'me' : applicantId],
     queryFn: async () => {
-      return await apiFetch<any>(`/ppdb/applicants/${applicantId}/skd`)
+      const url = isApplicantPortal
+        ? '/ppdb/applicants/me/skd'
+        : `/ppdb/applicants/${applicantId}/skd`
+      return await apiFetch<any>(url)
     },
-    enabled: open && !!applicantId,
+    enabled: open && (isApplicantPortal || !!applicantId),
   })
 
   const handlePrint = () => {
@@ -62,7 +67,7 @@ export default function ApplicantSKDModal({
             Data SKD tidak ditemukan.
           </div>
         ) : (
-          <div className="flex justify-start sm:justify-center py-2 overflow-x-auto w-full">
+          <div className="flex justify-start sm:justify-center py-2 overflow-x-auto touch-pan-x w-full">
             {/* Pure CSS Certificate View (Landscape A4 ratio 1.414) */}
             <div
               ref={printRef}

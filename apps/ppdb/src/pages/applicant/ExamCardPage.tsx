@@ -116,7 +116,7 @@ export default function ExamCardPage() {
               <h2 className="text-base sm:text-lg font-bold text-slate-700 mt-0.5">Penerimaan Peserta Didik Baru (PPDB)</h2>
               <p className="text-xs sm:text-sm font-medium text-slate-500">Pesantren Tahfidz Qur'an dan Digital Ar-Rahman</p>
             </div>
-            <div className="text-right shrink-0">
+            <div className="text-center sm:text-right shrink-0">
               <div className="inline-block rounded-md border-2 border-slate-800 px-3 py-1 text-center bg-white print:bg-transparent">
                 <p className="text-[10px] font-bold uppercase text-slate-500">Tahun Ajaran</p>
                 <p className="text-base sm:text-lg font-black text-slate-900">2024/2025</p>
@@ -128,10 +128,10 @@ export default function ExamCardPage() {
             <div className="flex flex-col sm:flex-row gap-6 sm:gap-10 print:flex-row print:gap-10">
 
               {/* Left Column (Photo & QR) */}
-              <div className="w-full sm:w-[150px] shrink-0 space-y-4 sm:space-y-6 flex flex-row sm:flex-col items-center justify-around sm:justify-start gap-4 sm:gap-0 print:w-[150px] print:flex-col">
-                <div className="aspect-[3/4] w-32 sm:w-full overflow-hidden rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 relative shrink-0">
+              <div className="w-full sm:w-[150px] shrink-0 space-y-4 sm:space-y-6 flex flex-wrap sm:flex-col items-center justify-center sm:justify-start gap-4 sm:gap-0 print:w-[150px] print:flex-col">
+                <div className="aspect-[3/4] w-28 sm:w-full overflow-hidden rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 relative shrink-0">
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-2 sm:p-4 text-center">
-                    <span className="text-xs sm:text-sm font-medium text-slate-400">Tempel Pas Foto 3x4</span>
+                    <span className="text-[11px] sm:text-sm font-medium text-slate-400">Tempel Pas Foto 3x4</span>
                   </div>
                 </div>
 
@@ -236,7 +236,7 @@ export default function ExamCardPage() {
             </div>
 
             {/* Tanda Tangan */}
-            <div className="mt-10 flex justify-end">
+            <div className="mt-8 sm:mt-10 flex justify-center sm:justify-end">
               <div className="w-48 text-center text-sm">
                 <p className="mb-16 text-slate-600">Panitia PPDB</p>
                 <div className="mx-auto w-32 border-b border-slate-800"></div>

@@ -12,7 +12,14 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 
 from src.core.config import settings
-from src.core.pakasir import get_pakasir_client
+from src.core.pakasir import (
+    STATUS_CANCELED,
+    STATUS_COMPLETED,
+    PakasirError,
+    PakasirUncertainError,
+    canonical_status,
+    get_pakasir_client,
+)
 from src.models.ppdb import (
     PPDBApplicant,
     PPDBApplicantDiscount,
@@ -24,6 +31,11 @@ from src.repositories.payment_repository import PaymentRepository
 
 logger = logging.getLogger("ptdarrahman.payment")
 WIB = ZoneInfo("Asia/Jakarta")
+
+# Status transaksi lokal yang masih "terbuka" dan memblokir transaksi baru
+# sampai statusnya dipastikan ke provider.
+OPEN_TRANSACTION_STATUSES = ("pending", "pending_verification")
+PENDING_VERIFICATION = "pending_verification"
 
 
 def create_secure_doc_token(doc_type: str, entity_id: str, exp_hours: int = 168) -> str:
@@ -217,6 +229,118 @@ class PaymentService:
             "updated_at": tx.updated_at.isoformat() if tx.updated_at else None,
         }
 
+    @staticmethod
+    def _parse_expired_at(raw: str | None) -> datetime | None:
+        """Parse expired_at provider (ISO8601 atau 'YYYY-MM-DD HH:MM:SS')."""
+        if not raw:
+            return None
+        try:
+            if "T" in raw:
+                dt = datetime.fromisoformat(raw)
+            else:
+                dt = datetime.strptime(raw, "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            return None
+        if not dt.tzinfo:
+            dt = dt.replace(tzinfo=WIB)
+        return dt
+
+    def _save_pending_verification(
+        self,
+        applicant: PPDBApplicant,
+        order_id: str,
+        payment_type: str,
+        amount: int,
+        txn_id: str | None,
+        reason: str,
+    ) -> PPDBPaymentTransaction:
+        """Simpan transaksi berstatus ``pending_verification``.
+
+        Dipakai ketika respons create-transaction tidak pasti/tidak lengkap.
+        Status ini memblokir transaksi baru (mencegah dobel bayar) dan menjadi
+        penanda agar dapat direkonsiliasi tanpa menganggapnya gagal/expired.
+        """
+        now_wib = datetime.now(WIB)
+        tx = PPDBPaymentTransaction(
+            id=str(uuid.uuid4()),
+            applicant_id=applicant.id,
+            order_id=order_id,
+            txn_id=txn_id,
+            payment_type=payment_type,
+            amount=amount,
+            status=PENDING_VERIFICATION,
+            provider_status="unknown",
+            method="qris_pakasir",
+            qr_string=None,
+            expired_at=now_wib + timedelta(minutes=15),
+            notes=f"[REKONSILIASI] {reason}",
+            created_at=now_wib,
+            updated_at=now_wib,
+        )
+        self.repo.save_transaction(tx)
+        return tx
+
+    def _apply_provider_status(self, tx: PPDBPaymentTransaction, result) -> str:
+        """Terapkan status provider terverifikasi ke transaksi lokal."""
+        tx.provider_status = result.provider_status
+        if result.status == "completed":
+            self._settle_successful_transaction(tx, gateway_payload=result.raw)
+            return str(tx.status)
+        if result.status == "canceled":
+            tx.status = "cancelled"
+            tx.updated_at = datetime.now(WIB)
+            self.repo.update_transaction(tx)
+            return str(tx.status)
+        # pending / unknown → pertahankan status lokal apa adanya (jangan
+        # mengubah menjadi expired hanya karena countdown lokal berakhir).
+        self.repo.update_transaction(tx)
+        return str(tx.status)
+
+    def _reconcile_transaction(
+        self, tx: PPDBPaymentTransaction, applicant: PPDBApplicant | None = None
+    ) -> str:
+        """Sinkronkan transaksi lokal terbuka dengan status provider.
+
+        Tidak melempar untuk hasil yang tidak pasti: status lokal dipertahankan
+        agar pembayaran yang sudah masuk tidak salah ditandai gagal/expired.
+        Mengembalikan status lokal hasil rekonsiliasi.
+        """
+        if tx.status in ("success", "paid", "cancelled", "failed", "expired"):
+            return str(tx.status)
+
+        pakasir = get_pakasir_client()
+        try:
+            if tx.txn_id:
+                result = pakasir.get_transaction_status(tx.txn_id)
+                return self._apply_provider_status(tx, result)
+            # txn_id belum ada → pulihkan lewat create idempotent. Pakasir v2
+            # bersifat find-or-create: (slug, order_id) sama → transaksi sama.
+            if tx.order_id and tx.amount:
+                created = pakasir.create_transaction(
+                    order_id=tx.order_id, amount=int(tx.amount)
+                )
+                tx.txn_id = created.txn_id
+                if created.qr_string:
+                    tx.qr_string = created.qr_string
+                parsed = self._parse_expired_at(created.expired_at)
+                if parsed:
+                    tx.expired_at = parsed
+                tx.status = "pending"
+                tx.provider_status = "pending"
+                self.repo.update_transaction(tx)
+                return str(tx.status)
+        except PakasirUncertainError as exc:
+            logger.warning(
+                "Rekonsiliasi tx %s belum pasti (status dipertahankan): %s",
+                tx.id,
+                exc.message,
+            )
+            return str(tx.status)
+        except PakasirError as exc:
+            logger.warning("Rekonsiliasi tx %s gagal: %s", tx.id, exc.message)
+            return str(tx.status)
+        return str(tx.status)
+
     def get_my_transaction(self, user_id: str) -> dict:
         applicant = self.repo.get_applicant_by_user_id(user_id)
         if not applicant:
@@ -280,24 +404,13 @@ class PaymentService:
         )
 
         active_tx = self.repo.get_active_transaction(applicant.id)
-        active_dict = None
-        if active_tx:
-            now_wib = datetime.now(WIB)
-            exp_dt = (
-                active_tx.expired_at
-                if (active_tx.expired_at and active_tx.expired_at.tzinfo)
-                else (
-                    active_tx.expired_at.replace(tzinfo=WIB)
-                    if active_tx.expired_at
-                    else None
-                )
-            )
-            if exp_dt and exp_dt < now_wib:
-                active_tx.status = "expired"
-                active_tx.provider_status = "expired"
-                self.repo.update_transaction(active_tx)
-            else:
-                active_dict = self._format_transaction_response(active_tx, applicant)
+        # Jangan auto-expire di jalur baca: status provider belum tentu
+        # terverifikasi. Frontend memanggil sync-status untuk kepastian.
+        active_dict = (
+            self._format_transaction_response(active_tx, applicant)
+            if active_tx
+            else None
+        )
 
         financials = self.calculate_applicant_financials(applicant.id)
         all_txs = self.repo.get_applicant_transactions(applicant.id)
@@ -444,38 +557,28 @@ class PaymentService:
                 status_code=404, detail="Data pendaftar tidak ditemukan"
             )
 
-        # 1. Periksa apakah sudah ada transaksi pending yang aktif
+        # 1. Periksa transaksi terbuka (pending / pending_verification).
+        #    JANGAN menganggap expired hanya dari countdown lokal: verifikasi
+        #    dulu ke provider agar pembayaran yang sudah masuk tidak salah
+        #    ditandai gagal, dan cegah transaksi baru yang menggandakan bayar.
         active_tx = self.repo.get_active_transaction(applicant.id)
-        now_wib = datetime.now(WIB)
         if active_tx:
-            exp_dt = (
-                active_tx.expired_at
-                if (active_tx.expired_at and active_tx.expired_at.tzinfo)
-                else (
-                    active_tx.expired_at.replace(tzinfo=WIB)
-                    if active_tx.expired_at
-                    else None
-                )
-            )
-            if exp_dt and exp_dt < now_wib:
-                active_tx.status = "expired"
-                active_tx.provider_status = "expired"
-                self.repo.update_transaction(active_tx)
-                active_tx = None
-            else:
+            self._reconcile_transaction(active_tx, applicant)
+            if active_tx.status in ("success", "paid"):
+                return self._format_transaction_response(active_tx, applicant)
+            if active_tx.status in OPEN_TRANSACTION_STATUSES:
                 if active_tx.payment_type == payment_type and (
                     amount is None or active_tx.amount == amount
                 ):
                     return self._format_transaction_response(active_tx, applicant)
-                else:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=(
-                            "Anda memiliki transaksi QRIS aktif yang belum "
-                            "kedaluwarsa. Silakan selesaikan pembayaran "
-                            "tersebut atau batalkan terlebih dahulu."
-                        ),
-                    )
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Anda memiliki transaksi QRIS yang belum terverifikasi. "
+                        "Silakan selesaikan atau batalkan transaksi tersebut "
+                        "terlebih dahulu sebelum membuat pembayaran baru."
+                    ),
+                )
 
         # 2. Validasi aturan bisnis per payment_type
         wave = (
@@ -587,51 +690,90 @@ class PaymentService:
         unique_suffix = uuid.uuid4().hex[:6].upper()
         order_id = f"{prefix}-{short_app}-{unique_suffix}"
 
-        # 4. Panggil Pakasir API v2
+        # 4. Panggil Pakasir API v2 (find-or-create) & normalisasi hasilnya
         pakasir = get_pakasir_client()
         try:
-            gateway_resp = pakasir.create_transaction(
-                order_id=order_id, amount=final_amount
+            created = pakasir.create_transaction(order_id=order_id, amount=final_amount)
+        except PakasirUncertainError as exc:
+            # Hasil tidak pasti → provider mungkin sudah membuat transaksi.
+            # Simpan penanda rekonsiliasi (bukan pending biasa) lalu lapor.
+            self._save_pending_verification(
+                applicant=applicant,
+                order_id=order_id,
+                payment_type=payment_type,
+                amount=final_amount,
+                txn_id=None,
+                reason=f"Respons gateway tidak pasti: {exc.message}",
             )
-        except Exception as exc:
-            logger.exception(
-                "Gagal memanggil Pakasir API v2 create_transaction: %s", exc
+            logger.warning(
+                "create-transaction hasil tidak pasti (order_id=%s): %s",
+                order_id,
+                exc.message,
             )
             raise HTTPException(
                 status_code=502,
-                detail=f"Gagal membuat transaksi ke payment gateway: {str(exc)}",
+                detail=(
+                    "Status pembuatan pembayaran belum dapat dipastikan. "
+                    "Transaksi ditandai untuk rekonsiliasi — mohon cek status "
+                    "beberapa saat lagi sebelum mengulang."
+                ),
+            ) from exc
+        except PakasirError as exc:
+            logger.exception("Gagal membuat transaksi Pakasir: %s", exc.message)
+            raise HTTPException(
+                status_code=502,
+                detail=f"Gagal membuat transaksi ke payment gateway: {exc.message}",
+            ) from exc
+
+        # 4b. Field wajib QRIS: txn_id + qr_string. Tanpa keduanya transaksi
+        #     tidak dapat dibayar, jadi tidak boleh disimpan sebagai pending.
+        if not created.txn_id or not created.qr_string:
+            missing = ", ".join(
+                name
+                for name, value in (
+                    ("txn_id", created.txn_id),
+                    ("qr_string", created.qr_string),
+                )
+                if not value
+            )
+            self._save_pending_verification(
+                applicant=applicant,
+                order_id=order_id,
+                payment_type=payment_type,
+                amount=final_amount,
+                txn_id=created.txn_id,
+                reason=f"Respons gateway tidak lengkap ({missing} kosong)",
+            )
+            logger.error(
+                "Respons create-transaction tidak lengkap untuk order_id=%s: %s",
+                order_id,
+                missing,
+            )
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    "Gateway membalas data pembayaran yang tidak lengkap. "
+                    "Transaksi ditandai untuk rekonsiliasi — mohon cek status "
+                    "beberapa saat lagi."
+                ),
             )
 
-        data = gateway_resp.get("data", {})
-        txn_id = data.get("txn_id")
-        qr_string = data.get("qr_string")
-        expired_at_raw = data.get("expired_at")
-
-        expired_dt = None
-        if expired_at_raw:
-            try:
-                if "T" in expired_at_raw:
-                    expired_dt = datetime.fromisoformat(expired_at_raw)
-                else:
-                    expired_dt = datetime.strptime(expired_at_raw, "%Y-%m-%d %H:%M:%S")
-                if not expired_dt.tzinfo:
-                    expired_dt = expired_dt.replace(tzinfo=WIB)
-            except Exception:
-                expired_dt = now_wib + timedelta(minutes=15)
-        else:
-            expired_dt = now_wib + timedelta(minutes=15)
+        now_wib = datetime.now(WIB)
+        expired_dt = self._parse_expired_at(created.expired_at) or (
+            now_wib + timedelta(minutes=15)
+        )
 
         tx = PPDBPaymentTransaction(
             id=str(uuid.uuid4()),
             applicant_id=applicant.id,
             order_id=order_id,
-            txn_id=txn_id,
+            txn_id=created.txn_id,
             payment_type=payment_type,
             amount=final_amount,
             status="pending",
             provider_status="pending",
             method="qris_pakasir",
-            qr_string=qr_string,
+            qr_string=created.qr_string,
             expired_at=expired_dt,
             created_at=now_wib,
             updated_at=now_wib,
@@ -646,22 +788,6 @@ class PaymentService:
 
         active_tx = self.repo.get_active_transaction(applicant.id)
         if not active_tx:
-            return {"active_transaction": None}
-
-        now_wib = datetime.now(WIB)
-        exp_dt = (
-            active_tx.expired_at
-            if (active_tx.expired_at and active_tx.expired_at.tzinfo)
-            else (
-                active_tx.expired_at.replace(tzinfo=WIB)
-                if active_tx.expired_at
-                else None
-            )
-        )
-        if exp_dt and exp_dt < now_wib:
-            active_tx.status = "expired"
-            active_tx.provider_status = "expired"
-            self.repo.update_transaction(active_tx)
             return {"active_transaction": None}
 
         return {
@@ -691,59 +817,43 @@ class PaymentService:
                 "transaction": self._format_transaction_response(tx),
             }
 
-        pakasir = get_pakasir_client()
-        target_txn_id = tx.txn_id or tx.order_id
-        try:
-            gw_status = pakasir.get_transaction_status(target_txn_id)
-        except Exception as exc:
-            logger.warning("Gagal sync status ke Pakasir: %s", exc)
-            return {
-                "status": tx.status,
-                "message": f"Belum dapat menghubungi gateway: {str(exc)}",
-                "transaction": self._format_transaction_response(tx),
-            }
+        # Rekonsiliasi ke provider. Status lokal hanya berubah bila provider
+        # memberi kepastian (completed/canceled).
+        self._reconcile_transaction(tx)
 
-        status_data = gw_status.get("data", {})
-        provider_status = str(status_data.get("status") or "").lower()
-
-        if provider_status in ("completed", "paid", "success", "settlement", "lunas"):
-            self._settle_successful_transaction(tx, gateway_payload=status_data)
+        if tx.status in ("success", "paid"):
             return {
                 "status": "success",
                 "message": "Pembayaran berhasil diverifikasi",
                 "transaction": self._format_transaction_response(tx),
             }
-        elif provider_status in ("canceled", "cancelled"):
-            tx.status = "cancelled"
-            tx.provider_status = "canceled"
-            self.repo.update_transaction(tx)
+        if tx.status == "cancelled":
             return {
                 "status": "cancelled",
                 "message": "Transaksi telah dibatalkan di gateway",
                 "transaction": self._format_transaction_response(tx),
             }
-        else:
-            now_wib = datetime.now(WIB)
-            exp_dt = (
-                tx.expired_at
-                if (tx.expired_at and tx.expired_at.tzinfo)
-                else (tx.expired_at.replace(tzinfo=WIB) if tx.expired_at else None)
-            )
-            if exp_dt and exp_dt < now_wib:
-                tx.status = "expired"
-                tx.provider_status = "expired"
-                self.repo.update_transaction(tx)
-                return {
-                    "status": "expired",
-                    "message": "Batas waktu transaksi telah kedaluwarsa",
-                    "transaction": self._format_transaction_response(tx),
-                }
-
+        if tx.status == "exception":
             return {
-                "status": tx.status,
-                "message": "Menunggu pembayaran pendaftar",
+                "status": "exception",
+                "message": (
+                    "Pembayaran diterima setelah tagihan dibatalkan — "
+                    "menunggu pemeriksaan admin."
+                ),
                 "transaction": self._format_transaction_response(tx),
             }
+
+        # pending / pending_verification → status belum pasti. JANGAN tandai
+        # expired hanya karena countdown lokal berakhir.
+        return {
+            "status": tx.status,
+            "provider_status": tx.provider_status,
+            "message": (
+                "Belum dapat memastikan status pembayaran di gateway. "
+                "Status dipertahankan untuk pemeriksaan ulang."
+            ),
+            "transaction": self._format_transaction_response(tx),
+        }
 
     def cancel_transaction(
         self, transaction_id: str, user_id: str | None = None
@@ -765,23 +875,70 @@ class PaymentService:
                 detail="Transaksi yang sudah sukses tidak dapat dibatalkan",
             )
 
+        now_wib = datetime.now(WIB)
+
+        # Tanpa txn_id, transaksi belum terkonfirmasi ada di provider →
+        # cukup batalkan lokal.
+        if not tx.txn_id:
+            tx.status = "cancelled"
+            tx.provider_status = "canceled"
+            tx.updated_at = now_wib
+            self.repo.update_transaction(tx)
+            return {"success": True, "message": "Transaksi berhasil dibatalkan."}
+
         pakasir = get_pakasir_client()
-        target_txn_id = tx.txn_id or tx.order_id
         try:
-            pakasir.cancel_transaction(target_txn_id)
-        except Exception as exc:
-            logger.warning("Gagal membatalkan transaksi di Pakasir v2: %s", exc)
+            result = pakasir.cancel_transaction(tx.txn_id)
+        except PakasirUncertainError as exc:
+            logger.warning(
+                "Pembatalan tx %s tidak pasti, sinkronisasi status: %s",
+                tx.id,
+                exc.message,
+            )
+            return self._finalize_cancel_after_reconcile(tx, now_wib)
+        except PakasirError as exc:
+            logger.warning("Gagal membatalkan transaksi di Pakasir v2: %s", exc.message)
             raise HTTPException(
                 status_code=502,
-                detail=f"Gagal membatalkan transaksi di gateway: {str(exc)}",
-            )
+                detail=f"Gagal membatalkan transaksi di gateway: {exc.message}",
+            ) from exc
 
-        now_wib = datetime.now(WIB)
+        if not result.confirmed:
+            # 2xx tanpa bukti pembatalan → verifikasi via status transaksi.
+            return self._finalize_cancel_after_reconcile(tx, now_wib)
+
         tx.status = "cancelled"
         tx.provider_status = "canceled"
         tx.updated_at = now_wib
         self.repo.update_transaction(tx)
         return {"success": True, "message": "Transaksi berhasil dibatalkan."}
+
+    def _finalize_cancel_after_reconcile(
+        self, tx: PPDBPaymentTransaction, now_wib: datetime
+    ) -> dict:
+        """Putuskan status lokal setelah pembatalan provider tidak pasti."""
+        self._reconcile_transaction(tx)
+        if tx.status == "cancelled":
+            return {"success": True, "message": "Transaksi berhasil dibatalkan."}
+        if tx.status in ("success", "paid"):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Pembatalan tidak dapat dipastikan: pembayaran sudah "
+                    "terverifikasi sukses di gateway."
+                ),
+            )
+        tx.provider_status = "cancel_requested"
+        tx.updated_at = now_wib
+        self.repo.update_transaction(tx)
+        return {
+            "success": False,
+            "status": tx.status,
+            "message": (
+                "Permintaan pembatalan terkirim, tetapi status gateway belum "
+                "dapat dipastikan. Silakan cek kembali beberapa saat lagi."
+            ),
+        }
 
     def _send_dp_success_notification(
         self, applicant: PPDBApplicant, tx: PPDBPaymentTransaction
@@ -1341,28 +1498,45 @@ class PaymentService:
         dan cicilan Tahap 2, idempotensi, serta rekonsiliasi pembayaran
         terlambat.
         """
-        logger.info("Menerima webhook Pak Kasir: %s", payload)
+        logger.info("Menerima webhook Pakasir: %s", payload)
 
         if settings.pakasir_webhook_secret:
             if not x_secret or not hmac.compare_digest(
                 x_secret, settings.pakasir_webhook_secret
             ):
                 logger.warning(
-                    "Webhook Pak Kasir ditolak: X-Secret tidak valid atau tidak cocok"
+                    "Webhook Pakasir ditolak: X-Secret tidak valid atau tidak cocok"
                 )
                 raise HTTPException(
                     status_code=401, detail="Header X-Secret tidak valid"
                 )
+        elif settings.is_production:
+            # Fail-closed: production tidak boleh memproses webhook tanpa secret.
+            logger.error(
+                "PAKASIR_WEBHOOK_SECRET belum dikonfigurasi — webhook ditolak "
+                "di mode production."
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Webhook pembayaran belum dikonfigurasi dengan aman",
+            )
+        else:
+            logger.warning(
+                "PAKASIR_WEBHOOK_SECRET kosong — memproses webhook tanpa "
+                "validasi secret (hanya non-production)."
+            )
 
         order_id = (
             payload.get("order_id")
-            or payload.get("transaction_id")
             or payload.get("invoice_id")
             or payload.get("external_id")
             or payload.get("id")
         )
+        # 'transaction_id' pada sebagian gateway berarti order_id kita — jangan
+        # menganggapnya sebagai txn_id provider.
+        if not order_id:
+            order_id = payload.get("transaction_id")
         txn_id = payload.get("txn_id")
-        applicant_id = payload.get("applicant_id")
         amount = payload.get("amount")
         status = str(
             payload.get("status")
@@ -1380,20 +1554,45 @@ class PaymentService:
             )
         if not tx and txn_id:
             tx = self.repo.get_transaction_by_txn_id(str(txn_id))
-        if not tx and applicant_id:
-            tx = self.repo.get_latest_transaction_by_applicant_id(str(applicant_id))
 
         if not tx:
             logger.warning(
-                "Transaksi Pak Kasir tidak ditemukan untuk order_id=%s, "
-                "txn_id=%s, applicant_id=%s",
+                "Transaksi Pakasir tidak ditemukan untuk order_id=%s, txn_id=%s",
                 order_id,
                 txn_id,
-                applicant_id,
             )
             raise HTTPException(
                 status_code=404, detail="Transaction not found for this payment"
             )
+
+        # Anti salah-pasang: identitas dari provider harus konsisten dengan
+        # transaksi yang ditemukan. JANGAN memakai applicant_id dari payload
+        # sebagai fallback (dapat memasangkan callback ke transaksi lain).
+        if txn_id and tx.txn_id and str(txn_id) != str(tx.txn_id):
+            logger.warning(
+                "Webhook txn_id tidak cocok untuk tx %s: payload=%s, db=%s",
+                tx.id,
+                txn_id,
+                tx.txn_id,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="txn_id webhook tidak cocok dengan transaksi",
+            )
+        if order_id:
+            allowed_refs = {
+                str(ref) for ref in (tx.id, tx.order_id, tx.external_id) if ref
+            }
+            if allowed_refs and str(order_id) not in allowed_refs:
+                logger.warning(
+                    "Webhook order_id tidak cocok untuk tx %s: payload=%s",
+                    tx.id,
+                    order_id,
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail="order_id webhook tidak cocok dengan transaksi",
+                )
 
         # Cek idempotensi: jika sudah sukses sebelumnya, langsung return sukses
         if tx.status in ("success", "paid"):
@@ -1429,15 +1628,9 @@ class PaymentService:
                 pass
 
         now_wib = datetime.now(WIB)
-        is_success = status in ("completed", "paid", "success", "settlement", "lunas")
-        is_failed = status in (
-            "canceled",
-            "cancelled",
-            "failed",
-            "expired",
-            "gagal",
-            "batal",
-        )
+        provider_state = canonical_status(status)
+        is_success = provider_state == STATUS_COMPLETED
+        is_failed = provider_state == STATUS_CANCELED
 
         if is_success:
             res = self._settle_successful_transaction(tx, gateway_payload=payload)
@@ -1448,7 +1641,11 @@ class PaymentService:
                 "transaction_id": tx.id,
             }
         elif is_failed:
-            tx.status = "cancelled" if status in ("canceled", "cancelled") else "failed"
+            tx.status = (
+                "cancelled"
+                if status in ("canceled", "cancelled", "batal")
+                else "failed"
+            )
             tx.provider_status = status
             tx.failure_reason = payload.get("failure_reason") or f"Status: {status}"
             tx.updated_at = now_wib

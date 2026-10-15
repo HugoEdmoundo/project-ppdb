@@ -7,6 +7,12 @@ from sqlalchemy import URL
 
 
 class Settings(BaseSettings):
+    # ── Environment ──────────────────────────────────────────────────────────
+    # "production" menegakkan konfigurasi wajib (payment gateway & webhook
+    # secret). Nilai lain (default "development") memakai jalur longgar untuk
+    # lokal/testing. Di-set via env APP_ENV (lihat .env.example / compose).
+    app_env: str = "development"
+
     # ── Database (MySQL only) ────────────────────────────────────────────────
     mysql_host: str = "127.0.0.1"
     mysql_port: int = 3306
@@ -107,6 +113,11 @@ class Settings(BaseSettings):
     @property
     def jwt_refresh_expiry_days(self) -> int:
         return 7
+
+    @property
+    def is_production(self) -> bool:
+        """True hanya untuk APP_ENV=production/prod (case-insensitive)."""
+        return self.app_env.strip().lower() in {"production", "prod"}
 
     @property
     def database_url(self) -> str:

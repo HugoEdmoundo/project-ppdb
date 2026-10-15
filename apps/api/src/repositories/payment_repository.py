@@ -509,17 +509,16 @@ class PaymentRepository:
     def get_active_transaction(
         self, applicant_id: str, payment_type: str | None = None
     ) -> PPDBPaymentTransaction | None:
-        """Return the most recent pending transaction for this applicant
-        that has not expired.
+        """Transaksi terbuka terakhir (pending / pending_verification).
+
+        Sengaja TIDAK memfilter `expired_at`: keputusan expired harus
+        diverifikasi ke provider dulu (lihat PaymentService), agar pembayaran
+        yang sudah masuk tidak salah dianggap gagal dan transaksi baru tidak
+        menggandakan pembayaran.
         """
-        now_wib = datetime.now(WIB)
         stmt = select(PPDBPaymentTransaction).where(
             PPDBPaymentTransaction.applicant_id == applicant_id,
-            PPDBPaymentTransaction.status == "pending",
-            or_(
-                PPDBPaymentTransaction.expired_at.is_(None),
-                PPDBPaymentTransaction.expired_at > now_wib,
-            ),
+            PPDBPaymentTransaction.status.in_(("pending", "pending_verification")),
         )
         if payment_type:
             stmt = stmt.where(PPDBPaymentTransaction.payment_type == payment_type)

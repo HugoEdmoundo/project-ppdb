@@ -16,14 +16,14 @@ Main public website + admin dashboard for Pesantren Tahfidz Qur'an dan Digital A
   - `/` — Home
   - `/about`, `/news`, `/news/[slug]`, `/programs`, `/programs/[slug]`
   - `/facilities`, `/achievements`, `/gallery`, `/staff`, `/contact`
-  - `/ppdb` — PPDB landing page
+  - `/ppdb` — PPDB landing page (with 3D hero)
 - **Auth**:
-  - `/auth` — Student/parent portal login
+  - `/auth/login` — Shared login page
 - **Admin (`app/admin/`)**:
-  - `/admin/login` — Login page
+  - `/admin/login` — Redirect shim ke `/auth/login`
   - `/admin/overview` — Dashboard overview page (stats + per-section links into `/admin/dashboard`).
   - `/admin/dashboard` — Main CRUD dashboard (10 tabs, supports deep-link `?tab=...`).
-  - `/admin` — Redirects to `/admin/overview` if `admin_user` exists in localStorage, else `/admin/login`.
+  - `/admin` — Redirects to `/admin/overview` if `admin_user` exists in localStorage, else `/auth/login`.
 
 ## Key Conventions
 - **Route Group**: `app/(main)/` contains all public pages wrapped with Navbar and Footer.
@@ -32,13 +32,14 @@ Main public website + admin dashboard for Pesantren Tahfidz Qur'an dan Digital A
 - **Path Alias**: All imports use the `@/...` path alias (e.g., `@/app/...`).
 
 ## Backend & API
-- **Backend Architecture**: FastAPI monolithic backend (located in `../api/`). NOT Postgres/Hono.
+- **Backend Architecture**: FastAPI monolithic backend (located in `../api/`).
 - **API Client**: Handled centrally in `app/lib/api.ts` with fallback mechanisms (`fetchWithFallback`).
 - **Public API**: Fetched via `GET /companyprofile/{table}`.
 - **Admin CRUD**: Managed via `POST/PUT/DELETE /companyprofile/{table}[/{id}]`.
-- **Auth Flow**: Login at `/companyprofile/auth/login`. Returns JWT tokens.
-  - Keys in `localStorage`: `admin_token`, `admin_refresh`, `admin_user`.
-  - Token refresh logic is built into the API client (`tryRefresh`).
+- **Auth Flow**: Login at `POST /companyprofile/auth/login`.
+  - **Cookie-Based Auth**: Tokens are stored in secure HTTP-only cookies (`access_token`, `refresh_token`), sent via `credentials: 'include'`.
+  - Keys in `localStorage`: Only `admin_user` (JSON profile) is stored in localStorage. Tokens are NOT stored in localStorage.
+  - Token refresh logic is built into the API client (`tryRefresh` via `POST /companyprofile/auth/refresh`).
 - **Real-time**: `useSSE.ts` uses `EventSource` to subscribe to `/companyprofile/events` (Server-Side Events from FastAPI).
 
 ## Admin Dashboard

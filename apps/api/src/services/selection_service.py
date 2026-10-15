@@ -814,14 +814,101 @@ class SelectionService:
         s_res = self.repo.get_selection_result_by_applicant(app.id)
         notes = s_res.notes if s_res else None
 
-        scores_rows = self.repo.get_applicant_scores_with_details(app.id)
+        # Nilai TIU jika ada
+        tiu_res = self.repo.get_tiu_result_by_applicant(app.id)
+        tiu_score = tiu_res.score if tiu_res else None
+        tiu_completed_at = (
+            tiu_res.completed_at.isoformat()
+            if (tiu_res and tiu_res.completed_at)
+            else None
+        )
+
+        scores_rows = self.repo.get_applicant_scores_full(app.id)
         scores = []
-        for sc, c_name, cat_name in scores_rows:
+        categories_map: dict[str, dict[str, Any]] = {}
+
+        for row in scores_rows:
+            sc, c_name, cat_name, weight_raw, *_ = row
+            weight = float(weight_raw or 0.0)
+
+            # Flat score for backwards compatibility
             scores.append(
-                {"score": sc, "criteria_name": c_name, "category_name": cat_name}
+                {
+                    "score": sc,
+                    "criteria_name": c_name,
+                    "category_name": cat_name,
+                    "weight": weight,
+                }
             )
 
-        return {"notes": notes, "scores": scores}
+            if cat_name not in categories_map:
+                categories_map[cat_name] = {
+                    "category_name": cat_name,
+                    "criteria": [],
+                    "total_weight": 0.0,
+                    "subtotal_score": 0.0,
+                }
+
+            weighted_contrib = round((sc * weight) / 100.0, 2) if weight > 0 else sc
+            categories_map[cat_name]["criteria"].append(
+                {
+                    "criteria_name": c_name,
+                    "weight": weight,
+                    "score": sc,
+                    "weighted_score": weighted_contrib,
+                }
+            )
+            categories_map[cat_name]["total_weight"] += weight
+
+        # Calculate subtotal for each category
+        categories_list = []
+        category_averages = []
+
+        for cat_name, cat_data in categories_map.items():
+            tot_w = cat_data["total_weight"]
+            crit_list = cat_data["criteria"]
+            if tot_w > 0:
+                # Weighted sum based on weights
+                cat_subtotal = round(
+                    sum((c["score"] * c["weight"]) / 100.0 for c in crit_list), 2
+                )
+            else:
+                # Simple average if weights not set
+                cat_subtotal = (
+                    round(sum(c["score"] for c in crit_list) / len(crit_list), 2)
+                    if crit_list
+                    else 0.0
+                )
+
+            cat_data["subtotal_score"] = cat_subtotal
+            categories_list.append(cat_data)
+            category_averages.append(cat_subtotal)
+
+        # Total / Final score
+        if s_res and s_res.score is not None:
+            final_total_score = round(s_res.score, 2)
+        else:
+            all_component_scores = list(category_averages)
+            if tiu_score is not None:
+                all_component_scores.append(float(tiu_score))
+
+            if all_component_scores:
+                final_total_score = round(
+                    sum(all_component_scores) / len(all_component_scores), 2
+                )
+            else:
+                final_total_score = None
+
+        return {
+            "notes": notes,
+            "graduation_status": s_res.graduation_status if s_res else app.status,
+            "graduation_notes": s_res.graduation_notes if s_res else None,
+            "tiu_score": tiu_score,
+            "tiu_completed_at": tiu_completed_at,
+            "categories": categories_list,
+            "total_score": final_total_score,
+            "scores": scores,
+        }
 
     def auto_assign_sessions(self) -> dict[str, Any]:
         now_wib = _now_wib()

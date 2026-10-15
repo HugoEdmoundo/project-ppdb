@@ -156,7 +156,7 @@ export default function PublicLoaPage() {
 
       {/* Document View */}
       {data && (
-        <div className="overflow-x-auto w-full flex justify-center py-2">
+        <div className="overflow-x-auto touch-pan-x w-full flex justify-start sm:justify-center py-2">
           <LoaOfficialDocument data={data} page={activeTab} />
         </div>
       )}

@@ -20,6 +20,8 @@ import ApplicantReceiptPage from './pages/applicant/ReceiptPage'
 import ApplicantDocumentsPage from './pages/applicant/DocumentsPage'
 import SelectionStagePage from './pages/applicant/SelectionStagePage'
 import ResultStagePage from './pages/applicant/ResultStagePage'
+import DpStagePage from './pages/applicant/DpStagePage'
+import Stage2PaymentPage from './pages/applicant/Stage2PaymentPage'
 import CheckoutPage from './pages/applicant/CheckoutPage'
 import ApplicantDashboardPage from './pages/applicant/DashboardPage'
 import ExamCardPage from './pages/applicant/ExamCardPage'
@@ -34,6 +36,8 @@ import VerifikasiDokumenPage from './pages/admin/ppdb/VerifikasiDokumenPage'
 import PembayaranFormulirPage from './pages/admin/ppdb/PembayaranFormulirPage'
 import PembayaranTahap2Page from './pages/admin/ppdb/PembayaranTahap2Page'
 import PenilaianPage from './pages/admin/ppdb/PenilaianPage'
+import ReviewLoaPage from './pages/admin/ppdb/ReviewLoaPage'
+import PublicLoaPage from './pages/public/PublicLoaPage'
 import Sessions1on1Page from './pages/admin/ppdb/Sessions1on1Page'
 import SessionEvaluationPage from './pages/admin/ppdb/SessionEvaluationPage'
 import * as api from './api/client'
@@ -83,6 +87,7 @@ export default function App() {
               <Route path="sessions/wawancara" element={<Sessions1on1Page forcedType="interview" />} />
               <Route path="sessions/:sessionType/evaluasi/:sessionId" element={<SessionEvaluationPage />} />
               <Route path="penilaian" element={<PenilaianPage />} />
+              <Route path="review-loa" element={<ReviewLoaPage />} />
               <Route path="arsip" element={<ArsipPendaftarPage />} />
               <Route path="periods" element={<PeriodsPage />} />
               <Route path="tiu-settings" element={<TIUSettingsPage />} />
@@ -95,8 +100,10 @@ export default function App() {
 
             <Route path="/checkout" element={<ProtectedRoute role="applicant"><CheckoutPage /></ProtectedRoute>} />
 
-            {/* Public Kuitansi via Shared Link (Tanpa Header, Tanpa CTA Back, Tanpa Share) */}
+            {/* Public Kuitansi & LoA Resmi via Direct / QR Link */}
             <Route path="/kuitansi/:id" element={<PublicReceiptPage />} />
+            <Route path="/receipt/:id" element={<PublicReceiptPage />} />
+            <Route path="/loa/:registrationNo" element={<PublicLoaPage />} />
 
             {/* Applicant portal: satu chrome (DashboardShell) untuk semua halaman.
                 Kartu Ujian & checkout tetap mandiri (tampilan print / paywall). */}
@@ -108,6 +115,8 @@ export default function App() {
               <Route path="seleksi-tahfidz" element={<SelectionStagePage section="tahfidz" title="Seleksi Tahfidz (1:1)" subtitle="Jadwal dan ujian tartil serta tahfidz Al-Qur'an" />} />
               <Route path="seleksi-wawancara" element={<SelectionStagePage section="interview" title="Seleksi Wawancara (1:1)" subtitle="Wawancara calon santri dan orang tua/wali" />} />
               <Route path="pengumuman" element={<ResultStagePage />} />
+              <Route path="bayar-dp" element={<DpStagePage />} />
+              <Route path="pembayaran-tahap2" element={<Stage2PaymentPage />} />
             </Route>
             <Route path="/applicant/kartu-ujian" element={<ProtectedRoute role="applicant" requirePaid={true}><ExamCardPage /></ProtectedRoute>} />
 

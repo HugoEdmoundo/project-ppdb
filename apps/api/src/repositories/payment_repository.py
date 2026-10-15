@@ -9,6 +9,7 @@ from src.models.ppdb import (
     PPDBApplicant,
     PPDBApplicantDiscount,
     PPDBPaymentTransaction,
+    PPDBPeriod,
     PPDBStage2Bill,
     PPDBWave,
     PPDBWaveFeeItem,
@@ -23,27 +24,41 @@ class PaymentRepository:
         self.db = db
 
     def get_active_wave_id(self) -> str | None:
-        stmt = select(PPDBWave.id).where(PPDBWave.status == "active").limit(1)
+        # Gelombang hanya dianggap aktif bila periode induknya juga aktif.
+        stmt = (
+            select(PPDBWave.id)
+            .join(PPDBPeriod, PPDBPeriod.id == PPDBWave.period_id)
+            .where(PPDBWave.status == "active", PPDBPeriod.status == "active")
+            .limit(1)
+        )
         return cast(str | None, self.db.scalars(stmt).first())
 
     def get_active_wave_info(self) -> dict[str, str] | None:
-        stmt = select(PPDBWave).where(PPDBWave.status == "active").limit(1)
+        stmt = (
+            select(PPDBWave)
+            .join(PPDBPeriod, PPDBPeriod.id == PPDBWave.period_id)
+            .where(PPDBWave.status == "active", PPDBPeriod.status == "active")
+            .limit(1)
+        )
         wave = self.db.scalars(stmt).first()
         return {"id": wave.id, "name": wave.name} if wave else None
 
     def get_transactions(
-        self, wave_id: str, status: str | None, limit: int, offset: int
+        self, period_id: str, status: str | None, limit: int, offset: int
     ) -> tuple[list[Any], int]:
+        """Transaksi formulir dari seluruh gelombang dalam satu periode aktif."""
         stmt = (
             select(
                 PPDBPaymentTransaction,
                 PPDBApplicant.full_name.label("applicant_name"),
                 PPDBApplicant.email.label("applicant_email"),
+                PPDBWave.name.label("wave_name"),
             )
             .join(
                 PPDBApplicant, PPDBPaymentTransaction.applicant_id == PPDBApplicant.id
             )
-            .where(PPDBApplicant.wave_id == wave_id)
+            .join(PPDBWave, PPDBApplicant.wave_id == PPDBWave.id)
+            .where(PPDBWave.period_id == period_id)
         )
 
         count_stmt = (
@@ -52,7 +67,8 @@ class PaymentRepository:
             .join(
                 PPDBApplicant, PPDBPaymentTransaction.applicant_id == PPDBApplicant.id
             )
-            .where(PPDBApplicant.wave_id == wave_id)
+            .join(PPDBWave, PPDBApplicant.wave_id == PPDBWave.id)
+            .where(PPDBWave.period_id == period_id)
         )
 
         if status:
@@ -88,6 +104,7 @@ class PaymentRepository:
                 "updated_at": tx.updated_at,
                 "applicant_name": r.applicant_name,
                 "applicant_email": r.applicant_email,
+                "wave_name": r.wave_name,
             }
             result.append(tx_dict)
 
@@ -139,6 +156,12 @@ class PaymentRepository:
         return int(self.db.scalar(stmt) or 0)
 
     def update_transaction(self, transaction: PPDBPaymentTransaction):
+        transaction.updated_at = datetime.now(WIB)
+        self.db.add(transaction)
+        self.db.flush()
+        self.db.commit()
+
+    def save_transaction(self, transaction: PPDBPaymentTransaction):
         transaction.updated_at = datetime.now(WIB)
         self.db.add(transaction)
         self.db.flush()
@@ -481,3 +504,72 @@ class PaymentRepository:
         self.db.add(bill)
         self.db.flush()
         self.db.commit()
+
+    def get_transaction_by_order_id(
+        self, order_id: str
+    ) -> PPDBPaymentTransaction | None:
+        stmt = select(PPDBPaymentTransaction).where(
+            or_(
+                PPDBPaymentTransaction.order_id == order_id,
+                PPDBPaymentTransaction.external_id == order_id,
+                PPDBPaymentTransaction.id == order_id,
+            )
+        )
+        return cast(PPDBPaymentTransaction | None, self.db.scalars(stmt).first())
+
+    def get_transaction_by_txn_id(self, txn_id: str) -> PPDBPaymentTransaction | None:
+        stmt = select(PPDBPaymentTransaction).where(
+            PPDBPaymentTransaction.txn_id == txn_id
+        )
+        return cast(PPDBPaymentTransaction | None, self.db.scalars(stmt).first())
+
+    def get_active_transaction(
+        self, applicant_id: str, payment_type: str | None = None
+    ) -> PPDBPaymentTransaction | None:
+        """Transaksi terbuka terakhir (pending / pending_verification).
+
+        Sengaja TIDAK memfilter `expired_at`: keputusan expired harus
+        diverifikasi ke provider dulu (lihat PaymentService), agar pembayaran
+        yang sudah masuk tidak salah dianggap gagal dan transaksi baru tidak
+        menggandakan pembayaran.
+        """
+        stmt = select(PPDBPaymentTransaction).where(
+            PPDBPaymentTransaction.applicant_id == applicant_id,
+            PPDBPaymentTransaction.status.in_(("pending", "pending_verification")),
+        )
+        if payment_type:
+            stmt = stmt.where(PPDBPaymentTransaction.payment_type == payment_type)
+        stmt = stmt.order_by(PPDBPaymentTransaction.created_at.desc()).limit(1)
+        return cast(PPDBPaymentTransaction | None, self.db.scalars(stmt).first())
+
+    def get_applicant_transactions(
+        self, applicant_id: str
+    ) -> list[PPDBPaymentTransaction]:
+        stmt = (
+            select(PPDBPaymentTransaction)
+            .where(PPDBPaymentTransaction.applicant_id == applicant_id)
+            .order_by(PPDBPaymentTransaction.created_at.desc())
+        )
+        return list(self.db.scalars(stmt).all())
+
+    def count_successful_installments(self, applicant_id: str) -> int:
+        stmt = select(func.count()).where(
+            PPDBPaymentTransaction.applicant_id == applicant_id,
+            PPDBPaymentTransaction.payment_type == "installment",
+            PPDBPaymentTransaction.status == "success",
+        )
+        return int(self.db.scalar(stmt) or 0)
+
+    def get_verified_stage2_payments(
+        self, applicant_id: str
+    ) -> list[PPDBPaymentTransaction]:
+        stmt = (
+            select(PPDBPaymentTransaction)
+            .where(
+                PPDBPaymentTransaction.applicant_id == applicant_id,
+                PPDBPaymentTransaction.payment_type.in_(["dp", "installment"]),
+                PPDBPaymentTransaction.status == "success",
+            )
+            .order_by(PPDBPaymentTransaction.created_at.asc())
+        )
+        return list(self.db.scalars(stmt).all())

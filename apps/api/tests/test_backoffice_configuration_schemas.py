@@ -103,3 +103,29 @@ def test_tiu_sync_question_requires_unique_options_and_valid_answer():
             options=["2", "3"],
             correct_option_index=2,
         )
+
+
+def test_period_create_supports_head_of_committee():
+    from src.modules.ppdb.schemas import PeriodCreate
+
+    p = PeriodCreate(
+        name="Periode 2026/2027",
+        academic_year="2026/2027",
+        head_of_committee="Dr. H. Ahmad Dahlan, M.Pd.",
+    )
+    assert p.head_of_committee == "Dr. H. Ahmad Dahlan, M.Pd."
+    assert p.name == "Periode 2026/2027"
+    assert p.academic_year == "2026/2027"
+
+
+def test_loa_signature_request_validation():
+    from src.modules.ppdb.schemas import LoASignatureRequest
+
+    req = LoASignatureRequest(
+        signer_name="Budi Santoso",
+        signer_relation="Ayah",
+        signature_data="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    )
+    assert req.signer_name == "Budi Santoso"
+    assert req.signer_relation == "Ayah"
+    assert req.signature_data.startswith("data:image/png")

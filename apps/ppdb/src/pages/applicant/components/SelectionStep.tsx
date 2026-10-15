@@ -164,7 +164,7 @@ export default function SelectionStep({
 
           {/* SEB Guide Modal */}
           <Dialog open={showSebGuide} onOpenChange={setShowSebGuide}>
-            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
               <DialogHeader>
                 <DialogTitle>Panduan Instalasi & Solusi Error (Troubleshooting) SEB</DialogTitle>
                 <DialogDescription>

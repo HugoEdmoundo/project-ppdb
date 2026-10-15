@@ -22,6 +22,7 @@ const periodSchema = z.object({
   academic_year: z.string().min(1, 'Tahun ajaran wajib diisi'),
   description: z.string().optional(),
   wa_group_link: z.string().optional(),
+  head_of_committee: z.string().optional(),
 })
 
 type PeriodFormData = z.infer<typeof periodSchema>
@@ -50,7 +51,7 @@ export default function PeriodsPage() {
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<PeriodFormData>({
     resolver: zodResolver(periodSchema),
-    defaultValues: { name: '', academic_year: '', description: '', wa_group_link: '' }
+    defaultValues: { name: '', academic_year: '', description: '', wa_group_link: '', head_of_committee: '' }
   })
 
   // Aktivasi/deaktivasi periode menonaktifkan wave global → semua data
@@ -118,7 +119,7 @@ export default function PeriodsPage() {
 
   const openCreate = () => {
     setEditingPeriod(null)
-    reset({ name: '', academic_year: '', description: '', wa_group_link: '' })
+    reset({ name: '', academic_year: '', description: '', wa_group_link: '', head_of_committee: '' })
     setShowForm(true)
   }
 
@@ -128,7 +129,8 @@ export default function PeriodsPage() {
       name: p.name,
       academic_year: p.academic_year || '',
       description: p.description || '',
-      wa_group_link: p.wa_group_link || ''
+      wa_group_link: p.wa_group_link || '',
+      head_of_committee: p.head_of_committee || ''
     })
     setShowForm(true)
   }
@@ -265,6 +267,18 @@ export default function PeriodsPage() {
                 disabled={!canCrud || isSubmitting}
               />
               {errors.wa_group_link && <p className="text-xs text-red-500">{errors.wa_group_link.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>Nama Ketua Panitia PPDB (Opsional)</Label>
+              <Input
+                {...register('head_of_committee')}
+                placeholder="Contoh: Ust. Wijaya Kurnia, M.Pd."
+                disabled={!canCrud || isSubmitting}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Nama ini akan dicantumkan secara resmi pada tanda tangan Letter of Acceptance (LoA).
+              </p>
+              {errors.head_of_committee && <p className="text-xs text-red-500">{errors.head_of_committee.message}</p>}
             </div>
             {canCrud && (
               <DialogFooter>

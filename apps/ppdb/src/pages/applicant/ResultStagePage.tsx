@@ -1,14 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/api/client'
-import { useToast } from '@/components/Toast'
 import ApplicantPageHeader from '@/components/shared/ApplicantPageHeader'
-import ResultStep from './components/ResultStep'
+import LoaResultStep from './components/LoaResultStep'
 import { Skeleton } from '@/components/ui'
 
 export default function ResultStagePage() {
-  const { toast } = useToast()
-  const queryClient = useQueryClient()
-
   const transactionQuery = useQuery({
     queryKey: ['my-transaction'],
     queryFn: () => apiFetch<any>('/payment/my-transaction'),
@@ -17,16 +13,8 @@ export default function ResultStagePage() {
   const loaQuery = useQuery({
     queryKey: ['my-loa'],
     queryFn: async () => {
-      const res = await apiFetch<any>('/ppdb/applicants/me/loa').catch(() => ({ loa: null }))
-      return res?.loa || null
-    },
-  })
-
-  const stage2Query = useQuery({
-    queryKey: ['my-stage2-bills'],
-    queryFn: async () => {
-      const res = await apiFetch<any>('/payment/stage2/my-bills').catch(() => ({ bills: [], mou_signed: false }))
-      return res?.bills || []
+      const res = await apiFetch<any>('/ppdb/applicants/me/loa').catch(() => null)
+      return res?.letter_number ? res : (res?.loa || null)
     },
   })
 
@@ -40,33 +28,7 @@ export default function ResultStagePage() {
 
   const applicant = transactionQuery.data?.applicant
   const loa = loaQuery.data
-  const stage2Bills = stage2Query.data || []
   const isLoading = transactionQuery.isLoading || loaQuery.isLoading
-
-  const uploadProofMutation = useMutation({
-    mutationFn: ({ billId, file }: { billId: string, file: File }) => {
-      const formData = new FormData()
-      formData.append('file', file)
-      return apiFetch(`/payment/stage2/bills/${billId}/upload-proof`, { method: 'POST', body: formData })
-    },
-    onSuccess: () => {
-      toast('success', 'Bukti pembayaran berhasil diunggah. Menunggu konfirmasi admin.')
-      queryClient.invalidateQueries({ queryKey: ['my-stage2-bills'] })
-    },
-    onError: (e: any) => toast('error', e.message || 'Gagal upload bukti'),
-  })
-
-  const handleUploadProof = (billId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 5 * 1024 * 1024) {
-      toast('error', 'Ukuran file maksimal 5MB')
-      e.target.value = ''
-      return
-    }
-    uploadProofMutation.mutate({ billId, file })
-    e.target.value = ''
-  }
 
   return (
     <div className="mx-auto max-w-4xl w-full space-y-6">
@@ -83,12 +45,10 @@ export default function ResultStagePage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-sm border border-slate-200">
-          <ResultStep
+          <LoaResultStep
             applicant={applicant}
             selectionResult={selectionQuery.data ?? null}
             loa={loa}
-            stage2Bills={stage2Bills}
-            onUploadProof={handleUploadProof}
           />
         </div>
       )}

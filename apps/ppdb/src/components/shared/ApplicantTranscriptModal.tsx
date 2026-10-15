@@ -156,7 +156,7 @@ export default function ApplicantTranscriptModal({
                       <div className="bg-slate-100 px-3 py-1.5 font-semibold text-xs border-b">
                         {cat.category_name}
                       </div>
-                      <div className="overflow-x-auto">
+                      <div className="overflow-x-auto touch-pan-x">
                         <table className="w-full text-xs min-w-[320px]">
                           <thead>
                             <tr className="border-b bg-slate-50/50 text-slate-500 text-[11px]">

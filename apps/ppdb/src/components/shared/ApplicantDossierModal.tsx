@@ -257,7 +257,7 @@ export default function ApplicantDossierModal({
               </div>
             ) : !applicant ? null : (
               <Tabs defaultValue="biodata" className="w-full">
-                <TabsList className="flex items-center justify-start overflow-x-auto no-scrollbar w-full bg-slate-100 p-1 mb-5 sm:mb-6 gap-1 whitespace-nowrap">
+                <TabsList className="flex items-center justify-start overflow-x-auto touch-pan-x no-scrollbar w-full bg-slate-100 p-1 mb-5 sm:mb-6 gap-1 whitespace-nowrap">
                   <TabsTrigger value="biodata" className="text-xs gap-1.5 shrink-0 px-3 py-1.5">
                     <User className="h-3.5 w-3.5" />
                     Biodata

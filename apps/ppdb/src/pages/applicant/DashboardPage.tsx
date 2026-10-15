@@ -6,6 +6,7 @@ import { DocTrigger } from '@repo/ui'
 import {
   CheckCircle, Lock, Wallet, FileUp, Trophy, AlertCircle,
   Compass, ArrowLeftRight, ShieldCheck, BookOpen, MessageSquare, ArrowRight,
+  CreditCard, DollarSign,
 } from 'lucide-react'
 import { apiFetch } from '@/api/client'
 import { useQuery } from '@tanstack/react-query'
@@ -73,6 +74,15 @@ export default function ApplicantDashboardPage() {
     queryFn: () => apiFetch<any>('/companyprofile/contact-info'),
   })
 
+  const loaQuery = useQuery({
+    queryKey: ['my-loa'],
+    queryFn: async () => {
+      const res = await apiFetch<any>('/ppdb/applicants/me/loa').catch(() => null)
+      return res?.letter_number ? res : (res?.loa || null)
+    },
+    enabled: ['passed', 'failed'].includes(status),
+  })
+
   const contactInfo = contactQuery.data ?? null
 
   const regPath = (applicant?.registration_path || '').toLowerCase()
@@ -83,6 +93,11 @@ export default function ApplicantDashboardPage() {
   )?.score
   const hasTahfidzScore = selectionQuery.data?.sessionData?.has_tahfidz_score || false
   const hasInterviewScore = selectionQuery.data?.sessionData?.has_interview_score || false
+
+  const financials = transactionQuery.data?.financials
+  const isLoaSigned = Boolean(applicant?.is_loa_signed || loaQuery.data?.is_loa_signed)
+  const isDpPaid = Boolean(financials?.dp_paid)
+  const isLunas = Boolean(financials?.is_lunas)
 
   // Step definition dinamis (Granular) mengarah ke halaman baru/terpisah
   const steps = isTiuPath ? [
@@ -133,10 +148,26 @@ export default function ApplicantDashboardPage() {
     {
       number: 6,
       title: 'Hasil Kelulusan & LoA',
-      description: 'Pengumuman hasil akhir penerimaan santri baru.',
+      description: 'Pengumuman kelulusan dan penandatanganan LoA resmi.',
       icon: Trophy,
-      status: ['passed', 'failed'].includes(status) ? 'completed' : 'locked',
+      status: status === 'passed' ? (isLoaSigned ? 'completed' : 'active') : status === 'failed' ? 'completed' : 'locked',
       path: '/applicant/pengumuman',
+    },
+    {
+      number: 7,
+      title: 'Bayar DP & Sertifikat',
+      description: 'Pembayaran Uang Muka (DP) & klaim Sertifikat SKD resmi.',
+      icon: CreditCard,
+      status: status === 'passed' && isLoaSigned ? (isDpPaid ? 'completed' : 'active') : 'locked',
+      path: '/applicant/bayar-dp',
+    },
+    {
+      number: 8,
+      title: 'Pembayaran Tahap 2',
+      description: 'Monitoring sisa tagihan pendidikan dan cicilan bertahap.',
+      icon: DollarSign,
+      status: status === 'passed' && isDpPaid ? (isLunas ? 'completed' : 'active') : 'locked',
+      path: '/applicant/pembayaran-tahap2',
     },
   ] : [
     {
@@ -177,10 +208,26 @@ export default function ApplicantDashboardPage() {
     {
       number: 5,
       title: 'Hasil Kelulusan & LoA',
-      description: 'Pengumuman hasil akhir penerimaan santri baru.',
+      description: 'Pengumuman kelulusan dan penandatanganan LoA resmi.',
       icon: Trophy,
-      status: ['passed', 'failed'].includes(status) ? 'completed' : 'locked',
+      status: status === 'passed' ? (isLoaSigned ? 'completed' : 'active') : status === 'failed' ? 'completed' : 'locked',
       path: '/applicant/pengumuman',
+    },
+    {
+      number: 6,
+      title: 'Bayar DP & Sertifikat',
+      description: 'Pembayaran Uang Muka (DP) & klaim Sertifikat SKD resmi.',
+      icon: CreditCard,
+      status: status === 'passed' && isLoaSigned ? (isDpPaid ? 'completed' : 'active') : 'locked',
+      path: '/applicant/bayar-dp',
+    },
+    {
+      number: 7,
+      title: 'Pembayaran Tahap 2',
+      description: 'Monitoring sisa tagihan pendidikan dan cicilan bertahap.',
+      icon: DollarSign,
+      status: status === 'passed' && isDpPaid ? (isLunas ? 'completed' : 'active') : 'locked',
+      path: '/applicant/pembayaran-tahap2',
     },
   ]
 
@@ -206,12 +253,12 @@ export default function ApplicantDashboardPage() {
     <>
       <div className="mx-auto max-w-5xl w-full space-y-6">
         {/* Welcome Header */}
-        <div className="rounded-3xl bg-gradient-to-r from-emerald-primary via-emerald-800 to-teal-800 p-4 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="rounded-3xl bg-gradient-to-r from-emerald-primary via-emerald-800 to-teal-800 p-5 sm:p-8 text-white shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl pointer-events-none" />
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6 relative z-10">
             <div className="min-w-0">
               <span className="text-emerald-100 text-xs font-medium uppercase tracking-wider">Dashboard Pendaftar</span>
-              <h1 className="mt-0.5 truncate font-heading text-2xl font-bold md:text-3xl">{firstName}</h1>
+              <h1 className="mt-0.5 break-words font-heading text-xl sm:text-2xl md:text-3xl font-bold leading-tight">{firstName}</h1>
               <p className="mt-1 text-xs sm:text-sm text-emerald-50/90 leading-relaxed">
                 Pantau progres pendaftaran Anda dan selesaikan setiap tahapan yang masih aktif.
               </p>
@@ -293,12 +340,8 @@ export default function ApplicantDashboardPage() {
         )}
 
         {/* Visual Timeline (Stepper) */}
-{/* `no-scrollbar`, bukan `hide-scrollbar` — class itu tidak pernah
-            didefinisikan di index.css mana pun di repo, jadi scrollbar di
-            timeline ini akan muncul lagi. Lebar 720px mengikuti versi remote
-            karena tahap pendaftar yang baru memang lebih lebar. */}
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 overflow-x-auto no-scrollbar">
-          <div className="min-w-[720px]">
+        <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-200 overflow-x-auto touch-pan-x">
+          <div className="min-w-[880px] pb-1">
             <div className="flex items-center justify-between relative">
               <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full z-0" />
               <div

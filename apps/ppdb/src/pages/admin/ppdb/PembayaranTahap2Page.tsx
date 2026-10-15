@@ -8,23 +8,23 @@ import PageHeaderCard from '@/components/shared/PageHeaderCard'
 import Stage2BillsMonitoring from './components/Stage2BillsMonitoring'
 
 export default function PembayaranTahap2Page() {
-  const activeWaveQuery = useQuery({
-    queryKey: ['waves-active'],
+  const periodsQuery = useQuery({
+    queryKey: ['periods-all'],
     queryFn: async () => {
-      const res = await apiFetch<any[]>('/ppdb/waves')
-      return res.find((w) => w.status === 'active') || null
+      const res = await apiFetch<any[]>('/ppdb/periods/all')
+      return res || []
     },
   })
 
-  const activeWave = activeWaveQuery.data ?? null
-  const wavesLoading = activeWaveQuery.isLoading
+  const activePeriod = (periodsQuery.data || []).find((p) => p.status === 'active') || null
+  const periodLoading = periodsQuery.isLoading
 
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeaderCard
         title="Pembayaran Tahap 2"
         description="Monitoring tagihan DP dan cicilan biaya pendidikan. Status terverifikasi otomatis via webhook."
-        loading={wavesLoading}
+        loading={periodLoading}
         docKey="ppdb-pembayaran-tahap2"
         action={
           <Button asChild variant="outline" size="sm" className="h-10 w-fit rounded-full px-4">
@@ -34,13 +34,13 @@ export default function PembayaranTahap2Page() {
           </Button>
         }
         blocks={[
-          { icon: Activity, label: 'Gelombang Aktif', value: activeWave?.name || 'Tidak ada', active: !!activeWave, pulse: !!activeWave },
+          { icon: Activity, label: 'Periode Aktif', value: activePeriod?.name || 'Tidak ada', active: !!activePeriod, pulse: !!activePeriod },
           { icon: CreditCard, label: 'Sistem Pembayaran', value: 'Monitoring Otomatis', active: true },
         ]}
       />
 
-      {!wavesLoading && !activeWave && (
-        <NoActiveWaveBanner message="Tidak ada gelombang yang aktif saat ini. Aktifkan gelombang terlebih dahulu untuk memantau pembayaran tahap 2." />
+      {!periodLoading && !activePeriod && (
+        <NoActiveWaveBanner message="Tidak ada periode yang aktif saat ini. Aktifkan periode terlebih dahulu untuk memantau pembayaran tahap 2." />
       )}
 
       {/* Murni Monitoring Tagihan & Cicilan */}

@@ -35,6 +35,7 @@ from src.modules.ppdb.schemas import (
     WaveUpdate,
 )
 from src.repositories.ppdb_repository import PPDBRepository
+from src.repositories.ppdb_scope import get_active_period, get_active_period_info
 
 WIB = ZoneInfo("Asia/Jakarta")
 
@@ -299,6 +300,7 @@ class PPDBService:
             academic_year=body.academic_year,
             description=body.description,
             wa_group_link=body.wa_group_link,
+            head_of_committee=body.head_of_committee,
             status="inactive",
             created_at=datetime.now(WIB),
             updated_at=datetime.now(WIB),
@@ -322,6 +324,8 @@ class PPDBService:
             period.description = provided["description"]
         if "wa_group_link" in provided:
             period.wa_group_link = provided["wa_group_link"]
+        if "head_of_committee" in provided:
+            period.head_of_committee = provided["head_of_committee"]
         period.updated_at = datetime.now(WIB)
 
         self.repository.update_period(period)
@@ -959,13 +963,20 @@ class PPDBService:
         label asal. Filter ``period_id``/``wave_id`` bersifat opsional untuk
         mempersempit tampilan.
 
-        ``wave_id = "active"`` mempertahankan perilaku lama (hanya gelombang
-        aktif) untuk halaman admin PPDB yang memang operasional per gelombang.
+        ``period_id = "active"`` membatasi ke PERIODE aktif (semua gelombang di
+        dalamnya) — inilah scope halaman operasional admin PPDB. Bila tidak ada
+        periode aktif, hasilnya kosong. ``wave_id = "active"`` dipertahankan
+        untuk kompatibilitas (hanya gelombang aktif).
         """
         resolved_wave_id = wave_id
         if wave_id == "active":
             active_wave = self.repository.get_active_wave()
             resolved_wave_id = active_wave.id if active_wave else "__none__"
+
+        resolved_period_id = period_id
+        if period_id == "active":
+            active_period = get_active_period(self.repository.db)
+            resolved_period_id = active_period.id if active_period else "__none__"
 
         data, total = self.repository.get_applicants_paginated(
             resolved_wave_id,
@@ -973,7 +984,7 @@ class PPDBService:
             status,
             page,
             per_page,
-            period_id=period_id,
+            period_id=resolved_period_id,
             payment_status=payment_status,
         )
 
@@ -985,9 +996,12 @@ class PPDBService:
             "data": data,
             "total": total,
             "active_wave": active_wave_info,
+            "active_period": get_active_period_info(self.repository.db),
             "scope": {
                 "wave_id": resolved_wave_id if resolved_wave_id != "__none__" else None,
-                "period_id": period_id,
+                "period_id": (
+                    resolved_period_id if resolved_period_id != "__none__" else None
+                ),
             },
         }
 
@@ -1744,50 +1758,347 @@ class PPDBService:
         if not applicant:
             raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
 
-        # LoA dibuat otomatis oleh sistem — tidak ada template yang bisa diedit admin
-        template_text = (
-            "SURAT PENERIMAAN SANTRI BARU (LETTER OF ACCEPTANCE)\n\n"
-            "Dengan hormat,\n"
-            "Berdasarkan hasil evaluasi seleksi Penerimaan Peserta Didik "
-            "Baru (PPDB), kami menyatakan bahwa:\n\n"
-            "Nama Lengkap: {{nama}}\n"
-            "Nomor Induk / NISN: {{nisn}}\n"
-            "Jalur Pendaftaran: {{jalur}}\n"
-            "Gelombang: {{gelombang}}\n\n"
-            "Dinyatakan DITERIMA / LULUS sebagai santri baru di "
-            "Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.\n\n"
-            "Harap segera menyelesaikan tahapan administrasi dan "
-            "pembayaran Tahap 2 sesuai jadwal yang ditentukan."
+        app_obj = self.repository.db.get(PPDBApplicant, applicant_id)
+        now = datetime.now(WIB)
+
+        # Pastikan nomor registrasi terisi unik baku
+        reg_no = applicant.get("registration_number")
+        if not reg_no and app_obj:
+            c_date = (app_obj.created_at or now).strftime("%d%m%y")
+            clean_id = (
+                "".join(c for c in app_obj.id if c.isalnum())[-5:].upper().zfill(5)
+            )
+            reg_no = f"REG-{c_date}{clean_id}"
+            app_obj.registration_number = reg_no
+            self.repository.db.commit()
+            applicant["registration_number"] = reg_no
+
+        from src.models.ppdb import PPDBPeriod, PPDBWave, PPDBWaveFeeItem
+
+        # Ambil data periode aktif / induk
+        period_id = applicant.get("period_id")
+        period = self.repository.db.get(PPDBPeriod, period_id) if period_id else None
+
+        academic_year = (
+            period.academic_year if period and period.academic_year else "2026 / 2027"
+        )
+        admission_officer = (
+            period.head_of_committee if period and period.head_of_committee else None
+        ) or "Ust. Wijaya Kurnia, M.Pd."
+        wa_group_link = period.wa_group_link if period and period.wa_group_link else ""
+
+        # Ambil data gelombang
+        wave_id = applicant.get("wave_id")
+        wave = self.repository.db.get(PPDBWave, wave_id) if wave_id else None
+        wave_name = wave.name if wave else (applicant.get("wave_name") or "Gelombang 1")
+        minimum_dp = int(wave.minimum_dp) if wave and wave.minimum_dp else 5000000
+
+        # Ambil item biaya riil dari konfigurasi gelombang
+        fee_items_query = (
+            self.repository.db.query(PPDBWaveFeeItem)
+            .filter(PPDBWaveFeeItem.wave_id == wave_id)
+            .order_by(PPDBWaveFeeItem.order_index.asc())
+            .all()
+            if wave_id
+            else []
         )
 
-        replacements = {
-            "{{nama}}": applicant.get("full_name") or "",
-            "{{nisn}}": applicant.get("nisn") or applicant.get("nik") or "-",
-            "{{no_registrasi}}": applicant.get("nisn")
-            or str(applicant.get("id", ""))[:8].upper(),
-            "{{jalur}}": str(applicant.get("registration_path") or "").capitalize(),
-            "{{jenjang}}": "SMK",
-            "{{gelombang}}": str(applicant.get("wave_name") or "-"),
-            "{{tanggal}}": datetime.now(WIB).strftime("%d %B %Y"),
+        fee_items = []
+        if fee_items_query:
+            for item in fee_items_query:
+                fee_items.append(
+                    {
+                        "id": item.id,
+                        "name": item.name,
+                        "nominal": int(item.nominal),
+                        "description": item.description
+                        or "Biaya komponen pendidikan resmi PPDB.",
+                    }
+                )
+        else:
+            fee_items = [
+                {
+                    "name": f"Biaya Pembangunan (Early Bird {wave_name})",
+                    "nominal": 10000000,
+                    "description": (
+                        "Potongan diskon pendaftar awal, dibayarkan 1 kali."
+                    ),
+                },
+                {
+                    "name": "SPP / Biaya Pendidikan Bulan Pertama",
+                    "nominal": 1500000,
+                    "description": ("Biaya bulanan asrama, konsumsi, dan tahfidz."),
+                },
+                {
+                    "name": "Biaya Matrikulasi (Pre-Pesantren)",
+                    "nominal": 1000000,
+                    "description": ("Orientasi dan pembekalan adab santri baru."),
+                },
+                {
+                    "name": "Biaya Seragam, Kitab & Modul Digital",
+                    "nominal": 2500000,
+                    "description": (
+                        "4 setel seragam santri, paket kitab, dan modul digital."
+                    ),
+                },
+            ]
+
+        total_fee = sum(item["nominal"] for item in fee_items)
+        if (
+            wave
+            and wave.second_stage_fee
+            and wave.second_stage_fee > 0
+            and not fee_items_query
+        ):
+            total_fee = int(wave.second_stage_fee)
+
+        months_id = {
+            1: "Januari",
+            2: "Februari",
+            3: "Maret",
+            4: "April",
+            5: "Mei",
+            6: "Juni",
+            7: "Juli",
+            8: "Agustus",
+            9: "September",
+            10: "Oktober",
+            11: "November",
+            12: "Desember",
         }
 
-        rendered = template_text
-        for placeholder, val in replacements.items():
-            rendered = rendered.replace(placeholder, val)
+        # Tenggat waktu Opsi A (Lunas): 6 bulan setelah diterima / ttd
+        base_date = (
+            app_obj.loa_signed_at
+            if app_obj and app_obj.loa_signed_at
+            else (app_obj.updated_at if app_obj and app_obj.updated_at else now)
+        )
+        y = base_date.year + (base_date.month + 6 - 1) // 12
+        m = (base_date.month + 6 - 1) % 12 + 1
+        d = min(base_date.day, 28)
+        deadline_dt = datetime(y, m, d, 23, 59, 59)
+        deadline_str = f"{d} {months_id[m]} {y}"
 
+        letter_date_str = (
+            f"{base_date.day} {months_id[base_date.month]} {base_date.year}"
+        )
+
+        # Payment Method Info
         FIXED_LOA_CLAUSE = (
             "Seluruh dana yang telah dibayarkan tidak dapat dikembalikan."
         )
+        letter_number = (
+            f"LoA/PPDB/{base_date.year}/{reg_no or applicant_id[:8].upper()}"
+        )
 
-        applicant_ref = str(applicant.get("id", ""))[:8].upper()
+        loa_signed_at_raw = applicant.get("loa_signed_at")
+        loa_signed_at_iso = (
+            loa_signed_at_raw.isoformat() if loa_signed_at_raw is not None else None
+        )
+
         return {
-            "letter_number": f"LoA/PPDB/{datetime.now(WIB).year}/{applicant_ref}",
+            "letter_number": letter_number,
+            "registration_number": reg_no,
+            "academic_year": academic_year,
+            "admission_officer": admission_officer,
+            "director_name": "Ust. Dr. H. Abdurrahman, M.A.",
+            "location": "Bogor",
+            "date_str": letter_date_str,
             "applicant": applicant,
-            "content": rendered,
+            "fee_items": fee_items,
+            "total_fee": total_fee,
+            "minimum_dp": minimum_dp,
+            "discount_name": f"Potongan Biaya Pembangunan (Early Bird {wave_name})",
+            "deadline_lunas": deadline_str,
+            "deadline_lunas_iso": deadline_dt.isoformat(),
             "fixed_clause": FIXED_LOA_CLAUSE,
             "is_graduated": applicant.get("status") == "passed",
-            "issued_at": datetime.now(WIB).isoformat(),
+            "is_loa_signed": bool(applicant.get("is_loa_signed")),
+            "loa_signed_at": loa_signed_at_iso,
+            "loa_signer_name": applicant.get("loa_signer_name"),
+            "loa_signer_relation": applicant.get("loa_signer_relation")
+            or "Orang Tua / Wali",
+            "loa_signature_data": applicant.get("loa_signature_data"),
+            "loa_signature_token": applicant.get("loa_signature_token"),
+            "payment_method": "QRIS Terintegrasi (Aplikasi PPDB)",
+            "payment_channel": "Dashboard Portal Calon Santri",
+            "va_bank": "QRIS Digital Terintegrasi",
+            "va_number": "Pembayaran Langsung di Dashboard PPDB",
+            "whatsapp_group_link": wa_group_link,
+            "content": (
+                "SURAT PENERIMAAN SANTRI BARU (LETTER OF ACCEPTANCE)\n\n"
+                "Selamat! Anda telah dinyatakan LULUS seleksi dan dinyatakan "
+                "DITERIMA sebagai santri / peserta didik baru Pesantren "
+                "Tahfidz Qur'an dan Digital Ar-Rahman dalam Academic Year "
+                f"{academic_year} melalui jalur pendaftaran "
+                f"\"{applicant.get('registration_path', 'Reguler')}\"."
+            ),
+            "issued_at": now.isoformat(),
         }
+
+    def sign_applicant_loa(self, applicant_id: str, body: Any) -> dict[str, Any]:
+        app = self.repository.db.get(PPDBApplicant, applicant_id)
+        if not app:
+            raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+        if app.status != "passed":
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Hanya pendaftar yang telah dinyatakan LULUS yang dapat "
+                    "menandatangani LoA."
+                ),
+            )
+
+        now = datetime.now(WIB)
+        if not app.registration_number:
+            c_date = (app.created_at or now).strftime("%d%m%y")
+            clean_id = "".join(c for c in app.id if c.isalnum())[-5:].upper().zfill(5)
+            app.registration_number = f"REG-{c_date}{clean_id}"
+
+        app.is_loa_signed = True
+        app.loa_signed_at = now
+        app.loa_signer_name = body.signer_name.strip()
+        app.loa_signer_relation = body.signer_relation.strip()
+        app.loa_signature_data = body.signature_data.strip()
+        if not app.loa_signature_token:
+            app.loa_signature_token = uuid.uuid4().hex
+        app.updated_at = now
+
+        self.repository.db.commit()
+        self.repository.db.refresh(app)
+
+        return {
+            "status": "success",
+            "message": (
+                "Letter of Acceptance berhasil ditandatangani secara digital "
+                "oleh orang tua / wali."
+            ),
+            "registration_number": app.registration_number,
+            "loa_signature_token": app.loa_signature_token,
+            "loa_signed_at": app.loa_signed_at.isoformat(),
+        }
+
+    def get_signed_loa_applicants(
+        self,
+        search: str | None = None,
+        page: int = 1,
+        per_page: int = 10,
+    ) -> dict[str, Any]:
+        import sqlalchemy as sa
+
+        from src.models.auth import User
+        from src.models.ppdb import PPDBPeriod, PPDBWave
+
+        # Halaman operasional admin hanya menampilkan penerima LoA dari periode
+        # aktif. Tanpa periode aktif, tidak ada data (bukan lintas periode).
+        active_period = get_active_period_info(self.repository.db)
+        if not active_period:
+            return {
+                "data": [],
+                "total": 0,
+                "grand_total": 0,
+                "signed_count": 0,
+                "pending_count": 0,
+                "page": page,
+                "per_page": per_page,
+                "active_period": None,
+            }
+
+        query = (
+            self.repository.db.query(
+                PPDBApplicant,
+                PPDBWave.name.label("wave_name"),
+                PPDBPeriod.name.label("period_name"),
+                User.username,
+            )
+            .outerjoin(PPDBWave, PPDBApplicant.wave_id == PPDBWave.id)
+            .outerjoin(PPDBPeriod, PPDBWave.period_id == PPDBPeriod.id)
+            .outerjoin(User, PPDBApplicant.user_id == User.id)
+            # Semua pendaftar yang dinyatakan LULUS telah menerima LoA, baik yang
+            # sudah menandatangani maupun yang masih menunggu tanda tangan.
+            .filter(
+                PPDBApplicant.status == "passed",
+                PPDBWave.period_id == active_period["id"],
+            )
+        )
+
+        # Ringkasan global (tanpa filter pencarian)
+        signed_count = query.filter(PPDBApplicant.is_loa_signed.is_(True)).count()
+        grand_total = query.count()
+        pending_count = grand_total - signed_count
+
+        if search:
+            s = f"%{search.strip()}%"
+            query = query.filter(
+                sa.or_(
+                    PPDBApplicant.full_name.ilike(s),
+                    PPDBApplicant.registration_number.ilike(s),
+                    PPDBApplicant.nisn.ilike(s),
+                    PPDBApplicant.loa_signer_name.ilike(s),
+                )
+            )
+
+        total = query.count()
+        rows = (
+            query.order_by(
+                PPDBApplicant.is_loa_signed.desc(),
+                PPDBApplicant.loa_signed_at.desc(),
+                PPDBApplicant.updated_at.desc(),
+            )
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+            .all()
+        )
+        data = []
+        for app, wave_name, period_name, username in rows:
+            data.append(
+                {
+                    "id": app.id,
+                    "full_name": app.full_name,
+                    "registration_number": app.registration_number,
+                    "nisn": app.nisn or app.nik or "-",
+                    "registration_path": app.registration_path,
+                    "previous_school": app.previous_school,
+                    "wave_name": wave_name,
+                    "period_name": period_name,
+                    "username": username,
+                    "is_loa_signed": app.is_loa_signed,
+                    "loa_signed_at": app.loa_signed_at.isoformat()
+                    if app.loa_signed_at
+                    else None,
+                    "loa_signer_name": app.loa_signer_name,
+                    "loa_signer_relation": app.loa_signer_relation,
+                    "loa_signature_token": app.loa_signature_token,
+                }
+            )
+        return {
+            "data": data,
+            "total": total,
+            "grand_total": grand_total,
+            "signed_count": signed_count,
+            "pending_count": pending_count,
+            "page": page,
+            "per_page": per_page,
+            "active_period": active_period,
+        }
+
+    def get_loa_by_registration_or_id(self, identifier: str) -> dict[str, Any]:
+        import sqlalchemy as sa
+
+        app = (
+            self.repository.db.query(PPDBApplicant)
+            .filter(
+                sa.or_(
+                    PPDBApplicant.id == identifier,
+                    PPDBApplicant.registration_number == identifier,
+                    PPDBApplicant.loa_signature_token == identifier,
+                )
+            )
+            .first()
+        )
+        if not app:
+            raise HTTPException(status_code=404, detail="Dokumen LoA tidak ditemukan")
+        return self.get_applicant_loa(app.id)
 
     def get_applicant_skd(self, applicant_id: str) -> dict[str, Any]:
         applicant = self.repository.get_applicant_detail(applicant_id)
@@ -1802,14 +2113,28 @@ class PPDBService:
         period_id = applicant.get("period_id")
         period = self.repository.db.get(PPDBPeriod, period_id) if period_id else None
         wa_link = period.wa_group_link if period and period.wa_group_link else ""
+        academic_year = (
+            period.academic_year if period and period.academic_year else "2026 / 2027"
+        )
+        admission_officer = (
+            period.head_of_committee if period and period.head_of_committee else None
+        ) or "Ust. Wijaya Kurnia, M.Pd."
 
-        applicant_ref = str(applicant.get("id", ""))[:8].upper()
+        reg_no = (
+            applicant.get("registration_number")
+            or str(applicant.get("id", ""))[:8].upper()
+        )
+        now = datetime.now(WIB)
         return {
-            "letter_number": f"SKD/PPDB/{datetime.now(WIB).year}/{applicant_ref}",
+            "letter_number": f"No. {reg_no}/SKD-PPDB/{now.year}",
+            "registration_number": reg_no,
+            "academic_year": academic_year,
+            "admission_officer": admission_officer,
+            "director_name": "Ust. Dr. H. Abdurrahman, M.A.",
             "applicant": applicant,
             "background_url": "",
             "whatsapp_group_link": wa_link or "",
-            "issued_at": datetime.now(WIB).isoformat(),
+            "issued_at": now.isoformat(),
         }
 
     def get_archive_applicants(

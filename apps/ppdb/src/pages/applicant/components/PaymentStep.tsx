@@ -10,6 +10,7 @@ import {
   Check,
 } from 'lucide-react'
 import { Card, CardContent, Button, Badge } from "@/components/ui"
+import ReceiptQrCode from '@/components/shared/ReceiptQrCode'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/Toast'
 
@@ -39,6 +40,9 @@ export default function PaymentStep({ transaction, applicant }: PaymentStepProps
     : '-'
   const applicantName = applicant?.full_name || 'Calon Santri'
   const pathName = (applicant?.registration_path || 'Reguler').toUpperCase()
+  // QR verifikasi berisi URL kuitansi publik. Hanya dibuat kalau transaksi
+  // benar-benar ada, supaya tidak ada QR yang menunjuk ke kuitansi kosong.
+  const verifyUrl = hasPayment ? `${window.location.origin}/kuitansi/${transaction!.id}` : null
   const amountStr = formatRp(transaction?.amount || 0)
   const payDateStr = transaction?.updated_at
     ? new Date(transaction.updated_at).toLocaleDateString('id-ID', {
@@ -169,21 +173,34 @@ export default function PaymentStep({ transaction, applicant }: PaymentStepProps
             </div>
           </div>
 
-          {/* QR Code Verifikasi Kuitansi */}
+          {/* QR Code Verifikasi Kuitansi — QR asli berisi URL kuitansi publik */}
           <div className="pt-2 border-t border-dashed border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-slate-50/70 rounded-2xl border border-slate-100">
-            <div className="flex items-center gap-3.5">
-              <div className="p-2.5 bg-slate-900 text-white rounded-xl shadow-xs">
-                <QrCode className="h-9 w-9" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-center gap-3.5 min-w-0">
+              {verifyUrl ? (
+                <a
+                  href={verifyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 transition-transform hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 rounded-xl"
+                  title="Pindai dengan kamera ponsel atau klik untuk membuka kuitansi publik"
+                  aria-label="Buka kuitansi publik untuk verifikasi"
+                >
+                  <ReceiptQrCode value={verifyUrl} size={96} />
+                </a>
+              ) : (
+                <div className="p-2.5 bg-slate-900 text-white rounded-xl shadow-xs shrink-0">
+                  <QrCode className="h-9 w-9" />
+                </div>
+              )}
+              <div className="min-w-0 text-center sm:text-left">
+                <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
                     QR Verifikasi
                   </span>
                   <span className="text-xs font-mono text-slate-500 font-semibold">{receiptNo}</span>
                 </div>
                 <p className="text-xs text-slate-600 mt-1">
-                  Kuitansi sah &amp; terverifikasi otomatis oleh Panitia PPDB Ar-Rahman
+                  Pindai QR dengan kamera ponsel untuk membuka kuitansi publik dan memverifikasi keasliannya.
                 </p>
               </div>
             </div>

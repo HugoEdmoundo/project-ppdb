@@ -8,7 +8,7 @@ from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from src.models.auth import User
-from src.models.ppdb import PPDBApplicant, PPDBWave, TIUResult
+from src.models.ppdb import PPDBApplicant, PPDBPeriod, PPDBWave, TIUResult
 from src.models.selection import (
     SelectionCategory,
     SelectionCriteria,
@@ -26,10 +26,18 @@ class SelectionRepository:
         return cast(User | None, self.db.get(User, user_id))
 
     def get_active_wave_id(self) -> str | None:
-        stmt = select(PPDBWave.id).where(PPDBWave.status == "active").limit(1)
+        # Gelombang hanya dianggap aktif bila periode induknya juga aktif.
+        stmt = (
+            select(PPDBWave.id)
+            .join(PPDBPeriod, PPDBPeriod.id == PPDBWave.period_id)
+            .where(PPDBWave.status == "active", PPDBPeriod.status == "active")
+            .limit(1)
+        )
         return cast(str | None, self.db.execute(stmt).scalar_one_or_none())
 
-    def cleanup_expired_unbooked_sessions(self, wave_id: str | None = None) -> int:
+    def cleanup_expired_unbooked_sessions(
+        self, wave_ids: str | list[str] | None = None
+    ) -> int:
         """Hapus otomatis sesi yang belum di-booking sampai waktu pelaksanaan.
 
         Sesi yang tidak diambil pendaftar (booked_count == 0) saat jadwalnya sudah
@@ -63,8 +71,9 @@ class SelectionRepository:
                 ),
             ),
         )
-        if wave_id:
-            stmt = stmt.where(SelectionSession.wave_id == wave_id)
+        if wave_ids:
+            ids = [wave_ids] if isinstance(wave_ids, str) else list(wave_ids)
+            stmt = stmt.where(SelectionSession.wave_id.in_(ids))
 
         expired_ids = list(self.db.scalars(stmt).all())
         if expired_ids:
@@ -101,16 +110,22 @@ class SelectionRepository:
         return cast(Sequence[tuple[Any, ...]], self.db.execute(stmt).all())
 
     def get_sessions_with_booking_details(
-        self, wave_id: str, session_type: str | None = None
+        self, wave_ids: list[str], session_type: str | None = None
     ) -> list[dict[str, Any]]:
         """List sesi dengan info status warna (merah/kuning/hijau),
-        data pendaftar booking, dan skor evaluasi."""
-        self.cleanup_expired_unbooked_sessions(wave_id)
+        data pendaftar booking, dan skor evaluasi.
+
+        ``wave_ids`` adalah seluruh gelombang dalam periode aktif, sehingga
+        halaman admin menampilkan sesi dari semua gelombang periode tersebut.
+        """
+        if not wave_ids:
+            return []
+        self.cleanup_expired_unbooked_sessions(wave_ids)
 
         stmt = (
             select(SelectionSession, PPDBWave.name.label("wave_name"))
             .outerjoin(PPDBWave, SelectionSession.wave_id == PPDBWave.id)
-            .where(SelectionSession.wave_id == wave_id)
+            .where(SelectionSession.wave_id.in_(wave_ids))
         )
         if session_type:
             stmt = stmt.where(SelectionSession.session_type == session_type)
@@ -121,7 +136,7 @@ class SelectionRepository:
         if not session_rows:
             return []
 
-        # Ambil pendaftar yang mengambil sesi di gelombang ini
+        # Ambil pendaftar yang mengambil sesi di gelombang-gelombang periode aktif
         bookings_stmt = (
             select(
                 SelectionResult,
@@ -133,7 +148,7 @@ class SelectionRepository:
                 PPDBApplicant.status.label("app_status"),
             )
             .join(PPDBApplicant, SelectionResult.applicant_id == PPDBApplicant.id)
-            .where(PPDBApplicant.wave_id == wave_id)
+            .where(PPDBApplicant.wave_id.in_(wave_ids))
         )
         booking_rows = self.db.execute(bookings_stmt).all()
 
@@ -303,9 +318,11 @@ class SelectionRepository:
         return cast(SelectionCriteria | None, self.db.scalar(stmt))
 
     def get_active_wave_info(self) -> dict[str, Any] | None:
+        # Gelombang hanya dianggap aktif bila periode induknya juga aktif.
         stmt = (
             select(PPDBWave.id, PPDBWave.name)
-            .where(PPDBWave.status == "active")
+            .join(PPDBPeriod, PPDBPeriod.id == PPDBWave.period_id)
+            .where(PPDBWave.status == "active", PPDBPeriod.status == "active")
             .limit(1)
         )
         row = self.db.execute(stmt).first()
@@ -475,6 +492,25 @@ class SelectionRepository:
                 SelectionScore.score,
                 SelectionCriteria.name.label("criteria_name"),
                 SelectionCategory.name.label("category_name"),
+            )
+            .join(SelectionCriteria, SelectionScore.criteria_id == SelectionCriteria.id)
+            .join(
+                SelectionCategory, SelectionCriteria.category_id == SelectionCategory.id
+            )
+            .where(SelectionScore.applicant_id == applicant_id)
+            .order_by(SelectionCategory.created_at, SelectionCriteria.created_at)
+        )
+        return cast(Sequence[tuple[Any, ...]], self.db.execute(stmt).all())
+
+    def get_applicant_scores_full(self, applicant_id: str) -> Sequence[tuple]:
+        stmt = (
+            select(
+                SelectionScore.score,
+                SelectionCriteria.name.label("criteria_name"),
+                SelectionCategory.name.label("category_name"),
+                SelectionCriteria.weight.label("weight"),
+                SelectionCategory.id.label("category_id"),
+                SelectionCriteria.id.label("criteria_id"),
             )
             .join(SelectionCriteria, SelectionScore.criteria_id == SelectionCriteria.id)
             .join(

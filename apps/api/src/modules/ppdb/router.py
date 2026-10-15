@@ -35,6 +35,7 @@ from src.modules.ppdb.schemas import (
     ApplicantPasswordReset,
     ApplicantRegister,
     DocumentVerify,
+    LoASignatureRequest,
     PeriodCreate,
     PeriodUpdate,
     TIUSettingsUpdate,
@@ -540,7 +541,9 @@ def get_applicants(
     """Daftar pendaftar.
 
     Tanpa filter, seluruh pendaftar dari semua periode & gelombang dikembalikan.
-    ``wave_id="active"`` untuk membatasi ke gelombang aktif saja.
+    ``period_id="active"`` membatasi ke periode aktif (semua gelombang di
+    dalamnya) — scope halaman operasional admin. ``wave_id="active"`` untuk
+    membatasi ke gelombang aktif saja (kompatibilitas).
     """
     return service.get_applicants(
         page, perPage, search, wave_id, status, period_id, payment_status
@@ -662,6 +665,21 @@ def get_applicant_transcript(
     return service.get_applicant_transcript(id)
 
 
+# Rute /applicants/me/* HARUS didaftarkan SEBELUM /applicants/{id} agar "me"
+# tidak ditangkap sebagai id oleh route {id} di bawah ini.
+@router.get("/applicants/me/loa")
+def get_my_loa(
+    user: dict[str, Any] = Depends(get_current_user),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    applicant = service.repository.get_applicant_by_user_id(user["id"])
+    if not applicant:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
+    return service.get_applicant_loa(applicant.id)
+
+
 @router.get("/applicants/{id}/loa")
 def get_applicant_loa(
     id: str,
@@ -669,6 +687,52 @@ def get_applicant_loa(
     service: PPDBService = Depends(get_ppdb_service),
 ):
     return service.get_applicant_loa(id)
+
+
+@router.get("/applicants/me/skd")
+def get_my_skd(
+    user: dict = Depends(get_current_user),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    from src.models.ppdb import PPDBApplicant
+    from src.services.payment_service import create_secure_doc_token
+
+    applicant = (
+        service.repository.db.query(PPDBApplicant)
+        .filter(
+            PPDBApplicant.user_id == user["id"],
+            PPDBApplicant.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not applicant:
+        raise HTTPException(status_code=404, detail="Data pendaftar tidak ditemukan")
+    if applicant.status != "passed":
+        raise HTTPException(status_code=400, detail="Pendaftar belum dinyatakan lulus")
+    if applicant.dp_status != "paid":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Surat Keterangan Diterima (SKD) hanya dapat diakses setelah "
+                "pembayaran DP berhasil diverifikasi."
+            ),
+        )
+
+    skd_data = service.get_applicant_skd(applicant.id)
+    skd_token = create_secure_doc_token("skd", applicant.id, exp_hours=720)
+    skd_data["secure_token"] = skd_token
+    return skd_data
+
+
+@router.get("/skd/download")
+def download_skd_by_token(
+    token: str = Query(...),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    from src.services.payment_service import verify_secure_doc_token
+
+    applicant_id = verify_secure_doc_token(token, "skd")
+    return service.get_applicant_skd(applicant_id)
 
 
 @router.get("/applicants/{id}/skd")
@@ -735,21 +799,39 @@ def download_applicant_dossier_zip(
     )
 
 
-# Rute /applicants/me/* didaftarkan SEBELUM /applicants/{id} agar "me"
-# tidak ditangkap sebagai id.
-@router.get("/applicants/me/loa")
-def get_my_loa(
+@router.post("/applicants/me/sign-loa")
+def sign_my_loa(
+    body: LoASignatureRequest,
     user: dict[str, Any] = Depends(get_current_user),
     service: PPDBService = Depends(get_ppdb_service),
 ):
-    # This directly delegates to the existing get_applicant_loa but looks up
-    # the applicant by user id
     applicant = service.repository.get_applicant_by_user_id(user["id"])
     if not applicant:
         from fastapi import HTTPException
 
         raise HTTPException(status_code=404, detail="Pendaftar tidak ditemukan")
-    return service.get_applicant_loa(applicant.id)
+    return service.sign_applicant_loa(applicant.id, body)
+
+
+@router.get("/signed-loa-applicants")
+def get_signed_loa_applicants(
+    search: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    user: dict = Depends(require_ppdb_read),
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    return service.get_signed_loa_applicants(
+        search=search, page=page, per_page=per_page
+    )
+
+
+@router.get("/loa/{registration_or_id}")
+def get_loa_by_registration_or_id(
+    registration_or_id: str,
+    service: PPDBService = Depends(get_ppdb_service),
+):
+    return service.get_loa_by_registration_or_id(registration_or_id)
 
 
 @router.get("/dashboard/stats")

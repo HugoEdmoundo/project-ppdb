@@ -1,6 +1,3 @@
-import hashlib
-import hmac
-
 from fastapi import (
     APIRouter,
     Depends,
@@ -49,9 +46,62 @@ def get_transactions(
     return service.get_transactions(page, perPage, status)
 
 
+class CreateQRISPayload(BaseModel):
+    payment_type: str
+    amount: int | None = None
+
+
+@router.post("/create-qris")
+def create_qris(
+    payload: CreateQRISPayload,
+    user: dict = Depends(get_current_user),
+    service: PaymentService = Depends(get_payment_service),
+):
+    return service.create_qris_transaction(
+        user["id"], payload.payment_type, payload.amount
+    )
+
+
+@router.get("/active-transaction")
+def get_active_transaction(
+    user: dict = Depends(get_current_user),
+    service: PaymentService = Depends(get_payment_service),
+):
+    return service.get_active_transaction(user["id"])
+
+
+@router.post("/transactions/{id}/sync-status")
+def sync_transaction_status(
+    id: str,
+    user: dict = Depends(get_current_user),
+    service: PaymentService = Depends(get_payment_service),
+):
+    return service.sync_transaction_status(id, user["id"])
+
+
+@router.post("/transactions/{id}/cancel")
+def cancel_transaction(
+    id: str,
+    user: dict = Depends(get_current_user),
+    service: PaymentService = Depends(get_payment_service),
+):
+    return service.cancel_transaction(id, user["id"])
+
+
+@router.get("/receipt/{id}")
+def get_receipt(
+    id: str,
+    token: str | None = Query(None),
+    user: dict = Depends(get_current_user),
+    service: PaymentService = Depends(get_payment_service),
+):
+    return service.get_receipt(id, token=token, user_id=user["id"])
+
+
 @router.get("/public-receipt/{id}")
 def get_public_receipt(
     id: str,
+    token: str | None = Query(None),
     service: PaymentService = Depends(get_payment_service),
 ):
     return service.get_public_receipt(id)
@@ -83,32 +133,46 @@ def cancel_confirm_payment(
     return service.cancel_confirm_payment(id)
 
 
-def _verify_midtrans_signature(
-    payload: dict, signature_key: str | None, server_key: str | None
-) -> None:
-    """
-    Verifikasi signature Midtrans (SHA512) untuk mencegah webhook falsifikasi.
-    http://docs.midtrans.com/en/technical-reference/encryption
-    signature_key = sha512(order_id + status_code + gross_amount + ServerKey)
-    """
-    if not server_key:
+@router.get("/stage2/monitoring")
+def get_stage2_monitoring(
+    wave_id: str | None = Query(None),
+    status: str | None = Query(None),
+    search: str | None = Query(None),
+    page: int = Query(1),
+    perPage: int = Query(20),
+    user: dict = Depends(require_payment_read),
+    service: PaymentService = Depends(get_payment_service),
+):
+    return service.get_stage2_monitoring(
+        wave_id=wave_id,
+        status_filter=status,
+        search=search,
+        page=page,
+        per_page=perPage,
+    )
+
+
+@router.get("/applicants/{applicant_id}/transactions")
+def get_applicant_transactions(
+    applicant_id: str,
+    user: dict = Depends(require_payment_read),
+    service: PaymentService = Depends(get_payment_service),
+):
+    return service.get_applicant_transactions(applicant_id)
+
+
+async def _read_json_body(request: Request) -> dict:
+    try:
+        payload = await request.json()
+    except Exception as exc:
         raise HTTPException(
-            status_code=401,
-            detail="Payment webhook not enabled: MIDTRANS_SERVER_KEY not configured",
+            status_code=400, detail="Body webhook bukan JSON yang valid"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=400, detail="Body webhook harus berupa objek JSON"
         )
-
-    order_id = payload.get("order_id")
-    status_code = payload.get("status_code")
-    gross_amount = payload.get("gross_amount")
-
-    if not order_id or status_code is None or gross_amount is None:
-        raise HTTPException(status_code=400, detail="Invalid webhook payload")
-
-    raw = f"{order_id}{status_code}{gross_amount}{server_key}"
-    computed = hashlib.sha512(raw.encode("utf-8")).hexdigest()
-
-    if not signature_key or not hmac.compare_digest(computed, signature_key):
-        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+    return payload
 
 
 @router.post("/webhook")
@@ -117,10 +181,11 @@ async def payment_webhook(
     service: PaymentService = Depends(get_payment_service),
 ):
     """
-    Webhook pembayaran formulir & PPDB (Pak Kasir QRIS / Gateway).
+    Webhook pembayaran formulir & PPDB (Pakasir QRIS / Gateway).
     """
-    payload = await request.json()
-    return service.process_pakkasir_webhook(payload)
+    payload = await _read_json_body(request)
+    x_secret = request.headers.get("X-Secret")
+    return service.process_pakkasir_webhook(payload, x_secret=x_secret)
 
 
 @router.post("/webhook/pak-kasir")
@@ -129,10 +194,11 @@ async def pakkasir_webhook(
     service: PaymentService = Depends(get_payment_service),
 ):
     """
-    Webhook resmi 1 Pintu QRIS Pak Kasir untuk verifikasi pembayaran real-time.
+    Webhook resmi 1 Pintu QRIS Pakasir untuk verifikasi pembayaran real-time.
     """
-    payload = await request.json()
-    return service.process_pakkasir_webhook(payload)
+    payload = await _read_json_body(request)
+    x_secret = request.headers.get("X-Secret")
+    return service.process_pakkasir_webhook(payload, x_secret=x_secret)
 
 
 # ─── Stage 2 — Diskonasi (per peserta lulus) ─────────────────────────────────

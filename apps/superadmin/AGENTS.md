@@ -4,7 +4,7 @@ This document provides a technical overview of the Superadmin panel for the Pesa
 
 ## Tech Stack
 - **Framework:** React 19 with Vite 8.
-- **Language:** TypeScript ~6.0.
+- **Language:** TypeScript.
 - **Styling:** Tailwind CSS v3.4.
 - **Components:** `lucide-react` for icons, `sonner` for toast notifications, and Radix UI primitives (`@radix-ui/react-*`) combined with `class-variance-authority`, `clsx`, and `tailwind-merge` for UI components.
 - **Routing:** `react-router-dom` v7.
@@ -17,8 +17,8 @@ The application is a Single Page Application (SPA) with the following routes:
   - `/` and `/dashboard`: Dashboard summary page showing user and role statistics.
   - `/users`, `/users/new`, `/users/:id`: User management CRUD operations.
   - `/roles`, `/roles/new`, `/roles/:id`: Role management CRUD. Includes assigning module and page permissions (`companyprofile` and `ppdb`).
-  - `/applicants`: PPDB Applicants management.
-  - `/activities`: User activity history log.
+  - `/applicants`: PPDB Applicants overview and credential resets.
+  - `/activities`: User activity audit history log.
   - `/notifications`: View notification logs and send custom notifications.
   - `/whatsapp`: WhatsApp connection status and QR scanning.
   - `/profile`: Update current superadmin profile (including avatar, password).
@@ -28,13 +28,13 @@ The application is a Single Page Application (SPA) with the following routes:
 - **Token Management:** Handled in `src/api/client.ts`. Auth is **httpOnly-cookie based** (`credentials: 'include'`); only the authenticated user object is stored in `localStorage` under key `sa_user` (via `getStoredUser`/`setStoredUser`). There are **no** `sa_token`/`sa_refresh` keys in localStorage. Automatic token refresh is implemented on HTTP 401 errors using `/companyprofile/auth/refresh`.
 - **Authorization Guard:** Checked by `src/components/ProtectedRoute.tsx`.
   - The panel is **STRICTLY** for superadmin users.
-  - Access is granted **only** if `user.user_type === 'superadmin'` or `user.is_superadmin === true`. Any other user attempting to access protected routes will be forcibly redirected to `/login`.
+  - Access is granted **only** if `user.user_type === 'superadmin'` or `user.is_superadmin === true`. Any other user attempting to access protected routes will be forcibly redirected to `/auth/login`.
 - **CRUD Operations Guarding:** Actions like creating or editing users/roles require `canCrud = currentUser?.user_type === 'superadmin'`.
 - **System Roles (`is_system = true`):** Protected system roles (e.g., Superadmin, Pendaftar) have specific UI safeguards in `RoleFormPage` to prevent unauthorized modification or deletion.
 
 ## API Integration (`src/api/client.ts`)
 - The `apiFetch` wrapper handles automatic token refresh logic (cookie-based; no manual token injection happens — every request sends `credentials: 'include'`).
-- **Base URL:** Defined via the `VITE_API_URL` environment variable (currently set to `http://localhost:8000` in `.env`). `client.ts` also has a hardcoded fallback to `http://localhost:8000` as a dev convenience (planned for removal). The Vite dev server proxies `/companyprofile`, `/auth`, `/users`, `/roles`, `/modules`, `/superadmin`, `/ppdb`, and `/notifications` to `http://localhost:8000` via `vite.config.ts`.
+- **Base URL:** Defined via the `VITE_API_URL` environment variable (defaults to `http://localhost:8000` or `http://localhost:8080`).
 - **Endpoints Interacted With:**
   - **Auth:** `/companyprofile/auth/login`, `/companyprofile/auth/me`, `/companyprofile/auth/refresh`, `/companyprofile/auth/logout`.
   - **Users:** `/users` (CRUD).
@@ -49,10 +49,11 @@ The application is a Single Page Application (SPA) with the following routes:
 - Page-level permissions can be directly assigned to users via the `/users/:id/page-permissions` endpoint, managing specific UI capabilities per user based on assigned module roles.
 
 ## Product Rules (from root AGENTS.md + docs/REQUIREMENTS.md)
-- **No education-level selection.** This system has no list of jenjang (`SMP`, `SMK`, ...) and no jenjang picker anywhere: wave config, applicant form, and public pages are all level-free. Existing code such as the `ALLOWED_LEVELS` whitelist, the wave `allowed_levels` scope column, or an applicant level field is **leftover from the old flow** — do not treat it as truth and do not build new UI/endpoints on top of it. Removing the column needs its own decision.
-- **Health form replaces Medcheck.** Applicants self-fill the health/disease identification form during registration (10 questions + an attestation statement, see `docs/REQUIREMENTS.md`). It is stored as applicant health profile data and shown on the applicant detail/dossier page only — never in general lists/tables. Treat it as sensitive: special permission, audit trail, already included in the Arsip dossier/ZIP export. Details on open questions (post-registration updates, required-ness, read access, retention) are undecided; ask before implementing.
+- **No education-level selection.** This system has no list of jenjang (`SMP`, `SMK`, ...) and no jenjang picker anywhere.
+- **Health form replaces Medcheck.** Applicants self-fill the health identification form during registration (10 questions + attestation). It is stored as sensitive data viewable only in detailed admin dossiers.
+- **Superadmin Boundary:** Superadmin manages user accounts, roles, permissions, WhatsApp connection, and platform activity logs. Day-to-day PPDB registration, document review, exam scoring, and stage payments are managed in the PPDB Backoffice (`apps/ppdb`), not in this panel.
 
 ## Development & Build Commands
-- `npm run dev`: Start Vite development server on port 5173.
+- `npm run dev`: Start Vite development server (port `5173` on local Vite dev; mapped to port `5174` in Docker preview).
 - `npm run build`: Compile TypeScript and build (`tsc -b && vite build`).
 - `npm run preview`: Preview build locally.

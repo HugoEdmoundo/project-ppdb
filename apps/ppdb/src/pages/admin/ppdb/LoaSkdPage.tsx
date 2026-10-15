@@ -9,6 +9,7 @@ import {
   Eye,
   Maximize2
 } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import {
   Button,
   Card,
@@ -368,7 +369,7 @@ function LoaDocumentView({
               II. Pilihan Cara Pembayaran (Secara Lunas atau Cicilan)
             </h3>
 
-            {/* A. Pembayaran Penuh */}
+            {/* A. Pembayaran Penuh (6 Bulan setelah tanggal diterima) */}
             <div className="space-y-1">
               <p className="text-[11px] font-semibold text-slate-700">A. Pembayaran Penuh (LUNAS) dalam Satu Kali Pembayaran</p>
               <table className="w-full text-xs border border-slate-200">
@@ -377,96 +378,68 @@ function LoaDocumentView({
                     <th className="py-1 px-2 w-8 text-center border-r border-slate-200">No</th>
                     <th className="py-1 px-2 border-r border-slate-200">Cara Pembayaran</th>
                     <th className="py-1 px-2 w-32 border-r border-slate-200">Biaya (Rp)</th>
-                    <th className="py-1 px-2 w-28 border-r border-slate-200">Tenggat Waktu</th>
+                    <th className="py-1 px-2 w-32 border-r border-slate-200">Tenggat Waktu</th>
                     <th className="py-1 px-2">Keterangan</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="py-1 px-2 text-center border-r border-slate-200">1</td>
+                    <td className="py-1 px-2 text-center border-r border-slate-200 font-semibold">1</td>
                     <td className="py-1 px-2 font-bold text-emerald-700 border-r border-slate-200">Pembayaran Penuh (LUNAS)</td>
                     <td className="py-1 px-2 font-mono font-semibold border-r border-slate-200">{formatRupiah(data.totalFee)}</td>
-                    <td className="py-1 px-2 text-[11px] border-r border-slate-200">07 November 2026</td>
-                    <td className="py-1 px-2 text-[11px] text-slate-600">Melakukan pelunasan sebelum batas akhir waktu.</td>
+                    <td className="py-1 px-2 text-[11px] font-bold text-red-600 border-r border-slate-200">08 April 2027</td>
+                    <td className="py-1 px-2 text-[11px] text-slate-600">Pelunasan maksimal 6 (enam) bulan setelah tanggal resmi penerimaan/tanda tangan.</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            {/* B. Pembayaran Cicilan */}
+            {/* B. Pembayaran Cicilan (Diganti Narasi Penjelasan - Tanpa Tabel) */}
             <div className="space-y-1 pt-1">
               <p className="text-[11px] font-semibold text-slate-700">B. Pembayaran Dengan Cicilan Bertahap</p>
-              <table className="w-full text-xs border border-slate-200">
-                <thead>
-                  <tr className="bg-slate-100 text-left font-semibold text-slate-700">
-                    <th className="py-1 px-2 w-8 text-center border-r border-slate-200">No</th>
-                    <th className="py-1 px-2 border-r border-slate-200">Skema Cicilan</th>
-                    <th className="py-1 px-2 w-32 border-r border-slate-200">Biaya (Rp)</th>
-                    <th className="py-1 px-2 w-28 border-r border-slate-200">Tenggat Waktu</th>
-                    <th className="py-1 px-2">Keterangan</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  <tr className="bg-amber-50/40">
-                    <td className="py-1 px-2 text-center border-r border-slate-200 font-semibold">1</td>
-                    <td className="py-1 px-2 font-bold text-slate-900 border-r border-slate-200">Cicilan 1 (Minimal DP)</td>
-                    <td className="py-1 px-2 font-mono font-bold text-slate-900 border-r border-slate-200">{formatRupiah(data.dpFee)}</td>
-                    <td className="py-1 px-2 text-[11px] font-semibold text-red-600 border-r border-slate-200">07 November 2026</td>
-                    <td className="py-1 px-2 text-[11px] text-slate-600">Wajib dibayar untuk konfirmasi kursi & penguncian kuota.</td>
-                  </tr>
-                  <tr>
-                    <td className="py-1 px-2 text-center border-r border-slate-200">2</td>
-                    <td className="py-1 px-2 border-r border-slate-200">Cicilan 2</td>
-                    <td className="py-1 px-2 font-mono border-r border-slate-200">{formatRupiah(2500000)}</td>
-                    <td className="py-1 px-2 text-[11px] border-r border-slate-200">07 Desember 2026</td>
-                    <td className="py-1 px-2 text-[11px] text-slate-500">Tahap pembayaran cicilan kedua.</td>
-                  </tr>
-                  <tr className="bg-slate-50/50">
-                    <td className="py-1 px-2 text-center border-r border-slate-200">3</td>
-                    <td className="py-1 px-2 border-r border-slate-200">Cicilan 3</td>
-                    <td className="py-1 px-2 font-mono border-r border-slate-200">{formatRupiah(2500000)}</td>
-                    <td className="py-1 px-2 text-[11px] border-r border-slate-200">07 Januari 2027</td>
-                    <td className="py-1 px-2 text-[11px] text-slate-500">Tahap pembayaran cicilan ketiga.</td>
-                  </tr>
-                  <tr>
-                    <td className="py-1 px-2 text-center border-r border-slate-200">4</td>
-                    <td className="py-1 px-2 border-r border-slate-200">Cicilan 4</td>
-                    <td className="py-1 px-2 font-mono border-r border-slate-200">{formatRupiah(2500000)}</td>
-                    <td className="py-1 px-2 text-[11px] border-r border-slate-200">07 Februari 2027</td>
-                    <td className="py-1 px-2 text-[11px] text-slate-500">Tahap pembayaran cicilan keempat.</td>
-                  </tr>
-                  <tr className="bg-slate-50/50">
-                    <td className="py-1 px-2 text-center border-r border-slate-200">5</td>
-                    <td className="py-1 px-2 font-semibold border-r border-slate-200">Cicilan 5 (Pelunasan)</td>
-                    <td className="py-1 px-2 font-mono font-semibold border-r border-slate-200">{formatRupiah(2500000)}</td>
-                    <td className="py-1 px-2 text-[11px] border-r border-slate-200">07 Maret 2027</td>
-                    <td className="py-1 px-2 text-[11px] text-slate-500">Pelunasan seluruh tagihan daftar ulang.</td>
-                  </tr>
-                </tbody>
-              </table>
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 text-xs leading-relaxed space-y-1.5">
+                <p className="text-justify">
+                  Skema pembayaran cicilan bertahap untuk sisa tagihan biaya pendidikan calon santri bersifat <strong>kustom (customized)</strong> dan tidak ditentukan melalui tabel pembagian kaku.
+                </p>
+                <p className="text-justify text-[11px] text-slate-600">
+                  Calon santri wajib menyetorkan <strong>Cicilan Pertama (Minimal Uang Muka / DP) sebesar {formatRupiah(data.dpFee)}</strong> untuk penguncian kuota kursi. Selanjutnya, nominal angsuran serta jadwal tenggat waktu cicilan berikutnya dapat disepakati bersama dan diatur langsung secara mandiri melalui modul sistem baru pada dashboard pendaftar.
+                </p>
+              </div>
             </div>
           </div>
 
           {/* Signatures Page 1 */}
           <div className="pt-4 flex justify-between items-end border-t border-slate-200">
-            <div className="w-64 border border-dashed border-slate-300 rounded p-2 text-center bg-slate-50/60">
-              <p className="text-[10px] text-slate-500 font-semibold uppercase leading-tight">
+            <div className="w-68 border border-dashed border-slate-300 rounded p-2.5 text-center bg-slate-50/70">
+              <p className="text-[10px] text-slate-600 font-bold uppercase leading-tight">
                 KONFIRMASI MENERIMA KELULUSAN
               </p>
-              <p className="text-[9px] text-slate-400 italic">dengan segala ketentuan yang berlaku</p>
-              <div className="h-12 flex items-center justify-center">
-                <span className="text-[9px] text-slate-400 border border-slate-200 px-2 py-0.5 rounded">Materai 10.000</span>
+              <p className="text-[9px] text-slate-400 italic mb-1.5">Dua Pihak — Sah Secara Hukum Digital</p>
+              <div className="flex justify-center items-center gap-2 py-1">
+                <div className="p-1 bg-white border border-slate-200 rounded shadow-2xs">
+                  <QRCodeSVG value={`https://ptdarrahman.sch.id/loa/${data.registrationNo}?verify=parent`} size={44} level="M" />
+                </div>
+                <div className="text-left">
+                  <span className="text-[9px] font-mono text-emerald-700 block font-semibold">TERKONFIRMASI</span>
+                  <span className="text-[8px] text-slate-500 block">Tanda Tangan Digital</span>
+                </div>
               </div>
-              <p className="text-[10px] font-semibold text-slate-700 border-t border-slate-200 pt-1">
-                [ Tanda Tangan Orang Tua / Wali ]
+              <p className="text-[10px] font-bold text-slate-800 border-t border-slate-200 pt-1 mt-1">
+                ( Orang Tua / Wali Calon Santri )
               </p>
             </div>
 
-            <div className="text-right space-y-1">
+            <div className="text-right space-y-1 w-64">
               <p className="text-xs text-slate-600">Hormat Kami,</p>
               <p className="text-xs font-bold text-slate-900">Office of Admission PPDB Ar-Rahman</p>
-              <div className="h-12 flex items-center justify-end pr-4">
-                <span className="font-serif italic text-emerald-800 text-sm opacity-80">Wijaya Kurnia</span>
+              <div className="flex justify-end items-center gap-2 py-1">
+                <div className="p-1 bg-white border border-slate-200 rounded shadow-2xs">
+                  <QRCodeSVG value={`https://ptdarrahman.sch.id/loa/${data.registrationNo}?verify=official`} size={44} level="M" />
+                </div>
+                <div className="text-right">
+                  <span className="text-[9px] font-mono text-emerald-700 block font-semibold">VERIFIED DIGITAL</span>
+                  <span className="text-[8px] text-slate-400 block font-mono">PANITIA PPDB</span>
+                </div>
               </div>
               <p className="text-xs font-bold underline text-slate-900">{data.admissionOfficer}</p>
               <p className="text-[10px] text-slate-500">Ketua Panitia Seleksi PPDB</p>
@@ -490,14 +463,11 @@ function LoaDocumentView({
           <div className="space-y-1.5">
             <h3 className="text-xs font-bold text-slate-900 tracking-wide uppercase flex items-center gap-1.5">
               <span className="w-4 h-4 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">1</span>
-              I. LANGKAH PERTAMA: Pembayaran Biaya Pendidikan
+              I. LANGKAH PERTAMA: Pembayaran Biaya Pendidikan di Aplikasi PPDB
             </h3>
             <div className="bg-slate-50 border border-slate-200 rounded p-3 text-justify leading-relaxed">
               <p>
-                Melakukan pembayaran Biaya Pendidikan secara <strong>Lunas sebesar {formatRupiah(data.totalFee)}</strong> atau
-                dengan <strong>cicilan pertama (Minimal DP) sebesar {formatRupiah(data.dpFee)}</strong> PALING LAMBAT pada{' '}
-                <strong className="text-red-600">07 November 2026</strong>. Pembayaran yang melampaui batas waktu akan
-                mengakibatkan status kuota kelulusan otomatis dibatalkan.
+                Pembayaran Biaya Pendidikan dilakukan langsung melalui <strong>Dashboard Aplikasi PPDB Ar-Rahman</strong> menggunakan <strong>QRIS Resmi Terintegrasi</strong> (seluruh mobile banking & e-wallet) baik secara <strong>Lunas sebesar {formatRupiah(data.totalFee)}</strong> (tenggat waktu: <strong>07 Mei 2027</strong>) maupun <strong>Cicilan Pertama (Minimal Uang Muka / DP) sebesar {formatRupiah(data.dpFee)}</strong>. Pembayaran yang melampaui batas waktu akan mengakibatkan status kuota kelulusan otomatis dialihkan ke pendaftar cadangan.
               </p>
             </div>
           </div>
@@ -523,7 +493,7 @@ function LoaDocumentView({
                   <td className="py-2 px-3 text-slate-700 leading-relaxed border border-slate-200">
                     <ol className="list-decimal pl-4 space-y-1">
                       <li>Akses dashboard melalui portal resmi PPDB Ar-Rahman menggunakan nomor registrasi dan password akun yang telah dibuat.</li>
-                      <li>Setelah pembayaran terverifikasi oleh perbankan secara otomatis, unduh bukti pembayaran lunas/cicilan dan Surat Keterangan Diterima (SKD).</li>
+                      <li>Setelah pembayaran terverifikasi oleh sistem secara otomatis, unduh bukti kuitansi pembayaran dan Surat Keterangan Diterima (SKD).</li>
                     </ol>
                   </td>
                 </tr>
@@ -539,7 +509,7 @@ function LoaDocumentView({
                       <li>
                         Format nama tampilan WhatsApp diwajibkan menggunakan format identitas baku:{' '}
                         <code className="bg-slate-200 px-1 py-0.5 rounded text-[11px] font-mono">
-                          NAMA LENGKAP SANTRI - NOMOR REGISTRASI
+                          {data.fullName} - {data.registrationNo}
                         </code>
                       </li>
                       <li>Admin panitia akan memverifikasi nomor orang tua/wali santri maksimal 1x24 jam kerja.</li>
@@ -558,11 +528,10 @@ function LoaDocumentView({
             </h3>
             <div className="border border-red-200 bg-red-50/40 rounded p-3 text-slate-800 space-y-1 text-justify leading-relaxed">
               <p>
-                1. Apabila pembayaran dilakukan setelah melewati tenggat waktu yang sudah ditentukan, maka kuota kelulusan
-                dinyatakan gugur dan hak kursi akan dialihkan ke pendaftar cadangan.
+                1. Apabila pembayaran biaya pendidikan tidak dilakukan hingga batas waktu yang ditentukan, maka hak kursi dan kuota kelulusan dinyatakan gugur.
               </p>
               <p>
-                2. Pembayaran secara cicilan wajib disetorkan tepat waktu sesuai jadwal tahapan yang tertera pada Letter of Acceptance (LoA).
+                2. Pembayaran cicilan tahap selanjutnya disetorkan secara tertib sesuai skema mandiri yang disepakati melalui aplikasi.
               </p>
               <p className="font-semibold text-red-700 bg-red-100/70 p-1.5 rounded">
                 3. Seluruh dana/biaya yang telah disetorkan tidak dapat dikembalikan dengan kondisi dan alasan apapun (Non-Refundable).
@@ -570,34 +539,52 @@ function LoaDocumentView({
             </div>
           </div>
 
-          {/* Bank Transfer / VA Account Table */}
+          {/* Rincian Kanal & Metode Pembayaran Terintegrasi Aplikasi */}
           <div className="space-y-1.5 pt-1">
             <h3 className="text-xs font-bold text-slate-900 tracking-wide uppercase">
-              Rincian Rekening Virtual Account (Bank Transfer)
+              Rincian Kanal & Metode Pembayaran Resmi Aplikasi
             </h3>
             <p className="text-[11px] text-slate-600">
-              Pembayaran TUNAI TIDAK DITERIMA. Mohon melakukan transfer ke Virtual Account resmi:
+              Sistem pembayaran terintegrasi otomatis 24 jam langsung di dalam Aplikasi PPDB. Tidak melayani transfer manual ke rekening perorangan:
             </p>
             <table className="w-full text-xs border border-slate-200 border-collapse">
               <thead>
                 <tr className="bg-slate-800 text-white text-left">
-                  <th className="py-1.5 px-3 border border-slate-700">Nama Bank</th>
-                  <th className="py-1.5 px-3 border border-slate-700">Nomor Virtual Account (VA)</th>
-                  <th className="py-1.5 px-3 border border-slate-700">Atas Nama</th>
-                  <th className="py-1.5 px-3 border border-slate-700">Keterangan</th>
+                  <th className="py-1.5 px-2.5 border border-slate-700 w-44">Kanal / Layanan</th>
+                  <th className="py-1.5 px-2.5 border border-slate-700">Metode & Petunjuk Teknis Pembayaran</th>
+                  <th className="py-1.5 px-2.5 border border-slate-700 w-48">Status Verifikasi</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-200">
                 <tr>
-                  <td className="py-2 px-3 font-semibold border border-slate-200">{data.vaBank}</td>
-                  <td className="py-2 px-3 font-mono font-bold text-sm text-indigo-700 border border-slate-200">
-                    {data.vaNumber}
+                  <td className="py-2 px-2.5 font-semibold text-slate-800 border border-slate-200 align-top">
+                    Aplikasi Dashboard PPDB
+                    <span className="block text-[10px] text-slate-500 font-normal">Kanal Resmi Calon Santri</span>
                   </td>
-                  <td className="py-2 px-3 font-semibold border border-slate-200 uppercase">
-                    PPDB AR-RAHMAN - {data.fullName}
+                  <td className="py-2 px-2.5 text-slate-700 border border-slate-200 leading-relaxed text-[11px]">
+                    Buka menu <strong>Hasil Kelulusan & LoA</strong> di dashboard pendaftar. Klik <strong>Bayar DP via QRIS</strong> atau <strong>Bayar Cicilan</strong> untuk menampilkan kode bayar dinamis.
                   </td>
-                  <td className="py-2 px-3 text-[11px] text-slate-500 border border-slate-200">
-                    Verifikasi pembayaran otomatis 24 Jam.
+                  <td className="py-2 px-2.5 font-semibold text-emerald-700 border border-slate-200 align-top text-[11px]">
+                    Otomatis & Real-Time
+                    <span className="block text-[10px] text-slate-500 font-normal">Sistem langsung mengonfirmasi tanpa kirim bukti slip</span>
+                  </td>
+                </tr>
+                <tr className="bg-slate-50/50">
+                  <td className="py-2 px-2.5 font-semibold text-slate-800 border border-slate-200 align-top">
+                    QRIS Payment Gateway
+                    <span className="block text-[10px] text-slate-500 font-normal">Standar QRIS Nasional</span>
+                  </td>
+                  <td className="py-2 px-2.5 text-slate-700 border border-slate-200 leading-relaxed text-[11px]" colSpan={2}>
+                    Dapat dibayar melalui <strong>seluruh aplikasi Mobile Banking</strong> (BSI Mobile, BCA Mobile, Livin' Mandiri, BRImo, BNI Mobile, Muamalat DIN) serta <strong>seluruh Dompet Digital</strong> (GoPay, OVO, ShopeePay, DANA, LinkAja).
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-2.5 font-semibold text-slate-800 border border-slate-200 align-top">
+                    Bukti Pembayaran Sah
+                    <span className="block text-[10px] text-slate-500 font-normal">Dokumen Terbit Otomatis</span>
+                  </td>
+                  <td className="py-2 px-2.5 text-slate-700 border border-slate-200 leading-relaxed text-[11px]" colSpan={2}>
+                    Kuitansi Pembayaran Sah Ber-QR Code serta dokumen Surat Keterangan Diterima (SKD) langsung aktif dan dapat diunduh di dashboard pendaftar setelah pembayaran terkonfirmasi.
                   </td>
                 </tr>
               </tbody>

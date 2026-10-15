@@ -56,6 +56,23 @@ export function getMockUser(username = 'admin') {
   setUser(user)
   return user
 }
+/**
+ * Error HTTP dengan status code. Tetap turunan `Error` sehingga kode yang
+ * membaca `err.message` tidak terpengaruh; `status` dipakai untuk membedakan
+ * penolakan pasti (4xx) dari respons tidak pasti (5xx).
+ */
+export class ApiError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+export function isApiError(err: unknown): err is ApiError {
+  return err instanceof ApiError
+}
 
 async function fetchWithFallback(url: string, opts?: RequestInit): Promise<Response> {
   const options = { ...opts, credentials: 'include' as RequestCredentials }
@@ -122,7 +139,7 @@ export async function apiFetch<T>(endpoint: string, opts: RequestInit = {}): Pro
       throw new Error(firstMsg)
     }
   }
-  if (!res.ok) { const body = await parseJsonSafe<Record<string, string>>(res, `API ${endpoint}`).catch(() => ({ detail: res.statusText })); throw new Error(body.detail || `API ${res.status}`) }
+  if (!res.ok) { const body = await parseJsonSafe<Record<string, string>>(res, `API ${endpoint}`).catch(() => ({ detail: res.statusText })); throw new ApiError(body.detail || `API ${res.status}`, res.status) }
   if (res.status === 204) return undefined as T
   return parseJsonSafe<T>(res, `API ${endpoint}`)
 }
@@ -143,7 +160,7 @@ export async function apiFetchBlob(endpoint: string, opts: RequestInit = {}): Pr
   }
   if (!res.ok) {
     const body = await parseJsonSafe<Record<string, string>>(res, `API ${endpoint}`).catch(() => ({ detail: res.statusText }))
-    throw new Error(body.detail || `API ${res.status}`)
+    throw new ApiError(body.detail || `API ${res.status}`, res.status)
   }
   return res.blob()
 }

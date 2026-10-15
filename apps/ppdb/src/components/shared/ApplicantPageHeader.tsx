@@ -30,10 +30,10 @@ export default function ApplicantPageHeader({
               variant="outline"
               size="sm"
               onClick={() => navigate('/applicant')}
-              className="group gap-2 h-9 px-3 sm:px-3.5 rounded-xl border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold shadow-2xs transition-all hover:-translate-x-0.5 cursor-pointer bg-white text-xs sm:text-sm shrink-0"
+              className="group gap-2 h-9 px-2.5 sm:px-3.5 rounded-xl border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-semibold shadow-2xs transition-all hover:-translate-x-0.5 cursor-pointer bg-white text-xs sm:text-sm shrink-0"
             >
               <ArrowLeft className="w-4 h-4 text-emerald-700 group-hover:-translate-x-0.5 transition-transform shrink-0" />
-              <span>Kembali ke Dashboard</span>
+              <span>Kembali<span className="hidden xs:inline"> ke Dashboard</span></span>
             </Button>
 
             {/* Tombol BookOpen di baris atas untuk tampilan mobile */}

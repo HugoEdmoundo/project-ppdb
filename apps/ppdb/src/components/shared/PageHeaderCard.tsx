@@ -38,7 +38,10 @@ export default function PageHeaderCard({ title, description, action, docKey, blo
       </div>
 
       {blocks && !loading && (
-        <div className="grid grid-cols-1 gap-px border-t border-slate-100 bg-slate-100 sm:grid-cols-2">
+        <div className={cn(
+          'grid grid-cols-1 gap-px border-t border-slate-100 bg-slate-100',
+          blocks.length >= 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
+        )}>
           {blocks.map((block) => {
             const Icon = block.icon
             const on = !!block.active

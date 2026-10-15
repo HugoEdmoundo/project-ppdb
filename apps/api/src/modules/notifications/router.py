@@ -781,6 +781,33 @@ async def cron_dp_payment_reminder(
     }
 
 
+# ── CRON: Pengingat Cicilan Bulanan (Tgl 5 Pkl 08:00 WIB) ───────────────────
+
+
+class InstallmentReminderRequest(BaseModel):
+    dry_run: bool = False
+    force: bool = False
+
+
+@router.post("/cron/installment-reminder")
+async def cron_installment_reminder(
+    body: InstallmentReminderRequest = InstallmentReminderRequest(),
+    _: dict = Depends(require_cron_auth),
+):
+    """
+    Cron / manual trigger pengingat cicilan bulanan:
+    Kirim notifikasi tagihan cicilan ke pendaftar yang sudah lulus dan bayar DP,
+    tetapi masih memiliki sisa tagihan (belum lunas).
+    """
+    from src.core.scheduler import run_monthly_installment_reminders
+
+    result = run_monthly_installment_reminders(
+        dry_run=body.dry_run,
+        force=body.force,
+    )
+    return result
+
+
 # ── TRIGGER: Gelombang Ditutup / Kuota Penuh ────────────────────────────────
 
 

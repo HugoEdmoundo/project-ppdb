@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, ShapeDivider, Meteors } from '@/components/ui'
+import { Button, ShapeDivider } from '@/components/ui'
 import { apiFetch, API_BASE } from '@/api/client'
 import { useBrand } from '@repo/ui'
 import gsap from 'gsap'
@@ -408,10 +408,6 @@ export default function LandingPage() {
       <section className="bg-background pb-16 md:pb-20">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-obsidian via-emerald-dark to-emerald-primary px-6 py-14 text-center shadow-2xl shadow-emerald-dark/30 md:py-16">
-            {/* Meteor hanya di sini: kartu ini satu-satunya bidang gelap di
-                halaman, jadi satu-satunya tempat meta tail-nya terlihat.
-                Span-nya absolute jadi butuh container overflow-hidden — kartu ini. */}
-            <Meteors number={18} />
             <div className="pointer-events-none absolute -left-10 -top-16 h-56 w-56 rounded-full bg-emerald-bright/10 blur-2xl" />
             <div className="pointer-events-none absolute -bottom-20 -right-6 select-none font-heading text-[12rem] font-bold leading-none text-white/[0.06]">
               ار

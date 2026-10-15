@@ -1329,9 +1329,30 @@ class PaymentService:
         txs = self.repo.get_applicant_transactions(applicant_id)
         financials = self.calculate_applicant_financials(applicant_id)
 
+        wave = (
+            self.repo.get_wave_by_id(applicant.wave_id) if applicant.wave_id else None
+        )
         formatted_txs = [self._format_transaction_response(t, applicant) for t in txs]
         return {
             "applicant_id": applicant_id,
+            "applicant": {
+                "id": applicant.id,
+                "full_name": applicant.full_name,
+                "registration_number": applicant.registration_number,
+                "phone": applicant.phone,
+                "email": applicant.email,
+                "wave_id": applicant.wave_id,
+                "wave_name": wave.name if wave else None,
+                "is_loa_signed": applicant.is_loa_signed,
+                "loa_signed_at": applicant.loa_signed_at.isoformat()
+                if applicant.loa_signed_at
+                else None,
+                "dp_status": applicant.dp_status,
+                "dp_paid_at": applicant.dp_paid_at.isoformat()
+                if applicant.dp_paid_at
+                else None,
+                "status": applicant.status,
+            },
             "financials": financials,
             "transactions": formatted_txs,
         }

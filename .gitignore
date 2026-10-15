@@ -50,6 +50,7 @@ venv_*/
 
 # Uploads (user-generated files)
 apps/api/uploads/
+uploads/
 
 # Misc
 *.pem

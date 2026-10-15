@@ -85,7 +85,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     {
       label: 'Menu Utama',
       items: filtered.map((item: NavItem) => {
-        const childActive = (c: NavChild) => location.pathname === c.href
+        const childActive = (c: NavChild) =>
+          location.pathname === c.href || location.pathname.startsWith(c.href + '/')
         const children = item.children?.map((c) => ({
           key: c.href,
           label: c.label,

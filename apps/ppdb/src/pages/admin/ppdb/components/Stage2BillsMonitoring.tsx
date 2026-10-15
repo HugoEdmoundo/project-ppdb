@@ -1,18 +1,12 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from "@/components/ui"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui"
 import { Badge } from "@/components/ui"
 import { Button } from "@/components/ui"
 import { EmptyState } from "@/components/ui"
 import { TableSkeletonRows } from "@/components/ui"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui"
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   CreditCard,
   Filter,
@@ -20,18 +14,13 @@ import {
   Clock,
   AlertCircle,
   RefreshCw,
-  Receipt,
   Search,
   Users,
   Wallet,
   DollarSign,
-  Printer,
-  ChevronRight,
 } from 'lucide-react'
 import { apiFetch } from '@/api/client'
-import { useToast } from '@/components/Toast'
 import PaginationControls from '@/components/shared/PaginationControls'
-import OfficialReceiptCard, { type ReceiptData } from '@/components/shared/OfficialReceiptCard'
 
 const formatRp = (n: number) => 'Rp ' + Number(n || 0).toLocaleString('id-ID')
 
@@ -72,40 +61,8 @@ interface MonitoringResponse {
   summary: MonitoringSummary
 }
 
-interface ApplicantTransactionItem {
-  id: string
-  order_id: string
-  txn_id?: string
-  payment_type: 'form' | 'dp' | 'installment'
-  installment_number?: number | null
-  amount: number
-  status: 'pending' | 'paid' | 'settlement' | 'success' | 'expired' | 'canceled' | 'failed'
-  provider_status?: string | null
-  method: string
-  created_at: string
-  paid_at?: string | null
-  receipt_number?: string | null
-  receipt_token?: string | null
-  receipt_url?: string | null
-}
-
-interface ApplicantTransactionsResponse {
-  applicant_id: string
-  financials: {
-    total_obligation: number
-    total_paid: number
-    remaining_balance: number
-    dp_paid: boolean
-    dp_paid_at: string | null
-    successful_installments_count: number
-    is_lunas: boolean
-  }
-  transactions: ApplicantTransactionItem[]
-}
-
 export default function Stage2BillsMonitoring() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
+  const navigate = useNavigate()
 
   const [waveFilter, setWaveFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -113,14 +70,6 @@ export default function Stage2BillsMonitoring() {
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [page, setPage] = useState(1)
   const limit = 20
-
-  // State for modals
-  const [selectedApplicant, setSelectedApplicant] = useState<MonitoringApplicantItem | null>(null)
-  const [historyModalOpen, setHistoryModalOpen] = useState(false)
-  const [syncingTxId, setSyncingTxId] = useState<string | null>(null)
-  const [receiptModalOpen, setReceiptModalOpen] = useState(false)
-  const [selectedReceipt, setSelectedReceipt] = useState<ReceiptData | null>(null)
-  const [loadingReceipt, setLoadingReceipt] = useState(false)
 
   // Fetch Waves for wave selector
   const { data: waves = [] } = useQuery({
@@ -131,7 +80,7 @@ export default function Stage2BillsMonitoring() {
     },
   })
 
-  // Periode aktif — halaman ini hanya memuat gelombang dalam periode tersebut.
+  // Periode aktif — hanya memuat gelombang dalam periode tersebut.
   const { data: periods = [] } = useQuery({
     queryKey: ['periods-all'],
     queryFn: async () => {
@@ -158,22 +107,6 @@ export default function Stage2BillsMonitoring() {
     },
   })
 
-  // Fetch applicant transactions when history modal is opened
-  const {
-    data: applicantData,
-    isLoading: loadingApplicantData,
-    refetch: refetchApplicantTx,
-  } = useQuery<ApplicantTransactionsResponse>({
-    queryKey: ['applicant-transactions', selectedApplicant?.applicant_id],
-    queryFn: async () => {
-      if (!selectedApplicant?.applicant_id) throw new Error('No applicant selected')
-      return await apiFetch<ApplicantTransactionsResponse>(
-        `/payment/applicants/${selectedApplicant.applicant_id}/transactions`
-      )
-    },
-    enabled: !!selectedApplicant?.applicant_id && historyModalOpen,
-  })
-
   const items = data?.data || []
   const total = data?.total || 0
   const summary = data?.summary || {
@@ -193,38 +126,6 @@ export default function Stage2BillsMonitoring() {
     setPage(1)
   }
 
-  const handleSyncStatus = async (txId: string) => {
-    try {
-      setSyncingTxId(txId)
-      const res = await apiFetch<{ status: string; message?: string }>(
-        `/payment/transactions/${txId}/sync-status`,
-        { method: 'POST' }
-      )
-      toast('success', `Status berhasil diperbarui: ${res.status.toUpperCase()}`)
-      await Promise.all([
-        refetchApplicantTx(),
-        queryClient.invalidateQueries({ queryKey: ['stage2-monitoring'] }),
-      ])
-    } catch (err: any) {
-      toast('error', err.message || 'Gagal menyinkronkan status dengan payment gateway')
-    } finally {
-      setSyncingTxId(null)
-    }
-  }
-
-  const handleViewReceipt = async (txId: string) => {
-    try {
-      setLoadingReceipt(true)
-      const res = await apiFetch<ReceiptData>(`/payment/receipt/${txId}`)
-      setSelectedReceipt(res)
-      setReceiptModalOpen(true)
-    } catch (err: any) {
-      toast('error', err.message || 'Kuitansi belum tersedia atau gagal dimuat')
-    } finally {
-      setLoadingReceipt(false)
-    }
-  }
-
   return (
     <div className="space-y-6">
       {/* ─── Penjelasan Otomasi & Sinkronisasi ─── */}
@@ -232,12 +133,10 @@ export default function Stage2BillsMonitoring() {
         <AlertCircle className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
         <div className="text-xs text-muted-foreground space-y-1">
           <p className="font-semibold text-foreground text-sm">
-            Monitoring Finansial & Pembayaran Otomatis PPDB (Pakasir v2)
+            Tracking Progres Pembayaran Tahap 2 Santri (Pakasir v2)
           </p>
           <p>
-            Sistem memantau seluruh kewajiban LoA santri yang dinyatakan lulus, setoran DP (Uang Muka),
-            serta riwayat cicilan Tahap 2 secara real-time. Status pembayaran terverifikasi otomatis via webhook QRIS Pakasir.
-            Nomor kuitansi resmi diterbitkan secara permanen dan immutable.
+            Pantau progres penyelesaian biaya LoA, pembayaran DP, dan riwayat cicilan seluruh calon santri. Klik pada baris santri untuk melihat rincian detail pembayaran dan riwayat transaksi lengkap.
           </p>
         </div>
       </div>
@@ -418,30 +317,24 @@ export default function Stage2BillsMonitoring() {
         </div>
       </div>
 
-      {/* ─── Tabel Monitoring Santri ─── */}
+      {/* ─── Tabel Tracking Progres Santri (Tanpa Horizontal Scroll Desktop) ─── */}
       <Card className="rounded-2xl shadow-sm border overflow-hidden">
         <CardContent className="p-0">
-          <Table className="min-w-[850px]">
+          <Table className="w-full">
             <TableHeader className="bg-primary/5">
               <TableRow>
-                <TableHead className="whitespace-nowrap font-semibold">Nama Santri & Kontak</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">No. Registrasi</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">Gelombang</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">Status DP</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">Total Tagihan LoA</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">Terbayar</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">Sisa Tagihan</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">Cicilan</TableHead>
-                <TableHead className="whitespace-nowrap font-semibold">Status Akhir</TableHead>
-                <TableHead className="text-right whitespace-nowrap font-semibold">Aksi</TableHead>
+                <TableHead className="font-semibold text-xs py-3.5">Santri</TableHead>
+                <TableHead className="font-semibold text-xs py-3.5">Progres Pembayaran</TableHead>
+                <TableHead className="font-semibold text-xs py-3.5">Sisa Tagihan</TableHead>
+                <TableHead className="font-semibold text-xs py-3.5">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableSkeletonRows cols={10} rows={5} />
+                <TableSkeletonRows cols={4} rows={5} />
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="py-12">
+                  <TableCell colSpan={4} className="py-12">
                     <EmptyState
                       icon={CreditCard}
                       title="Tidak Ada Data Santri"
@@ -451,102 +344,103 @@ export default function Stage2BillsMonitoring() {
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map((item) => (
-                  <TableRow key={item.applicant_id} className="hover:bg-muted/30">
-                    {/* Nama & Kontak */}
-                    <TableCell>
-                      <div className="font-semibold text-sm text-foreground">{item.full_name}</div>
-                      <div className="text-xs text-muted-foreground">{item.phone || '-'}</div>
-                    </TableCell>
+                items.map((item) => {
+                  const pct =
+                    item.total_obligation > 0
+                      ? Math.min(
+                          100,
+                          Math.round((item.total_paid / item.total_obligation) * 100)
+                        )
+                      : 0
 
-                    {/* No Registrasi */}
-                    <TableCell>
-                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-muted text-foreground font-semibold">
-                        {item.registration_number}
-                      </span>
-                    </TableCell>
+                  return (
+                    <TableRow
+                      key={item.applicant_id}
+                      onClick={() => navigate(`/admin/pembayaran-tahap2/${item.applicant_id}`)}
+                      title="Klik untuk melihat detail pembayaran"
+                      className="cursor-pointer hover:bg-muted/40 transition-colors group"
+                    >
+                      {/* Santri: Nama & No. Registrasi / Gelombang */}
+                      <TableCell className="py-3.5">
+                        <div className="font-semibold text-sm text-foreground group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                          {item.full_name}
+                        </div>
+                        <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-1.5 mt-0.5">
+                          <span className="font-mono text-[11px] bg-muted px-1.5 py-0.5 rounded font-medium text-foreground">
+                            {item.registration_number}
+                          </span>
+                          <span>•</span>
+                          <span>{item.wave_name}</span>
+                          {item.phone && (
+                            <>
+                              <span>•</span>
+                              <span>{item.phone}</span>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
 
-                    {/* Gelombang */}
-                    <TableCell>
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {item.wave_name}
-                      </span>
-                    </TableCell>
+                      {/* Progres Pembayaran */}
+                      <TableCell className="py-3.5">
+                        <div className="space-y-1.5 min-w-[160px] max-w-[280px]">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-foreground">
+                              {formatRp(item.total_paid)}
+                            </span>
+                            <span className="text-muted-foreground text-[11px] font-medium">
+                              {pct}%
+                            </span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                pct >= 100
+                                  ? 'bg-emerald-500'
+                                  : pct > 0
+                                  ? 'bg-amber-500'
+                                  : 'bg-slate-300 dark:bg-slate-700'
+                              }`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            Total LoA: {formatRp(item.total_obligation)}
+                          </div>
+                        </div>
+                      </TableCell>
 
-                    {/* Status DP */}
-                    <TableCell>
-                      {item.dp_status === 'paid' ? (
-                        <Badge variant="success" className="text-[10px] gap-1 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300">
-                          <CheckCircle2 className="h-3 w-3 text-emerald-600" /> DP Terverifikasi
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px] gap-1 py-0.5 text-muted-foreground">
-                          <Clock className="h-3 w-3" /> Belum DP
-                        </Badge>
-                      )}
-                    </TableCell>
+                      {/* Sisa Tagihan */}
+                      <TableCell className="py-3.5">
+                        {item.remaining_balance === 0 ? (
+                          <span className="font-semibold text-xs text-emerald-600 dark:text-emerald-400">
+                            Lunas
+                          </span>
+                        ) : (
+                          <span className="font-semibold text-xs text-amber-600 dark:text-amber-400">
+                            {formatRp(item.remaining_balance)}
+                          </span>
+                        )}
+                      </TableCell>
 
-                    {/* Total Tagihan LoA */}
-                    <TableCell>
-                      <span className="font-medium text-xs text-foreground">
-                        {formatRp(item.total_obligation)}
-                      </span>
-                    </TableCell>
-
-                    {/* Terbayar */}
-                    <TableCell>
-                      <span className="font-semibold text-xs text-emerald-600 dark:text-emerald-400">
-                        {formatRp(item.total_paid)}
-                      </span>
-                    </TableCell>
-
-                    {/* Sisa Tagihan */}
-                    <TableCell>
-                      <span className={`font-semibold text-xs ${item.remaining_balance === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                        {formatRp(item.remaining_balance)}
-                      </span>
-                    </TableCell>
-
-                    {/* Cicilan Count */}
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground">
-                        {item.installments_count > 0 ? `${item.installments_count}x cicilan` : '—'}
-                      </span>
-                    </TableCell>
-
-                    {/* Status Akhir */}
-                    <TableCell>
-                      {item.overall_status === 'lunas' ? (
-                        <Badge className="text-[10px] gap-1 py-0.5 bg-emerald-600 text-white hover:bg-emerald-700">
-                          <CheckCircle2 className="h-3 w-3" /> LUNAS
-                        </Badge>
-                      ) : item.overall_status === 'belum_lunas' ? (
-                        <Badge className="text-[10px] gap-1 py-0.5 bg-amber-500 text-white hover:bg-amber-600">
-                          <Clock className="h-3 w-3" /> BELUM LUNAS
-                        </Badge>
-                      ) : (
-                        <Badge className="text-[10px] gap-1 py-0.5 bg-slate-500 text-white hover:bg-slate-600">
-                          <AlertCircle className="h-3 w-3" /> BELUM DP
-                        </Badge>
-                      )}
-                    </TableCell>
-
-                    {/* Aksi */}
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs rounded-xl px-3 gap-1 hover:border-emerald-500 hover:text-emerald-700"
-                        onClick={() => {
-                          setSelectedApplicant(item)
-                          setHistoryModalOpen(true)
-                        }}
-                      >
-                        Detail Transaksi <ChevronRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      {/* Status */}
+                      <TableCell className="py-3.5">
+                        {item.overall_status === 'lunas' ? (
+                          <Badge className="text-[10px] gap-1 py-0.5 bg-emerald-600 text-white hover:bg-emerald-700">
+                            <CheckCircle2 className="h-3 w-3" /> LUNAS
+                          </Badge>
+                        ) : item.overall_status === 'belum_lunas' ? (
+                          <Badge className="text-[10px] gap-1 py-0.5 bg-amber-500 text-white hover:bg-amber-600">
+                            <Clock className="h-3 w-3" /> MENCICIL {item.installments_count > 0 ? `(${item.installments_count}x)` : ''}
+                          </Badge>
+                        ) : (
+                          <Badge className="text-[10px] gap-1 py-0.5 bg-slate-500 text-white hover:bg-slate-600">
+                            <AlertCircle className="h-3 w-3" /> BELUM DP
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>
@@ -554,219 +448,6 @@ export default function Stage2BillsMonitoring() {
           <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} />
         </CardContent>
       </Card>
-
-      {/* ─── Modal Detail Riwayat Transaksi Santri ─── */}
-      <Dialog open={historyModalOpen} onOpenChange={setHistoryModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-emerald-600" />
-              Detail Pembayaran: {selectedApplicant?.full_name}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              No. Registrasi: <span className="font-mono font-semibold text-foreground">{selectedApplicant?.registration_number}</span> • Gelombang: {selectedApplicant?.wave_name}
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Snapshot Finansial Santri */}
-          {selectedApplicant && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-muted/30 p-4 rounded-2xl border border-border/60">
-              <div className="space-y-0.5">
-                <span className="text-[11px] text-muted-foreground">Total Tagihan LoA</span>
-                <p className="font-bold text-sm text-foreground">
-                  {formatRp(applicantData?.financials.total_obligation ?? selectedApplicant.total_obligation)}
-                </p>
-              </div>
-              <div className="space-y-0.5">
-                <span className="text-[11px] text-muted-foreground">Total Terbayar</span>
-                <p className="font-bold text-sm text-emerald-600">
-                  {formatRp(applicantData?.financials.total_paid ?? selectedApplicant.total_paid)}
-                </p>
-              </div>
-              <div className="space-y-0.5">
-                <span className="text-[11px] text-muted-foreground">Sisa Tagihan</span>
-                <p className="font-bold text-sm text-amber-600">
-                  {formatRp(applicantData?.financials.remaining_balance ?? selectedApplicant.remaining_balance)}
-                </p>
-              </div>
-              <div className="space-y-0.5">
-                <span className="text-[11px] text-muted-foreground">Status Pembayaran</span>
-                <div>
-                  {(applicantData?.financials.is_lunas ?? selectedApplicant.is_lunas) ? (
-                    <Badge className="text-[10px] bg-emerald-600 text-white py-0.5">LUNAS</Badge>
-                  ) : (applicantData?.financials.dp_paid ?? selectedApplicant.dp_status === 'paid') ? (
-                    <Badge className="text-[10px] bg-amber-500 text-white py-0.5">Mencicil Tahap 2</Badge>
-                  ) : (
-                    <Badge className="text-[10px] bg-slate-500 text-white py-0.5">Belum Bayar DP</Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Daftar Transaksi */}
-          <div className="space-y-3 pt-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-              <span>Riwayat Transaksi Pembayaran</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 text-[11px] px-2"
-                onClick={() => refetchApplicantTx()}
-                disabled={loadingApplicantData}
-              >
-                <RefreshCw className={`h-3 w-3 mr-1 ${loadingApplicantData ? 'animate-spin' : ''}`} />
-                Segarkan
-              </Button>
-            </h4>
-
-            <div className="border rounded-2xl overflow-hidden">
-              <Table className="min-w-[600px]">
-                <TableHeader className="bg-muted/40">
-                  <TableRow>
-                    <TableHead className="text-xs font-semibold">Waktu / Order ID</TableHead>
-                    <TableHead className="text-xs font-semibold">Jenis Pembayaran</TableHead>
-                    <TableHead className="text-xs font-semibold">Nominal</TableHead>
-                    <TableHead className="text-xs font-semibold">Status Transaksi</TableHead>
-                    <TableHead className="text-right text-xs font-semibold">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loadingApplicantData ? (
-                    <TableSkeletonRows cols={5} rows={3} />
-                  ) : !applicantData?.transactions || applicantData.transactions.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-xs text-muted-foreground">
-                        Belum ada riwayat transaksi pembayaran.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    applicantData.transactions.map((tx) => (
-                      <TableRow key={tx.id}>
-                        <TableCell>
-                          <div className="text-xs font-semibold text-foreground">
-                            {new Date(tx.created_at).toLocaleDateString('id-ID', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </div>
-                          <div className="text-[10px] font-mono text-muted-foreground">
-                            {tx.order_id} {tx.txn_id ? `• Txn: ${tx.txn_id}` : ''}
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          <span className="text-xs font-medium">
-                            {tx.payment_type === 'dp'
-                              ? 'Uang Muka (DP)'
-                              : tx.payment_type === 'installment'
-                              ? `Cicilan ke-${tx.installment_number || 1}`
-                              : 'Formulir Pendaftaran'}
-                          </span>
-                        </TableCell>
-
-                        <TableCell>
-                          <span className="text-xs font-bold text-foreground">
-                            {formatRp(tx.amount)}
-                          </span>
-                        </TableCell>
-
-                        <TableCell>
-                          {tx.status === 'paid' || tx.status === 'settlement' || tx.status === 'success' ? (
-                            <Badge variant="success" className="text-[10px] py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300">
-                              <CheckCircle2 className="h-3 w-3 text-emerald-600 mr-1" /> Sukses
-                            </Badge>
-                          ) : tx.status === 'pending' ? (
-                            <Badge variant="warning" className="text-[10px] py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300">
-                              <Clock className="h-3 w-3 text-amber-600 mr-1" /> Pending
-                            </Badge>
-                          ) : tx.status === 'expired' ? (
-                            <Badge variant="outline" className="text-[10px] py-0.5 text-muted-foreground">
-                              Kedaluwarsa
-                            </Badge>
-                          ) : tx.status === 'canceled' ? (
-                            <Badge variant="outline" className="text-[10px] py-0.5 text-rose-600 border-rose-300">
-                              Dibatalkan
-                            </Badge>
-                          ) : (
-                            <Badge variant="destructive" className="text-[10px] py-0.5">
-                              {tx.status}
-                            </Badge>
-                          )}
-                        </TableCell>
-
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {/* If pending, admin can sync with Pakasir gateway */}
-                            {tx.status === 'pending' && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-[11px] px-2 rounded-lg gap-1 text-slate-700 hover:text-emerald-700"
-                                onClick={() => handleSyncStatus(tx.id)}
-                                disabled={syncingTxId === tx.id}
-                              >
-                                <RefreshCw className={`h-3 w-3 ${syncingTxId === tx.id ? 'animate-spin' : ''}`} />
-                                Cek Status
-                              </Button>
-                            )}
-
-                            {/* If paid/success, show official receipt */}
-                            {(tx.status === 'paid' || tx.status === 'settlement' || tx.status === 'success') && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-[11px] px-2 rounded-lg gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                                onClick={() => handleViewReceipt(tx.id)}
-                                disabled={loadingReceipt}
-                              >
-                                <Receipt className="h-3 w-3 text-emerald-600" />
-                                Kuitansi
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ─── Modal Kuitansi Resmi ─── */}
-      <Dialog open={receiptModalOpen} onOpenChange={setReceiptModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-3xl">
-          <DialogHeader className="mb-2">
-            <DialogTitle className="text-base font-bold flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-emerald-600" />
-                Kuitansi Resmi Pembayaran
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 text-xs rounded-xl px-3 gap-1.5 print:hidden"
-                onClick={() => window.print()}
-              >
-                <Printer className="w-3.5 h-3.5 text-muted-foreground" />
-                Cetak / Simpan PDF
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedReceipt && (
-            <div className="py-2">
-              <OfficialReceiptCard receipt={selectedReceipt} />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

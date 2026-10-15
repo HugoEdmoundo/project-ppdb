@@ -50,8 +50,12 @@ class Settings(BaseSettings):
     # via x-forwarded-proto=https tanpa perlu set manual (lihat auth/router.py).
     cookie_secure: bool = False
 
-    # ── Payment gateway (Midtrans) ───────────────────────────────────────────
+    # ── Payment gateway (Midtrans legacy & Pakasir v2) ────────────────────────
     midtrans_server_key: str | None = None
+    pakasir_slug: str = "arrahman"
+    pakasir_api_key: str = ""
+    pakasir_webhook_secret: str = ""
+    pakasir_base_url: str = "https://app.pakasir.com"
 
     # ── CORS ─────────────────────────────────────────────────────────────────
     # "*" = allow all (dev only; credentials nonaktif).

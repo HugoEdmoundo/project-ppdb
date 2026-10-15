@@ -54,6 +54,8 @@ class PPDBRepository:
                 "name": p.name,
                 "academic_year": p.academic_year,
                 "description": p.description,
+                "wa_group_link": p.wa_group_link,
+                "head_of_committee": p.head_of_committee,
                 "status": p.status,
                 "created_at": p.created_at,
                 "wave_count": wave_count,

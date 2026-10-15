@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/api/client'
 import OfficialReceiptCard, { type ReceiptData } from '@/components/shared/OfficialReceiptCard'
@@ -7,10 +7,17 @@ import { AlertCircle } from 'lucide-react'
 
 export default function PublicReceiptPage() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get('token')
 
   const receiptQuery = useQuery({
-    queryKey: ['public-receipt', id],
-    queryFn: () => apiFetch<ReceiptData>(`/payment/public-receipt/${id}`),
+    queryKey: ['public-receipt', id, token],
+    queryFn: () => {
+      const endpoint = token
+        ? `/payment/public-receipt/${id}?token=${encodeURIComponent(token)}`
+        : `/payment/public-receipt/${id}`
+      return apiFetch<ReceiptData>(endpoint)
+    },
     enabled: Boolean(id),
   })
 

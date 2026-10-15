@@ -23,18 +23,30 @@ function initials(name?: string) {
     .toUpperCase()
 }
 
+/** Ubah nilai snake_case/kebab-case menjadi label yang rapi. */
+function humanize(value?: string | null) {
+  if (!value) return ''
+  return value
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
 function DocStatusBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; cls: string; dot?: string }> = {
-    document_uploaded: { label: 'Menunggu Verifikasi', cls: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200', dot: 'bg-amber-500' },
-    document_uploaded_pending: { label: 'Menunggu Verifikasi', cls: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200', dot: 'bg-amber-500' },
+  const map: Record<string, { label: string; cls: string; dot?: string; title?: string }> = {
+    document_uploaded: { label: 'Menunggu', title: 'Menunggu Verifikasi', cls: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200', dot: 'bg-amber-500' },
+    document_uploaded_pending: { label: 'Menunggu', title: 'Menunggu Verifikasi', cls: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200', dot: 'bg-amber-500' },
     document_approved: { label: 'Disetujui', cls: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200', dot: 'bg-emerald-500' },
-    document_rejected: { label: 'Ditolak', cls: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200', dot: 'bg-red-500' },
+    document_rejected: { label: 'Ditolak', title: 'Ditolak — perlu revisi', cls: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200', dot: 'bg-red-500' },
   }
   const resolved = ['passed', 'failed', 'selection'].includes(status)
     ? map.document_approved
-    : map[status] || { label: (status || '-').replace('_', ' '), cls: 'bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-200', dot: 'bg-slate-400' }
+    : map[status] || { label: humanize(status) || '-', cls: 'bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-200', dot: 'bg-slate-400' }
   return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap', resolved.cls)}>
+    <span
+      title={resolved.title}
+      className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap', resolved.cls)}
+    >
       <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', resolved.dot)} />
       {resolved.label}
     </span>
@@ -44,78 +56,67 @@ function DocStatusBadge({ status }: { status: string }) {
 function SelectionStatusBadge({ status }: { status?: string }) {
   if (status === 'passed')
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200 whitespace-nowrap">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200 whitespace-nowrap">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
         Lulus
       </span>
     )
   if (status === 'failed')
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 ring-1 ring-inset ring-red-200 whitespace-nowrap">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700 ring-1 ring-inset ring-red-200 whitespace-nowrap">
         <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
         Tidak Lulus
       </span>
     )
   if (status === 'selection')
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200 whitespace-nowrap">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200 whitespace-nowrap">
         <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
         Seleksi
       </span>
     )
-  return <span className="text-sm text-slate-400">—</span>
+  return <span className="text-sm text-slate-300">—</span>
 }
+
+const headBase = 'h-11 text-[11px] font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap align-middle'
 
 export default function ApplicantsTable({ applicants, loading, hasActiveWave, showSelectionColumn = false, onRowClick }: ApplicantsTableProps) {
   const totalCols = showSelectionColumn ? 7 : 6
 
   return (
-    <Table className="w-full min-w-[700px] lg:min-w-0 lg:table-fixed">
-      <TableHeader className="bg-emerald-primary/5">
+    <Table className="w-full min-w-[880px] xl:min-w-0 xl:table-fixed">
+      {/*
+        Proporsi kolom eksplisit. Di bawah `xl` tabel memakai auto-layout
+        (horizontal scroll terkendali) supaya konten tidak saling menekan;
+        mulai `xl` tabel dikunci `table-fixed` dengan proporsi di bawah.
+      */}
+      <colgroup>
+        <col className={showSelectionColumn ? 'xl:w-[22%]' : 'xl:w-[29%]'} />
+        <col className={showSelectionColumn ? 'xl:w-[20%]' : 'xl:w-[25%]'} />
+        <col className={showSelectionColumn ? 'xl:w-[10%]' : 'xl:w-[12%]'} />
+        <col className={showSelectionColumn ? 'xl:w-[13%]' : 'xl:w-[14%]'} />
+        <col className={showSelectionColumn ? 'xl:w-[15%]' : 'xl:w-[14%]'} />
+        {showSelectionColumn && <col className="xl:w-[14%]" />}
+        <col className="xl:w-[6%]" />
+      </colgroup>
+      <TableHeader className="bg-emerald-primary/[0.04] [&_tr]:border-slate-200">
         <TableRow className="hover:bg-transparent">
-          <TableHead className={cn(
-            "text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[180px] lg:min-w-0 px-3 sm:px-4",
-            showSelectionColumn ? "lg:w-[26%]" : "lg:w-[30%]"
-          )}>
-            Nama Pendaftar
+          <TableHead className={cn(headBase, 'px-4')}>Pendaftar</TableHead>
+          <TableHead className={cn(headBase, 'px-4')}>Kontak</TableHead>
+          <TableHead className={cn(headBase, 'px-2.5')}>Jalur</TableHead>
+          <TableHead className={cn(headBase, 'px-2.5')}>Pembayaran</TableHead>
+          <TableHead className={cn(headBase, 'px-2.5')}>Dokumen</TableHead>
+          {showSelectionColumn && <TableHead className={cn(headBase, 'px-2.5')}>Seleksi</TableHead>}
+          <TableHead className={cn(headBase, 'px-3 text-right')}>
+            <span className="sr-only">Aksi</span>
           </TableHead>
-          <TableHead className={cn(
-            "text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[150px] lg:min-w-0 px-3 sm:px-4",
-            showSelectionColumn ? "lg:w-[21%]" : "lg:w-[25%]"
-          )}>
-            Email / No. WA
-          </TableHead>
-          <TableHead className={cn(
-            "text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[100px] lg:min-w-0 px-2.5 sm:px-3",
-            showSelectionColumn ? "lg:w-[12%]" : "lg:w-[14%]"
-          )}>
-            Jalur Pendaftaran
-          </TableHead>
-          <TableHead className={cn(
-            "text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[110px] lg:min-w-0 px-2.5 sm:px-3",
-            showSelectionColumn ? "lg:w-[13%]" : "lg:w-[14%]"
-          )}>
-            Pembayaran
-          </TableHead>
-          <TableHead className={cn(
-            "text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[120px] lg:min-w-0 px-2.5 sm:px-3",
-            showSelectionColumn ? "lg:w-[14%]" : "lg:w-[14%]"
-          )}>
-            Dokumen
-          </TableHead>
-          {showSelectionColumn && (
-            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[90px] lg:min-w-0 lg:w-[10%] px-2.5 sm:px-3">
-              Seleksi
-            </TableHead>
-          )}
-          <TableHead className="w-8 px-2" />
         </TableRow>
       </TableHeader>
       <TableBody>
         {loading ? (
           <TableSkeletonRows cols={totalCols} rows={6} />
         ) : applicants.length === 0 ? (
-          <TableRow>
+          <TableRow className="hover:bg-transparent">
             <TableCell colSpan={totalCols} className="py-8">
               <EmptyState
                 icon={hasActiveWave === false ? Waves : UserRoundSearch}
@@ -135,44 +136,80 @@ export default function ApplicantsTable({ applicants, loading, hasActiveWave, sh
               key={a.id}
               onClick={() => onRowClick?.(a)}
               className={cn(
-                'group transition-colors',
-                onRowClick && 'cursor-pointer hover:bg-emerald-primary/5'
+                'group border-slate-100 transition-colors',
+                onRowClick && 'cursor-pointer hover:bg-emerald-primary/[0.05]'
               )}
             >
-              <TableCell className="py-3 px-3 sm:px-4">
-                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                  <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-primary to-emerald-dark text-xs font-bold text-white shadow-sm shadow-emerald-primary/20">
+              {/* Pendaftar */}
+              <TableCell className="px-4 py-3.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-primary to-emerald-dark text-[11px] font-bold tracking-wide text-white shadow-sm shadow-emerald-primary/20">
                     {initials(a.full_name)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold text-slate-800 text-xs sm:text-sm" title={a.full_name}>{a.full_name}</div>
-                    <div className="text-[11px] text-muted-foreground truncate">{a.wave_name || '-'}</div>
+                    <div className="truncate text-sm font-semibold text-slate-800" title={a.full_name}>
+                      {a.full_name || 'Tanpa Nama'}
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-1.5 min-w-0 text-xs text-slate-500">
+                      <Waves className="h-3 w-3 shrink-0 text-emerald-primary/60" />
+                      <span className="truncate">{a.wave_name || 'Tanpa gelombang'}</span>
+                    </div>
                   </div>
                 </div>
               </TableCell>
-              <TableCell className="py-3 px-3 sm:px-4 text-xs sm:text-sm text-slate-600">
-                <div className="truncate" title={a.email}>{a.email}</div>
-                <span className="text-[11px] sm:text-xs text-muted-foreground truncate block">{a.phone}</span>
+
+              {/* Kontak */}
+              <TableCell className="px-4 py-3.5">
+                <div className="min-w-0 space-y-0.5">
+                  <div className="truncate text-sm font-medium text-slate-700" title={a.email}>
+                    {a.email || '—'}
+                  </div>
+                  <div className="truncate text-xs tabular-nums text-slate-500" title={a.phone}>
+                    {a.phone || 'Nomor WA belum diisi'}
+                  </div>
+                </div>
               </TableCell>
-              <TableCell className="py-3 px-2.5 sm:px-3 text-sm">
-                <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold capitalize text-slate-600 whitespace-nowrap">
-                  {a.registration_path || '-'}
-                </span>
+
+              {/* Jalur */}
+              <TableCell className="px-2.5 py-3.5">
+                {a.registration_path ? (
+                  <span
+                    className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200 whitespace-nowrap"
+                    title={humanize(a.registration_path)}
+                  >
+                    {humanize(a.registration_path)}
+                  </span>
+                ) : (
+                  <span className="text-sm text-slate-300">—</span>
+                )}
               </TableCell>
-              <TableCell className="py-3 px-2.5 sm:px-3">
+
+              {/* Pembayaran */}
+              <TableCell className="px-2.5 py-3.5">
                 <PaymentStatusBadge status={a.payment_status} />
               </TableCell>
-              <TableCell className="py-3 px-2.5 sm:px-3">
+
+              {/* Dokumen */}
+              <TableCell className="px-2.5 py-3.5">
                 <DocStatusBadge status={a.status} />
               </TableCell>
+
+              {/* Seleksi */}
               {showSelectionColumn && (
-                <TableCell className="py-3 px-2.5 sm:px-3">
+                <TableCell className="px-2.5 py-3.5">
                   <SelectionStatusBadge status={a.status} />
                 </TableCell>
               )}
-              <TableCell className="w-8 py-3 px-2 text-right">
+
+              {/* Aksi */}
+              <TableCell className="px-3 py-3.5 text-right">
                 {onRowClick && (
-                  <ChevronRight className="ml-auto h-4 w-4 text-slate-300 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-300 transition-colors group-hover:bg-emerald-primary/10 group-hover:text-primary"
+                  >
+                    <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </span>
                 )}
               </TableCell>
             </TableRow>

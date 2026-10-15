@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react"
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import { Eye, EyeOff, Lock, ShieldCheck, User } from "lucide-react"
 import { Button } from "./button"
 import { Label } from "./label"
@@ -48,6 +48,19 @@ export function AuthCard({
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showRecovery, setShowRecovery] = useState(false)
+  const [logoLoaded, setLogoLoaded] = useState(false)
+  const logoRef = useRef<HTMLImageElement | null>(null)
+
+  // Tinggi kartu murni content-driven: elemen logo baru masuk ke alur layout
+  // setelah gambar asli benar-benar selesai dimuat. Selama logo belum tampil
+  // (belum tersedia / masih dimuat / gagal) tidak ada ruang yang disisihkan,
+  // placeholder, skeleton, maupun gambar pengganti.
+  useEffect(() => {
+    setLogoLoaded(false)
+    const img = logoRef.current
+    // Gambar dari cache bisa terlewat event onLoad — cek langsung statusnya.
+    if (img?.complete && img.naturalWidth > 0) setLogoLoaded(true)
+  }, [logoUrl])
 
   const canRecover = Boolean(recoveryMode)
   const recovering = canRecover && showRecovery
@@ -85,7 +98,15 @@ export function AuthCard({
             inert={recovering ? true : undefined}
           >
             <div className="mb-6 flex flex-col items-center text-center">
-              {logoUrl ? <img src={logoUrl} alt="Logo" className="mb-4 h-16 max-w-48 object-contain" /> : null}
+              {logoUrl ? (
+                <img
+                  ref={logoRef}
+                  src={logoUrl}
+                  alt="Logo"
+                  onLoad={() => setLogoLoaded(true)}
+                  className={cn("mb-4 h-16 max-w-48 object-contain", !logoLoaded && "hidden")}
+                />
+              ) : null}
               <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: HEADING_FONT }}>{title}</h1>
               {subtitle ? <p className="mt-1 text-sm text-muted-foreground" style={{ fontFamily: HEADING_FONT }}>{subtitle}</p> : null}
               {badgeText ? (
@@ -149,7 +170,7 @@ export function AuthCard({
                     </button>
                   </div>
                 </div>
-                <Button type="submit" className="h-11 w-full rounded-[10px]" disabled={loading}>{loading ? "Memproses..." : submitText}</Button>
+                <Button type="submit" className="h-11 w-full rounded-[10px]" loading={loading} disabled={loading}>{loading ? "Memproses…" : submitText}</Button>
                 {forgotText ? (
                   (onForgotClick || canRecover)
                     ? <button type="button" onClick={handleForgot} className="w-full text-center text-sm text-muted-foreground hover:underline">{forgotText}</button>

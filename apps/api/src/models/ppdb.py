@@ -27,6 +27,7 @@ class PPDBPeriod(Base):
     academic_year: Mapped[str | None] = mapped_column(String(20))
     description: Mapped[str | None] = mapped_column(Text)
     wa_group_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    head_of_committee: Mapped[str | None] = mapped_column(String(150), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="inactive")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -111,6 +112,21 @@ class PPDBApplicant(Base):
     # Alasan penolakan dokumen (diisi admin saat verifikasi; NULL saat
     # belum/sudah disetujui)
     rejection_reason: Mapped[str | None] = mapped_column(Text)
+    registration_number: Mapped[str | None] = mapped_column(
+        String(50), unique=True, nullable=True
+    )
+    is_loa_signed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    loa_signed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    loa_signer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    loa_signer_relation: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    loa_signature_data: Mapped[str | None] = mapped_column(Text, nullable=True)
+    loa_signature_token: Mapped[str | None] = mapped_column(
+        String(64), unique=True, nullable=True
+    )
+    # ── DP status ────────────────────────────────────────────────────────────
+    # dp_status: pending | paid
+    dp_status: Mapped[str] = mapped_column(String(20), default="pending")
+    dp_paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
@@ -185,10 +201,26 @@ class PPDBPaymentTransaction(Base):
     # Metode: offline (cash ke panitia) | online (payment gateway / simulator)
     method: Mapped[str] = mapped_column(String(20), default="offline")
     amount: Mapped[int] = mapped_column(BigInteger, default=0)
-    # Status transaksi: pending | success | failed | expired | cancelled
+    # Status transaksi: pending | success | failed | expired | cancelled | exception
     status: Mapped[str] = mapped_column(String(20), default="pending")
     # Referensi order/invoice dari PG (nullable untuk metode offline)
     external_id: Mapped[str | None] = mapped_column(String(100))
+    order_id: Mapped[str | None] = mapped_column(String(100), index=True, nullable=True)
+    txn_id: Mapped[str | None] = mapped_column(String(100), index=True, nullable=True)
+    # payment_type: form | dp | installment
+    payment_type: Mapped[str] = mapped_column(String(30), default="form")
+    installment_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    provider_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    qr_string: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Financial snapshot fields for immutable historical receipts
+    total_obligation: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    total_paid_before: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    remaining_before: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    total_paid_after: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    remaining_after: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    receipt_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # Raw payload dari webhook PG (JSON string)
     gateway_payload: Mapped[str | None] = mapped_column(Text)
     # Alasan gagal (untuk notif ke pendaftar)

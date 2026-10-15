@@ -8,6 +8,7 @@ class PeriodCreate(BaseModel):
     academic_year: str = Field(min_length=1, max_length=20)
     description: str | None = None
     wa_group_link: str | None = None
+    head_of_committee: str | None = None
 
 
 class PeriodUpdate(BaseModel):
@@ -15,6 +16,13 @@ class PeriodUpdate(BaseModel):
     academic_year: str | None = Field(default=None, min_length=1, max_length=20)
     description: str | None = None
     wa_group_link: str | None = None
+    head_of_committee: str | None = None
+
+
+class LoASignatureRequest(BaseModel):
+    signer_name: str = Field(min_length=2, max_length=255)
+    signer_relation: str = Field(default="Orang Tua", max_length=50)
+    signature_data: str = Field(min_length=10)
 
 
 class TIUSettingsUpdate(BaseModel):

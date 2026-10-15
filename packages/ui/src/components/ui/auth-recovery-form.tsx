@@ -58,7 +58,7 @@ export function AuthRecoveryForm({ apiBase, applicant = false, onClose, closeTex
         <div className="space-y-2"><Label>{isApplicant ? "NIK Pendaftar" : "Username atau email"}</Label><Input className="rounded-[10px]" required inputMode={isApplicant ? "numeric" : "text"} minLength={isApplicant ? 16 : undefined} maxLength={isApplicant ? 16 : 255} value={identifier} onChange={e => setIdentifier(e.target.value)} autoComplete="username" /></div>
         {isApplicant && <div className="space-y-2"><Label>Tanggal lahir</Label><Input className="rounded-[10px]" type="date" required value={birthDate} onChange={e => setBirthDate(e.target.value)} /></div>}
         {sent && !isApplicant && <div className="space-y-2"><Label>Kode verifikasi</Label><Input className="rounded-[10px]" required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} onChange={e => setCode(e.target.value)} autoComplete="one-time-code" /></div>}
-        <Button className="w-full rounded-[10px]" disabled={busy}>{busy ? "Memproses…" : isApplicant ? "Pulihkan akun" : sent ? "Verifikasi dan kirim kredensial" : "Kirim kode WhatsApp"}</Button>
+        <Button className="w-full rounded-[10px]" loading={busy} disabled={busy}>{busy ? "Memproses…" : isApplicant ? "Pulihkan akun" : sent ? "Verifikasi dan kirim kredensial" : "Kirim kode WhatsApp"}</Button>
       </> : null}
     </form>
     {onClose ? <button type="button" className="mt-4 w-full text-center text-sm text-muted-foreground hover:underline" onClick={() => { onClose(); reset() }}>{closeText}</button> : null}

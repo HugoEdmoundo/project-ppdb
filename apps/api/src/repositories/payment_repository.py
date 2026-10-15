@@ -144,6 +144,12 @@ class PaymentRepository:
         self.db.flush()
         self.db.commit()
 
+    def save_transaction(self, transaction: PPDBPaymentTransaction):
+        transaction.updated_at = datetime.now(WIB)
+        self.db.add(transaction)
+        self.db.flush()
+        self.db.commit()
+
     def update_applicant(self, applicant: PPDBApplicant):
         applicant.updated_at = datetime.now(WIB)
         self.db.add(applicant)
@@ -481,3 +487,73 @@ class PaymentRepository:
         self.db.add(bill)
         self.db.flush()
         self.db.commit()
+
+    def get_transaction_by_order_id(
+        self, order_id: str
+    ) -> PPDBPaymentTransaction | None:
+        stmt = select(PPDBPaymentTransaction).where(
+            or_(
+                PPDBPaymentTransaction.order_id == order_id,
+                PPDBPaymentTransaction.external_id == order_id,
+                PPDBPaymentTransaction.id == order_id,
+            )
+        )
+        return cast(PPDBPaymentTransaction | None, self.db.scalars(stmt).first())
+
+    def get_transaction_by_txn_id(self, txn_id: str) -> PPDBPaymentTransaction | None:
+        stmt = select(PPDBPaymentTransaction).where(
+            PPDBPaymentTransaction.txn_id == txn_id
+        )
+        return cast(PPDBPaymentTransaction | None, self.db.scalars(stmt).first())
+
+    def get_active_transaction(
+        self, applicant_id: str, payment_type: str | None = None
+    ) -> PPDBPaymentTransaction | None:
+        """Return the most recent pending transaction for this applicant
+        that has not expired.
+        """
+        now_wib = datetime.now(WIB)
+        stmt = select(PPDBPaymentTransaction).where(
+            PPDBPaymentTransaction.applicant_id == applicant_id,
+            PPDBPaymentTransaction.status == "pending",
+            or_(
+                PPDBPaymentTransaction.expired_at.is_(None),
+                PPDBPaymentTransaction.expired_at > now_wib,
+            ),
+        )
+        if payment_type:
+            stmt = stmt.where(PPDBPaymentTransaction.payment_type == payment_type)
+        stmt = stmt.order_by(PPDBPaymentTransaction.created_at.desc()).limit(1)
+        return cast(PPDBPaymentTransaction | None, self.db.scalars(stmt).first())
+
+    def get_applicant_transactions(
+        self, applicant_id: str
+    ) -> list[PPDBPaymentTransaction]:
+        stmt = (
+            select(PPDBPaymentTransaction)
+            .where(PPDBPaymentTransaction.applicant_id == applicant_id)
+            .order_by(PPDBPaymentTransaction.created_at.desc())
+        )
+        return list(self.db.scalars(stmt).all())
+
+    def count_successful_installments(self, applicant_id: str) -> int:
+        stmt = select(func.count()).where(
+            PPDBPaymentTransaction.applicant_id == applicant_id,
+            PPDBPaymentTransaction.payment_type == "installment",
+            PPDBPaymentTransaction.status == "success",
+        )
+        return int(self.db.scalar(stmt) or 0)
+
+    def get_verified_stage2_payments(
+        self, applicant_id: str
+    ) -> list[PPDBPaymentTransaction]:
+        stmt = (
+            select(PPDBPaymentTransaction)
+            .where(
+                PPDBPaymentTransaction.applicant_id == applicant_id,
+                PPDBPaymentTransaction.payment_type.in_(["dp", "installment"]),
+                PPDBPaymentTransaction.status == "success",
+            )
+            .order_by(PPDBPaymentTransaction.created_at.asc())
+        )
+        return list(self.db.scalars(stmt).all())

@@ -18,8 +18,8 @@ export default function ResultStagePage() {
   const loaQuery = useQuery({
     queryKey: ['my-loa'],
     queryFn: async () => {
-      const res = await apiFetch<any>('/ppdb/applicants/me/loa').catch(() => ({ loa: null }))
-      return res?.loa || null
+      const res = await apiFetch<any>('/ppdb/applicants/me/loa').catch(() => null)
+      return res?.letter_number ? res : (res?.loa || null)
     },
   })
 

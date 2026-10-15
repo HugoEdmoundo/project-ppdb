@@ -33,6 +33,8 @@ import VerifikasiDokumenPage from './pages/admin/ppdb/VerifikasiDokumenPage'
 import PembayaranFormulirPage from './pages/admin/ppdb/PembayaranFormulirPage'
 import PembayaranTahap2Page from './pages/admin/ppdb/PembayaranTahap2Page'
 import PenilaianPage from './pages/admin/ppdb/PenilaianPage'
+import ReviewLoaPage from './pages/admin/ppdb/ReviewLoaPage'
+import PublicLoaPage from './pages/public/PublicLoaPage'
 import Sessions1on1Page from './pages/admin/ppdb/Sessions1on1Page'
 import SessionEvaluationPage from './pages/admin/ppdb/SessionEvaluationPage'
 import * as api from './api/client'
@@ -82,6 +84,7 @@ export default function App() {
               <Route path="sessions/wawancara" element={<Sessions1on1Page forcedType="interview" />} />
               <Route path="sessions/:sessionType/evaluasi/:sessionId" element={<SessionEvaluationPage />} />
               <Route path="penilaian" element={<PenilaianPage />} />
+              <Route path="review-loa" element={<ReviewLoaPage />} />
               <Route path="arsip" element={<ArsipPendaftarPage />} />
               <Route path="periods" element={<PeriodsPage />} />
               <Route path="tiu-settings" element={<TIUSettingsPage />} />
@@ -94,8 +97,10 @@ export default function App() {
 
             <Route path="/checkout" element={<ProtectedRoute role="applicant"><CheckoutPage /></ProtectedRoute>} />
 
-            {/* Public Kuitansi via Shared Link (Tanpa Header, Tanpa CTA Back, Tanpa Share) */}
+            {/* Public Kuitansi & LoA Resmi via Direct / QR Link */}
             <Route path="/kuitansi/:id" element={<PublicReceiptPage />} />
+            <Route path="/receipt/:id" element={<PublicReceiptPage />} />
+            <Route path="/loa/:registrationNo" element={<PublicLoaPage />} />
 
             {/* Applicant Dedicated Stage Pages */}
             <Route path="/applicant" element={<ProtectedRoute role="applicant" requirePaid={true}><ApplicantDashboardPage /></ProtectedRoute>} />

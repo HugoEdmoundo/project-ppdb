@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth, useFilteredNav } from '../contexts/AuthContext'
 import {
-  LayoutDashboard, CalendarDays, CreditCard, Bell, Users, Archive, Settings, ClipboardCheck, Award, Globe, ExternalLink, CalendarCheck
+  LayoutDashboard, CalendarDays, CreditCard, Bell, Users, Archive, Settings, ClipboardCheck, Award, Globe, ExternalLink, CalendarCheck, FileCheck2
 } from 'lucide-react'
 import { API_BASE } from '@/api/client'
 import {
@@ -36,6 +36,7 @@ const navItems = [
     ]
   },
   { label: 'Hasil Pendaftaran', icon: Award, href: '/admin/penilaian', module: 'ppdb', minLevel: 'read' },
+  { label: 'Review LoA', icon: FileCheck2, href: '/admin/review-loa', module: 'ppdb', minLevel: 'read' },
   { label: 'Periode PPDB', icon: CalendarDays, href: '/admin/periods', module: 'ppdb', minLevel: 'read' },
   {
     label: 'Konfigurasi',

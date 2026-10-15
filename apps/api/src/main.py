@@ -130,7 +130,13 @@ async def lifespan(app: FastAPI):
 
     threading.Thread(target=keep_db_alive, daemon=True).start()
     _wait_for_database()
+
+    # Start automated PPDB background scheduler (Monthly installment reminders)
+    from src.core.scheduler import start_scheduler, stop_scheduler
+
+    start_scheduler()
     yield
+    stop_scheduler()
 
 
 app = FastAPI(

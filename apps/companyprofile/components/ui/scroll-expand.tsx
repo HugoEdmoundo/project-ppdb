@@ -44,9 +44,8 @@ const useScrollExpandProgress = () => {
  */
 const useTintOpacity = () => {
   const progress = useScrollExpandProgress();
-  const reduced = useReducedMotion();
   return useTransform(progress, (p) =>
-    reduced ? 0 : 1 - clamp01((p - TINT_START) / (TINT_FADE_END - TINT_START)),
+    1 - clamp01((p - TINT_START) / (TINT_FADE_END - TINT_START)),
   );
 };
 
@@ -67,7 +66,6 @@ export const ScrollExpand = ({
   className = "",
 }: ScrollExpandProps) => {
   const ref = useRef<HTMLDivElement>(null);
-  const reduced = useReducedMotion();
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end end"],
@@ -78,7 +76,7 @@ export const ScrollExpand = ({
       <div
         ref={ref}
         data-scroll-expand-root=""
-        className={`relative ${reduced ? "h-auto" : scrollLength} ${className}`}
+        className={`relative ${scrollLength} ${className}`}
       >
         {children}
       </div>
@@ -102,17 +100,12 @@ export const ScrollExpandSticky = ({
   tint = true,
   className = "",
 }: ScrollExpandStickyProps) => {
-  const reduced = useReducedMotion();
   const tintOpacity = useTintOpacity();
 
   return (
     <div
       data-scroll-expand-frame=""
-      className={`relative flex w-full items-center justify-center overflow-hidden ${
-        // `dvh`, bukan `svh`: saat URL bar mobile menyusut, `svh` (< viewport nyata)
-        // menyisakan celah di bawah frame sticky yang memperlihatkan background root.
-        reduced ? "relative" : "sticky top-0 h-dvh"
-      } ${className}`}
+      className={`relative flex w-full items-center justify-center overflow-hidden sticky top-0 h-dvh ${className}`}
     >
       {/* Di render sebelum children => reveal (children) menimpanya. */}
       {tint && (

@@ -1,18 +1,40 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import * as api from '@/api/client'
 import { Card, CardContent } from "@/components/ui"
 import { Button } from "@/components/ui"
 import { Badge } from "@/components/ui"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui"
 import { Textarea } from "@/components/ui"
-import { ArrowRight, Activity, Award, CheckCircle2, XCircle, Clock, Brain, BookOpen, MessageSquare, Printer, Info, UserCheck, ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react'
+import {
+  ArrowRight,
+  Activity,
+  Award,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Brain,
+  BookOpen,
+  MessageSquare,
+  Info,
+  UserCheck,
+  ThumbsUp,
+  ThumbsDown,
+  RotateCcw,
+  Download,
+  FileText,
+  Image as ImageIcon,
+  ChevronDown,
+} from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Applicant } from '@/types/ppdb'
 import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
 import PaginationControls from '@/components/shared/PaginationControls'
 import PageHeaderCard from '@/components/shared/PageHeaderCard'
 import ToolbarCard from '@/components/shared/ToolbarCard'
+import OfficialAssessmentSheet from '@/components/shared/OfficialAssessmentSheet'
+import { downloadAssessmentDoc } from '@/utils/exportAssessment'
 import { useToast } from '@/components/Toast'
 import { useCan } from '@/hooks/useCan'
 import { cn } from '@/lib/utils'
@@ -40,30 +62,22 @@ function SelectionBadge({ status }: { status?: string }) {
   )
 }
 
-function initials(name?: string) {
-  return (name || 'A')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-}
-
 interface ScoreDetailModalProps {
   applicant: Applicant | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onStatusChanged?: () => void
+  logoUrl?: string | null
 }
 
-function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: ScoreDetailModalProps) {
-  const printRef = useRef<HTMLDivElement>(null)
+function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged, logoUrl }: ScoreDetailModalProps) {
+  const assessmentSheetRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
   const { canCrud } = useCan('ppdb', 'crud')
   const queryClient = useQueryClient()
   const [verdictMode, setVerdictMode] = useState<'passed' | 'failed' | 'selection' | null>(null)
   const [verdictReason, setVerdictReason] = useState('')
+  const [isDownloading, setIsDownloading] = useState<'pdf' | 'image' | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['applicant-transcript-view', applicant?.id],
@@ -96,12 +110,7 @@ function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: Sc
     verdictMutation.mutate({ status: verdictMode, reason: verdictReason.trim() || undefined })
   }
 
-
   if (!applicant) return null
-
-  const handlePrint = () => {
-    window.print()
-  }
 
   const appData = data?.applicant || applicant
   const categories: any[] = data?.categories || []
@@ -129,25 +138,97 @@ function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: Sc
   const tahfidzAvg = calculateAvg(tahfidzCategory?.criteria)
   const wawancaraAvg = calculateAvg(wawancaraCategory?.criteria)
 
+  const handleDownload = async (format: 'pdf' | 'image') => {
+    if (!assessmentSheetRef.current) {
+      toast('error', 'Dokumen penilaian belum siap diunduh. Mohon tunggu sebentar.')
+      return
+    }
+    try {
+      setIsDownloading(format)
+      await downloadAssessmentDoc(
+        assessmentSheetRef.current,
+        format,
+        appData.full_name || 'santri',
+        appData.registration_number || appData.id
+      )
+      toast('success', `Lembar penilaian berhasil diunduh sebagai ${format.toUpperCase()}`)
+    } catch (err: any) {
+      toast('error', err.message || 'Gagal mengunduh lembar penilaian')
+    } finally {
+      setIsDownloading(null)
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[96vw] sm:max-w-3xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
-        <DialogHeader className="print:hidden">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <DialogTitle className="text-base flex items-center gap-2">
-                <Award className="h-5 w-5 text-emerald-600" />
-                Hasil Seleksi Pendaftar
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                Rekapitulasi hasil penilaian murni (TIU otomatis via webhook & evaluasi rubrik). Validasi kelulusan dilakukan oleh admin.
-              </DialogDescription>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="w-[96vw] sm:max-w-3xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
+          <DialogHeader className="print:hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <DialogTitle className="text-base flex items-center gap-2">
+                  <Award className="h-5 w-5 text-emerald-600" />
+                  Hasil Seleksi Pendaftar
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Rekapitulasi hasil penilaian murni (TIU otomatis via webhook & evaluasi rubrik). Validasi kelulusan dilakukan oleh admin.
+                </DialogDescription>
+              </div>
+
+              {/* Dropdown Download Lembar Penilaian (PDF / Gambar) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!!isDownloading || isLoading}
+                    className="h-8 text-xs gap-1.5 shrink-0 w-full sm:w-auto bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-2xs font-semibold"
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Clock className="h-3.5 w-3.5 animate-spin text-emerald-600 shrink-0" />
+                        <span>Menyiapkan {isDownloading === 'pdf' ? 'PDF' : 'Gambar'}...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <span>Download Lembar</span>
+                        <ChevronDown className="h-3 w-3 text-slate-400 shrink-0" />
+                      </>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 p-1.5 shadow-lg border-slate-200 bg-white">
+                  <DropdownMenuItem
+                    onClick={() => handleDownload('pdf')}
+                    disabled={!!isDownloading}
+                    className="gap-2.5 text-xs py-2 px-2.5 rounded-lg cursor-pointer font-medium hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-md bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="font-semibold text-slate-900">Download PDF</span>
+                      <span className="text-[10px] text-muted-foreground">Format standar dokumen A4</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleDownload('image')}
+                    disabled={!!isDownloading}
+                    className="gap-2.5 text-xs py-2 px-2.5 rounded-lg cursor-pointer font-medium hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                      <ImageIcon className="h-4 w-4" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="font-semibold text-slate-900">Download Gambar</span>
+                      <span className="text-[10px] text-muted-foreground">Format PNG resolusi tinggi A4</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <Button onClick={handlePrint} size="sm" variant="outline" className="h-8 text-xs gap-1.5 shrink-0">
-              <Printer className="h-3.5 w-3.5" /> Cetak Lembar
-            </Button>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
 
         {isLoading ? (
           <div className="py-16 text-center text-sm text-muted-foreground">
@@ -155,7 +236,7 @@ function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: Sc
             Memuat lembar hasil nilai seleksi...
           </div>
         ) : (
-          <div ref={printRef} className="space-y-6 pt-2">
+          <div className="space-y-6 pt-2">
             {/* Kartu Profil Santri */}
             <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
@@ -361,9 +442,32 @@ function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: Sc
 
             {/* CATATAN TIM EVALUATOR */}
             {evaluatorNotes && (
-              <div className="p-3.5 bg-slate-50 border rounded-xl text-xs space-y-1">
-                <span className="font-semibold text-slate-700 block">Catatan Tim Evaluator:</span>
-                <p className="text-slate-700 italic">{evaluatorNotes}</p>
+              <div className="p-3.5 bg-slate-50 border rounded-xl text-xs space-y-1.5">
+                <span className="font-semibold text-slate-800 block">Catatan Tim Evaluator:</span>
+                {(() => {
+                  const text = evaluatorNotes.trim()
+                  const tMatch = text.match(/(?:^|\n)\[Tahfidz\]:\s*([\s\S]*?)(?=(?:\n\[|$))/i)
+                  const wMatch = text.match(/(?:^|\n)\[Wawancara\]:\s*([\s\S]*?)(?=(?:\n\[|$))/i)
+                  if (tMatch || wMatch) {
+                    return (
+                      <div className="space-y-1 text-slate-700 pl-1">
+                        {tMatch && (
+                          <p>
+                            <strong className="text-slate-800">Ujian Tahfidz:</strong>{' '}
+                            <span className="italic">{tMatch[1].trim()}</span>
+                          </p>
+                        )}
+                        {wMatch && (
+                          <p>
+                            <strong className="text-slate-800">Ujian Wawancara:</strong>{' '}
+                            <span className="italic">{wMatch[1].trim()}</span>
+                          </p>
+                        )}
+                      </div>
+                    )
+                  }
+                  return <p className="text-slate-700 italic">{evaluatorNotes}</p>
+                })()}
               </div>
             )}
 
@@ -402,11 +506,11 @@ function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: Sc
                       ? 'Tentukan keputusan kelulusan pendaftar ini.'
                       : 'Ubah keputusan yang sudah ditetapkan.'}
                   </p>
-                  <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-start sm:justify-end">
                     {graduationStatus !== 'passed' && (
                       <Button
                         size="sm"
-                        className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto"
                         onClick={() => setVerdictMode('passed')}
                         disabled={verdictMutation.isPending}
                       >
@@ -417,7 +521,7 @@ function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: Sc
                       <Button
                         size="sm"
                         variant="destructive"
-                        className="h-8 text-xs gap-1.5"
+                        className="h-8 text-xs gap-1.5 w-full sm:w-auto"
                         onClick={() => setVerdictMode('failed')}
                         disabled={verdictMutation.isPending}
                       >
@@ -428,7 +532,7 @@ function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: Sc
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 text-xs gap-1.5 text-slate-600"
+                        className="h-8 text-xs gap-1.5 text-slate-600 w-full sm:w-auto"
                         onClick={() => setVerdictMode('selection')}
                         disabled={verdictMutation.isPending}
                       >
@@ -468,11 +572,11 @@ function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: Sc
                     rows={2}
                     className="text-xs resize-none"
                   />
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8 text-xs"
+                      className="h-8 text-xs w-full sm:w-auto"
                       onClick={() => { setVerdictMode(null); setVerdictReason('') }}
                       disabled={verdictMutation.isPending}
                     >
@@ -480,7 +584,7 @@ function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: Sc
                     </Button>
                     <Button
                       size="sm"
-                      className={cn("h-8 text-xs gap-1.5",
+                      className={cn("h-8 text-xs gap-1.5 w-full sm:w-auto",
                         verdictMode === 'passed' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' :
                         verdictMode === 'failed' ? 'bg-destructive hover:bg-destructive/90 text-white' :
                         'bg-amber-600 hover:bg-amber-700 text-white'
@@ -499,7 +603,36 @@ function ScoreDetailModal({ applicant, open, onOpenChange, onStatusChanged }: Sc
         )}
       </DialogContent>
     </Dialog>
-  )
+
+    {/* Hidden Container untuk Render Lembar Penilaian Resmi A4 (Presisi Tanpa Kotoran Modal) */}
+    {open && appData && (
+      <div
+        className="print:hidden"
+        style={{
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          width: '210mm',
+          zIndex: -1000,
+          opacity: 0,
+          pointerEvents: 'none',
+        }}
+        aria-hidden="true"
+      >
+        <OfficialAssessmentSheet
+          ref={assessmentSheetRef}
+          applicant={appData}
+          categories={categories}
+          tiuScore={tiuScore}
+          tiuCompletedAt={tiuCompletedAt}
+          evaluatorNotes={evaluatorNotes}
+          graduationStatus={graduationStatus}
+          logoUrl={logoUrl}
+        />
+      </div>
+    )}
+  </>
+)
 }
 
 export default function PenilaianPage() {
@@ -510,6 +643,18 @@ export default function PenilaianPage() {
   const [page, setPage] = useState(1)
   const limit = 20
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null)
+  const [logoUrl, setLogoUrl] = useState<string | null>(
+    'https://res.cloudinary.com/dunynusuh/image/upload/v1755771459/Logo-Ar-Rahman_fm4mgg.png'
+  )
+
+  useEffect(() => {
+    fetch(`${api.API_BASE}/companyprofile/settings/logo`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.value) setLogoUrl(data.value)
+      })
+      .catch(() => {})
+  }, [])
 
   const { data, isLoading: loading, refetch, isFetching } = useQuery({
     queryKey: ['applicants-selection-results', searchQuery, page, limit, statusFilter],
@@ -650,14 +795,9 @@ export default function PenilaianPage() {
                       title="Klik untuk melihat lembar hasil seleksi & validasi kelulusan"
                     >
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-primary to-emerald-dark text-xs font-bold text-white shadow-sm shadow-emerald-primary/20">
-                            {initials(applicant.full_name)}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-semibold text-slate-800">{applicant.full_name}</div>
-                            <div className="text-[11px] text-muted-foreground">{applicant.wave_name || '-'}</div>
-                          </div>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-800">{applicant.full_name}</div>
+                          <div className="text-[11px] text-muted-foreground">{applicant.wave_name || '-'}</div>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-slate-600">
@@ -698,6 +838,7 @@ export default function PenilaianPage() {
         open={!!selectedApplicant}
         onOpenChange={(v) => !v && setSelectedApplicant(null)}
         onStatusChanged={() => refetch()}
+        logoUrl={logoUrl}
       />
     </div>
   )

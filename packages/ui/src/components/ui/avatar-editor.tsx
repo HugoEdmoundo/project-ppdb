@@ -12,10 +12,18 @@ interface AvatarEditorProps {
   onUpload: (file: File) => Promise<string>
   onUrlApplied: (url: string) => void
   className?: string
+  hint?: string | null
+  size?: 'sm' | 'md' | 'lg'
 }
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const MAX_SIZE_BYTES = 10 * 1024 * 1024
+
+const sizeClasses = {
+  sm: 'h-16 w-16 text-xl',
+  md: 'h-20 w-20 text-2xl',
+  lg: 'h-24 w-24 text-3xl',
+}
 
 export function AvatarEditor({
   value,
@@ -24,6 +32,8 @@ export function AvatarEditor({
   onUpload,
   onUrlApplied,
   className,
+  hint,
+  size = 'md',
 }: AvatarEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showUrl, setShowUrl] = useState(false)
@@ -66,9 +76,9 @@ export function AvatarEditor({
   }
 
   return (
-    <div className={cn('flex flex-col items-center gap-4', className)}>
+    <div className={cn('flex flex-col items-center gap-2', className)}>
       <div className="relative">
-        <Avatar className="h-28 w-28 text-4xl ring-4 ring-primary/10">
+        <Avatar className={cn('ring-4 ring-primary/10 transition-all', sizeClasses[size])}>
           <AvatarImage src={value || undefined} alt={alt || initials || 'Foto profile'} />
           <AvatarFallback className="bg-primary/10 font-bold text-primary">
             {initials || 'U'}
@@ -77,11 +87,11 @@ export function AvatarEditor({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg ring-2 ring-background transition-transform hover:scale-110 active:scale-95"
+          className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md ring-2 ring-background transition-transform hover:scale-110 active:scale-95"
           title="Unggah foto dari perangkat"
           aria-label="Unggah foto profile"
         >
-          <UploadCloud className={cn('h-4 w-4', uploading && 'animate-pulse')} />
+          <UploadCloud className={cn('h-3.5 w-3.5', uploading && 'animate-pulse')} />
         </button>
         <input
           ref={fileInputRef}
@@ -96,34 +106,43 @@ export function AvatarEditor({
       </div>
 
       {!showUrl ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button
             type="button"
             size="sm"
             variant="outline"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
+            className="h-7 text-xs px-2.5 gap-1.5"
           >
-            <UploadCloud className="h-4 w-4" />
-            {uploading ? 'Mengunggah...' : 'Upload Foto'}
+            <UploadCloud className="h-3.5 w-3.5" />
+            {uploading ? 'Mengunggah...' : 'Upload'}
           </Button>
-          <Button type="button" size="sm" variant="ghost" onClick={() => setShowUrl(true)}>
-            <Link2 className="h-4 w-4" />
-            Pakai URL
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowUrl(true)}
+            className="h-7 text-xs px-2.5 gap-1"
+          >
+            <Link2 className="h-3.5 w-3.5" />
+            URL
           </Button>
         </div>
       ) : (
-        <div className="w-full max-w-xs space-y-2">
-          <div className="flex gap-2">
+        <div className="w-full max-w-xs space-y-1.5">
+          <div className="flex gap-1.5">
             <Input
               type="url"
               value={urlDraft}
               onChange={(e) => { setUrlDraft(e.target.value); setError(null) }}
               placeholder="https://example.com/foto.jpg"
-              className="h-9 text-xs"
+              className="h-8 text-xs"
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyUrl() } }}
             />
-            <Button type="button" size="sm" onClick={applyUrl}>Terapkan</Button>
+            <Button type="button" size="sm" onClick={applyUrl} className="h-8 text-xs px-3">
+              Terapkan
+            </Button>
           </div>
           <button
             type="button"
@@ -137,10 +156,12 @@ export function AvatarEditor({
       )}
 
       {error && <p className="text-center text-xs font-medium text-destructive">{error}</p>}
-      <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-        Foto bisa diunggah dari perangkat Anda atau menggunakan URL eksternal.
-        Format JPG, PNG, WebP, atau GIF · maksimal 10 MB.
-      </p>
+
+      {hint !== null && (
+        <p className="text-center text-[10px] text-muted-foreground/80 leading-normal max-w-[200px]">
+          {hint ?? 'JPG, PNG, WebP · Maks. 10 MB'}
+        </p>
+      )}
     </div>
   )
 }

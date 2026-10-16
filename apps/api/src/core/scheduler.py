@@ -190,17 +190,61 @@ def run_monthly_installment_reminders(
             db.close()
 
 
+def cleanup_expired_sessions(db: Session | None = None) -> int:
+    """Hapus semua refresh token yang sudah kedaluwarsa atau dicabut dari database
+    agar tidak menumpuk."""
+    from src.models.auth import RefreshToken
+
+    should_close = False
+    if db is None:
+        db = get_sessionmaker()()
+        should_close = True
+    try:
+        now = datetime.datetime.now(WIB)
+        deleted = (
+            db.query(RefreshToken)
+            .filter((RefreshToken.revoked.is_(True)) | (RefreshToken.expires_at <= now))
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+        if deleted > 0:
+            logger.info(
+                "Scheduler: %d sesi kedaluwarsa/revoked berhasil dibersihkan dari DB.",
+                deleted,
+            )
+        return deleted
+    except Exception as exc:
+        db.rollback()
+        logger.warning("Scheduler: Gagal membersihkan sesi kedaluwarsa: %s", exc)
+        return 0
+    finally:
+        if should_close:
+            db.close()
+
+
 def _scheduler_loop():
     """Background ticker checking every 30 seconds for 5th of month 08:00 WIB."""
     global _scheduler_running
     logger.info("PPDB Installment Scheduler background runner started (WIB).")
 
     last_executed_month: str | None = None
+    last_cleanup_hour: int | None = None
+
+    # Bersihkan sesi kedaluwarsa sekali saat scheduler pertama kali aktif
+    try:
+        cleanup_expired_sessions()
+    except Exception as exc:
+        logger.warning("Pembersihan awal sesi kedaluwarsa gagal: %s", exc)
 
     while _scheduler_running:
         try:
             now_wib = datetime.datetime.now(WIB)
             current_month = now_wib.strftime("%Y-%m")
+
+            # Pembersihan berkala setiap jam agar database tidak menumpuk token usang
+            if last_cleanup_hour != now_wib.hour:
+                cleanup_expired_sessions()
+                last_cleanup_hour = now_wib.hour
 
             # Check if today is the 5th of the month at 08:00 AM WIB
             # (within 08:00 - 08:05 window)

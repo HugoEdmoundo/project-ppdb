@@ -17,7 +17,7 @@ import { Badge, Button, Input } from '@/components/ui'
 
 const formatRp = (n: number) => 'Rp ' + (n || 0).toLocaleString('id-ID')
 
-export default function Stage2PaymentStep() {
+export function Stage2PaymentStep() {
   const { toast } = useToast()
   const [customAmount, setCustomAmount] = useState<string>('')
   const [receiptModalOpen, setReceiptModalOpen] = useState(false)
@@ -143,7 +143,7 @@ export default function Stage2PaymentStep() {
               <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
               <h5 className="font-bold text-emerald-900 text-lg font-heading">Alhamdulillah, Seluruh Tagihan Telah Lunas!</h5>
               <p className="text-xs sm:text-sm text-emerald-700 max-w-lg mx-auto leading-relaxed">
-                Terima kasih telah menyelesaikan seluruh kewajiban biaya pendidikan. Calon santri telah memenuhi syarat administratif secara penuh untuk memulai masa studi di Pesantren Ar-Rahman.
+                Terima kasih telah menyelesaikan seluruh kewajiban biaya pendidikan. Calon santri telah memenuhi syarat administratif secara penuh untuk memulai masa studi di PTDARRAHMAN.
               </p>
             </div>
           ) : (
@@ -373,3 +373,5 @@ export default function Stage2PaymentStep() {
     </div>
   )
 }
+
+export default Stage2PaymentStep

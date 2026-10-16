@@ -117,7 +117,7 @@ export default function LoginPage() {
             Penerimaan Peserta Didik Baru
           </span>
           <h2 className="font-heading mt-5 text-3xl xl:text-4xl font-bold leading-tight text-white">
-            Mulai Perjalanan Anak Anda di <span className="text-gold-light">Ar-Rahman</span>
+            Mulai Perjalanan Anak Anda di <span className="text-gold-light">PTDARRAHMAN</span>
           </h2>
           <p className="mt-4 max-w-md text-sm leading-relaxed text-white/75">
             Membentuk generasi Qur'ani yang unggul secara spiritual, kompetitif secara digital, dan siap memimpin masa
@@ -150,7 +150,7 @@ export default function LoginPage() {
         </div>
 
         <p className="relative z-10 mt-6 hidden text-[11px] text-white/45 lg:block">
-          Pesantren Tahfidz Qur'an &amp; Digital Ar-Rahman · Sejak 2021 · Bekasi
+          Pesantren Tahfidz Qur'an &amp; Digital Arrahman · Sejak 2021 · Bekasi
         </p>
       </aside>
 

@@ -320,7 +320,7 @@ export default function Stage2BillsMonitoring() {
       {/* ─── Tabel Tracking Progres Santri (Tanpa Horizontal Scroll Desktop) ─── */}
       <Card className="rounded-2xl shadow-sm border overflow-hidden">
         <CardContent className="p-0">
-          <Table className="w-full">
+          <Table className="w-full min-w-[560px] md:min-w-0">
             <TableHeader className="bg-primary/5">
               <TableRow>
                 <TableHead className="font-semibold text-xs py-3.5">Santri</TableHead>

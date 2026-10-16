@@ -56,6 +56,39 @@ export default function SessionEvaluationPage() {
   const [scores, setScores] = useState<Record<string, number>>({})
   const [notes, setNotes] = useState<string>('')
 
+  // Helper untuk membaca dan memisahkan catatan Tahfidz dan Wawancara
+  const parseNotes = (raw?: string | null) => {
+    if (!raw) return { tahfidz: '', wawancara: '', general: '' }
+    const text = raw.trim()
+    const tahfidzMatch = text.match(/(?:^|\n)\[Tahfidz\]:\s*([\s\S]*?)(?=(?:\n\[|$))/i)
+    const wawancaraMatch = text.match(/(?:^|\n)\[Wawancara\]:\s*([\s\S]*?)(?=(?:\n\[|$))/i)
+    if (tahfidzMatch || wawancaraMatch) {
+      return {
+        tahfidz: tahfidzMatch ? tahfidzMatch[1].trim() : '',
+        wawancara: wawancaraMatch ? wawancaraMatch[1].trim() : '',
+        general: '',
+      }
+    }
+    return { tahfidz: '', wawancara: '', general: text }
+  }
+
+  // Helper untuk menggabungkan catatan Tahfidz dan Wawancara saat simpan
+  const buildNotes = (newNote: string, existingRaw?: string | null) => {
+    const parsed = parseNotes(existingRaw)
+    const trimmed = newNote.trim()
+    const tahfidzNote = isTahfidz ? trimmed : parsed.tahfidz
+    const wawancaraNote = !isTahfidz ? trimmed : parsed.wawancara
+
+    const parts: string[] = []
+    if (tahfidzNote) parts.push(`[Tahfidz]: ${tahfidzNote}`)
+    if (wawancaraNote) parts.push(`[Wawancara]: ${wawancaraNote}`)
+
+    if (parts.length === 0 && parsed.general) {
+      return parsed.general
+    }
+    return parts.join('\n')
+  }
+
   // Initialize scores and notes when data arrives
   useEffect(() => {
     if (data) {
@@ -63,10 +96,15 @@ export default function SessionEvaluationPage() {
         setScores(data.existing_scores)
       }
       if (data.evaluator_notes) {
-        setNotes(data.evaluator_notes)
+        const parsed = parseNotes(data.evaluator_notes)
+        if (isTahfidz) {
+          setNotes(parsed.tahfidz || parsed.general || '')
+        } else {
+          setNotes(parsed.wawancara || parsed.general || '')
+        }
       }
     }
-  }, [data])
+  }, [data, isTahfidz])
 
   // Save scores mutation
   const saveMutation = useMutation({
@@ -82,12 +120,14 @@ export default function SessionEvaluationPage() {
         throw new Error('Masukkan minimal satu nilai kriteria rubrik')
       }
 
+      const combinedNotes = buildNotes(notes, data.evaluator_notes)
+
       return await api.apiFetch('/selection/results', {
         method: 'POST',
         body: JSON.stringify({
           applicant_id: data.applicant.id,
           scores: scoreItems,
-          notes: notes.trim() || undefined,
+          notes: combinedNotes.trim() || undefined,
         }),
       })
     },

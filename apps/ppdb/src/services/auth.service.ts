@@ -1,4 +1,5 @@
 import { apiFetch } from '../api/client'
+import type { ProfileSession } from '@repo/ui/profile'
 
 export const authService = {
   login: (data: { username: string; password: string }) => apiFetch<any>('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
@@ -6,6 +7,7 @@ export const authService = {
   updateProfile: (body: {
     username?: string
     email?: string
+    phone?: string
     full_name?: string
     avatar_url?: string
     old_password?: string
@@ -16,4 +18,6 @@ export const authService = {
     fd.append('file', file)
     return apiFetch<any>('/auth/upload', { method: 'POST', body: fd })
   },
+  getSessions: () => apiFetch<{ sessions?: ProfileSession[] }>('/auth/sessions'),
+  revokeSession: (id: string) => apiFetch<{ message?: string }>(`/auth/sessions/${id}`, { method: 'DELETE' }),
 }

@@ -77,13 +77,13 @@ export default function ApplicantTranscriptModal({
             {/* Kop Lembaga */}
             <div className="border-b-2 border-slate-900 pb-4 text-center">
               <h2 className="text-lg font-bold uppercase tracking-wider text-emerald-800">
-                PESANTREN TAHFIDZ QUR&apos;AN DAN DIGITAL AR-RAHMAN
+                PESANTREN TAHFIDZ QUR&apos;AN DAN DIGITAL ARRAHMAN
               </h2>
               <p className="text-xs text-slate-600 mt-0.5">
                 Penerimaan Peserta Didik Baru (PPDB) — Lembar Hasil Seleksi Calon Santri
               </p>
               <p className="text-[11px] text-slate-500 italic mt-0.5">
-                Jl. Raya Ar-Rahman, Curug, Gunung Sindur, Bogor, Jawa Barat
+                Rukan Hexa Green Kalimalang, Jl. Inspeksi Kalimalang C8-C9, Jatimulya, Tambun Selatan, Bekasi 17510
               </p>
             </div>
 
@@ -207,10 +207,10 @@ export default function ApplicantTranscriptModal({
                 <p className="text-slate-500">Mengetahui,</p>
                 <p className="font-semibold mt-0.5">Ketua Panitia Seleksi PPDB</p>
                 <div className="h-16" />
-                <p className="font-bold underline">( Ust. H. Muhammad Ar-Rahman )</p>
+                <p className="font-bold underline">( Panitia PPDB PTDARRAHMAN )</p>
               </div>
               <div>
-                <p className="text-slate-500">Bogor, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <p className="text-slate-500">Bekasi, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 <p className="font-semibold mt-0.5">Petugas Verifikator / Penguji</p>
                 <div className="h-16" />
                 <p className="font-bold underline">( Tim Penguji & Wawancara )</p>

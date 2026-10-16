@@ -75,7 +75,7 @@ export function ContactEditor({ contactInfo, canCrud, onSave }: Props) {
 
   return (
     <div className="grid gap-6">
-      <Card className="bg-white/60 backdrop-blur-sm shadow-sm">
+      <Card className="bg-card border-border shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">Edit Info Kontak</CardTitle>
           <CardDescription>

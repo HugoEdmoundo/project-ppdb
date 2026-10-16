@@ -19,9 +19,9 @@ from src.modules.notifications.router import router as notifications_router
 from src.modules.payment.router import router as payment_router
 from src.modules.ppdb.router import router as ppdb_router
 from src.modules.roles.router import router as roles_router
+from src.modules.search.router import router as search_router
 from src.modules.selection.router import router as selection_router
 from src.modules.superadmin.router import router as superadmin_router
-from src.modules.search.router import router as search_router
 from src.modules.uploads.router import router as uploads_router
 from src.modules.users.router import router as users_router
 from src.modules.whatsapp.router import router as whatsapp_router
@@ -30,6 +30,29 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
 )
 logger = logging.getLogger("ptdarrahman")
+
+# Filter untuk menyembunyikan log uvicorn access yang mengejek /v1/models
+# (terutama untuk IDE/tooling auto-discovery yang menghasilkan 404 Not Found).
+import logging
+
+class IdeErrorFilter(logging.Filter):
+    """Filter untuk menyaring log access uvicorn yang mengandung path /v1/models."""
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        # Filter log yang berisi "GET ... /v1/models" dan "404 Not Found"
+        if "/v1/models" in msg and "404" in msg:
+            return False  # jangan tampilkan log ini
+        return True  # tampilkan log lainnya
+
+
+# Terapkan filter ke logger uvicorn access
+for handler in logging.root.handlers:
+    name = getattr(handler, "name", None)
+    if name and "uvicorn" in name:
+        handler.addFilter(IdeErrorFilter())
+
+# Also filter the specific "ptdarrahman" logger
+logger.addFilter(IdeErrorFilter())
 
 FAVICON_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">'
@@ -175,6 +198,13 @@ app = FastAPI(
     redoc_url=None,
     lifespan=lifespan,
 )
+
+# --- Route kustom /v1/models untuk mencegah 404 Not Found
+# Route ini didaftar setelah app dibuat, sehingga tidak bentrok dengan
+# decorator di atas dan akan serve response OK rather than 404.
+@app.get("/v1/models", include_in_schema=False)
+def custom_v1_models():
+    return {"message": "Route /v1_models is intentionally served", "status": "ok"}
 
 
 # --- CORS (env-driven, centralized in src/core/cors.py) ---

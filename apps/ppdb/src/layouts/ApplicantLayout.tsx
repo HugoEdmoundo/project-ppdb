@@ -85,8 +85,6 @@ export default function ApplicantLayout({ children }: { children: ReactNode }) {
         navGroups={navGroups}
         renderLink={RouterDashboardLink}
         showSearch={false}
-        title="PPDB"
-        subtitle={user?.role_name || 'Calon Murid'}
         roleLabel={user?.role_name || 'Calon Murid'}
         contentClassName="animate-fade-in"
         storageKey="ppdb_applicant_collapsed"
@@ -97,13 +95,13 @@ export default function ApplicantLayout({ children }: { children: ReactNode }) {
           avatarUrl: user?.avatar_url,
           role: user?.role_name || 'Calon Murid',
         }}
-        onProfile={() => setShowProfile(true)}
+        onProfile={() => navigate('/applicant/profile')}
         onLogout={handleLogout}
       >
         {children}
       </DashboardShell>
 
-      {showProfile && applicant && (
+      {false && showProfile && applicant && (
         <ApplicantProfileModal
           open
           onOpenChange={setShowProfile}

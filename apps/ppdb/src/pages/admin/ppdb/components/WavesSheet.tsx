@@ -688,7 +688,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
 
       {/* Modal Form Tambah / Edit Gelombang */}
       <Dialog open={showForm} onOpenChange={(v: boolean) => { setShowForm(v); if (!v) setFormError(null) }}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="w-[95vw] sm:max-w-xl max-h-[90vh] flex flex-col p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>{editingWave ? 'Edit Gelombang' : 'Tambah Gelombang'}</DialogTitle>
             <DialogDescription>
@@ -697,7 +697,7 @@ export default function WavesSheet({ period, onClose }: { period: any, onClose: 
                 : `Konfigurasi gelombang baru untuk periode ${period?.name}. Rincian biaya diatur di panel Rincian Biaya.`}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit(handleSave)} className="space-y-5 pt-2 max-h-[65vh] overflow-y-auto pr-1">
+          <form onSubmit={handleSubmit(handleSave)} className="space-y-5 pt-2 max-h-[65vh] overflow-y-auto flex-1 pr-1">
             <div className="space-y-2">
               <Label htmlFor="wave-name">Nama Gelombang *</Label>
               <Input id="wave-name" {...register('name')} placeholder="Contoh: Gelombang 1" disabled={!canCrud} />

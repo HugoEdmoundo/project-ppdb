@@ -12,6 +12,7 @@ interface ToolbarCardProps {
   searchPlaceholder?: string
   onRefresh?: () => void
   refreshing?: boolean
+  searchActions?: ReactNode
   children?: ReactNode
 }
 
@@ -22,14 +23,15 @@ export default function ToolbarCard({
   searchPlaceholder = 'Cari nama atau email...',
   onRefresh,
   refreshing,
+  searchActions,
   children,
 }: ToolbarCardProps) {
   return (
     <Card className="rounded-2xl border-slate-100 bg-white shadow-sm">
       <div className="flex flex-col gap-3 px-4 py-3.5 sm:px-5 sm:py-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
-          <form onSubmit={onSearchSubmit} className="flex flex-1 items-center gap-2">
-            <div className="relative flex-1 sm:max-w-sm">
+          <form onSubmit={onSearchSubmit} className="flex flex-1 flex-wrap sm:flex-nowrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px] sm:max-w-sm">
               <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 placeholder={searchPlaceholder}
@@ -41,6 +43,7 @@ export default function ToolbarCard({
             <Button type="submit" className="h-10 shrink-0 rounded-full px-4 sm:px-5 font-semibold text-xs sm:text-sm shadow-md shadow-emerald-primary/20">
               Cari
             </Button>
+            {searchActions}
             {onRefresh && (
               <Button
                 type="button"

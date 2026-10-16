@@ -191,7 +191,7 @@ export default function QrisPaymentModal({
                 <span>Petunjuk Pembayaran:</span>
               </p>
               <p>1. Buka aplikasi M-Banking atau E-Wallet yang mendukung QRIS.</p>
-              <p>2. Scan kode QR di atas dan pastikan nama penerima adalah Pesantren Ar-Rahman.</p>
+              <p>2. Scan kode QR di atas dan pastikan nama penerima adalah PTDARRAHMAN.</p>
               <p>3. Konfirmasi pembayaran. Status akan diperbarui secara otomatis.</p>
             </div>
           )}

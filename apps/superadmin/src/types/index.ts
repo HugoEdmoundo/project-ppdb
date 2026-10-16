@@ -28,6 +28,7 @@ export interface AuthUser {
   id: string
   username: string
   email: string
+  phone?: string
   full_name: string
   avatar_url: string
   role_id: string
@@ -37,6 +38,8 @@ export interface AuthUser {
   is_superadmin: boolean
   permissions: Record<string, string>
   page_permissions?: string[]
+  created_at?: string
+  last_login_at?: string
 }
 
 export interface LoginResponse {

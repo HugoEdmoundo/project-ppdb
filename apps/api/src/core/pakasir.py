@@ -286,8 +286,8 @@ def _sandbox_create_result(
     qr_raw = (
         "00020101021226610016ID.CO.QRIS.WWW01189360091800216005230208216005"
         "230303UME"
-        f"52047929530336054{amount:010d}.005802ID5918PPDB "
-        f"AR-RAHMAN6005BOGOR610516110"
+        f"52047929530336054{amount:010d}.005802ID5916PPDB "
+        f"PTDARRAHMAN6006BEKASI610517510"
         f"62250121{order_id[:20]}6304"
     )
     crc = hashlib.md5(order_id.encode()).hexdigest()[:4].upper()

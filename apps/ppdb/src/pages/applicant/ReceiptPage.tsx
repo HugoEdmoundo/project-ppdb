@@ -69,8 +69,8 @@ export default function ApplicantReceiptPage() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Kuitansi Pembayaran Formulir PPDB Ar-Rahman',
-          text: `Kuitansi Pembayaran Formulir PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman atas nama ${applicant?.full_name || 'Calon Santri'}:\n${shareUrl}`,
+          title: 'Kuitansi Pembayaran Formulir PPDB PTDARRAHMAN',
+          text: `Kuitansi Pembayaran Formulir PPDB Pesantren Tahfidz Qur'an dan Digital Arrahman atas nama ${applicant?.full_name || 'Calon Santri'}:\n${shareUrl}`,
           url: shareUrl,
         })
       } catch {
@@ -90,7 +90,7 @@ export default function ApplicantReceiptPage() {
     // kuitansi ini bisa dibagikan ke orang tua/wali, jadi tidak boleh
     // mengklaim lunas padahal statusnya belum terverifikasi.
     const text = encodeURIComponent(
-      `*KUITANSI PEMBAYARAN FORMULIR PPDB AR-RAHMAN*\n\nNama: ${applicant?.full_name || 'Calon Santri'}\nNo. Kuitansi: ${receiptNo}\nStatus: *${receiptData.is_paid ? 'LUNAS' : receiptData.status.toUpperCase()}*\n\nBuka kuitansi digital sah di tautan berikut:\n${shareUrl}`
+      `*KUITANSI PEMBAYARAN FORMULIR PPDB PTDARRAHMAN*\n\nNama: ${applicant?.full_name || 'Calon Santri'}\nNo. Kuitansi: ${receiptNo}\nStatus: *${receiptData.is_paid ? 'LUNAS' : receiptData.status.toUpperCase()}*\n\nBuka kuitansi digital sah di tautan berikut:\n${shareUrl}`
     )
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
   }
@@ -99,7 +99,7 @@ export default function ApplicantReceiptPage() {
     <div className="mx-auto max-w-4xl w-full space-y-6">
       <ApplicantPageHeader
         title="Kuitansi Pembayaran Formulir"
-        description="Bukti pembayaran sah pendaftaran calon santri baru Pesantren Tahfidz Qur'an dan Digital Ar-Rahman."
+        description="Bukti pembayaran sah pendaftaran calon santri baru Pesantren Tahfidz Qur'an dan Digital Arrahman."
         docKey="applicant-payment"
         action={
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">

@@ -35,7 +35,8 @@ from src.core.database import (
 from src.core.dependencies import get_current_user, require_cp_crud, require_cp_read
 from src.core.events import companyprofile_hub
 from src.core.request_body import read_refresh_token
-from src.core.security import hash_password, verify_password
+from src.core.security import hash_password, verify_password, verify_token
+from src.core.session_meta import get_session_context
 from src.core.uploads import delete_upload, upload_file
 from src.repositories.auth_repository import AuthRepository
 from src.services.auth_service import AuthService
@@ -253,6 +254,7 @@ class RefreshReq(BaseModel):
 class ProfileUpdateReq(BaseModel):
     username: str | None = None
     email: str | None = None
+    phone: str | None = None
     full_name: str | None = None
     avatar_url: str | None = None
     old_password: str | None = None
@@ -280,7 +282,9 @@ async def cp_login(
 ):
     from src.core.dependencies import AccessLevel, Module, has_module_access
 
-    result = await asyncio.to_thread(service.login, body.username, body.password)
+    result = await asyncio.to_thread(
+        service.login, body.username, body.password, get_session_context(request)
+    )
     user = result["user"]
 
     # Per-user profile overrides need the raw users row (has_module_access
@@ -333,7 +337,7 @@ def cp_refresh(
         refresh_token = body.refresh_token
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token missing")
-    result = service.refresh(refresh_token)
+    result = service.refresh(refresh_token, get_session_context(request))
     secure = _cookie_secure(request)
     response.set_cookie(
         key="access_token",
@@ -361,7 +365,7 @@ def cp_refresh(
 async def cp_logout(
     request: Request,
     response: Response,
-    user: dict[str, Any] = Depends(get_current_user),
+    service: AuthService = Depends(get_auth_service),
 ):
     # Body dibaca manual (bukan Pydantic body param): logout tidak boleh gagal
     # hanya karena Content-Type request salah — kalau 422, refresh token tidak
@@ -369,14 +373,50 @@ async def cp_logout(
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         refresh_token = await read_refresh_token(request)
+    # Hentikan HANYA sesi perangkat ini supaya perangkat lain tetap login
+    # (satu akun boleh aktif di banyak perangkat).
     if refresh_token:
-        execute_raw(
-            "UPDATE refresh_tokens SET revoked = 1 WHERE user_id = :uid",
-            {"uid": user["id"]},
-        )
+        try:
+            service.logout(refresh_token)
+        except Exception:  # noqa: BLE001 - logout tetap lanjut walau token rusak
+            pass
+    else:
+        # Fallback jika refresh_token tidak dikirim (misal cookie diblokir atau hanya bearer access_token)
+        try:
+            auth_header = request.headers.get("authorization") or ""
+            access_token = None
+            if auth_header.lower().startswith("bearer "):
+                access_token = auth_header.split(" ", 1)[1].strip()
+            if not access_token:
+                access_token = request.cookies.get("access_token")
+            if access_token:
+                payload = verify_token(access_token)
+                if payload and payload.get("sub") and payload.get("sid"):
+                    service.revoke_session_by_id(payload["sub"], payload["sid"])
+        except Exception:  # noqa: BLE001
+            pass
     response.delete_cookie(key="access_token")
     response.delete_cookie(key="refresh_token")
     return {"message": "Logged out"}
+
+
+@router.get("/auth/sessions")
+def cp_sessions(
+    user: dict[str, Any] = Depends(get_current_user),
+    service: AuthService = Depends(get_auth_service),
+):
+    """Daftar sesi perangkat aktif (dipakai panel Superadmin & Company Profile)."""
+    return service.list_sessions(user)
+
+
+@router.delete("/auth/sessions/{session_id}")
+def cp_revoke_session(
+    session_id: str,
+    user: dict[str, Any] = Depends(get_current_user),
+    service: AuthService = Depends(get_auth_service),
+):
+    """Akhiri satu sesi perangkat lain (sesi saat ini tidak dapat diakhiri)."""
+    return service.revoke_session(user, session_id)
 
 
 @router.get("/auth/me")
@@ -398,6 +438,8 @@ def cp_profile(
         data["username"] = body.username
     if body.email is not None:
         data["email"] = body.email
+    if body.phone is not None:
+        data["phone"] = body.phone
     if body.full_name is not None:
         data["full_name"] = body.full_name
     if body.avatar_url is not None:
@@ -437,6 +479,7 @@ def cp_profile(
         "id": user["id"],
         "username": data.get("username", user["username"]),
         "email": data.get("email", user.get("email", "")),
+        "phone": data.get("phone", user.get("phone", "")),
         "full_name": data.get("full_name", user.get("full_name", "")),
         "avatar_url": data.get("avatar_url", user.get("avatar_url", "")),
         "role_id": user.get("role_id"),

@@ -125,10 +125,10 @@ def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Security(security),
 ) -> dict[str, Any]:
-    # 1. Extract token from cookie or Authorization header
-    token = request.cookies.get("access_token")
-    if not token and credentials:
-        token = credentials.credentials
+    # 1. Extract token from Authorization header or cookie
+    token = credentials.credentials if credentials else None
+    if not token:
+        token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
@@ -153,7 +153,11 @@ def get_current_user(
     if not user.get("is_active", True):
         raise HTTPException(status_code=403, detail="User is inactive")
 
-    return user
+    # Sertakan id sesi (refresh token) dari klaim `sid` supaya halaman Profile
+    # bisa menandai sesi yang sedang dipakai & menolak mengakhirinya.
+    current = dict(user)
+    current["session_id"] = payload.get("sid")
+    return current
 
 
 def require_superadmin(

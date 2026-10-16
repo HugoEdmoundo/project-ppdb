@@ -24,7 +24,7 @@ export default function SupportFab({ phone, whatsapp, email }: { phone?: string;
   }, [fabOpen])
 
   const telHref = `tel:${(phone || '').replace(/[^0-9+]/g, '')}`
-  const waHref = `https://wa.me/${(whatsapp || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent("Assalamualaikum! Saya ingin bertanya tentang PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.")}`
+  const waHref = `https://wa.me/${(whatsapp || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent("Assalamualaikum! Saya ingin bertanya tentang PPDB PTDARRAHMAN.")}`
   const mailHref = `mailto:${email || ''}`
 
   const options = [

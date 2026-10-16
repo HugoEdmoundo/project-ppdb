@@ -1,16 +1,36 @@
-import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/api/client'
+import { useAuth } from '@/contexts/AuthContext'
 import LoaOfficialDocument, { type LoaData } from '@/components/shared/LoaOfficialDocument'
 import { Button, Badge } from '@/components/ui'
-import { Printer, ArrowLeft, AlertCircle, Share2, Award, CheckCircle2 } from 'lucide-react'
+import {
+  Printer,
+  AlertCircle,
+  Share2,
+  Award,
+  CheckCircle2,
+  Download,
+  ChevronDown,
+  FileText,
+  Image as ImageIcon,
+  Loader2,
+  ArrowLeft,
+} from 'lucide-react'
 import { useToast } from '@/components/Toast'
+import { downloadLoaPdf, downloadLoaImage, downloadAllLoaImages, shareLoaDoc } from '@/utils/exportLoa'
 
 export default function PublicLoaPage() {
   const { registrationNo } = useParams<{ registrationNo: string }>()
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState<1 | 2 | 'both'>('both')
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportLabel, setExportLabel] = useState('')
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['public-loa', registrationNo],
@@ -20,42 +40,161 @@ export default function PublicLoaPage() {
     enabled: Boolean(registrationNo),
   })
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDownloadOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const getExportPages = () => {
+    const container = document.getElementById('loa-export-container')
+    if (!container) return []
+    return Array.from(container.querySelectorAll<HTMLElement>('.loa-page'))
+  }
+
+  const handleDownloadPdf = async () => {
+    if (!data) return
+    setIsDownloadOpen(false)
+    setIsExporting(true)
+    setExportLabel('Menyiapkan PDF...')
+    try {
+      const pages = getExportPages()
+      if (pages.length === 0) throw new Error('Dokumen LoA tidak ditemukan di layar')
+      await downloadLoaPdf(pages, data.applicant?.full_name || 'santri', data.registration_number)
+      toast('success', 'Dokumen LoA PDF berhasil diunduh')
+    } catch (err: any) {
+      toast('error', err?.message || 'Gagal mengunduh dokumen PDF')
+    } finally {
+      setIsExporting(false)
+      setExportLabel('')
+    }
+  }
+
+  const handleDownloadAllImages = async () => {
+    if (!data) return
+    setIsDownloadOpen(false)
+    setIsExporting(true)
+    setExportLabel('Menyiapkan Gambar...')
+    try {
+      const pages = getExportPages()
+      if (pages.length === 0) throw new Error('Dokumen LoA tidak ditemukan di layar')
+      await downloadAllLoaImages(pages, data.applicant?.full_name || 'santri', data.registration_number)
+      toast('success', 'Kedua halaman gambar LoA berhasil diunduh')
+    } catch (err: any) {
+      toast('error', err?.message || 'Gagal mengunduh gambar LoA')
+    } finally {
+      setIsExporting(false)
+      setExportLabel('')
+    }
+  }
+
+  const handleDownloadSingleImage = async (pageNo: 1 | 2) => {
+    if (!data) return
+    setIsDownloadOpen(false)
+    setIsExporting(true)
+    setExportLabel(`Menyiapkan Gambar Hal ${pageNo}...`)
+    try {
+      const pages = getExportPages()
+      const targetEl = pages[pageNo - 1]
+      if (!targetEl) throw new Error(`Halaman ${pageNo} tidak ditemukan`)
+      await downloadLoaImage(targetEl, pageNo, data.applicant?.full_name || 'santri', data.registration_number)
+      toast('success', `Gambar LoA Halaman ${pageNo} berhasil diunduh`)
+    } catch (err: any) {
+      toast('error', err?.message || `Gagal mengunduh gambar Halaman ${pageNo}`)
+    } finally {
+      setIsExporting(false)
+      setExportLabel('')
+    }
+  }
+
   const handlePrint = () => {
+    setIsDownloadOpen(false)
     window.print()
   }
 
   const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Letter of Acceptance PPDB - ${data?.applicant?.full_name || ''}`,
-          url: window.location.href,
-        })
-      } catch {
-        // Ignored if aborted
+    if (!data) return
+    try {
+      const res = await shareLoaDoc({
+        applicantName: data.applicant?.full_name || 'Santri Baru',
+        registrationNo: data.registration_number || registrationNo,
+      })
+      if (res.method === 'clipboard') {
+        toast('success', 'Tautan dokumen LoA berhasil disalin ke clipboard')
+      } else if (res.shared) {
+        toast('success', 'Dokumen LoA berhasil dibagikan')
       }
-    } else {
-      navigator.clipboard.writeText(window.location.href)
-      toast('success', 'Tautan dokumen LoA berhasil disalin ke clipboard')
+    } catch (err: any) {
+      toast('error', err?.message || 'Gagal membagikan dokumen LoA')
     }
   }
 
+  const handleBack = () => {
+    if (user?.user_type === 'applicant') {
+      navigate('/applicant/pengumuman')
+    } else if (user) {
+      navigate('/admin/review-loa')
+    }
+  }
+
+  const backLabel = user?.user_type === 'applicant'
+    ? 'Kembali ke Dashboard Pendaftar'
+    : 'Kembali ke Review LoA Admin'
+
   return (
     <div className="min-h-screen bg-slate-100/90 text-slate-900 py-6 sm:py-10 px-3 sm:px-6 flex flex-col items-center">
-      {/* Top Action Bar (Hidden during print) */}
+      {/* Container untuk Render LoA Resmi A4 (Presisi Tanpa Kotoran Modal/Layar) */}
+      {data && (
+        <div
+          id="loa-export-container"
+          className="print:hidden"
+          style={{
+            position: 'absolute',
+            left: '-9999px',
+            top: 0,
+            width: '210mm',
+            visibility: 'visible',
+            pointerEvents: 'none',
+          }}
+          aria-hidden="true"
+        >
+          <LoaOfficialDocument data={data} page="both" />
+        </div>
+      )}
+
+      {/* Back Navigation Bar (Hanya tampil untuk pengguna yang login. Tamu/publik hasil share tidak memiliki CTA back) */}
+      {user && (
+        <div className="w-full max-w-[840px] mb-3 flex items-center justify-between print:hidden">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleBack}
+            className="gap-2 h-9 text-xs bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 border-slate-200 shadow-2xs font-semibold cursor-pointer"
+          >
+            <ArrowLeft className="h-4 w-4 text-emerald-700 shrink-0" />
+            <span>{backLabel}</span>
+          </Button>
+          <span className="text-xs text-slate-500 font-mono hidden sm:inline">
+            {data?.registration_number || registrationNo}
+          </span>
+        </div>
+      )}
+
+      {/* Top Action Bar (Hidden during print) - Versi Publik Resmi Tanpa CTA Dashboard */}
       <div className="w-full max-w-[840px] mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-xs border border-slate-200 print:hidden">
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Link
-            to="/admin/review-loa"
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-            title="Kembali ke Review LoA"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-100/80 shadow-2xs">
+            <Award className="h-5 w-5" />
+          </div>
           <div>
             <div className="flex items-center gap-2">
-              <Award className="h-4 w-4 text-emerald-600" />
-              <h1 className="text-sm sm:text-base font-bold text-slate-900">
+              <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
                 Letter of Acceptance (LoA) Resmi
               </h1>
             </div>
@@ -105,14 +244,92 @@ export default function PublicLoaPage() {
             <span className="hidden xs:inline">Bagikan</span>
           </Button>
 
-          <Button
-            onClick={handlePrint}
-            size="sm"
-            className="gap-1.5 h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
-          >
-            <Printer className="h-3.5 w-3.5" />
-            <span>Cetak / Simpan PDF</span>
-          </Button>
+          {/* Download Dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <Button
+              onClick={() => setIsDownloadOpen((prev) => !prev)}
+              disabled={isExporting || isLoading || !data}
+              size="sm"
+              className="gap-1.5 h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold shadow-xs"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>{exportLabel || 'Memproses...'}</span>
+                </>
+              ) : (
+                <>
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Download Dokumen</span>
+                  <ChevronDown className={`h-3 w-3 transition-transform ${isDownloadOpen ? 'rotate-180' : ''}`} />
+                </>
+              )}
+            </Button>
+
+            {isDownloadOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-xs divide-y divide-slate-100 animate-in fade-in-50 zoom-in-95">
+                <div className="px-3 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Format Unduhan LoA
+                </div>
+                <div className="py-1">
+                  <button
+                    onClick={handleDownloadPdf}
+                    className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
+                  >
+                    <FileText className="h-4 w-4 text-emerald-600" />
+                    <div>
+                      <div className="font-semibold">Download PDF (A4)</div>
+                      <div className="text-[10px] text-slate-400">2 Halaman Presisi Cetak</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={handleDownloadAllImages}
+                    className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
+                  >
+                    <ImageIcon className="h-4 w-4 text-indigo-600" />
+                    <div>
+                      <div className="font-semibold">Download Gambar (Semua Hal)</div>
+                      <div className="text-[10px] text-slate-400">Unduh Hal 1 & 2 Sekaligus (PNG)</div>
+                    </div>
+                  </button>
+                </div>
+                <div className="py-1">
+                  <button
+                    onClick={() => handleDownloadSingleImage(1)}
+                    className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <ImageIcon className="h-3.5 w-3.5 text-slate-500" />
+                    <div>
+                      <div className="font-medium">Download Gambar Hal 1</div>
+                      <div className="text-[10px] text-slate-400">Surat Penerimaan Santri (PNG)</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleDownloadSingleImage(2)}
+                    className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <ImageIcon className="h-3.5 w-3.5 text-slate-500" />
+                    <div>
+                      <div className="font-medium">Download Gambar Hal 2</div>
+                      <div className="text-[10px] text-slate-400">Tata Cara Pembayaran & Aturan (PNG)</div>
+                    </div>
+                  </button>
+                </div>
+                <div className="py-1">
+                  <button
+                    onClick={handlePrint}
+                    className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    <Printer className="h-4 w-4 text-slate-500" />
+                    <div>
+                      <div className="font-medium">Cetak Dokumen (Browser)</div>
+                      <div className="text-[10px] text-slate-400">Kirim langsung ke Mesin Printer</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

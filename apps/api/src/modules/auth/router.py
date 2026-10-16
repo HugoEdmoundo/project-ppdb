@@ -16,6 +16,8 @@ from src.core.database import get_db
 from src.core.dependencies import get_current_user, require_superadmin
 from src.core.rate_limit import rate_limit_dependency
 from src.core.request_body import read_refresh_token
+from src.core.security import verify_token
+from src.core.session_meta import get_session_context
 from src.modules.auth.schemas import (
     AccountRecoveryRequest,
     AccountRecoveryVerify,
@@ -73,7 +75,7 @@ def login(
     service: AuthService = Depends(get_auth_service),
     _: None = Depends(rate_limit_dependency("login")),
 ):
-    result = service.login(body.username, body.password)
+    result = service.login(body.username, body.password, get_session_context(request))
     secure = _cookie_secure(request)
     response.set_cookie(
         key="access_token",
@@ -104,7 +106,7 @@ def refresh(
     refresh_token = body.refresh_token if body else request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token missing")
-    result = service.refresh(refresh_token)
+    result = service.refresh(refresh_token, get_session_context(request))
     secure = _cookie_secure(request)
     response.set_cookie(
         key="access_token",
@@ -140,6 +142,21 @@ async def logout(
             service.logout(refresh_token)
         except Exception:
             pass
+    else:
+        # Fallback jika refresh_token tidak dikirim (misal cookie diblokir atau hanya bearer access_token)
+        try:
+            auth_header = request.headers.get("authorization") or ""
+            access_token = None
+            if auth_header.lower().startswith("bearer "):
+                access_token = auth_header.split(" ", 1)[1].strip()
+            if not access_token:
+                access_token = request.cookies.get("access_token")
+            if access_token:
+                payload = verify_token(access_token)
+                if payload and payload.get("sub") and payload.get("sid"):
+                    service.revoke_session_by_id(payload["sub"], payload["sid"])
+        except Exception:
+            pass
     response.delete_cookie(key="access_token")
     response.delete_cookie(key="refresh_token")
     return {"message": "Logged out successfully"}
@@ -151,6 +168,25 @@ def get_me(
     service: AuthService = Depends(get_auth_service),
 ):
     return service.get_me(user)
+
+
+@router.get("/sessions")
+def list_sessions(
+    user: dict[str, Any] = Depends(get_current_user),
+    service: AuthService = Depends(get_auth_service),
+):
+    """Daftar sesi perangkat yang masih aktif untuk user yang login."""
+    return service.list_sessions(user)
+
+
+@router.delete("/sessions/{session_id}")
+def revoke_session(
+    session_id: str,
+    user: dict[str, Any] = Depends(get_current_user),
+    service: AuthService = Depends(get_auth_service),
+):
+    """Akhiri satu sesi perangkat lain (sesi saat ini tidak dapat diakhiri)."""
+    return service.revoke_session(user, session_id)
 
 
 @router.put("/profile")
@@ -166,13 +202,14 @@ def update_profile(
 @router.post("/register-applicant")
 def register_applicant(
     body: RegisterApplicantRequest,
+    request: Request,
     service: AuthService = Depends(get_auth_service),
     _: None = Depends(rate_limit_dependency("register_applicant")),
 ):
     from src.core.security import validate_password
 
     validate_password(body.password)
-    return service.register_applicant(body.model_dump())
+    return service.register_applicant(body.model_dump(), get_session_context(request))
 
 
 @router.post("/register")

@@ -108,7 +108,7 @@ async function tryRefresh(): Promise<boolean> {
     try {
       const res = await fetchWithFallback(`${API_BASE}/companyprofile/auth/refresh`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Client-App': 'superadmin' },
         body: JSON.stringify({}),
       })
       if (!res.ok) return false
@@ -172,6 +172,7 @@ export async function login(username: string, password: string): Promise<AuthUse
   }
   const data: LoginResponse = await apiFetch('/companyprofile/auth/login', {
     method: 'POST',
+    headers: { 'X-Client-App': 'superadmin' },
     body: JSON.stringify({ username, password }),
   })
 
@@ -197,7 +198,7 @@ export async function logout() {
   try {
     await fetchWithFallback(`${API_BASE}/companyprofile/auth/logout`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Client-App': 'superadmin' },
       body: JSON.stringify({})
     })
   } catch { /* best effort */ }
@@ -207,6 +208,7 @@ export async function logout() {
 export async function updateProfile(data: {
   username?: string
   email?: string
+  phone?: string
   full_name?: string
   avatar_url?: string
   old_password?: string
@@ -218,14 +220,12 @@ export async function updateProfile(data: {
   })
 }
 
-export async function uploadAvatar(file: File): Promise<string> {
-  const fd = new FormData()
-  fd.append('file', file)
-  const data = await apiFetch<{ url: string }>('/companyprofile/upload', {
-    method: 'POST',
-    body: fd,
-  })
-  return data.url
+export async function getSessions(): Promise<{ sessions: any[] }> {
+  return apiFetch('/companyprofile/auth/sessions')
+}
+
+export async function revokeSession(id: string): Promise<void> {
+  await apiFetch(`/companyprofile/auth/sessions/${id}`, { method: 'DELETE' })
 }
 
 // ── Users ─────────────────────────────────────────────────
@@ -589,4 +589,14 @@ export async function waGetLogs(params?: {
 /** SSE stream URL untuk QR realtime (via proxy FastAPI, cookie auth). */
 export function waGetQrSseUrl(): string {
   return `${API_BASE}/whatsapp/qr-sse`
+}
+
+export async function uploadAvatar(file: File): Promise<string> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const data = await apiFetch<{ url: string }>('/companyprofile/upload', {
+    method: 'POST',
+    body: fd,
+  })
+  return data.url
 }

@@ -21,6 +21,7 @@ import ApplicantDocumentsPage from './pages/applicant/DocumentsPage'
 import SelectionStagePage from './pages/applicant/SelectionStagePage'
 import ResultStagePage from './pages/applicant/ResultStagePage'
 import DpStagePage from './pages/applicant/DpStagePage'
+import ApplicantProfilePage from './pages/applicant/ProfilePage'
 import Stage2PaymentPage from './pages/applicant/Stage2PaymentPage'
 import CheckoutPage from './pages/applicant/CheckoutPage'
 import ApplicantDashboardPage from './pages/applicant/DashboardPage'
@@ -36,6 +37,7 @@ import VerifikasiDokumenPage from './pages/admin/ppdb/VerifikasiDokumenPage'
 import PembayaranFormulirPage from './pages/admin/ppdb/PembayaranFormulirPage'
 import PembayaranTahap2Page from './pages/admin/ppdb/PembayaranTahap2Page'
 import PembayaranTahap2DetailPage from './pages/admin/ppdb/PembayaranTahap2DetailPage'
+import AdminReceiptPage from './pages/admin/ppdb/AdminReceiptPage'
 import PenilaianPage from './pages/admin/ppdb/PenilaianPage'
 import ReviewLoaPage from './pages/admin/ppdb/ReviewLoaPage'
 import PublicLoaPage from './pages/public/PublicLoaPage'
@@ -84,6 +86,8 @@ export default function App() {
               <Route path="pembayaran-formulir" element={<PembayaranFormulirPage />} />
               <Route path="pembayaran-tahap2" element={<PembayaranTahap2Page />} />
               <Route path="pembayaran-tahap2/:applicantId" element={<PembayaranTahap2DetailPage />} />
+              <Route path="pembayaran-tahap2/:applicantId/kuitansi/:id" element={<AdminReceiptPage />} />
+              <Route path="kuitansi/:id" element={<AdminReceiptPage />} />
               <Route path="sessions" element={<Navigate to="/admin/sessions/tahfidz" replace />} />
               <Route path="sessions/tahfidz" element={<Sessions1on1Page forcedType="tahfidz" />} />
               <Route path="sessions/wawancara" element={<Sessions1on1Page forcedType="interview" />} />
@@ -119,6 +123,7 @@ export default function App() {
               <Route path="pengumuman" element={<ResultStagePage />} />
               <Route path="bayar-dp" element={<DpStagePage />} />
               <Route path="pembayaran-tahap2" element={<Stage2PaymentPage />} />
+              <Route path="profile" element={<ApplicantProfilePage />} />
             </Route>
             <Route path="/applicant/kartu-ujian" element={<ProtectedRoute role="applicant" requirePaid={true}><ExamCardPage /></ProtectedRoute>} />
 

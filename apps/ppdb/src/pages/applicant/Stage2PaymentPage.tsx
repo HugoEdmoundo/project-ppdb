@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/api/client'
 import ApplicantTopBar from '@/components/shared/ApplicantTopBar'
 import ApplicantPageHeader from '@/components/shared/ApplicantPageHeader'
-import Stage2PaymentStep from './components/Stage2PaymentStep'
+import { Stage2PaymentStep } from './components/Stage2PaymentStep'
 import { Skeleton, Button } from '@/components/ui'
 import { AlertTriangle, Lock, ArrowLeft } from 'lucide-react'
 

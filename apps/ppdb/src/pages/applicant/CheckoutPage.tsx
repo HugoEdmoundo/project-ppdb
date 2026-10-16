@@ -294,7 +294,7 @@ export default function CheckoutPage() {
                           <li>Buka aplikasi <strong>M-Banking</strong> atau <strong>E-Wallet</strong> favorit Anda.</li>
                           <li>Pilih menu <strong>Bayar / Scan QRIS</strong>.</li>
                           <li>Arahkan kamera ke QR Code di samping.</li>
-                          <li>Periksa nama merchant: <strong>PPDB PESANTREN TAHFIDZ QUR'AN DAN DIGITAL AR-RAHMAN</strong>.</li>
+                          <li>Periksa nama merchant: <strong>PPDB PTDARRAHMAN</strong>.</li>
                           <li>Pastikan nominal tepat: <strong>{FORMATTER.format(amount)}</strong>.</li>
                           <li>Konfirmasi pembayaran dengan PIN Anda.</li>
                         </ol>
@@ -339,7 +339,7 @@ export default function CheckoutPage() {
 
             </CardContent>
             <CardFooter className="flex justify-between items-center p-4 sm:p-6 border-t bg-muted/20 text-xs text-muted-foreground">
-              <span>PPDB Ar-Rahman · Integrasi Resmi Pak Kasir API v2</span>
+              <span>PPDB PTDARRAHMAN · Integrasi Resmi Pak Kasir API v2</span>
               <Button variant="ghost" size="sm" onClick={() => logout().then(() => navigate('/auth/login'))}>
                 Keluar (Logout)
               </Button>

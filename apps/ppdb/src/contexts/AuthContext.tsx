@@ -2,13 +2,15 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo, t
 import * as api from '@/api/client'
 
 export interface AuthUser {
-  id: string; username: string; email: string; full_name: string; role_id: string; role_name?: string; user_type: string; is_active: boolean
+  id: string; username: string; email: string; phone?: string; full_name: string; role_id: string; role_name?: string; user_type: string; is_active: boolean
   avatar_url?: string
   permissions: Record<string, string>
   is_superadmin: boolean
   page_permissions: string[]
   payment_status?: string
   payment_deadline?: string
+  created_at?: string
+  last_login_at?: string
 }
 
 interface AuthContextType {

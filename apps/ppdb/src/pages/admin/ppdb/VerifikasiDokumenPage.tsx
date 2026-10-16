@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui"
 import { Button } from "@/components/ui"
 import { Badge } from "@/components/ui"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui"
-import { ArrowRight, Activity, ClipboardCheck, FileText, CheckCircle2, XCircle, Clock } from 'lucide-react'
+import { ArrowRight, Activity, ClipboardCheck, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import type { Applicant } from '@/types/ppdb'
 import NoActiveWaveBanner from '@/components/shared/NoActiveWaveBanner'
@@ -31,16 +31,6 @@ function DocStatusBadge({ status }: { status: string }) {
       {resolved.label}
     </span>
   )
-}
-
-function initials(name?: string) {
-  return (name || 'A')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
 }
 
 export default function VerifikasiDokumenPage() {
@@ -166,35 +156,32 @@ export default function VerifikasiDokumenPage() {
                   <th className="py-3 px-4 text-left whitespace-nowrap">Email / No. WA</th>
                   <th className="py-3 px-4 text-left whitespace-nowrap">Jalur Pendaftaran</th>
                   <th className="py-3 px-4 text-left whitespace-nowrap">Status Dokumen</th>
-                  <th className="py-3 px-4 text-right whitespace-nowrap">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   Array.from({ length: 5 }).map((_, idx) => (
                     <tr key={idx} className="animate-pulse">
-                      <td colSpan={5} className="py-4 px-4 h-12 bg-slate-50/50" />
+                      <td colSpan={4} className="py-4 px-4 h-12 bg-slate-50/50" />
                     </tr>
                   ))
                 ) : applicants.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-muted-foreground text-sm">
+                    <td colSpan={4} className="py-12 text-center text-muted-foreground text-sm">
                       Tidak ada pendaftar yang cocok dengan filter.
                     </td>
                   </tr>
                 ) : (
                   applicants.map((applicant) => (
-                    <tr key={applicant.id} className="hover:bg-slate-50/60 transition-colors">
+                    <tr
+                      key={applicant.id}
+                      onClick={() => setSelectedApplicant(applicant)}
+                      className="hover:bg-slate-50/80 cursor-pointer transition-colors"
+                      title="Klik untuk periksa dan verifikasi dokumen"
+                    >
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-primary to-emerald-dark text-xs font-bold text-white shadow-sm shadow-emerald-primary/20">
-                            {initials(applicant.full_name)}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-semibold text-slate-800">{applicant.full_name}</div>
-                            <div className="text-[11px] text-muted-foreground">{applicant.wave_name || '-'}</div>
-                          </div>
-                        </div>
+                        <div className="font-semibold text-slate-800">{applicant.full_name}</div>
+                        <div className="text-[11px] text-muted-foreground">{applicant.wave_name || '-'}</div>
                       </td>
                       <td className="py-3 px-4 text-slate-600">
                         <div>{applicant.email || '-'}</div>
@@ -207,16 +194,6 @@ export default function VerifikasiDokumenPage() {
                       </td>
                       <td className="py-3 px-4">
                         <DocStatusBadge status={applicant.status} />
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 text-xs gap-1.5 border-emerald-600/30 text-emerald-700 hover:bg-emerald-50"
-                          onClick={() => setSelectedApplicant(applicant)}
-                        >
-                          <FileText className="h-3.5 w-3.5" /> Periksa Dokumen
-                        </Button>
                       </td>
                     </tr>
                   ))

@@ -1,7 +1,29 @@
-import { HealthIdentificationViewer } from './HealthIdentificationViewer'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, Tabs, TabsList, TabsTrigger, TabsContent, Badge } from '@/components/ui'
-import { ShieldCheck } from 'lucide-react'
-
+import { useState, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '@/api/client'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui'
+import {
+  Printer,
+  Download,
+  ChevronDown,
+  Clock,
+  FileText,
+  Image as ImageIcon,
+  FileCheck2,
+} from 'lucide-react'
+import { useToast } from '@/components/Toast'
+import ApplicantFormDocument from './ApplicantFormDocument'
+import { downloadApplicantFormDoc } from '@/utils/exportApplicantForm'
 
 interface ApplicantProfileModalProps {
   open: boolean
@@ -15,184 +37,223 @@ export default function ApplicantProfileModal({
   open,
   onOpenChange,
   applicant,
-  title = 'Detail Pendaftar',
-  showPasswordHint = false,
+  title = 'Formulir Pendaftaran Calon Santri',
 }: ApplicantProfileModalProps) {
+  const { toast } = useToast()
+  const documentContainerRef = useRef<HTMLDivElement | null>(null)
+
+  const [activePage, setActivePage] = useState<1 | 2 | 'both'>('both')
+  const [isDownloading, setIsDownloading] = useState<'pdf' | 'image' | null>(null)
+
+  // Ambil detail pendaftar lengkap jika ada id
+  const { data: detailData, isLoading: detailLoading } = useQuery({
+    queryKey: ['applicant-detail-modal', applicant?.id],
+    queryFn: async () => {
+      if (!applicant?.id) return null
+      return await apiFetch<any>(`/ppdb/applicants/${applicant.id}`)
+    },
+    enabled: open && !!applicant?.id,
+  })
+
   if (!applicant) return null
+
+  // Gabungkan data awal dengan detail terbaru dari server
+  const resolvedApplicant = detailData || applicant
+  const fullName = resolvedApplicant.full_name || 'Calon Santri'
+  const regNo =
+    resolvedApplicant.nisn ||
+    resolvedApplicant.nik ||
+    (resolvedApplicant.id ? resolvedApplicant.id.slice(0, 8).toUpperCase() : 'REG')
+
+  const handleDownload = async (format: 'pdf' | 'image') => {
+    if (!documentContainerRef.current) {
+      toast('error', 'Dokumen formulir belum siap diunduh. Mohon tunggu sebentar.')
+      return
+    }
+    try {
+      setIsDownloading(format)
+      await downloadApplicantFormDoc({
+        containerElement: documentContainerRef.current,
+        format,
+        applicantName: fullName,
+        registrationNo: regNo,
+        pageMode: activePage,
+      })
+      toast(
+        'success',
+        `Formulir pendaftaran berhasil diunduh sebagai ${
+          format === 'pdf' ? 'Dokumen PDF Resmi (A4)' : 'Gambar PNG (HD)'
+        }`
+      )
+    } catch (err: any) {
+      toast('error', err.message || 'Gagal mengunduh formulir pendaftaran')
+    } finally {
+      setIsDownloading(null)
+    }
+  }
+
+  const handlePrint = () => {
+    window.print()
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-        <DialogHeader>
-          <DialogTitle className="text-base sm:text-lg">{title}</DialogTitle>
-        </DialogHeader>
-
-        <Tabs defaultValue="biodata" className="w-full mt-2">
-          <TabsList className="w-full grid grid-cols-1">
-            <TabsTrigger value="biodata">Biodata</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="biodata" className="space-y-6 pt-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground text-xs">Nama Lengkap</p>
-                <p className="font-medium break-words">{applicant.full_name}</p>
+      <DialogContent className="w-[96vw] max-w-5xl max-h-[94vh] overflow-y-auto p-3 sm:p-6 bg-slate-100">
+        <DialogHeader className="print:hidden pb-3 border-b border-slate-200">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            {/* Judul & Info Santri (Siap Nama Panjang & Responsif) */}
+            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+              <div className="p-2 rounded-lg bg-emerald-100 text-emerald-800 shrink-0 mt-0.5">
+                <FileCheck2 className="h-5 w-5" />
               </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Status Pembayaran</p>
-                <Badge
-                  variant={applicant.payment_status === 'paid' ? 'success' : applicant.payment_status === 'expired' ? 'destructive' : 'warning'}
-                  className="mt-1"
-                >
-                  {applicant.payment_status?.toUpperCase() || 'PENDING'}
-                </Badge>
-              </div>
-
-              <div>
-                <p className="text-muted-foreground text-xs">Email</p>
-                <p className="font-medium break-all">{applicant.email || '-'}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">No. WhatsApp</p>
-                <p className="font-medium break-words">{applicant.phone || '-'}</p>
-              </div>
-
-              <div>
-                <p className="text-muted-foreground text-xs">Jalur Pendaftaran</p>
-                <p className="font-medium capitalize mt-0.5">{applicant.registration_path || '-'}</p>
-              </div>
-
-
-              <div>
-                <p className="text-muted-foreground text-xs">Tempat, Tgl Lahir</p>
-                <p className="font-medium">{applicant.birth_place || '-'}, {applicant.birth_date || '-'}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Jenis Kelamin</p>
-                <p className="font-medium">{applicant.gender === 'L' ? 'Laki-laki' : applicant.gender === 'P' ? 'Perempuan' : '-'}</p>
-              </div>
-
-              <div>
-                <p className="text-muted-foreground text-xs">NISN</p>
-                <p className="font-medium">{applicant.nisn || '-'}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">NIK</p>
-                <p className="font-medium">{applicant.nik || '-'}</p>
-              </div>
-
-              <div className="col-span-1 sm:col-span-2 border-t pt-4 mt-2">
-                <h4 className="font-semibold text-sm mb-2">Data Domisili</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-muted-foreground text-xs">Provinsi</p>
-                    <p className="font-medium">{applicant.province || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Kota/Kabupaten</p>
-                    <p className="font-medium">{applicant.city || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Kecamatan</p>
-                    <p className="font-medium">{applicant.district || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Kelurahan/Desa</p>
-                    <p className="font-medium">{applicant.village || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Kode Pos</p>
-                    <p className="font-medium">{applicant.postal_code || '-'}</p>
-                  </div>
-                  <div className="col-span-1 sm:col-span-2">
-                    <p className="text-muted-foreground text-xs">Alamat Detail</p>
-                    <p className="font-medium break-words">{applicant.address || '-'}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-span-1 sm:col-span-2">
-                <p className="text-muted-foreground text-xs mb-2">Data Orang Tua/Wali</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <div>
-                    <p className="text-muted-foreground text-[11px]">Nama Ayah</p>
-                    <p className="text-sm font-medium break-words">{applicant.father_name || applicant.parent_name || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-[11px]">No. WA Ayah</p>
-                    <p className="text-sm font-medium break-words">{applicant.father_phone || applicant.parent_phone || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-[11px]">Pekerjaan Ayah</p>
-                    <p className="text-sm font-medium break-words">{applicant.father_job || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-[11px]">Nama Ibu</p>
-                    <p className="text-sm font-medium break-words">{applicant.mother_name || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-[11px]">No. WA Ibu</p>
-                    <p className="text-sm font-medium break-words">{applicant.mother_phone || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-[11px]">Pekerjaan Ibu</p>
-                    <p className="text-sm font-medium break-words">{applicant.mother_job || '-'}</p>
-                  </div>
-                  {applicant.guardian_name && (
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-sm sm:text-base text-slate-900 font-bold leading-tight">
+                  {title}
+                </DialogTitle>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500 mt-0.5">
+                  <span className="font-bold text-emerald-800 break-words hyphens-auto max-w-full">
+                    {fullName}
+                  </span>
+                  <span className="text-slate-300">·</span>
+                  <span className="font-mono text-slate-600">Reg: {regNo}</span>
+                  {resolvedApplicant.wave_name && (
                     <>
-                      <div>
-                        <p className="text-muted-foreground text-[11px]">Nama Wali</p>
-                        <p className="text-sm font-medium break-words">{applicant.guardian_name}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground text-[11px]">Pekerjaan Wali</p>
-                        <p className="text-sm font-medium break-words">{applicant.guardian_job || '-'}</p>
-                      </div>
+                      <span className="text-slate-300">·</span>
+                      <span className="text-slate-600">{resolvedApplicant.wave_name}</span>
                     </>
                   )}
-                  <div>
-                    <p className="text-muted-foreground text-[11px]">Email Orang Tua/Wali</p>
-                    <p className="text-sm font-medium break-all">{applicant.parent_email || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-[11px]">Penghasilan Per Bulan</p>
-                    <p className="text-sm font-medium break-words">{applicant.parent_income || '-'}</p>
-                  </div>
                 </div>
-              </div>
-
-              <div className="col-span-1 sm:col-span-2">
-                <p className="text-muted-foreground text-xs">Asal Sekolah</p>
-                <p className="font-medium break-words">{applicant.previous_school || '-'}</p>
-              </div>
-
-              <div className="col-span-1 sm:col-span-2">
-                <p className="text-muted-foreground text-xs mb-1">Riwayat Kesehatan</p>
-                <HealthIdentificationViewer data={applicant.disease_history} />
-              </div>
-
-              <div>
-                <p className="text-muted-foreground text-xs">Gelombang</p>
-                <p className="font-medium">{applicant.wave_name || '-'}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Waktu Daftar</p>
-                <p className="font-medium">{applicant.created_at ? new Date(applicant.created_at).toLocaleString('id-ID') : '-'}</p>
               </div>
             </div>
 
-            {showPasswordHint && (
-              <div className="border-t pt-4">
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-                  Lupa password? Hubungi admin untuk mereset password Anda.
-                </p>
+            {/* Action Buttons Toolbar */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {/* Page Selector (2 Halaman, Hal 1, Hal 2) */}
+              <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-xs shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setActivePage('both')}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer ${
+                    activePage === 'both'
+                      ? 'bg-slate-900 text-white shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  2 Halaman
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivePage(1)}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer ${
+                    activePage === 1
+                      ? 'bg-slate-900 text-white shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Hal 1
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivePage(2)}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer ${
+                    activePage === 2
+                      ? 'bg-slate-900 text-white shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Hal 2
+                </button>
               </div>
-            )}
-          </TabsContent>
 
+              {/* Tombol Cetak / Print PDF */}
+              <Button
+                type="button"
+                onClick={handlePrint}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-8 text-xs bg-white text-slate-700 hover:bg-slate-50 border-slate-200 cursor-pointer shadow-2xs font-medium"
+                title="Cetak formulir via printer atau simpan ke PDF browser"
+              >
+                <Printer className="h-3.5 w-3.5 text-slate-600" />
+                <span className="hidden xs:inline">Cetak / Print PDF</span>
+              </Button>
 
-        </Tabs>
+              {/* Dropdown Download Formulir (PDF / Gambar PNG) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!!isDownloading}
+                    className="h-8 text-xs gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-700 shadow-2xs font-semibold cursor-pointer"
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Clock className="h-3.5 w-3.5 animate-spin text-white shrink-0" />
+                        <span>Menyiapkan {isDownloading === 'pdf' ? 'PDF' : 'Gambar'}...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-3.5 w-3.5 text-white shrink-0" />
+                        <span>Download Formulir</span>
+                        <ChevronDown className="h-3 w-3 text-emerald-200 shrink-0" />
+                      </>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 p-1.5 shadow-lg border-slate-200 bg-white">
+                  <DropdownMenuItem
+                    onClick={() => handleDownload('pdf')}
+                    disabled={!!isDownloading}
+                    className="gap-2.5 text-xs py-2 px-2.5 rounded-lg cursor-pointer font-medium hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-md bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="font-semibold text-slate-900">Dokumen PDF (A4)</span>
+                      <span className="text-[10px] text-slate-500">
+                        {activePage === 'both' ? 'Format 2 Halaman Lengkap' : `Halaman ${activePage} A4`}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onClick={() => handleDownload('image')}
+                    disabled={!!isDownloading}
+                    className="gap-2.5 text-xs py-2 px-2.5 rounded-lg cursor-pointer font-medium hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                      <ImageIcon className="h-4 w-4" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="font-semibold text-slate-900">Gambar PNG (HD)</span>
+                      <span className="text-[10px] text-slate-500">
+                        {activePage === 'both' ? '2 Berkas Gambar PNG' : `Gambar Halaman ${activePage}`}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </DialogHeader>
+
+        {/* Loading detail indicator if refetching */}
+        {detailLoading && !detailData && (
+          <div className="py-2 text-center text-xs text-slate-500 animate-pulse">
+            Memuat data lengkap pendaftar...
+          </div>
+        )}
+
+        {/* Document Render Container with Ref */}
+        <div
+          ref={documentContainerRef}
+          className="flex justify-start sm:justify-center overflow-x-auto touch-pan-x py-2 pb-6"
+        >
+          <ApplicantFormDocument applicant={resolvedApplicant} page={activePage} />
+        </div>
       </DialogContent>
     </Dialog>
   )

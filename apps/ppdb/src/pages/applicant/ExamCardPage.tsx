@@ -114,7 +114,7 @@ export default function ExamCardPage() {
             <div className="flex-1 min-w-0">
               <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-slate-900 leading-tight">Kartu Peserta Ujian Seleksi</h1>
               <h2 className="text-base sm:text-lg font-bold text-slate-700 mt-0.5">Penerimaan Peserta Didik Baru (PPDB)</h2>
-              <p className="text-xs sm:text-sm font-medium text-slate-500">Pesantren Tahfidz Qur'an dan Digital Ar-Rahman</p>
+              <p className="text-xs sm:text-sm font-medium text-slate-500">Pesantren Tahfidz Qur'an dan Digital Arrahman</p>
             </div>
             <div className="text-center sm:text-right shrink-0">
               <div className="inline-block rounded-md border-2 border-slate-800 px-3 py-1 text-center bg-white print:bg-transparent">
@@ -210,7 +210,7 @@ export default function ExamCardPage() {
                         <p className="font-bold text-slate-900 break-words">
                           {session.mode === 'online'
                             ? (session.meeting_url ? `Online (Zoom/Meet: ${session.meeting_url})` : 'Online (Tatap Maya)')
-                            : (session.location || "Pesantren Tahfidz Qur'an dan Digital Ar-Rahman")}
+                            : (session.location || "PTDARRAHMAN")}
                         </p>
                         <p className="text-xs sm:text-sm text-slate-600 break-words">
                           Sesi: {session.name} {session.officer_name ? `• Petugas: ${session.officer_name}` : ''}

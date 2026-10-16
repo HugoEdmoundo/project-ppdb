@@ -38,11 +38,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     navigate('/auth/login')
   }
 
-  const pageSegment =
-    location.pathname === '/' || location.pathname === '/dashboard'
-      ? 'Overview'
-      : location.pathname.split('/')[1]
-
   const navGroups: DashboardNavGroup[] = [
     {
       label: 'Menu Utama',

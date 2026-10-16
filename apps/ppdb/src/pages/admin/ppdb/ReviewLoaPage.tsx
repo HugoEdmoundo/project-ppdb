@@ -123,15 +123,23 @@ export default function ReviewLoaPage() {
 
           {/* Table */}
           <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
-            <Table className="table-fixed">
+            <Table className="w-full min-w-[680px] lg:min-w-0 lg:table-fixed">
+              <colgroup>
+                <col className="lg:w-[16%]" />
+                <col className="lg:w-[25%]" />
+                <col className="lg:w-[15%]" />
+                <col className="lg:w-[15%]" />
+                <col className="lg:w-[17%]" />
+                <col className="lg:w-[12%]" />
+              </colgroup>
               <TableHeader className="bg-slate-50/80">
                 <TableRow>
-                  <TableHead className="w-[16%] px-2 text-xs">No. Reg</TableHead>
-                  <TableHead className="w-[25%] px-2 text-xs">Nama</TableHead>
-                  <TableHead className="w-[15%] px-2 text-xs">Jalur</TableHead>
-                  <TableHead className="w-[15%] px-2 text-xs">Penandatangan</TableHead>
-                  <TableHead className="w-[17%] px-2 text-xs">Ditandatangani</TableHead>
-                  <TableHead className="w-[12%] px-2 text-center text-xs">Status</TableHead>
+                  <TableHead className="px-2 text-xs">No. Reg</TableHead>
+                  <TableHead className="px-2 text-xs">Nama</TableHead>
+                  <TableHead className="px-2 text-xs">Jalur</TableHead>
+                  <TableHead className="px-2 text-xs">Penandatangan</TableHead>
+                  <TableHead className="px-2 text-xs">Ditandatangani</TableHead>
+                  <TableHead className="px-2 text-center text-xs">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

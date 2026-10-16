@@ -1,6 +1,5 @@
-import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
   Card,
   CardContent,
@@ -13,10 +12,6 @@ import {
   TableBody,
   TableCell,
   EmptyState,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui'
 import {
   ArrowLeft,
@@ -26,7 +21,6 @@ import {
   AlertCircle,
   RefreshCw,
   Receipt,
-  Printer,
   DollarSign,
   Wallet,
   Phone,
@@ -35,8 +29,6 @@ import {
   User,
 } from 'lucide-react'
 import { apiFetch } from '@/api/client'
-import { useToast } from '@/components/Toast'
-import OfficialReceiptCard, { type ReceiptData } from '@/components/shared/OfficialReceiptCard'
 
 const formatRp = (n: number) => 'Rp ' + Number(n || 0).toLocaleString('id-ID')
 
@@ -87,13 +79,7 @@ interface ApplicantDetailResponse {
 
 export default function PembayaranTahap2DetailPage() {
   const { applicantId } = useParams<{ applicantId: string }>()
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
-
-  const [syncingTxId, setSyncingTxId] = useState<string | null>(null)
-  const [receiptModalOpen, setReceiptModalOpen] = useState(false)
-  const [selectedReceipt, setSelectedReceipt] = useState<ReceiptData | null>(null)
-  const [loadingReceipt, setLoadingReceipt] = useState(false)
+  const navigate = useNavigate()
 
   const {
     data,
@@ -132,38 +118,6 @@ export default function PembayaranTahap2DetailPage() {
           Math.round((financials.total_paid / financials.total_obligation) * 100)
         )
       : 0
-
-  const handleSyncStatus = async (txId: string) => {
-    try {
-      setSyncingTxId(txId)
-      const res = await apiFetch<{ status: string; message?: string }>(
-        `/payment/transactions/${txId}/sync-status`,
-        { method: 'POST' }
-      )
-      toast('success', `Status berhasil disinkronkan: ${res.status.toUpperCase()}`)
-      await Promise.all([
-        refetch(),
-        queryClient.invalidateQueries({ queryKey: ['stage2-monitoring'] }),
-      ])
-    } catch (err: any) {
-      toast('error', err.message || 'Gagal menyinkronkan status dengan payment gateway')
-    } finally {
-      setSyncingTxId(null)
-    }
-  }
-
-  const handleViewReceipt = async (txId: string) => {
-    try {
-      setLoadingReceipt(true)
-      const res = await apiFetch<ReceiptData>(`/payment/receipt/${txId}`)
-      setSelectedReceipt(res)
-      setReceiptModalOpen(true)
-    } catch (err: any) {
-      toast('error', err.message || 'Kuitansi belum tersedia atau gagal dimuat')
-    } finally {
-      setLoadingReceipt(false)
-    }
-  }
 
   if (isLoading) {
     return (
@@ -430,20 +384,19 @@ export default function PembayaranTahap2DetailPage() {
         </div>
 
         <CardContent className="p-0">
-          <Table className="w-full">
+          <Table className="w-full min-w-[620px] md:min-w-0">
             <TableHeader className="bg-primary/5">
               <TableRow>
                 <TableHead className="font-semibold text-xs whitespace-nowrap">Waktu & Order ID</TableHead>
                 <TableHead className="font-semibold text-xs whitespace-nowrap">Jenis Pembayaran</TableHead>
                 <TableHead className="font-semibold text-xs whitespace-nowrap">Nominal</TableHead>
                 <TableHead className="font-semibold text-xs whitespace-nowrap">Status Transaksi</TableHead>
-                <TableHead className="text-right font-semibold text-xs whitespace-nowrap">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {transactions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-12">
+                  <TableCell colSpan={4} className="py-12">
                     <EmptyState
                       icon={CreditCard}
                       title="Belum Ada Transaksi"
@@ -454,7 +407,12 @@ export default function PembayaranTahap2DetailPage() {
                 </TableRow>
               ) : (
                 transactions.map((tx) => (
-                  <TableRow key={tx.id} className="hover:bg-muted/30">
+                  <TableRow
+                    key={tx.id}
+                    onClick={() => navigate(`/admin/kuitansi/${tx.id}`)}
+                    className="hover:bg-muted/60 cursor-pointer transition-colors"
+                    title="Klik untuk melihat kuitansi resmi"
+                  >
                     {/* Waktu & Order ID */}
                     <TableCell>
                       <div className="text-xs font-semibold text-foreground">
@@ -513,39 +471,6 @@ export default function PembayaranTahap2DetailPage() {
                         </Badge>
                       )}
                     </TableCell>
-
-                    {/* Aksi */}
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {/* Jika pending, admin dapat cek status dengan Pakasir gateway */}
-                        {tx.status === 'pending' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs px-2.5 rounded-lg gap-1 text-slate-700 hover:text-emerald-700"
-                            onClick={() => handleSyncStatus(tx.id)}
-                            disabled={syncingTxId === tx.id}
-                          >
-                            <RefreshCw className={`h-3 w-3 ${syncingTxId === tx.id ? 'animate-spin' : ''}`} />
-                            Cek Status
-                          </Button>
-                        )}
-
-                        {/* Jika sukses, tampilkan tombol kuitansi resmi */}
-                        {(tx.status === 'paid' || tx.status === 'settlement' || tx.status === 'success') && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs px-2.5 rounded-lg gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                            onClick={() => handleViewReceipt(tx.id)}
-                            disabled={loadingReceipt}
-                          >
-                            <Receipt className="h-3.5 w-3.5 text-emerald-600" />
-                            Kuitansi Resmi
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -553,35 +478,6 @@ export default function PembayaranTahap2DetailPage() {
           </Table>
         </CardContent>
       </Card>
-
-      {/* ─── Modal Kuitansi Resmi ─── */}
-      <Dialog open={receiptModalOpen} onOpenChange={setReceiptModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-3xl">
-          <DialogHeader className="mb-2">
-            <DialogTitle className="text-base font-bold flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-emerald-600" />
-                Kuitansi Resmi Pembayaran
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 text-xs rounded-xl px-3 gap-1.5 print:hidden"
-                onClick={() => window.print()}
-              >
-                <Printer className="w-3.5 h-3.5 text-muted-foreground" />
-                Cetak / Simpan PDF
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedReceipt && (
-            <div className="py-2">
-              <OfficialReceiptCard receipt={selectedReceipt} />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

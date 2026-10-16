@@ -1,7 +1,8 @@
 # scripts/
 
-Skrip operasional dan artefak bantu yang dipindahkan dari akar repo agar root tetap bersih.
-Bukan bagian dari aplikasi (tidak di-import oleh `apps/*` maupun `packages/*`).
+Skrip operasional dan artefak bantu yang dipindahkan dari akar repo dan `apps/api` agar
+struktur project tetap bersih. Bukan bagian dari aplikasi (tidak di-import oleh
+`apps/*` maupun `packages/*`).
 
 ## Tooling
 
@@ -24,3 +25,7 @@ tahu konteksnya; beberapa berisi kredensial dev hardcoded (bukan rahasia produks
   `verify3.sh` memuat API key dev hardcoded.
 - `test_api.sh` — kirim notifikasi WhatsApp via API; memuat password superadmin seed dev.
 - `test_payload.json` — payload contoh WhatsApp (nomor fiktif).
+- `test.py`, `test_db.py`, `test_script.py`, `test_send.py` — skrip debug ad-hoc
+  (query DB, login + kirim notifikasi). Diimpor dari `apps/api/src/*` sehingga harus
+  dijalankan dengan working directory `apps/api`. `test_script.py` memuat password
+  superadmin seed dev.

@@ -110,7 +110,7 @@ async function tryRefresh(): Promise<boolean> {
   if (refreshPromise) return refreshPromise
   refreshPromise = (async () => {
     try {
-      const res = await fetchWithFallback(`${API_BASE}/auth/refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+      const res = await fetchWithFallback(`${API_BASE}/auth/refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Client-App': 'ppdb' }, body: JSON.stringify({}) })
       if (!res.ok) return false
       return true
     } catch { return false } finally { refreshPromise = null }
@@ -171,7 +171,7 @@ export async function login(username: string, password: string) {
     setUser(user)
     return user
   }
-  const data = await apiFetch<{ user: any }>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) })
+  const data = await apiFetch<{ user: any }>('/auth/login', { method: 'POST', headers: { 'X-Client-App': 'ppdb' }, body: JSON.stringify({ username, password }) })
   if (data.user) {
     setUser(data.user); return data.user
   }
@@ -190,6 +190,6 @@ export async function getMe() {
 }
 
 export async function logout() {
-  try { await fetchWithFallback(`${API_BASE}/auth/logout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }) } catch (e) { void e }
+  try { await fetchWithFallback(`${API_BASE}/auth/logout`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Client-App': 'ppdb' }, body: JSON.stringify({}) }) } catch (e) { void e }
   clearAuth()
 }

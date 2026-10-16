@@ -122,7 +122,7 @@ export default function DpCertificateStep({ applicant, loa }: DpCertificateStepP
               <span className="text-xs text-slate-500 block mt-1">
                 {financials.dp_paid
                   ? `Lunas terverifikasi pada ${financials.dp_paid_at ? new Date(financials.dp_paid_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}`
-                  : 'Nominal DP ditetapkan resmi oleh gelombang PPDB Ar-Rahman'}
+                  : 'Nominal DP ditetapkan resmi oleh gelombang PPDB PTDARRAHMAN'}
               </span>
             </div>
 

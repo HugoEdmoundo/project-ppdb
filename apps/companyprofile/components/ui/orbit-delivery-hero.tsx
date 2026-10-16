@@ -1,4 +1,5 @@
 // @ts-nocheck — generated single-file distribution; typed sources live in the app.
+// eslint-disable-next-line @typescript-eslint/var-requires, no-underscore-dangle, @typescript-eslint/no-var-requires
 
 
 
@@ -50,7 +51,7 @@ var __export = (target, all) => {
 
 
 
-  for (var name in all)
+  for (let name in all)
 
 
 
@@ -4066,6 +4067,7 @@ function Arrow() {
 
 
 
+// eslint-disable-line react/display-name
 var SceneBoundary = class extends Component {
 
 

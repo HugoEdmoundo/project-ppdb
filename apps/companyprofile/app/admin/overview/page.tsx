@@ -211,7 +211,7 @@ export default function AdminOverview() {
     <>
       <AdminToast />
       <CrossTabSync />
-      {profileOpen && <ProfileModal open onClose={() => setProfileOpen(false)} />}
+      {false && profileOpen && <ProfileModal open onClose={() => setProfileOpen(false)} />}
 
       <DashboardShell
         brand={{
@@ -227,8 +227,6 @@ export default function AdminOverview() {
           else if (item.href) router.push(item.href)
         }}
         apiBase={api.API_BASE}
-        title="Admin CMS"
-        subtitle="Dashboard"
         contentClassName="animate-fade-in"
         storageKey="cp_collapsed"
         roleLabel={adminUser?.role_name || adminUser?.user_type}
@@ -239,7 +237,7 @@ export default function AdminOverview() {
           avatarUrl: adminUser?.avatar_url,
           role: adminUser?.role_name || adminUser?.user_type,
         }}
-        onProfile={() => setProfileOpen(true)}
+        onProfile={() => router.push('/admin/profile')}
         onViewSite={() => window.open('/', '_blank')}
         onLogout={handleLogout}
         sidebarFooter={<AdminSidebarFooter />}
@@ -268,7 +266,7 @@ export default function AdminOverview() {
                 <Link
                   href="/"
                   target="_blank"
-                  className={cn(buttonVariants({ variant: 'glass', size: 'sm' }))}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/30 bg-white/10 hover:bg-white/20 text-white px-3.5 py-2 text-xs font-semibold transition-colors"
                 >
                   Lihat Situs
                   <ArrowRight className="h-4 w-4" />
@@ -301,7 +299,7 @@ export default function AdminOverview() {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               {Array.from({ length: 10 }).map((_, i) => (
-                <div key={i} className="h-28 rounded-2xl bg-white/60 border border-border/70 animate-pulse" />
+                <div key={i} className="h-28 rounded-2xl bg-muted/40 border border-border animate-pulse" />
               ))}
             </div>
           ) : (
@@ -315,7 +313,7 @@ export default function AdminOverview() {
                     href={s.href}
                     className="group h-full"
                   >
-                    <Card className="h-full border-border/70 bg-white/70 backdrop-blur-md shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 hover:border-primary/30">
+                    <Card className="h-full border-border bg-card shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-primary/40">
                       <CardContent className="p-5 flex flex-col gap-3">
                         <div className="flex items-start justify-between">
                           <div className={cn('inline-flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-md bg-gradient-to-br', s.tint)}>
@@ -343,7 +341,7 @@ export default function AdminOverview() {
 
           {/* Two-column: Recent + Quick actions */}
           <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <Card className="lg:col-span-2 border-border/70 bg-white/70 backdrop-blur-md shadow-sm">
+            <Card className="lg:col-span-2 border-border bg-card shadow-sm">
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Newspaper className="h-4 w-4 text-primary" />
@@ -361,7 +359,7 @@ export default function AdminOverview() {
                 {loading ? (
                   <div className="space-y-2.5">
                     {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="h-14 rounded-xl bg-white/60 border border-border/70 animate-pulse" />
+                      <div key={i} className="h-14 rounded-xl bg-muted/40 border border-border animate-pulse" />
                     ))}
                   </div>
                 ) : latestNews.length === 0 ? (
@@ -373,7 +371,7 @@ export default function AdminOverview() {
                     {latestNews.map((item) => (
                       <li
                         key={item.id}
-                        className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-white/60 px-4 py-3 transition-colors hover:border-primary/30 hover:bg-white"
+                        className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-muted/20"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-foreground">
@@ -392,7 +390,7 @@ export default function AdminOverview() {
             </Card>
 
             <div className="space-y-5">
-              <Card className="border-border/70 bg-white/70 backdrop-blur-md shadow-sm">
+              <Card className="border-border bg-card shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
                     <PictureInPicture2 className="h-4 w-4 text-primary" />

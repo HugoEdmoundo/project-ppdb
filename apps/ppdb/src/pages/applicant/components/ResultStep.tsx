@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/api/client'
 import ApplicantSKDModal from '@/components/shared/ApplicantSKDModal'
 import ApplicantLoAModal from '@/components/shared/ApplicantLoAModal'
+import ApplicantSignLoAModal from '@/components/shared/ApplicantSignLoAModal'
 import OfficialReceiptCard, { type ReceiptData } from '@/components/shared/OfficialReceiptCard'
 import { QRCodeSVG } from 'qrcode.react'
 import {
@@ -40,6 +41,7 @@ export default function ResultStep({ applicant, selectionResult, loa }: ResultSt
   const queryClient = useQueryClient()
   const [showSkdModal, setShowSkdModal] = useState(false)
   const [showLoaModal, setShowLoaModal] = useState(false)
+  const [showSignModal, setShowSignModal] = useState(false)
 
   // QRIS Payment Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
@@ -252,7 +254,7 @@ export default function ResultStep({ applicant, selectionResult, loa }: ResultSt
                 <div className="min-w-0 flex-1">
                   <h3 className="text-lg sm:text-xl font-bold text-emerald-800">Selamat! Anda Dinyatakan Lulus</h3>
                   <p className="text-emerald-700 text-sm mt-1">
-                    Selamat, Anda telah lulus seleksi PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.
+                    Selamat, Anda telah lulus seleksi PPDB Pesantren Tahfidz Qur'an dan Digital Arrahman.
                   </p>
                 </div>
               </div>
@@ -285,23 +287,42 @@ export default function ResultStep({ applicant, selectionResult, loa }: ResultSt
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {isLoaSigned ? (
-                  <Badge variant="success" className="gap-1 px-2.5 py-1 text-[11px] font-semibold bg-emerald-100 text-emerald-800 border-emerald-300">
-                    <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Sudah Ditandatangani
-                  </Badge>
+                  <>
+                    <Badge variant="success" className="gap-1 px-2.5 py-1 text-[11px] font-semibold bg-emerald-100 text-emerald-800 border-emerald-300">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Sudah Ditandatangani
+                    </Badge>
+                    <Button onClick={() => setShowLoaModal(true)} className="w-full sm:w-auto h-9 gap-2 bg-emerald-700 hover:bg-emerald-800 text-white shrink-0 font-semibold text-xs cursor-pointer">
+                      <FileSignature className="w-4 h-4" />
+                      Buka / Unduh LoA
+                    </Button>
+                  </>
                 ) : (
-                  <Badge variant="warning" className="gap-1 px-2.5 py-1 text-[11px] font-semibold bg-amber-100 text-amber-800 border-amber-300">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Wajib Ditandatangani
-                  </Badge>
+                  <>
+                    <Badge variant="warning" className="gap-1 px-2.5 py-1 text-[11px] font-semibold bg-amber-100 text-amber-800 border-amber-300">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Wajib Ditandatangani
+                    </Badge>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowLoaModal(true)}
+                      className="w-full sm:w-auto h-9 gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shrink-0 font-semibold text-xs cursor-pointer shadow-2xs"
+                    >
+                      <FileSignature className="w-4 h-4 text-slate-600" />
+                      Lihat Dokumen LoA
+                    </Button>
+                    <Button
+                      onClick={() => setShowSignModal(true)}
+                      className="w-full sm:w-auto h-9 gap-2 bg-emerald-700 hover:bg-emerald-800 text-white shrink-0 font-bold text-xs cursor-pointer shadow-xs"
+                    >
+                      <PenTool className="w-4 h-4" />
+                      Tanda Tangani LoA
+                    </Button>
+                  </>
                 )}
-                <Button onClick={() => setShowLoaModal(true)} className="w-full sm:w-auto h-9 gap-2 bg-emerald-700 hover:bg-emerald-800 text-white shrink-0 font-semibold text-xs">
-                  <FileSignature className="w-4 h-4" />
-                  {isLoaSigned ? 'Buka / Cetak LoA' : 'Buka & Tanda Tangani LoA'}
-                </Button>
               </div>
             </div>
             <div className="p-4 sm:p-5 space-y-4">
               {!isLoaSigned && (
-                <div className="p-4 sm:p-5 bg-amber-50/95 border-2 border-amber-300 rounded-xl text-amber-950 text-xs sm:text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+                <div className="p-4 sm:p-5 bg-amber-50/95 border-2 border-amber-300 rounded-xl text-amber-950 text-xs sm:text-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 shadow-xs">
                   <div className="flex items-start gap-3">
                     <PenTool className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
                     <div className="space-y-1">
@@ -313,13 +334,23 @@ export default function ResultStep({ applicant, selectionResult, loa }: ResultSt
                       </p>
                     </div>
                   </div>
-                  <Button
-                    onClick={() => setShowLoaModal(true)}
-                    className="w-full sm:w-auto h-10 px-4 gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shrink-0 shadow-xs"
-                  >
-                    <PenTool className="w-4 h-4" />
-                    Tanda Tangani LoA di Aplikasi
-                  </Button>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto shrink-0">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowLoaModal(true)}
+                      className="w-full sm:w-auto h-10 px-4 gap-2 bg-white hover:bg-amber-100/50 border-amber-300 text-amber-950 font-semibold text-xs cursor-pointer shadow-2xs"
+                    >
+                      <FileSignature className="w-4 h-4 text-amber-700" />
+                      Lihat Dokumen LoA
+                    </Button>
+                    <Button
+                      onClick={() => setShowSignModal(true)}
+                      className="w-full sm:w-auto h-10 px-5 gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs cursor-pointer"
+                    >
+                      <PenTool className="w-4 h-4" />
+                      Tanda Tangani LoA Sekarang
+                    </Button>
+                  </div>
                 </div>
               )}
               <div className="p-3.5 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm flex items-start gap-3">
@@ -335,6 +366,7 @@ export default function ResultStep({ applicant, selectionResult, loa }: ResultSt
           </div>
 
           <ApplicantLoAModal open={showLoaModal} onOpenChange={setShowLoaModal} applicantId={applicant?.id} isApplicantPortal={true} />
+          <ApplicantSignLoAModal open={showSignModal} onOpenChange={setShowSignModal} applicantId={applicant?.id} isApplicantPortal={true} />
 
           {/* 2. Pembayaran Uang Muka (DP) */}
           <div className="border border-slate-200 rounded-2xl bg-card overflow-hidden shadow-sm">
@@ -367,7 +399,7 @@ export default function ResultStep({ applicant, selectionResult, loa }: ResultSt
                   <span className="text-xs text-slate-500 block mt-0.5">
                     {financials.dp_paid
                       ? `Lunas terverifikasi pada ${financials.dp_paid_at ? new Date(financials.dp_paid_at).toLocaleDateString('id-ID') : '-'}`
-                      : 'Nominal DP ditetapkan oleh gelombang PPDB Ar-Rahman'}
+                      : 'Nominal DP ditetapkan oleh gelombang PPDB PTDARRAHMAN'}
                   </span>
                 </div>
 
@@ -681,7 +713,7 @@ export default function ResultStep({ applicant, selectionResult, loa }: ResultSt
           </div>
           <h3 className="text-lg sm:text-xl font-bold text-red-800 mb-2">Mohon Maaf, Anda Dinyatakan Tidak Lulus</h3>
           <p className="text-red-700 text-sm max-w-md mx-auto leading-relaxed">
-            Terima kasih telah berpartisipasi dalam proses seleksi PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.
+            Terima kasih telah berpartisipasi dalam proses seleksi PPDB Pesantren Tahfidz Qur'an dan Digital Arrahman.
           </p>
         </div>
       ) : (
@@ -741,7 +773,7 @@ export default function ResultStep({ applicant, selectionResult, loa }: ResultSt
                 <span>Petunjuk Pembayaran:</span>
               </p>
               <p>1. Buka aplikasi M-Banking atau E-Wallet yang mendukung QRIS.</p>
-              <p>2. Scan kode QR di atas dan pastikan nama penerima adalah Pesantren Ar-Rahman.</p>
+              <p>2. Scan kode QR di atas dan pastikan nama penerima adalah PTDARRAHMAN.</p>
               <p>3. Konfirmasi pembayaran. Status akan diperbarui secara otomatis.</p>
             </div>
 
@@ -778,7 +810,7 @@ export default function ResultStep({ applicant, selectionResult, loa }: ResultSt
           {selectedReceipt && (
             <div className="relative">
               <OfficialReceiptCard receipt={selectedReceipt} />
-              <div className="p-3 bg-white border-t rounded-b-2xl flex justify-end gap-2">
+              <div className="p-3 bg-white border-t rounded-b-2xl flex justify-end gap-2 print:hidden">
                 <Button
                   size="sm"
                   variant="outline"

@@ -124,7 +124,7 @@ export function SettingsEditor({ settings, canCrud }: Props) {
   return (
     <div className="grid gap-6">
       {SETTING_FIELDS.map((field) => (
-        <Card key={field.key} className="bg-white/60 backdrop-blur-sm shadow-sm">
+        <Card key={field.key} className="bg-card border-border shadow-sm">
           <CardHeader>
             <CardTitle className="text-base">{field.label}</CardTitle>
             <CardDescription>{field.description}</CardDescription>

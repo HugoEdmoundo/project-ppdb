@@ -28,6 +28,7 @@ class RefreshResponse(BaseModel):
 class ProfileUpdate(BaseModel):
     username: str | None = None
     email: str | None = None
+    phone: str | None = None
     full_name: str | None = None
     avatar_url: str | None = None
     old_password: str | None = None

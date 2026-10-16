@@ -1,295 +1,87 @@
-import { useState } from 'react'
-import {
-  ArrowLeft,
-  AtSign,
-  BadgeCheck,
-  KeyRound,
-  Loader2,
-  Mail,
-  Save,
-  ShieldCheck,
-  User as UserIcon,
-  UserRound,
-} from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import PageHero from '../components/PageHero'
 import * as api from '../api/client'
-import { Button } from "@/components/ui"
-import { Input } from "@/components/ui"
-import { Label } from "@/components/ui"
-import { Card, CardContent } from "@/components/ui"
-import { Badge } from "@/components/ui"
-import { AvatarEditor, SectionCard } from '@repo/ui'
 import { useToast } from '../components/Toast'
-import { cn } from '@/lib/utils'
-
-function FieldLabel({ icon: Icon, children }: { icon: typeof Mail; children: React.ReactNode }) {
-  return (
-    <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-      <Icon className="h-3.5 w-3.5 text-primary" />
-      {children}
-    </Label>
-  )
-}
+import { ProfilePage as SharedProfilePage, type ProfileSession } from '@repo/ui/profile'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
   const { user, refreshUser } = useAuth()
   const { toast } = useToast()
-  const [form, setForm] = useState({
-    username: user?.username || '',
-    full_name: user?.full_name || '',
-    email: user?.email || '',
-    avatar_url: user?.avatar_url || '',
-    old_password: '',
-    new_password: '',
-    confirm_password: '',
-  })
-  const [saving, setSaving] = useState(false)
-  const [prevUserId, setPrevUserId] = useState(user?.id)
 
-  // Sinkronkan form saat data user selesai dimuat async (pola render-phase).
-  if (user?.id !== prevUserId) {
-    setPrevUserId(user?.id)
-    setForm((f) => ({
-      ...f,
-      username: user?.username || '',
-      full_name: user?.full_name || '',
-      email: user?.email || '',
-      avatar_url: user?.avatar_url || '',
-    }))
-  }
+  const [sessions, setSessions] = useState<ProfileSession[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(true)
+  const [sessionsError, setSessionsError] = useState<string | null>(null)
+  const [sessionsRefreshing, setSessionsRefreshing] = useState(false)
+  const [revokingId, setRevokingId] = useState<string | null>(null)
 
-  const isSuper = user?.user_type === 'superadmin' || user?.is_superadmin
-  const initials = (user?.full_name || user?.username || 'S')[0]?.toUpperCase()
-
-  function handleChange(key: keyof typeof form, value: string) {
-    setForm((f) => ({ ...f, [key]: value }))
-  }
-
-  async function handleAvatarUploaded(file: File): Promise<string> {
-    return api.uploadAvatar(file)
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-
-    if (form.new_password && form.new_password !== form.confirm_password) {
-      toast('error', 'Konfirmasi password baru tidak cocok.')
-      return
-    }
-
-    const payload: Record<string, string> = {}
-    if (form.username !== user?.username) payload.username = form.username
-    if (form.full_name !== user?.full_name) payload.full_name = form.full_name
-    if (form.email !== user?.email) payload.email = form.email
-    if (form.avatar_url !== user?.avatar_url) payload.avatar_url = form.avatar_url
-    if (form.new_password) {
-      if (!form.old_password) {
-        toast('error', 'Password lama wajib diisi untuk mengganti password.')
-        return
-      }
-      payload.old_password = form.old_password
-      payload.new_password = form.new_password
-    }
-
-    if (Object.keys(payload).length === 0) {
-      toast('warning', 'Tidak ada perubahan untuk disimpan.')
-      return
-    }
-
-    setSaving(true)
+  const loadSessions = useCallback(async () => {
     try {
-      await api.updateProfile(payload)
-      await refreshUser()
-      setForm((f) => ({ ...f, old_password: '', new_password: '', confirm_password: '' }))
-      toast('success', 'Profile berhasil diperbarui.')
+      setSessionsLoading((prev) => (sessions.length === 0 ? true : prev))
+      if (sessions.length > 0) setSessionsRefreshing(true)
+      setSessionsError(null)
+      const data = await api.getSessions()
+      setSessions((data as any)?.sessions ?? (data as any) ?? [])
     } catch (err: any) {
-      toast('error', err.message || 'Gagal menyimpan profile.')
+      setSessionsError(err?.message || 'Gagal memuat sesi perangkat.')
     } finally {
-      setSaving(false)
+      setSessionsLoading(false)
+      setSessionsRefreshing(false)
     }
+  }, [sessions.length])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void loadSessions()
+    }, 0)
+    const id = window.setInterval(() => void loadSessions(), 60000)
+    return () => {
+      clearTimeout(timer)
+      window.clearInterval(id)
+    }
+  }, [loadSessions])
+
+  async function handleSubmit(payload: Record<string, string | undefined>) {
+    const clean: Record<string, string> = {}
+    for (const [k, v] of Object.entries(payload)) {
+      if (typeof v === 'string') clean[k] = v
+    }
+    await api.updateProfile(clean)
+    await refreshUser()
   }
 
-  const metaRows = [
-    { icon: UserRound, label: 'Username', value: form.username || '—' },
-    { icon: Mail, label: 'Email', value: form.email || '—' },
-    {
-      icon: BadgeCheck,
-      label: 'Status',
-      value: user?.is_active === false ? 'Inactive' : 'Active',
-      valueClass: user?.is_active === false ? 'text-destructive' : 'text-success',
-    },
-  ]
+  async function handleRevoke(id: string) {
+    try {
+      setRevokingId(id)
+      await api.revokeSession(id)
+      await loadSessions()
+      toast('success', 'Sesi perangkat berhasil diakhiri.')
+    } catch (err: any) {
+      toast('error', err?.message || 'Gagal mengakhiri sesi.')
+    } finally {
+      setRevokingId(null)
+    }
+  }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 animate-fadeIn">
-      <PageHero
-        eyebrow="Akun Saya"
-        title="Profile"
-        description="Kelola informasi dan keamanan akun Anda"
-        chips={[
-          { icon: UserRound, label: `@${form.username || '—'}` },
-          { icon: Mail, label: form.email || 'Email belum diisi' },
-          { icon: ShieldCheck, label: 'Superadmin' },
-        ]}
-        actions={
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-xs font-semibold text-white ring-1 ring-white/25 transition-colors hover:bg-white/25"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> Kembali
-          </button>
-        }
-      />
-
-      <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        {/* ── Identity card ── */}
-        <aside className="space-y-6">
-          <Card className="overflow-hidden shadow-sm">
-            <CardContent className="px-5 pt-6 pb-5">
-              <div className="flex justify-center">
-                <AvatarEditor
-                  value={form.avatar_url}
-                  initials={initials}
-                  alt={user?.full_name || user?.username}
-                  onUpload={handleAvatarUploaded}
-                  onUrlApplied={(url) => handleChange('avatar_url', url)}
-                />
-              </div>
-
-              <div className="mt-4 text-center">
-                <h2 className="truncate font-heading text-lg font-bold text-foreground">
-                  {form.full_name || form.username || '—'}
-                </h2>
-                <p className="truncate text-xs text-muted-foreground">@{form.username}</p>
-                <Badge className="mt-2.5 bg-purple-100 text-purple-700 hover:bg-purple-100">
-                  <ShieldCheck className="h-3 w-3" />
-                  SUPERADMIN
-                </Badge>
-              </div>
-
-              <div className="mt-5 space-y-3 border-t border-border pt-4">
-                {metaRows.map((row) => {
-                  const Icon = row.icon
-                  return (
-                    <div key={row.label} className="flex items-start gap-2.5 text-sm">
-                      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                          {row.label}
-                        </p>
-                        <p className={cn('truncate font-medium text-foreground', row.valueClass)}>{row.value}</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </aside>
-
-        {/* ── Form sections ── */}
-        <div className="space-y-6">
-          <SectionCard
-            title="Informasi Profile"
-            description="Data dasar akun Anda yang tampil di sistem."
-            icon={UserIcon}
-            accent="bg-primary"
-          >
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <FieldLabel icon={AtSign}>Username</FieldLabel>
-                  <Input
-                    value={form.username}
-                    onChange={(e) => handleChange('username', e.target.value)}
-                    placeholder="Masukkan username"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <FieldLabel icon={UserRound}>Full Name</FieldLabel>
-                  <Input
-                    value={form.full_name}
-                    onChange={(e) => handleChange('full_name', e.target.value)}
-                    placeholder="Nama lengkap"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <FieldLabel icon={Mail}>Email</FieldLabel>
-                <Input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => handleChange('email', e.target.value)}
-                  placeholder="email@example.com"
-                />
-                {isSuper && (
-                  <p className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Email dapat diubah — Anda memiliki akses Superadmin.
-                  </p>
-                )}
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Ganti Password"
-            description="Gunakan minimal 8 karakter dengan kombinasi huruf besar, huruf kecil, dan angka."
-            icon={KeyRound}
-            accent="bg-warning"
-          >
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <FieldLabel icon={KeyRound}>Password Lama</FieldLabel>
-                <Input
-                  type="password"
-                  value={form.old_password}
-                  onChange={(e) => handleChange('old_password', e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <FieldLabel icon={KeyRound}>Password Baru</FieldLabel>
-                  <Input
-                    type="password"
-                    value={form.new_password}
-                    onChange={(e) => handleChange('new_password', e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <FieldLabel icon={KeyRound}>Konfirmasi Password Baru</FieldLabel>
-                  <Input
-                    type="password"
-                    value={form.confirm_password}
-                    onChange={(e) => handleChange('confirm_password', e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                  />
-                </div>
-              </div>
-            </div>
-          </SectionCard>
-
-          <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
-            <Button type="button" variant="outline" onClick={() => navigate(-1)}>
-              Batal
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
-            </Button>
-          </div>
-        </div>
-      </form>
-    </div>
+    <SharedProfilePage
+      user={user}
+      notify={(type, message) => {
+        if (type === 'success') toast('success', message)
+        else if (type === 'error') toast('error', message)
+        else toast('warning', message)
+      }}
+      onUploadAvatar={api.uploadAvatar}
+      onSubmit={handleSubmit}
+      onBack={() => navigate(-1)}
+      sessions={sessions}
+      sessionsLoading={sessionsLoading}
+      sessionsError={sessionsError}
+      sessionsRefreshing={sessionsRefreshing}
+      onRefreshSessions={loadSessions}
+      onRevokeSession={handleRevoke}
+      revokingSessionId={revokingId}
+    />
   )
 }

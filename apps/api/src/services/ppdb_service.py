@@ -1902,7 +1902,7 @@ class PPDBService:
             "academic_year": academic_year,
             "admission_officer": admission_officer,
             "director_name": "Ust. Dr. H. Abdurrahman, M.A.",
-            "location": "Bogor",
+            "location": "Bekasi",
             "date_str": letter_date_str,
             "applicant": applicant,
             "fee_items": fee_items,

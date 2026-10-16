@@ -102,8 +102,8 @@ class AuthService:
             user.password_hash = hash_password(password)
             user.updated_at = datetime.now(WIB)
             self.repository.db.query(RefreshToken).filter(
-                RefreshToken.user_id == user.id, RefreshToken.revoked.is_(False)
-            ).update({RefreshToken.revoked: True}, synchronize_session=False)
+                RefreshToken.user_id == user.id
+            ).delete(synchronize_session=False)
             self.repository.update_user(user)
             invalidate_user_cache(user.id)
             redis.delete(key)
@@ -180,6 +180,7 @@ class AuthService:
             "id": user.id,
             "username": user.username,
             "email": user.email or "",
+            "phone": user.phone or "",
             "full_name": user.full_name or "",
             "avatar_url": user.avatar_url or "",
             "role_id": role_id,
@@ -189,12 +190,20 @@ class AuthService:
             "user_type": user.user_type or "admin",
             "is_superadmin": is_superadmin or user.user_type == "superadmin",
             "is_active": user.is_active,
+            "created_at": (
+                user.created_at.isoformat() if user.created_at else None
+            ),
+            "last_login_at": (
+                user.last_login_at.isoformat() if user.last_login_at else None
+            ),
             "login_denied": False,
             "payment_status": payment_status,
             "payment_deadline": payment_deadline,
         }
 
-    def login(self, username: str, password: str) -> dict:
+    def login(
+        self, username: str, password: str, context: dict[str, str] | None = None
+    ) -> dict:
         user = self.repository.get_user_by_username_or_email(username)
         if not user:
             raise HTTPException(401, "Username atau email tidak ditemukan")
@@ -280,7 +289,7 @@ class AuthService:
         user.locked_until = None
         self.repository.update_user(user)
 
-        access_token = create_access_token({"sub": user.id})
+        ctx = context or {}
         raw_refresh, refresh_hash, refresh_expires = generate_refresh_token()
 
         rt = RefreshToken(
@@ -290,8 +299,15 @@ class AuthService:
             expires_at=refresh_expires,
             revoked=False,
             created_at=datetime.now(WIB),
+            user_agent=ctx.get("user_agent") or None,
+            ip_address=ctx.get("ip_address") or None,
+            app=ctx.get("app") or None,
+            last_seen_at=datetime.now(WIB),
         )
         self.repository.create_refresh_token(rt)
+        self.cleanup_expired_sessions(user.id)
+
+        access_token = create_access_token({"sub": user.id, "sid": rt.id})
 
         return {
             "access_token": access_token,
@@ -300,7 +316,9 @@ class AuthService:
             "user": self._serialize_user(user),
         }
 
-    def refresh(self, refresh_token_str: str) -> dict:
+    def refresh(
+        self, refresh_token_str: str, context: dict[str, str] | None = None
+    ) -> dict:
         token_hash = hash_refresh_token(refresh_token_str)
         stored = self.repository.get_refresh_token(token_hash)
         if not stored or stored.revoked:
@@ -316,21 +334,36 @@ class AuthService:
         if not user or not user.is_active:
             raise HTTPException(401, "User not found or inactive")
 
-        access_token = create_access_token({"sub": user.id})
+        now = datetime.now(WIB)
+        ctx = context or {}
         raw_refresh, new_hash, refresh_expires = generate_refresh_token()
 
+        # Rotasi token: metadata perangkat & waktu mulai sesi ikut dipindahkan
+        # supaya sesi tidak hilang dari daftar "Sesi Perangkat" saat token
+        # berganti. `last_seen_at` diperbarui setiap kali token di-refresh.
         rt = RefreshToken(
             id=str(uuid.uuid4()),
             user_id=user.id,
             token_hash=new_hash,
             expires_at=refresh_expires,
             revoked=False,
-            created_at=datetime.now(WIB),
+            created_at=stored.created_at or now,
+            user_agent=ctx.get("user_agent") or stored.user_agent,
+            ip_address=ctx.get("ip_address") or stored.ip_address,
+            app=ctx.get("app") or stored.app,
+            last_seen_at=now,
         )
         self.repository.create_refresh_token(rt)
 
-        stored.revoked = True
-        self.repository.update_refresh_token(stored)
+        # Rotasi token: hapus token lama agar tidak menumpuk di database
+        try:
+            self.repository.db.delete(stored)
+            self.repository.db.commit()
+        except Exception:
+            self.repository.db.rollback()
+        self.cleanup_expired_sessions(user.id)
+
+        access_token = create_access_token({"sub": user.id, "sid": rt.id})
 
         return {
             "access_token": access_token,
@@ -345,14 +378,129 @@ class AuthService:
         token_hash = hash_refresh_token(refresh_token_str)
         stored = self.repository.get_refresh_token(token_hash)
         if stored:
-            stored.revoked = True
-            self.repository.update_refresh_token(stored)
+            user_id = stored.user_id
+            try:
+                self.repository.db.delete(stored)
+                self.repository.db.commit()
+            except Exception:
+                self.repository.db.rollback()
+            if user_id:
+                self.cleanup_expired_sessions(user_id)
 
     def get_me(self, user_dict: dict) -> dict:
         user = self.repository.get_user_by_id(user_dict["id"])
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        # Tandai sesi perangkat ini masih aktif (throttled 60 detik).
+        self.touch_session(user_dict.get("session_id"))
         return self._serialize_user(user)
+
+    def touch_session(self, session_id: str | None) -> None:
+        """Perbarui `last_seen_at` sesi (dipanggil dari GET /me)."""
+        if not session_id:
+            return
+        try:
+            rt = (
+                self.repository.db.query(RefreshToken)
+                .filter(RefreshToken.id == session_id)
+                .first()
+            )
+            if not rt:
+                return
+            now = datetime.now(WIB)
+            previous = self._coerce_dt(rt.last_seen_at)
+            if previous and (now - previous).total_seconds() < 60:
+                return
+            rt.last_seen_at = now
+            self.repository.db.commit()
+        except Exception:  # noqa: BLE001 - metadata sesi tidak boleh menggagalkan /me
+            self.repository.db.rollback()
+            logger.debug("Could not update session last_seen_at", exc_info=True)
+
+    def cleanup_expired_sessions(self, user_id: str | None = None) -> int:
+        """Hapus sesi yang sudah kedaluwarsa atau dicabut dari database agar tidak menumpuk."""
+        try:
+            now = datetime.now(WIB)
+            q = self.repository.db.query(RefreshToken).filter(
+                (RefreshToken.revoked.is_(True)) | (RefreshToken.expires_at <= now)
+            )
+            if user_id:
+                q = q.filter(RefreshToken.user_id == user_id)
+            deleted = q.delete(synchronize_session=False)
+            self.repository.db.commit()
+            return deleted
+        except Exception:
+            self.repository.db.rollback()
+            return 0
+
+    def list_sessions(self, user_dict: dict) -> dict:
+        """Daftar sesi perangkat yang masih aktif (belum logout/kedaluwarsa)."""
+        from src.core.session_meta import serialize_session
+
+        user_id = user_dict["id"]
+        current_session_id = user_dict.get("session_id")
+        now = datetime.now(WIB)
+
+        # Bersihkan sesi kedaluwarsa atau yang sudah dicabut agar tidak menumpuk di database
+        self.cleanup_expired_sessions(user_id)
+
+        rows = (
+            self.repository.db.query(RefreshToken)
+            .filter(
+                RefreshToken.user_id == user_id,
+                RefreshToken.revoked.is_(False),
+                RefreshToken.expires_at > now,
+            )
+            .all()
+        )
+
+        def _sort_key(row: RefreshToken) -> datetime:
+            return (
+                self._coerce_dt(row.last_seen_at)
+                or self._coerce_dt(row.created_at)
+                or now
+            )
+
+        rows.sort(key=_sort_key, reverse=True)
+        sessions = [
+            serialize_session(
+                row,
+                user_type=user_dict.get("user_type"),
+                current_session_id=current_session_id,
+            )
+            for row in rows
+        ]
+        # Sesi yang sedang dipakai selalu paling atas (sisanya urut terbaru).
+        sessions.sort(key=lambda item: not item["is_current"])
+        return {"sessions": sessions, "current_session_id": current_session_id}
+
+    def revoke_session(self, user_dict: dict, session_id: str) -> dict:
+        """Akhiri satu sesi perangkat lain. Sesi aktif saat ini tidak boleh."""
+        user_id = user_dict["id"]
+        if session_id and session_id == user_dict.get("session_id"):
+            raise HTTPException(
+                status_code=400,
+                detail="Sesi yang sedang Anda gunakan tidak dapat diakhiri.",
+            )
+        self.revoke_session_by_id(user_id, session_id)
+        return {"message": "Sesi berhasil diakhiri"}
+
+    def revoke_session_by_id(self, user_id: str, session_id: str | None) -> None:
+        """Cabut dan hapus satu sesi dari database agar tidak menumpuk."""
+        if not session_id:
+            return
+        try:
+            (
+                self.repository.db.query(RefreshToken)
+                .filter(
+                    RefreshToken.id == session_id, RefreshToken.user_id == user_id
+                )
+                .delete(synchronize_session=False)
+            )
+            self.repository.db.commit()
+        except Exception:
+            self.repository.db.rollback()
+        self.cleanup_expired_sessions(user_id)
 
     def update_profile(self, user_dict: dict, data: dict) -> dict:
         from src.core.security import verify_password
@@ -382,6 +530,9 @@ class AuthService:
                 raise HTTPException(status_code=400, detail="Email already in use")
             user.email = email
 
+        if "phone" in data:
+            user.phone = data["phone"]
+
         if data.get("full_name") is not None:
             user.full_name = data["full_name"]
 
@@ -401,7 +552,9 @@ class AuthService:
         invalidate_user_cache(user.id)
         return self._serialize_user(user)
 
-    def register_applicant(self, data: dict) -> dict:
+    def register_applicant(
+        self, data: dict, context: dict[str, str] | None = None
+    ) -> dict:
         if self.repository.get_user_by_username_or_email(data["username"]):
             raise HTTPException(400, "Username already exists")
         if self.repository.get_user_by_username_or_email(data["email"]):
@@ -430,7 +583,8 @@ class AuthService:
         self.repository.db.commit()
         self.repository.db.refresh(user)
 
-        access_token = create_access_token({"sub": user.id})
+        now = datetime.now(WIB)
+        ctx = context or {}
         raw_refresh, refresh_hash, refresh_expires = generate_refresh_token()
         rt = RefreshToken(
             id=str(uuid.uuid4()),
@@ -438,9 +592,15 @@ class AuthService:
             token_hash=refresh_hash,
             expires_at=refresh_expires,
             revoked=False,
-            created_at=datetime.now(WIB),
+            created_at=now,
+            user_agent=ctx.get("user_agent") or None,
+            ip_address=ctx.get("ip_address") or None,
+            app=ctx.get("app") or None,
+            last_seen_at=now,
         )
         self.repository.create_refresh_token(rt)
+
+        access_token = create_access_token({"sub": user.id, "sid": rt.id})
 
         return {
             "access_token": access_token,
@@ -534,8 +694,8 @@ class AuthService:
         user.password_hash = hash_password(new_password)
         user.updated_at = datetime.now(WIB)
         self.repository.db.query(RefreshToken).filter(
-            RefreshToken.user_id == user.id, RefreshToken.revoked.is_(False)
-        ).update({RefreshToken.revoked: True}, synchronize_session=False)
+            RefreshToken.user_id == user.id
+        ).delete(synchronize_session=False)
         self.repository.db.commit()
 
         try:

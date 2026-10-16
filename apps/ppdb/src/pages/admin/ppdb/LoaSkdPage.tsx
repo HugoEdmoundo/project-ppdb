@@ -22,13 +22,52 @@ import {
   DialogTitle
 } from '@/components/ui'
 import PageHeaderCard from '@/components/shared/PageHeaderCard'
+import LoaOfficialDocument, { type LoaData } from '@/components/shared/LoaOfficialDocument'
 
 export default function LoaSkdPage() {
   const [activeTab, setActiveTab] = useState<'loa' | 'skd'>('loa')
   const [loaActivePage, setLoaActivePage] = useState<1 | 2>(1)
   const [fullscreenOpen, setFullscreenOpen] = useState(false)
 
-  // Dummy Applicant Data
+  // Sample data conforming to official LoaData
+  const sampleLoaData: LoaData = {
+    letter_number: 'LoA/PPDB/2026/REG-27102501079',
+    registration_number: 'REG-27102501079',
+    academic_year: '2026 / 2027',
+    admission_officer: 'Ust. Wijaya Kurnia, M.Pd.',
+    director_name: 'Ust. Dr. H. Abdurrahman, M.A.',
+    location: 'Bekasi',
+    date_str: '08 Oktober 2026',
+    applicant: {
+      id: 'app-dummy-1',
+      full_name: 'MUHAMMAD ZIYAD HASAN',
+      registration_path: 'Reguler (Tahfidz Qur\'an & Digital)',
+      nisn: '1234567890',
+      previous_school: 'SMP Negeri 1 Cikarang Utara',
+      parent_name: 'Hasan Basri',
+    },
+    fee_items: [
+      { name: 'Biaya Pembangunan (Early Bird 1)', nominal: 10000000, description: 'Potongan diskon pendaftar awal, dibayarkan 1 (satu) kali.' },
+      { name: 'SPP / Biaya Pendidikan Bulan Pertama', nominal: 1500000, description: 'Biaya bulanan mencakup asrama, konsumsi, dan program tahfidz.' },
+      { name: 'Biaya Matrikulasi (Pre-Pesantren)', nominal: 1000000, description: 'Dibayarkan 1 (satu) kali untuk orientasi dan pembekalan adab.' },
+      { name: 'Biaya Seragam, Kitab & Modul Digital', nominal: 2500000, description: '4 setel seragam santri, paket kitab tahfidz, dan akun LMS.' },
+    ],
+    total_fee: 15000000,
+    minimum_dp: 5000000,
+    discount_name: 'Potongan Biaya Pembangunan (Early Bird Gelombang 1)',
+    deadline_lunas: '08 April 2027',
+    fixed_clause: 'Seluruh dana yang telah dibayarkan tidak dapat dikembalikan.',
+    is_graduated: true,
+    is_loa_signed: true,
+    loa_signed_at: '2026-10-08T10:30:00',
+    loa_signer_name: 'Hasan Basri',
+    loa_signer_relation: 'Ayah Kandung',
+    va_bank: 'Bank Syariah Indonesia (BSI)',
+    va_number: '88560 27 102 501079',
+    whatsapp_group_link: 'https://chat.whatsapp.com/demo-santri-baru',
+  }
+
+  // Dummy Applicant Data for SKD
   const sampleData = {
     fullName: 'MUHAMMAD ZIYAD HASAN',
     registrationNo: 'REG-27102501079',
@@ -37,17 +76,13 @@ export default function LoaSkdPage() {
     registrationTrack: 'Reguler (Tahfidz Qur\'an & Digital)',
     academicYear: '2026 / 2027',
     dateStr: '08 Oktober 2026',
-    location: 'Cikarang Utara',
+    location: 'Bekasi',
     admissionOfficer: 'Ust. Wijaya Kurnia, M.Pd.',
     directorName: 'Ust. Dr. H. Abdurrahman, M.A.',
     vaBank: 'Bank Syariah Indonesia (BSI)',
     vaNumber: '88560 27 102 501079',
     totalFee: 15000000,
     dpFee: 5000000,
-  }
-
-  const formatRupiah = (val: number) => {
-    return 'Rp ' + val.toLocaleString('id-ID')
   }
 
   return (
@@ -150,10 +185,9 @@ export default function LoaSkdPage() {
 
         <CardContent className="p-3 sm:p-6 bg-slate-100/60 min-h-[500px] flex items-center justify-start md:justify-center overflow-x-auto">
           {activeTab === 'loa' ? (
-            <LoaDocumentView
+            <LoaOfficialDocument
+              data={sampleLoaData}
               page={loaActivePage}
-              data={sampleData}
-              formatRupiah={formatRupiah}
             />
           ) : (
             <SkdCertificateView data={sampleData} />
@@ -195,10 +229,9 @@ export default function LoaSkdPage() {
 
           <div className="flex justify-start md:justify-center py-4 overflow-x-auto">
             {activeTab === 'loa' ? (
-              <LoaDocumentView
+              <LoaOfficialDocument
+                data={sampleLoaData}
                 page={loaActivePage}
-                data={sampleData}
-                formatRupiah={formatRupiah}
               />
             ) : (
               <SkdCertificateView data={sampleData} />
@@ -213,7 +246,7 @@ export default function LoaSkdPage() {
 // -----------------------------------------------------------------------------
 // Component: LoA Document View (2 Pages, matching docs/LoA-27102501079.pdf)
 // -----------------------------------------------------------------------------
-function LoaDocumentView({
+export function LoaDocumentView({
   page,
   data,
   formatRupiah,
@@ -226,7 +259,7 @@ function LoaDocumentView({
     <div className="w-[794px] min-h-[1123px] bg-white text-slate-900 shadow-xl border border-slate-200 p-10 font-sans text-xs flex flex-col justify-between transition-all">
       {/* Header Page Info */}
       <div className="flex justify-between items-center text-[10px] text-slate-400 border-b border-slate-100 pb-2 mb-4 font-mono">
-        <span>PPDB PESANTREN TAHFIDZ QUR&apos;AN DAN DIGITAL AR-RAHMAN</span>
+        <span>PPDB PTDARRAHMAN</span>
         <span>Page {page} Of 2</span>
       </div>
 
@@ -272,7 +305,7 @@ function LoaDocumentView({
             </p>
             <p className="text-xs leading-relaxed text-slate-800 text-justify">
               Anda telah dinyatakan <strong>LULUS</strong> seleksi dan dinyatakan <strong>DITERIMA</strong> sebagai
-              santri / peserta didik baru <strong>Pesantren Tahfidz Qur&apos;an dan Digital Ar-Rahman</strong> dalam
+              santri / peserta didik baru <strong>Pesantren Tahfidz Qur&apos;an dan Digital Arrahman</strong> dalam
               Academic Year {data.academicYear} melalui jalur pendaftaran &quot;<strong>{data.registrationTrack}</strong>&quot;.
             </p>
           </div>
@@ -431,7 +464,7 @@ function LoaDocumentView({
 
             <div className="text-right space-y-1 w-64">
               <p className="text-xs text-slate-600">Hormat Kami,</p>
-              <p className="text-xs font-bold text-slate-900">Office of Admission PPDB Ar-Rahman</p>
+              <p className="text-xs font-bold text-slate-900">Office of Admission PPDB PTDARRAHMAN</p>
               <div className="flex justify-end items-center gap-2 py-1">
                 <div className="p-1 bg-white border border-slate-200 rounded shadow-2xs">
                   <QRCodeSVG value={`https://ptdarrahman.sch.id/loa/${data.registrationNo}?verify=official`} size={44} level="M" />
@@ -467,7 +500,7 @@ function LoaDocumentView({
             </h3>
             <div className="bg-slate-50 border border-slate-200 rounded p-3 text-justify leading-relaxed">
               <p>
-                Pembayaran Biaya Pendidikan dilakukan langsung melalui <strong>Dashboard Aplikasi PPDB Ar-Rahman</strong> menggunakan <strong>QRIS Resmi Terintegrasi</strong> (seluruh mobile banking & e-wallet) baik secara <strong>Lunas sebesar {formatRupiah(data.totalFee)}</strong> (tenggat waktu: <strong>07 Mei 2027</strong>) maupun <strong>Cicilan Pertama (Minimal Uang Muka / DP) sebesar {formatRupiah(data.dpFee)}</strong>. Pembayaran yang melampaui batas waktu akan mengakibatkan status kuota kelulusan otomatis dialihkan ke pendaftar cadangan.
+                Pembayaran Biaya Pendidikan dilakukan langsung melalui <strong>Dashboard Aplikasi PPDB PTDARRAHMAN</strong> menggunakan <strong>QRIS Resmi Terintegrasi</strong> (seluruh mobile banking & e-wallet) baik secara <strong>Lunas sebesar {formatRupiah(data.totalFee)}</strong> (tenggat waktu: <strong>07 Mei 2027</strong>) maupun <strong>Cicilan Pertama (Minimal Uang Muka / DP) sebesar {formatRupiah(data.dpFee)}</strong>. Pembayaran yang melampaui batas waktu akan mengakibatkan status kuota kelulusan otomatis dialihkan ke pendaftar cadangan.
               </p>
             </div>
           </div>
@@ -488,11 +521,11 @@ function LoaDocumentView({
               <tbody className="divide-y divide-slate-200">
                 <tr>
                   <td className="py-2 px-3 font-semibold text-slate-800 align-top border border-slate-200">
-                    Dashboard Santri Ar-Rahman
+                    Dashboard Santri PTDARRAHMAN
                   </td>
                   <td className="py-2 px-3 text-slate-700 leading-relaxed border border-slate-200">
                     <ol className="list-decimal pl-4 space-y-1">
-                      <li>Akses dashboard melalui portal resmi PPDB Ar-Rahman menggunakan nomor registrasi dan password akun yang telah dibuat.</li>
+                      <li>Akses dashboard melalui portal resmi PPDB PTDARRAHMAN menggunakan nomor registrasi dan password akun yang telah dibuat.</li>
                       <li>Setelah pembayaran terverifikasi oleh sistem secara otomatis, unduh bukti kuitansi pembayaran dan Surat Keterangan Diterima (SKD).</li>
                     </ol>
                   </td>
@@ -601,7 +634,7 @@ function LoaDocumentView({
 
             <div className="text-right space-y-1">
               <p className="text-xs text-slate-600">Hormat Kami,</p>
-              <p className="text-xs font-bold text-slate-900">Office of Admission PPDB Ar-Rahman</p>
+              <p className="text-xs font-bold text-slate-900">Office of Admission PPDB PTDARRAHMAN</p>
               <div className="h-10 flex items-center justify-end pr-4">
                 <span className="font-serif italic text-emerald-800 text-sm opacity-80">Wijaya Kurnia</span>
               </div>
@@ -614,7 +647,7 @@ function LoaDocumentView({
 
       {/* Footer Info */}
       <div className="border-t border-slate-100 pt-2 flex justify-between items-center text-[10px] text-slate-400">
-        <span>Letter of Acceptance (LoA) Resmi - Pesantren Ar-Rahman</span>
+        <span>Letter of Acceptance (LoA) Resmi - PTDARRAHMAN</span>
         <span>Dokumen Sah Dihasilkan oleh Sistem PPDB</span>
       </div>
     </div>
@@ -653,7 +686,7 @@ function SkdCertificateView({ data }: { data: any }) {
           <div className="flex items-center justify-center gap-2 mb-1">
             <Building2 className="h-5 w-5 text-amber-400" />
             <span className="text-[11px] font-semibold tracking-widest uppercase text-amber-200/90 font-serif">
-              YAYASAN & PESANTREN TAHFIDZ QUR&apos;AN DAN DIGITAL AR-RAHMAN
+              YAYASAN & PESANTREN TAHFIDZ QUR&apos;AN DAN DIGITAL ARRAHMAN
             </span>
           </div>
 
@@ -701,7 +734,7 @@ function SkdCertificateView({ data }: { data: any }) {
             Berdasarkan Keputusan Panitia Seleksi PPDB, yang bersangkutan telah memenuhi seluruh kriteria
             kelayakan dan secara resmi dinyatakan <strong className="text-amber-300">LULUS</strong> serta{' '}
             <strong className="text-amber-300">DITERIMA</strong> sebagai Santri Baru pada{' '}
-            <strong>Pesantren Tahfidz Qur&apos;an dan Digital Ar-Rahman</strong>.
+            <strong>Pesantren Tahfidz Qur&apos;an dan Digital Arrahman</strong>.
           </div>
         </div>
 
@@ -729,7 +762,7 @@ function SkdCertificateView({ data }: { data: any }) {
               <span className="text-[6px] font-extrabold uppercase tracking-tighter">OFFICIAL</span>
             </div>
             <span className="text-[8px] font-semibold mt-0.5 tracking-wider text-amber-300">
-              PPDB AR-RAHMAN 2026
+              PPDB PTDARRAHMAN 2026
             </span>
           </div>
 

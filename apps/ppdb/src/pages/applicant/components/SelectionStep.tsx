@@ -23,14 +23,14 @@ const getGoogleCalendarUrl = (session: any, titlePrefix: string) => {
   const endTimeStr = `${endHour}${startMinute}`
 
   const dates = `${dateStr}T${startTimeStr}00/${dateStr}T${endTimeStr}00`
-  const text = encodeURIComponent(`${titlePrefix} - PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman`)
+  const text = encodeURIComponent(`${titlePrefix} - PPDB PTDARRAHMAN`)
   const loc = encodeURIComponent(
     session.mode === 'online'
       ? session.meeting_url || 'Online Meeting'
-      : session.location || "Pesantren Tahfidz Qur'an dan Digital Ar-Rahman"
+      : session.location || "PTDARRAHMAN"
   )
   const details = encodeURIComponent(
-    `Jadwal ${titlePrefix} PPDB Pesantren Tahfidz Qur'an dan Digital Ar-Rahman.\nPenguji: ${session.officer_name || '-'}\nMode: ${session.mode === 'online' ? 'Online' : 'Offline'}\n${session.mode === 'online' ? `Link: ${session.meeting_url || '-'}` : `Lokasi: ${session.location || '-'}`}`
+    `Jadwal ${titlePrefix} PPDB PTDARRAHMAN.\nPenguji: ${session.officer_name || '-'}\nMode: ${session.mode === 'online' ? 'Online' : 'Offline'}\n${session.mode === 'online' ? `Link: ${session.meeting_url || '-'}` : `Lokasi: ${session.location || '-'}`}`
   )
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${loc}`
 }
@@ -208,7 +208,7 @@ export default function SelectionStep({
                 </div>
 
                 <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-amber-800">
-                  Jika masalah berlanjut dan Anda tidak bisa mengakses ujian sama sekali, segera hubungi Panitia PPDB Ar-Rahman melalui nomor kontak resmi yang tersedia.
+                  Jika masalah berlanjut dan Anda tidak bisa mengakses ujian sama sekali, segera hubungi Panitia PPDB PTDARRAHMAN melalui nomor kontak resmi yang tersedia.
                 </div>
               </div>
             </DialogContent>

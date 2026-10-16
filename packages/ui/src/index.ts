@@ -47,3 +47,4 @@ export * from "./components/ui/auth-recovery";
 export * from "./components/ui/auth-recovery-form";
 export * from "./components/ui/page-loader";
 export * from "./components/ui/doc-sheet";
+export * from "./components/profile";

@@ -28,11 +28,13 @@ const USER_KEY = 'admin_user'
 export const MOCK_AUTH = (process.env.NEXT_PUBLIC_MOCK_AUTH || '').trim().toLowerCase() === 'true'
 
 export interface AuthMe {
-  id: string; username: string; email: string; full_name: string
+  id: string; username: string; email: string; phone?: string; full_name: string
   avatar_url: string; user_type: string; is_active: boolean
   role_id: string; role_name: string; is_superadmin: boolean
   permissions: Record<string, string>
   page_permissions: string[]
+  created_at?: string
+  last_login_at?: string
 }
 
 function buildMockUser(username = 'admin'): AuthMe {
@@ -131,7 +133,7 @@ async function tryRefresh(): Promise<string | null> {
     try {
       const res = await fetchWithFallback(`${API_BASE}/companyprofile/auth/refresh`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Client-App': 'companyprofile' },
         body: JSON.stringify({}),
         credentials: 'include' as RequestCredentials,
       })
@@ -222,7 +224,7 @@ export async function login(username: string, password: string) {
   }
   const res = await fetchWithFallback(`${API_BASE}/companyprofile/auth/login`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Client-App': 'companyprofile' },
     body: JSON.stringify({ username, password }),
     credentials: 'include' as RequestCredentials,
   })
@@ -247,7 +249,7 @@ export async function logout() {
       method: 'POST',
       // Wajib: tanpa Content-Type, fetch kirim `text/plain` dan FastAPI
       // menolak body sebagai JSON → 422 (cookie tetap aktif di server).
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Client-App': 'companyprofile' },
       body: JSON.stringify({}),
       credentials: 'include' as RequestCredentials,
     })
@@ -427,7 +429,7 @@ export async function getMe(): Promise<AuthMe> {
 }
 
 export async function updateProfile(data: {
-  username?: string; email?: string; full_name?: string; avatar_url?: string
+  username?: string; email?: string; phone?: string; full_name?: string; avatar_url?: string
   old_password?: string; new_password?: string
 }) {
   return fetchAuthApi<JsonValue>('/companyprofile/auth/profile', { method: 'PUT', body: JSON.stringify(data) })
@@ -456,6 +458,14 @@ export async function uploadImage(file: File) {
   if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
   const data = await parseJsonSafe<{ url: string }>(res, 'Upload')
   return data.url as string
+}
+
+export async function getSessions(): Promise<{ sessions: any[] }> {
+  return fetchAuthApi<{ sessions: any[] }>('/companyprofile/auth/sessions')
+}
+
+export async function revokeSession(id: string): Promise<void> {
+  await fetchAuthApi(`/companyprofile/auth/sessions/${id}`, { method: 'DELETE' })
 }
 
 export interface SiteSetting {

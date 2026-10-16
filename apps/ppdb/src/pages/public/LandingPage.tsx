@@ -343,7 +343,7 @@ export default function LandingPage() {
           <div className="mx-auto mb-10 max-w-2xl text-center">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold-dark">Alur Pendaftaran</p>
             <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl">
-              Empat Langkah Menuju Ar-Rahman
+              Empat Langkah Menuju PTDARRAHMAN
             </h2>
             <p className="mt-3 text-slate-500">
               Simak dan ikuti setiap tahapan pendaftaran dengan teliti agar proses berjalan lancar.
@@ -380,7 +380,7 @@ export default function LandingPage() {
           {/* z-10 + z-30 di bawah dipertahankan darizai ketika globe masih ada;
               globe-nya sudah dihapus, tapi nilainya tidak merusak apa pun. */}
           <div className="relative z-10 mx-auto mb-10 max-w-2xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold-dark">Mengapa Ar-Rahman?</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold-dark">Mengapa PTDARRAHMAN?</p>
             <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl">
               Sistem Pendaftaran Modern &amp; Terpercaya
             </h2>

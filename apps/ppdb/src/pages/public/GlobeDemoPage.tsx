@@ -24,7 +24,7 @@ export default function GlobeDemoPage() {
         title: 'Penerimaan Peserta',
         subtitle: 'Didik Baru',
         description:
-          'Pesantren Tahfidz Qur’an dan Digital Ar-Rahman membuka pendaftaran peserta didik baru. Setiap santri belajar dengan ritme sendiri: tahfidz terstruktur, mata pelajaran tematik, dan literasi digital yang dekat dengan kehidupan sehari-hari.',
+          'Pesantren Tahfidz Qur’an dan Digital Arrahman membuka pendaftaran peserta didik baru. Setiap santri belajar dengan ritme sendiri: tahfidz terstruktur, mata pelajaran tematik, dan literasi digital yang dekat dengan kehidupan sehari-hari.',
         align: 'left',
         actions: [
           { label: 'Daftar Sekarang', variant: 'primary', onClick: () => navigate('/register') },

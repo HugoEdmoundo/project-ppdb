@@ -11,21 +11,120 @@ router = APIRouter()
 
 # Kamus konsep semantik untuk ekspansi query pencarian (Indonesian & pesantren domain)
 SEMANTIC_ONTOLOGY: dict[str, list[str]] = {
-    "santri": ["applicant", "pendaftar", "siswa", "murid", "anak", "peserta", "biodata", "calon"],
-    "pendaftar": ["applicant", "santri", "siswa", "calon", "registrasi", "biodata", "peserta"],
-    "dokumen": ["berkas", "ijazah", "kk", "akta", "nisn", "foto", "rapor", "upload", "lampiran"],
-    "bayar": ["pembayaran", "keuangan", "biaya", "tagihan", "dp", "spp", "qris", "transaksi", "lunas", "kuitansi", "invoice"],
-    "tahfidz": ["hafalan", "quran", "juz", "surah", "tajwid", "simakan", "setoran", "penguji", "tahsin"],
-    "wawancara": ["interview", "pewawancara", "wali", "orang tua", "bk", "tanya jawab", "psikotes"],
-    "tiu": ["ujian", "tes", "seb", "skor", "nilai", "akademik", "google form", "potensi"],
+    "santri": [
+        "applicant",
+        "pendaftar",
+        "siswa",
+        "murid",
+        "anak",
+        "peserta",
+        "biodata",
+        "calon",
+    ],
+    "pendaftar": [
+        "applicant",
+        "santri",
+        "siswa",
+        "calon",
+        "registrasi",
+        "biodata",
+        "peserta",
+    ],
+    "dokumen": [
+        "berkas",
+        "ijazah",
+        "kk",
+        "akta",
+        "nisn",
+        "foto",
+        "rapor",
+        "upload",
+        "lampiran",
+    ],
+    "bayar": [
+        "pembayaran",
+        "keuangan",
+        "biaya",
+        "tagihan",
+        "dp",
+        "spp",
+        "qris",
+        "transaksi",
+        "lunas",
+        "kuitansi",
+        "invoice",
+    ],
+    "tahfidz": [
+        "hafalan",
+        "quran",
+        "juz",
+        "surah",
+        "tajwid",
+        "simakan",
+        "setoran",
+        "penguji",
+        "tahsin",
+    ],
+    "wawancara": [
+        "interview",
+        "pewawancara",
+        "wali",
+        "orang tua",
+        "bk",
+        "tanya jawab",
+        "psikotes",
+    ],
+    "tiu": [
+        "ujian",
+        "tes",
+        "seb",
+        "skor",
+        "nilai",
+        "akademik",
+        "google form",
+        "potensi",
+    ],
     "lulus": ["kelulusan", "hasil", "loa", "skd", "diterima", "pengumuman", "lolos"],
-    "periode": ["gelombang", "kuota", "tahun ajaran", "jadwal", "buka", "tutup", "wave"],
-    "pengguna": ["user", "akun", "petugas", "admin", "panitia", "operator", "password", "superadmin"],
+    "periode": [
+        "gelombang",
+        "kuota",
+        "tahun ajaran",
+        "jadwal",
+        "buka",
+        "tutup",
+        "wave",
+    ],
+    "pengguna": [
+        "user",
+        "akun",
+        "petugas",
+        "admin",
+        "panitia",
+        "operator",
+        "password",
+        "superadmin",
+    ],
     "role": ["peran", "hak akses", "izin", "kewenangan", "permission", "otorisasi"],
     "whatsapp": ["wa", "pesan", "chat", "broadcast", "notifikasi", "nomor"],
     "berita": ["artikel", "kabar", "post", "blog", "warta", "publikasi", "liputan"],
-    "guru": ["ustadz", "ustadzah", "pengajar", "asatidz", "staff", "dewan guru", "kyai"],
-    "fasilitas": ["gedung", "asrama", "sarana", "masjid", "kelas", "lapangan", "laboratorium"],
+    "guru": [
+        "ustadz",
+        "ustadzah",
+        "pengajar",
+        "asatidz",
+        "staff",
+        "dewan guru",
+        "kyai",
+    ],
+    "fasilitas": [
+        "gedung",
+        "asrama",
+        "sarana",
+        "masjid",
+        "kelas",
+        "lapangan",
+        "laboratorium",
+    ],
     "program": ["unggulan", "kurikulum", "kegiatan", "ekstrakurikuler", "tahsin"],
     "prestasi": ["juara", "piala", "lomba", "kejuaraan", "penghargaan", "medali"],
     "galeri": ["foto", "album", "dokumentasi", "kegiatan", "video"],
@@ -103,10 +202,16 @@ def semantic_search(
     has_cp = False
 
     if user:
-        is_super = bool(user.get("user_type") == "superadmin" or user.get("is_superadmin"))
+        is_super = bool(
+            user.get("user_type") == "superadmin" or user.get("is_superadmin")
+        )
         perms = user.get("permissions") or {}
         has_ppdb = is_super or perms.get("ppdb") in ("read", "crud", "dashboard")
-        has_cp = is_super or perms.get("companyprofile") in ("read", "crud", "dashboard")
+        has_cp = is_super or perms.get("companyprofile") in (
+            "read",
+            "crud",
+            "dashboard",
+        )
     else:
         # Default fallback for internal / public preview
         has_cp = True
@@ -163,16 +268,20 @@ def semantic_search(
                 elif any(t in name.lower() for t in expanded_terms):
                     score = 0.85
 
-                results.append({
-                    "id": f"applicant-{a['id']}",
-                    "title": name,
-                    "subtitle": f"No. Reg: {reg_no} • Jalur {path.capitalize()} • Status: {status}",
-                    "category": "Pendaftar",
-                    "icon": "user-check",
-                    "badge": status,
-                    "url": f"/admin/data-pendaftar?q={reg_no}" if not is_super else f"/applicants?q={reg_no}",
-                    "score": round(score, 2),
-                })
+                results.append(
+                    {
+                        "id": f"applicant-{a['id']}",
+                        "title": name,
+                        "subtitle": f"No. Reg: {reg_no} • Jalur {path.capitalize()} • Status: {status}",
+                        "category": "Pendaftar",
+                        "icon": "user-check",
+                        "badge": status,
+                        "url": f"/admin/data-pendaftar?q={reg_no}"
+                        if not is_super
+                        else f"/applicants?q={reg_no}",
+                        "score": round(score, 2),
+                    }
+                )
         except Exception:
             pass
 
@@ -201,16 +310,18 @@ def semantic_search(
                 elif clean_q.lower() in fname.lower():
                     score = 0.92
 
-                results.append({
-                    "id": f"user-{u['id']}",
-                    "title": fname,
-                    "subtitle": f"@{uname} • {email} • Tipe: {utype}",
-                    "category": "Pengguna",
-                    "icon": "users",
-                    "badge": utype,
-                    "url": "/users",
-                    "score": round(score, 2),
-                })
+                results.append(
+                    {
+                        "id": f"user-{u['id']}",
+                        "title": fname,
+                        "subtitle": f"@{uname} • {email} • Tipe: {utype}",
+                        "category": "Pengguna",
+                        "icon": "users",
+                        "badge": utype,
+                        "url": "/users",
+                        "score": round(score, 2),
+                    }
+                )
         except Exception:
             pass
 
@@ -228,16 +339,18 @@ def semantic_search(
                 rname = r.get("name") or ""
                 desc = r.get("description") or "Role sistem"
                 score = 0.90 if clean_q.lower() in rname.lower() else 0.75
-                results.append({
-                    "id": f"role-{r['id']}",
-                    "title": f"Role: {rname}",
-                    "subtitle": desc,
-                    "category": "Hak Akses",
-                    "icon": "shield",
-                    "badge": "Role",
-                    "url": "/roles",
-                    "score": round(score, 2),
-                })
+                results.append(
+                    {
+                        "id": f"role-{r['id']}",
+                        "title": f"Role: {rname}",
+                        "subtitle": desc,
+                        "category": "Hak Akses",
+                        "icon": "shield",
+                        "badge": "Role",
+                        "url": "/roles",
+                        "score": round(score, 2),
+                    }
+                )
         except Exception:
             pass
 
@@ -252,19 +365,23 @@ def semantic_search(
         try:
             news_items = execute_raw(news_sql, {"term": like_term}) or []
             for n in news_items:
-                title = _extract_content_field(n.get("content"), "title", n.get("slug", "Artikel"))
+                title = _extract_content_field(
+                    n.get("content"), "title", n.get("slug", "Artikel")
+                )
                 category = n.get("category") or "Berita"
                 score = 0.92 if clean_q.lower() in title.lower() else 0.78
-                results.append({
-                    "id": f"news-{n['id']}",
-                    "title": title,
-                    "subtitle": f"Kategori: {category} • Artikel CMS",
-                    "category": "Konten CMS",
-                    "icon": "newspaper",
-                    "badge": category,
-                    "url": "/admin/dashboard?tab=news",
-                    "score": round(score, 2),
-                })
+                results.append(
+                    {
+                        "id": f"news-{n['id']}",
+                        "title": title,
+                        "subtitle": f"Kategori: {category} • Artikel CMS",
+                        "category": "Konten CMS",
+                        "icon": "newspaper",
+                        "badge": category,
+                        "url": "/admin/dashboard?tab=news",
+                        "score": round(score, 2),
+                    }
+                )
         except Exception:
             pass
 
@@ -279,19 +396,25 @@ def semantic_search(
         try:
             facs = execute_raw(fac_sql, {"term": like_term}) or []
             for f in facs:
-                name = _extract_content_field(f.get("content"), "title", f.get("category", "Fasilitas"))
-                desc = _extract_content_field(f.get("content"), "description", "Sarana pesantren")
+                name = _extract_content_field(
+                    f.get("content"), "title", f.get("category", "Fasilitas")
+                )
+                desc = _extract_content_field(
+                    f.get("content"), "description", "Sarana pesantren"
+                )
                 score = 0.88 if clean_q.lower() in name.lower() else 0.75
-                results.append({
-                    "id": f"fac-{f['id']}",
-                    "title": name,
-                    "subtitle": desc[:80] + ("..." if len(desc) > 80 else ""),
-                    "category": "Fasilitas",
-                    "icon": "building",
-                    "badge": f.get("category", "Fasilitas"),
-                    "url": "/admin/dashboard?tab=facilities",
-                    "score": round(score, 2),
-                })
+                results.append(
+                    {
+                        "id": f"fac-{f['id']}",
+                        "title": name,
+                        "subtitle": desc[:80] + ("..." if len(desc) > 80 else ""),
+                        "category": "Fasilitas",
+                        "icon": "building",
+                        "badge": f.get("category", "Fasilitas"),
+                        "url": "/admin/dashboard?tab=facilities",
+                        "score": round(score, 2),
+                    }
+                )
         except Exception:
             pass
 
@@ -306,19 +429,25 @@ def semantic_search(
         try:
             staffs = execute_raw(staff_sql, {"term": like_term}) or []
             for s in staffs:
-                name = _extract_content_field(s.get("content"), "name", "Ustadz / Pengajar")
-                role = s.get("role") or _extract_content_field(s.get("content"), "role", "Pengajar")
+                name = _extract_content_field(
+                    s.get("content"), "name", "Ustadz / Pengajar"
+                )
+                role = s.get("role") or _extract_content_field(
+                    s.get("content"), "role", "Pengajar"
+                )
                 score = 0.90 if clean_q.lower() in name.lower() else 0.75
-                results.append({
-                    "id": f"staff-{s['id']}",
-                    "title": name,
-                    "subtitle": f"Jabatan / Peran: {role}",
-                    "category": "Pengajar",
-                    "icon": "graduation-cap",
-                    "badge": role,
-                    "url": "/admin/dashboard?tab=staff",
-                    "score": round(score, 2),
-                })
+                results.append(
+                    {
+                        "id": f"staff-{s['id']}",
+                        "title": name,
+                        "subtitle": f"Jabatan / Peran: {role}",
+                        "category": "Pengajar",
+                        "icon": "graduation-cap",
+                        "badge": role,
+                        "url": "/admin/dashboard?tab=staff",
+                        "score": round(score, 2),
+                    }
+                )
         except Exception:
             pass
 
@@ -333,19 +462,25 @@ def semantic_search(
         try:
             progs = execute_raw(prog_sql, {"term": like_term}) or []
             for p in progs:
-                title = _extract_content_field(p.get("content"), "title", p.get("slug", "Program"))
-                desc = _extract_content_field(p.get("content"), "description", "Program pendidikan")
+                title = _extract_content_field(
+                    p.get("content"), "title", p.get("slug", "Program")
+                )
+                desc = _extract_content_field(
+                    p.get("content"), "description", "Program pendidikan"
+                )
                 score = 0.88 if clean_q.lower() in title.lower() else 0.75
-                results.append({
-                    "id": f"prog-{p['id']}",
-                    "title": title,
-                    "subtitle": desc[:80] + ("..." if len(desc) > 80 else ""),
-                    "category": "Program",
-                    "icon": "book-open",
-                    "badge": "Pendidikan",
-                    "url": "/admin/dashboard?tab=programs",
-                    "score": round(score, 2),
-                })
+                results.append(
+                    {
+                        "id": f"prog-{p['id']}",
+                        "title": title,
+                        "subtitle": desc[:80] + ("..." if len(desc) > 80 else ""),
+                        "category": "Program",
+                        "icon": "book-open",
+                        "badge": "Pendidikan",
+                        "url": "/admin/dashboard?tab=programs",
+                        "score": round(score, 2),
+                    }
+                )
         except Exception:
             pass
 
@@ -360,18 +495,22 @@ def semantic_search(
         try:
             achs = execute_raw(ach_sql, {"term": like_term}) or []
             for a in achs:
-                title = _extract_content_field(a.get("content"), "title", "Prestasi Santri")
+                title = _extract_content_field(
+                    a.get("content"), "title", "Prestasi Santri"
+                )
                 cat = a.get("category", "Prestasi")
-                results.append({
-                    "id": f"ach-{a['id']}",
-                    "title": title,
-                    "subtitle": f"Kategori: {cat} • Penghargaan / Prestasi",
-                    "category": "Prestasi",
-                    "icon": "trophy",
-                    "badge": cat,
-                    "url": "/admin/dashboard?tab=achievements",
-                    "score": 0.82,
-                })
+                results.append(
+                    {
+                        "id": f"ach-{a['id']}",
+                        "title": title,
+                        "subtitle": f"Kategori: {cat} • Penghargaan / Prestasi",
+                        "category": "Prestasi",
+                        "icon": "trophy",
+                        "badge": cat,
+                        "url": "/admin/dashboard?tab=achievements",
+                        "score": 0.82,
+                    }
+                )
         except Exception:
             pass
 
@@ -394,16 +533,18 @@ def semantic_search(
                 kind = w.get("kind", "Gelombang")
                 status = w.get("status", "inactive")
                 score = 0.90 if clean_q.lower() in wname.lower() else 0.78
-                results.append({
-                    "id": f"wave-{w['id']}",
-                    "title": f"{kind}: {wname}",
-                    "subtitle": f"Status: {status} • Pengaturan PPDB",
-                    "category": "Periode PPDB",
-                    "icon": "calendar-days",
-                    "badge": status,
-                    "url": "/admin/periods",
-                    "score": round(score, 2),
-                })
+                results.append(
+                    {
+                        "id": f"wave-{w['id']}",
+                        "title": f"{kind}: {wname}",
+                        "subtitle": f"Status: {status} • Pengaturan PPDB",
+                        "category": "Periode PPDB",
+                        "icon": "calendar-days",
+                        "badge": status,
+                        "url": "/admin/periods",
+                        "score": round(score, 2),
+                    }
+                )
         except Exception:
             pass
 

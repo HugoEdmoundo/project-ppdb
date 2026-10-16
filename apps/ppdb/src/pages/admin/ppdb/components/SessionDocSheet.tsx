@@ -186,7 +186,7 @@ export default function SessionDocSheet({
         <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center gap-3">
           <HelpCircle className="h-5 w-5 text-emerald-600 shrink-0" />
           <p className="text-xs text-emerald-900">
-            Ada pertanyaan atau kendala jadwal? Hubungi Koordinator PPDB Pesantren Tahfidz Qur&apos;an dan Digital Ar-Rahman.
+            Ada pertanyaan atau kendala jadwal? Hubungi Koordinator PPDB PTDARRAHMAN.
           </p>
         </div>
       </SheetContent>

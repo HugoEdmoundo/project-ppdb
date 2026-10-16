@@ -29,7 +29,11 @@ export interface Applicant {
   phone: string
   registration_path: string
   registration_level?: string
+  registration_number?: string | null
   wave_name?: string
+  wave_id?: string
+  period_name?: string
+  period_id?: string
   payment_status: 'pending' | 'paid' | 'expired'
   status: string
   birth_place?: string
@@ -44,9 +48,25 @@ export interface Applicant {
   postal_code?: string
   address?: string
   parent_name?: string
+  father_name?: string
+  father_job?: string
+  father_phone?: string
+  mother_name?: string
+  mother_job?: string
+  mother_phone?: string
+  guardian_name?: string
+  guardian_job?: string
+  parent_phone?: string
+  parent_income?: string
+  parent_email?: string
   previous_school?: string
   disease_history?: string
+  is_loa_signed?: boolean
+  loa_signed_at?: string | null
+  loa_signer_name?: string | null
+  loa_signer_relation?: string | null
   created_at: string
+  updated_at?: string
 }
 
 export interface Transaction {

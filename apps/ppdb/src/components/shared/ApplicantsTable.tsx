@@ -13,15 +13,6 @@ interface ApplicantsTableProps {
   onRowClick?: (applicant: any) => void
 }
 
-function initials(name?: string) {
-  return (name || 'A')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-}
 
 /** Ubah nilai snake_case/kebab-case menjadi label yang rapi. */
 function humanize(value?: string | null) {
@@ -142,18 +133,13 @@ export default function ApplicantsTable({ applicants, loading, hasActivePeriod, 
             >
               {/* Pendaftar */}
               <TableCell className="px-4 py-3.5">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-primary to-emerald-dark text-[11px] font-bold tracking-wide text-white shadow-sm shadow-emerald-primary/20">
-                    {initials(a.full_name)}
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-slate-800" title={a.full_name}>
+                    {a.full_name || 'Tanpa Nama'}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-slate-800" title={a.full_name}>
-                      {a.full_name || 'Tanpa Nama'}
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-1.5 min-w-0 text-xs text-slate-500">
-                      <Waves className="h-3 w-3 shrink-0 text-emerald-primary/60" />
-                      <span className="truncate">{a.wave_name || 'Tanpa gelombang'}</span>
-                    </div>
+                  <div className="mt-0.5 flex items-center gap-1.5 min-w-0 text-xs text-slate-500">
+                    <Waves className="h-3 w-3 shrink-0 text-emerald-primary/60" />
+                    <span className="truncate">{a.wave_name || 'Tanpa gelombang'}</span>
                   </div>
                 </div>
               </TableCell>

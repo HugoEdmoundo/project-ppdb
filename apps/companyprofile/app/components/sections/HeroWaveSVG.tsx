@@ -17,8 +17,8 @@ export default function HeroWaveSVG() {
     >
       <defs>
         <linearGradient id="lg-hero-wave" x1="0" x2="0" y1="0" y2="1">
-          <stop stop-color="#1A6B47" offset="0" />
-          <stop stop-color="#D4A853" offset="1" />
+          <stop stopColor="#1A6B47" offset="0" />
+          <stop stopColor="#D4A853" offset="1" />
         </linearGradient>
       </defs>
 
